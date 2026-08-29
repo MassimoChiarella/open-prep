@@ -1,0 +1,200 @@
+{
+  "$schema": "./question-pack-v2.schema.json",
+  "format": "math-drill-question-pack",
+  "schemaVersion": 2,
+  "kind": "exhibit",
+  "id": "example-consulting-chart-exhibits",
+  "packVersion": "1.0",
+  "title": "Example Consulting Bar and Line Charts",
+  "description": "Two original exhibits demonstrating complete bar-chart and line-chart datasets with deterministic questions.",
+  "publisher": "Example Learning Lab",
+  "license": "CC BY 4.0",
+  "datasets": [
+    {
+      "id": "sector-revenue-comparison",
+      "title": "Revenue by Client Sector",
+      "description": "A professional-services firm compares revenue across four client sectors for 2024 and 2025.",
+      "sourceNote": "Synthetic figures created for this example.",
+      "unit": "currency",
+      "columns": [
+        {
+          "id": "sector",
+          "label": "Client sector",
+          "role": "dimension",
+          "valueType": "text"
+        },
+        {
+          "id": "revenue_2024",
+          "label": "2024 revenue",
+          "role": "metric",
+          "valueType": "currency",
+          "unit": "currency"
+        },
+        {
+          "id": "revenue_2025",
+          "label": "2025 revenue",
+          "role": "metric",
+          "valueType": "currency",
+          "unit": "currency"
+        }
+      ],
+      "rows": [
+        {
+          "id": "consumer",
+          "label": "Consumer",
+          "cells": {
+            "sector": "Consumer",
+            "revenue_2024": 72000000,
+            "revenue_2025": 81000000
+          }
+        },
+        {
+          "id": "industrials",
+          "label": "Industrials",
+          "cells": {
+            "sector": "Industrials",
+            "revenue_2024": 64000000,
+            "revenue_2025": 76000000
+          }
+        },
+        {
+          "id": "healthcare",
+          "label": "Healthcare",
+          "cells": {
+            "sector": "Healthcare",
+            "revenue_2024": 58000000,
+            "revenue_2025": 69000000
+          }
+        },
+        {
+          "id": "technology",
+          "label": "Technology",
+          "cells": {
+            "sector": "Technology",
+            "revenue_2024": 86000000,
+            "revenue_2025": 103000000
+          }
+        }
+      ],
+      "visualization": {
+        "type": "bar_chart",
+        "title": "Revenue by Client Sector ($m)",
+        "xColumnId": "sector",
+        "yColumnIds": ["revenue_2024", "revenue_2025"]
+      },
+      "questions": [
+        {
+          "id": "technology-revenue-increase",
+          "responseType": "numeric",
+          "difficulty": "beginner",
+          "prompt": "By how much did Technology revenue increase from 2024 to 2025?",
+          "tags": ["subtraction", "revenue"],
+          "answer": {
+            "value": 17000000,
+            "unit": "currency",
+            "roundingRule": "exact"
+          },
+          "explanation": {
+            "short": "Subtract Technology's 2024 revenue from its 2025 revenue.",
+            "steps": ["$103 million - $86 million = $17 million."],
+            "shortcut": "Count from 86 to 100, then add the remaining 3."
+          },
+          "expectedTimeSeconds": 30
+        }
+      ]
+    },
+    {
+      "id": "subscription-business-trend",
+      "title": "Subscription Business Financial Trend",
+      "description": "A subscription business tracks revenue and operating cost over four years.",
+      "sourceNote": "Synthetic figures created for this example.",
+      "unit": "currency",
+      "columns": [
+        {
+          "id": "year",
+          "label": "Year",
+          "role": "dimension",
+          "valueType": "year"
+        },
+        {
+          "id": "revenue",
+          "label": "Revenue",
+          "role": "metric",
+          "valueType": "currency",
+          "unit": "currency"
+        },
+        {
+          "id": "operating_cost",
+          "label": "Operating cost",
+          "role": "metric",
+          "valueType": "currency",
+          "unit": "currency"
+        }
+      ],
+      "rows": [
+        {
+          "id": "year-2023",
+          "label": "2023",
+          "cells": {
+            "year": 2023,
+            "revenue": 90000000,
+            "operating_cost": 72000000
+          }
+        },
+        {
+          "id": "year-2024",
+          "label": "2024",
+          "cells": {
+            "year": 2024,
+            "revenue": 108000000,
+            "operating_cost": 82000000
+          }
+        },
+        {
+          "id": "year-2025",
+          "label": "2025",
+          "cells": {
+            "year": 2025,
+            "revenue": 132000000,
+            "operating_cost": 94000000
+          }
+        },
+        {
+          "id": "year-2026",
+          "label": "2026",
+          "cells": {
+            "year": 2026,
+            "revenue": 159000000,
+            "operating_cost": 107000000
+          }
+        }
+      ],
+      "visualization": {
+        "type": "line_chart",
+        "title": "Revenue and Operating Cost ($m)",
+        "xColumnId": "year",
+        "yColumnIds": ["revenue", "operating_cost"]
+      },
+      "questions": [
+        {
+          "id": "operating-profit-2026",
+          "responseType": "numeric",
+          "difficulty": "beginner",
+          "prompt": "What was operating profit in 2026 if operating profit equals revenue minus operating cost?",
+          "tags": ["subtraction", "profit"],
+          "answer": {
+            "value": 52000000,
+            "unit": "currency",
+            "roundingRule": "exact"
+          },
+          "explanation": {
+            "short": "Subtract 2026 operating cost from 2026 revenue.",
+            "steps": ["$159 million - $107 million = $52 million."],
+            "shortcut": "Subtract 100, then subtract the remaining 7."
+          },
+          "expectedTimeSeconds": 30
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Consulting mental math practice icon</title>
+  <desc id="desc">A charcoal calculator grid with warm neutral accents.</desc>
+  <rect width="512" height="512" fill="#20211f"/>
+  <rect x="104" y="88" width="304" height="336" fill="#f2f2ee"/>
+  <rect x="136" y="124" width="240" height="72" fill="#e7e2d8"/>
+  <path d="M152 160h136" stroke="#20211f" stroke-width="20"/>
+  <rect x="322" y="146" width="28" height="28" fill="#744732"/>
+  <g fill="#20211f">
+    <rect x="136" y="232" width="54" height="54"/>
+    <rect x="229" y="232" width="54" height="54"/>
+    <rect x="322" y="232" width="54" height="54"/>
+    <rect x="136" y="322" width="54" height="54"/>
+    <rect x="229" y="322" width="54" height="54"/>
+  </g>
+  <path d="M320 346l24 24 58-72" fill="none" stroke="#b38b6d" stroke-width="24"/>
+</svg>

@@ -1,0 +1,81 @@
+import type { PartialMessageCatalog } from "@/features/i18n/i18n";
+
+type Entry = readonly [string, string, string, string, string, string, string, string, string, string];
+
+const entries: readonly Entry[] = [
+  ["", "", "", "", "", "", "", "", "", ""],
+  ["+", "+", "+", "+", "+", "+", "+", "+", "+", "+"],
+  ["Benchmark Tests", "Pruebas de referencia", "Tests de référence", "Benchmark-Tests", "Testes de referência", "基准测试", "基準測試", "ベンチマークテスト", "اختبارات معيارية", "बेंचमार्क परीक्षण"],
+  ["Benchmark your performance", "Evalúa tu rendimiento", "Évaluez vos performances", "Leistung vergleichen", "Avalie seu desempenho", "评估你的表现", "評估你的表現", "パフォーマンスを測定", "قيّم أداءك", "अपने प्रदर्शन का आकलन करें"],
+  ["Compare difficulty, time, pace, and focus, then begin one locked run.", "Compara dificultad, tiempo, ritmo y enfoque, y luego inicia una sesión bloqueada.", "Comparez la difficulté, le temps, le rythme et l’objectif, puis lancez une session verrouillée.", "Vergleiche Schwierigkeit, Zeit, Tempo und Schwerpunkt und starte dann einen festen Durchlauf.", "Compare dificuldade, tempo, ritmo e foco e depois inicie uma sessão bloqueada.", "比较难度、时间、节奏和重点，然后开始一次锁定测试。", "比較難度、時間、節奏與重點，然後開始一次鎖定測試。", "難易度、時間、ペース、重点を比較し、固定条件で開始します。", "قارن الصعوبة والوقت والسرعة والتركيز، ثم ابدأ محاولة مقفلة.", "कठिनाई, समय, गति और फोकस की तुलना करें, फिर एक लॉक्ड रन शुरू करें।"],
+  ["Choose a benchmark", "Elige una prueba", "Choisir un test", "Benchmark auswählen", "Escolha um teste", "选择基准测试", "選擇基準測試", "ベンチマークを選択", "اختر اختبارًا", "बेंचमार्क चुनें"],
+  ["Each option uses fixed settings so results remain comparable over time.", "Cada opción usa una configuración fija para mantener los resultados comparables.", "Chaque option utilise des réglages fixes afin que les résultats restent comparables.", "Jede Option verwendet feste Einstellungen, damit Ergebnisse langfristig vergleichbar bleiben.", "Cada opção usa configurações fixas para manter os resultados comparáveis.", "每个选项都使用固定设置，以便长期比较结果。", "每個選項都使用固定設定，以便長期比較結果。", "各選択肢は固定設定を使用するため、結果を継続的に比較できます。", "يستخدم كل خيار إعدادات ثابتة لتبقى النتائج قابلة للمقارنة بمرور الوقت.", "हर विकल्प तय सेटिंग उपयोग करता है ताकि परिणाम समय के साथ तुलना योग्य रहें।"],
+  ["Saved benchmark history", "Historial de pruebas guardado", "Historique des tests enregistrés", "Gespeicherter Benchmark-Verlauf", "Histórico de testes salvo", "已保存的基准历史", "已儲存的基準歷史", "保存済みベンチマーク履歴", "سجل الاختبارات المحفوظ", "सहेजा गया बेंचमार्क इतिहास"],
+  ["Open local results, trends, and score labels.", "Abre resultados locales, tendencias y etiquetas de puntuación.", "Ouvrez les résultats locaux, les tendances et les niveaux de score.", "Öffne lokale Ergebnisse, Trends und Bewertungsstufen.", "Abra resultados locais, tendências e faixas de pontuação.", "查看本地结果、趋势和得分标签。", "查看本機結果、趨勢與得分標籤。", "ローカルの結果、傾向、スコアラベルを表示します。", "افتح النتائج المحلية والاتجاهات وتسميات النتائج.", "स्थानीय परिणाम, रुझान और स्कोर लेबल खोलें।"],
+  ["Difficulty", "Dificultad", "Difficulté", "Schwierigkeit", "Dificuldade", "难度", "難度", "難易度", "الصعوبة", "कठिनाई"],
+  ["Time", "Tiempo", "Temps", "Zeit", "Tempo", "时间", "時間", "時間", "الوقت", "समय"],
+  ["Pace", "Ritmo", "Rythme", "Tempo", "Ritmo", "节奏", "節奏", "ペース", "السرعة", "गति"],
+  ["Focus", "Enfoque", "Objectif", "Fokus", "Foco", "重点", "重點", "重点", "التركيز", "फोकस"],
+  ["{seconds} sec/question", "{seconds} s/pregunta", "{seconds} s/question", "{seconds} Sek./Frage", "{seconds} s/pergunta", "每题 {seconds} 秒", "每題 {seconds} 秒", "1問 {seconds} 秒", "{seconds} ث/سؤال", "{seconds} सेकंड/प्रश्न"],
+  ["{title} selected", "{title} seleccionada", "{title} sélectionné", "{title} ausgewählt", "{title} selecionado", "已选择 {title}", "已選擇 {title}", "{title} を選択中", "تم تحديد {title}", "{title} चयनित"],
+  ["Select {title}", "Seleccionar {title}", "Sélectionner {title}", "{title} auswählen", "Selecionar {title}", "选择 {title}", "選擇 {title}", "{title} を選択", "تحديد {title}", "{title} चुनें"],
+  ["Selected", "Seleccionada", "Sélectionné", "Ausgewählt", "Selecionado", "已选择", "已選擇", "選択中", "محدد", "चयनित"],
+  ["Select", "Seleccionar", "Sélectionner", "Auswählen", "Selecionar", "选择", "選擇", "選択", "تحديد", "चुनें"],
+  ["Selected benchmark", "Prueba seleccionada", "Test sélectionné", "Ausgewählter Benchmark", "Teste selecionado", "已选基准测试", "已選基準測試", "選択したベンチマーク", "الاختبار المحدد", "चुना बेंचमार्क"],
+  ["Ready to begin?", "¿Listo para empezar?", "Prêt à commencer ?", "Bereit?", "Pronto para começar?", "准备开始？", "準備開始？", "準備はできましたか？", "هل أنت مستعد؟", "शुरू करने के लिए तैयार?"],
+  ["{title} is a locked {duration} run with {count} questions. Hints stay off and feedback appears after the final question.", "{title} es una sesión bloqueada de {duration} con {count} preguntas. Las pistas permanecen desactivadas y los comentarios aparecen después de la última pregunta.", "{title} est une session verrouillée de {duration} avec {count} questions. Les indices restent désactivés et le retour apparaît après la dernière question.", "{title} ist ein fester Durchlauf über {duration} mit {count} Fragen. Hinweise bleiben aus und Feedback erscheint nach der letzten Frage.", "{title} é uma sessão bloqueada de {duration} com {count} perguntas. As dicas ficam desativadas e o feedback aparece após a última pergunta.", "{title} 是一次时长 {duration}、共 {count} 题的锁定测试。提示保持关闭，反馈将在最后一题后显示。", "{title} 是一次時長 {duration}、共 {count} 題的鎖定測試。提示保持關閉，回饋會在最後一題後顯示。", "{title} は {duration}、全 {count} 問の固定テストです。ヒントは無効で、フィードバックは最終問題の後に表示されます。", "{title} محاولة مقفلة مدتها {duration} وتضم {count} سؤالًا. تبقى التلميحات متوقفة وتظهر الملاحظات بعد السؤال الأخير.", "{title} एक {duration} का लॉक्ड रन है जिसमें {count} प्रश्न हैं। संकेत बंद रहते हैं और प्रतिक्रिया अंतिम प्रश्न के बाद दिखती है।"],
+  ["Begin Benchmark", "Iniciar prueba", "Commencer le test", "Benchmark starten", "Iniciar teste", "开始测试", "開始測試", "ベンチマークを開始", "بدء الاختبار", "बेंचमार्क शुरू करें"],
+  ["Preparing benchmark...", "Preparando prueba...", "Préparation du test...", "Benchmark wird vorbereitet...", "Preparando teste...", "正在准备测试...", "正在準備測試...", "ベンチマークを準備中...", "جارٍ إعداد الاختبار...", "बेंचमार्क तैयार हो रहा है..."],
+  ["Local Results", "Resultados locales", "Résultats locaux", "Lokale Ergebnisse", "Resultados locais", "本地结果", "本機結果", "ローカル結果", "النتائج المحلية", "स्थानीय परिणाम"],
+  ["Benchmark History", "Historial de pruebas", "Historique des tests", "Benchmark-Verlauf", "Histórico de testes", "基准历史", "基準歷史", "ベンチマーク履歴", "سجل الاختبارات", "बेंचमार्क इतिहास"],
+  ["{count} saved", "{count} guardados", "{count} enregistrés", "{count} gespeichert", "{count} salvos", "已保存 {count} 次", "已儲存 {count} 次", "{count} 件保存済み", "تم حفظ {count}", "{count} सहेजे"],
+  ["Reading saved benchmark attempts on this device.", "Leyendo los intentos guardados en este dispositivo.", "Lecture des tentatives enregistrées sur cet appareil.", "Gespeicherte Benchmark-Versuche werden gelesen.", "Lendo tentativas salvas neste dispositivo.", "正在读取此设备上保存的测试记录。", "正在讀取此裝置上儲存的測試記錄。", "この端末の保存済み試行を読み込んでいます。", "جارٍ قراءة محاولات الاختبار المحفوظة على هذا الجهاز.", "इस डिवाइस पर सहेजे बेंचमार्क प्रयास पढ़े जा रहे हैं।"],
+  ["Loading benchmark history...", "Cargando historial de pruebas...", "Chargement de l’historique des tests...", "Benchmark-Verlauf wird geladen...", "Carregando histórico de testes...", "正在加载基准历史...", "正在載入基準歷史...", "ベンチマーク履歴を読み込み中...", "جارٍ تحميل سجل الاختبارات...", "बेंचमार्क इतिहास लोड हो रहा है..."],
+  ["Choose Benchmark", "Elegir prueba", "Choisir un test", "Benchmark auswählen", "Escolher teste", "选择基准测试", "選擇基準測試", "ベンチマークを選択", "اختر اختبارًا", "बेंचमार्क चुनें"],
+  ["We could not read saved benchmark results on this device. You can still choose a benchmark and save a new result.", "No se pudieron leer los resultados guardados en este dispositivo. Aún puedes elegir una prueba y guardar un nuevo resultado.", "Impossible de lire les résultats enregistrés sur cet appareil. Vous pouvez toujours choisir un test et enregistrer un nouveau résultat.", "Die gespeicherten Ergebnisse konnten nicht gelesen werden. Du kannst dennoch einen Benchmark auswählen und ein neues Ergebnis speichern.", "Não foi possível ler os resultados salvos neste dispositivo. Você ainda pode escolher um teste e salvar um novo resultado.", "无法读取此设备上保存的基准结果。你仍可选择测试并保存新结果。", "無法讀取此裝置上儲存的基準結果。你仍可選擇測試並儲存新結果。", "この端末の保存済み結果を読み込めませんでした。ベンチマークを選び、新しい結果を保存することはできます。", "تعذرت قراءة نتائج الاختبارات المحفوظة على هذا الجهاز. لا يزال بإمكانك اختيار اختبار وحفظ نتيجة جديدة.", "इस डिवाइस पर सहेजे बेंचमार्क परिणाम पढ़े नहीं जा सके। आप फिर भी बेंचमार्क चुनकर नया परिणाम सहेज सकते हैं।"],
+  ["Benchmark history could not load.", "No se pudo cargar el historial de pruebas.", "L’historique des tests n’a pas pu être chargé.", "Der Benchmark-Verlauf konnte nicht geladen werden.", "Não foi possível carregar o histórico de testes.", "无法加载基准历史。", "無法載入基準歷史。", "ベンチマーク履歴を読み込めませんでした。", "تعذر تحميل سجل الاختبارات.", "बेंचमार्क इतिहास लोड नहीं हो सका।"],
+  ["Complete one fixed benchmark to start comparing score, accuracy, and result labels.", "Completa una prueba fija para empezar a comparar puntuación, precisión y etiquetas de resultado.", "Terminez un test fixe pour commencer à comparer le score, la précision et les niveaux de résultat.", "Schließe einen festen Benchmark ab, um Punktzahl, Genauigkeit und Ergebnisstufen zu vergleichen.", "Conclua um teste fixo para começar a comparar pontuação, precisão e faixas de resultado.", "完成一次固定基准测试，即可开始比较得分、正确率和结果标签。", "完成一次固定基準測試，即可開始比較得分、正確率與結果標籤。", "固定ベンチマークを1回完了すると、スコア、正解率、結果ラベルを比較できます。", "أكمل اختبارًا ثابتًا واحدًا لبدء مقارنة النتيجة والدقة وتسميات النتائج.", "स्कोर, सटीकता और परिणाम लेबल की तुलना शुरू करने के लिए एक तय बेंचमार्क पूरा करें।"],
+  ["No benchmark history yet.", "Aún no hay historial de pruebas.", "Aucun historique de test pour le moment.", "Noch kein Benchmark-Verlauf.", "Nenhum histórico de testes ainda.", "尚无基准历史。", "尚無基準歷史。", "ベンチマーク履歴はまだありません。", "لا يوجد سجل اختبارات بعد.", "अभी कोई बेंचमार्क इतिहास नहीं है।"],
+  ["Latest", "Último", "Dernier", "Aktuell", "Mais recente", "最新", "最新", "最新", "الأحدث", "नवीनतम"],
+  ["Score", "Puntuación", "Score", "Punktzahl", "Pontuação", "得分", "得分", "スコア", "النتيجة", "स्कोर"],
+  ["Accuracy", "Precisión", "Précision", "Genauigkeit", "Precisão", "正确率", "正確率", "正解率", "الدقة", "सटीकता"],
+  ["Label", "Etiqueta", "Niveau", "Stufe", "Faixa", "标签", "標籤", "ラベル", "التصنيف", "लेबल"],
+  ["Recorded", "Registrado", "Enregistré", "Gespeichert", "Registrado", "已记录", "已記錄", "記録済み", "مسجل", "दर्ज"],
+  ["{score} pts", "{score} pts", "{score} pts", "{score} Pkt.", "{score} pts", "{score} 分", "{score} 分", "{score} 点", "{score} نقطة", "{score} अंक"],
+  ["Comparison Snapshot", "Resumen comparativo", "Aperçu comparatif", "Vergleichsübersicht", "Resumo comparativo", "对比摘要", "比較摘要", "比較スナップショット", "ملخص المقارنة", "तुलना सारांश"],
+  ["Latest result in context", "Último resultado en contexto", "Dernier résultat en contexte", "Aktuelles Ergebnis im Vergleich", "Resultado mais recente em contexto", "最新结果对比", "最新結果比較", "最新結果の位置づけ", "أحدث نتيجة في سياقها", "नवीनतम परिणाम का संदर्भ"],
+  ["New Best benchmark score", "Nueva mejor puntuación de referencia", "Nouveau meilleur score de référence", "Neue Benchmark-Bestleistung", "Nova melhor pontuação de referência", "新的基准最高分", "新的基準最高分", "ベンチマーク自己ベスト更新", "أفضل نتيجة معيارية جديدة", "नया सर्वश्रेष्ठ बेंचमार्क स्कोर"],
+  ["Latest Accuracy", "Precisión más reciente", "Précision la plus récente", "Aktuelle Genauigkeit", "Precisão mais recente", "最新正确率", "最新正確率", "最新の正解率", "أحدث دقة", "नवीनतम सटीकता"],
+  ["Best Accuracy", "Mejor precisión", "Meilleure précision", "Beste Genauigkeit", "Melhor precisão", "最佳正确率", "最佳正確率", "最高正解率", "أفضل دقة", "सर्वश्रेष्ठ सटीकता"],
+  ["No result", "Sin resultado", "Aucun résultat", "Kein Ergebnis", "Sem resultado", "无结果", "無結果", "結果なし", "لا توجد نتيجة", "कोई परिणाम नहीं"],
+  ["Change", "Cambio", "Évolution", "Änderung", "Mudança", "变化", "變化", "変化", "التغيير", "परिवर्तन"],
+  ["Attempts", "Intentos", "Tentatives", "Versuche", "Tentativas", "尝试次数", "嘗試次數", "試行回数", "المحاولات", "प्रयास"],
+  ["By Benchmark", "Por prueba", "Par test", "Nach Benchmark", "Por teste", "按基准测试", "按基準測試", "ベンチマーク別", "حسب الاختبار", "बेंचमार्क के अनुसार"],
+  ["Compare the latest and best saved result for each fixed benchmark.", "Compara el último y el mejor resultado guardado de cada prueba fija.", "Comparez le dernier et le meilleur résultat enregistré pour chaque test fixe.", "Vergleiche das aktuelle und beste gespeicherte Ergebnis jedes festen Benchmarks.", "Compare o resultado mais recente e o melhor resultado salvo de cada teste fixo.", "比较每个固定基准测试的最新和最佳保存结果。", "比較每個固定基準測試的最新與最佳儲存結果。", "各固定ベンチマークの最新結果と最高結果を比較します。", "قارن أحدث وأفضل نتيجة محفوظة لكل اختبار ثابت.", "हर तय बेंचमार्क के नवीनतम और सर्वश्रेष्ठ सहेजे परिणाम की तुलना करें।"],
+  ["New Best", "Nuevo récord", "Nouveau record", "Neue Bestleistung", "Novo recorde", "新纪录", "新紀錄", "自己ベスト更新", "أفضل نتيجة جديدة", "नया सर्वश्रेष्ठ"],
+  ["Best", "Mejor", "Meilleur", "Beste", "Melhor", "最佳", "最佳", "最高", "الأفضل", "सर्वश्रेष्ठ"],
+  ["{count} attempt", "{count} intento", "{count} tentative", "{count} Versuch", "{count} tentativa", "{count} 次尝试", "{count} 次嘗試", "{count} 回の試行", "{count} محاولة", "{count} प्रयास"],
+  ["{count} attempts", "{count} intentos", "{count} tentatives", "{count} Versuche", "{count} tentativas", "{count} 次尝试", "{count} 次嘗試", "{count} 回の試行", "{count} محاولات", "{count} प्रयास"],
+  ["Benchmark", "Prueba", "Test", "Benchmark", "Teste", "基准测试", "基準測試", "ベンチマーク", "الاختبار", "बेंचमार्क"],
+  ["Completed", "Completado", "Terminé", "Abgeschlossen", "Concluído", "完成时间", "完成時間", "完了日", "مكتمل", "पूर्ण"],
+  ["Result", "Resultado", "Résultat", "Ergebnis", "Resultado", "结果", "結果", "結果", "النتيجة", "परिणाम"],
+  ["First saved run", "Primera sesión guardada", "Première session enregistrée", "Erster gespeicherter Durchlauf", "Primeira sessão salva", "首次保存的测试", "首次儲存的測試", "最初の保存済み試行", "أول محاولة محفوظة", "पहला सहेजा रन"],
+  ["No change", "Sin cambios", "Aucun changement", "Keine Änderung", "Sem alteração", "无变化", "無變化", "変化なし", "لا تغيير", "कोई परिवर्तन नहीं"],
+  ["{points} pts vs previous", "{points} pts respecto a la anterior", "{points} pts par rapport au précédent", "{points} Pkt. zum vorherigen", "{points} pts em relação ao anterior", "比上次 {points} 分", "比上次 {points} 分", "前回比 {points} 点", "{points} نقطة مقارنة بالسابق", "पिछले से {points} अंक"]
+];
+
+function catalog(index: number): Record<string, string> {
+  return Object.fromEntries(entries.map(([message, ...translations]) => [message, translations[index]]));
+}
+
+export const benchmarkMessages = {
+  es: catalog(0),
+  fr: catalog(1),
+  de: catalog(2),
+  pt: catalog(3),
+  "zh-Hans": catalog(4),
+  "zh-Hant": catalog(5),
+  ja: catalog(6),
+  ar: catalog(7),
+  hi: catalog(8)
+} satisfies PartialMessageCatalog;

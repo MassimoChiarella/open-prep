@@ -1,0 +1,126 @@
+{
+  "$schema": "./question-pack-v2.schema.json",
+  "format": "math-drill-question-pack",
+  "schemaVersion": 2,
+  "kind": "market_sizing",
+  "id": "example-neighborhood-market-sizing",
+  "packVersion": "1.0",
+  "title": "Example Neighborhood Market Sizing",
+  "description": "An original demand-side exercise with three user-entered assumptions.",
+  "publisher": "Example Learning Lab",
+  "license": "CC BY 4.0",
+  "templates": [
+    {
+      "id": "neighborhood-delivery-spend",
+      "title": "Neighborhood Delivery Spend",
+      "prompt": "Estimate annual spending on local grocery delivery in a city district.",
+      "description": "Build a demand-side estimate from the addressable population, buyer participation, and annual spend per buyer.",
+      "difficulty": "intermediate",
+      "industry": "retail",
+      "sizingType": "demand_side",
+      "inputSteps": [
+        {
+          "id": "addressable-population",
+          "label": "Addressable adult population",
+          "inputKind": "integer",
+          "required": true,
+          "helperText": "Use the number of adults who could access the service.",
+          "unit": "customers",
+          "variableName": "population",
+          "assumptionRange": {
+            "min": 100000,
+            "max": 200000,
+            "unit": "customers"
+          }
+        },
+        {
+          "id": "buyer-rate",
+          "label": "Share who buy grocery delivery",
+          "inputKind": "percentage",
+          "required": true,
+          "helperText": "Enter 40% or 0.4 for forty percent.",
+          "unit": "percentage",
+          "variableName": "buyerRate",
+          "assumptionRange": {
+            "min": 0.3,
+            "max": 0.6,
+            "unit": "percentage"
+          }
+        },
+        {
+          "id": "annual-spend",
+          "label": "Annual delivery spend per buyer",
+          "inputKind": "currency",
+          "required": true,
+          "unit": "currency",
+          "variableName": "annualSpend",
+          "assumptionRange": {
+            "min": 120,
+            "max": 240,
+            "unit": "currency"
+          }
+        }
+      ],
+      "finalFormula": {
+        "expression": "population * buyerRate * annualSpend",
+        "outputVariable": "marketValue",
+        "roundingRule": "nearest_1m",
+        "tolerance": {
+          "type": "percentage",
+          "value": 0.05
+        }
+      },
+      "outputUnit": "currency",
+      "rubric": [
+        {
+          "id": "structure",
+          "label": "Structure",
+          "maxPoints": 25
+        },
+        {
+          "id": "assumptions",
+          "label": "Assumptions",
+          "maxPoints": 25
+        },
+        {
+          "id": "math",
+          "label": "Math",
+          "maxPoints": 25
+        },
+        {
+          "id": "units",
+          "label": "Units",
+          "maxPoints": 10
+        },
+        {
+          "id": "sense_check",
+          "label": "Sense-check",
+          "maxPoints": 10
+        },
+        {
+          "id": "interpretation",
+          "label": "Interpretation",
+          "maxPoints": 5
+        }
+      ],
+      "senseCheck": {
+        "prompt": "Which observation best checks whether the estimate is plausible?",
+        "required": true,
+        "interpretationOptions": [
+          {
+            "id": "compare-household-budget",
+            "label": "Compare annual spend per buyer with a plausible grocery budget."
+          },
+          {
+            "id": "ignore-units",
+            "label": "Ignore the currency unit because the formula has three inputs."
+          },
+          {
+            "id": "double-every-input",
+            "label": "Double every assumption without changing the conclusion."
+          }
+        ]
+      }
+    }
+  ]
+}

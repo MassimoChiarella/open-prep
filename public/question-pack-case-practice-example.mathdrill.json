@@ -1,0 +1,454 @@
+{
+  "$schema": "./question-pack-v2.schema.json",
+  "format": "math-drill-question-pack",
+  "schemaVersion": 2,
+  "kind": "case_practice",
+  "id": "example-harborfresh-case-practice",
+  "packVersion": "1.0",
+  "title": "Example HarborFresh Case Practice",
+  "description": "Original synthetic exercises for a fictional local meal-kit company.",
+  "publisher": "Example Learning Lab",
+  "license": "CC BY 4.0",
+  "structuringPrompts": [
+    {
+      "id": "harborfresh-margin-structure",
+      "title": "Diagnose a margin decline",
+      "industry": "Meal kits",
+      "situation": "HarborFresh grew orders this year, but operating margin fell from 12% to 7%.",
+      "objective": "Identify the drivers of the margin decline and the highest-value corrective action.",
+      "hypotheses": [
+        {
+          "id": "cost-growth",
+          "label": "Fulfillment and ingredient costs grew faster than revenue.",
+          "rationale": "The hypothesis links the margin decline to measurable revenue and cost drivers."
+        },
+        {
+          "id": "demand-collapse",
+          "label": "Customer demand collapsed across every plan.",
+          "rationale": "Total orders increased, so a broad demand collapse is inconsistent with the known fact."
+        }
+      ],
+      "acceptedHypothesisId": "cost-growth",
+      "branchOptions": [
+        {
+          "id": "revenue-mix",
+          "label": "Revenue and mix",
+          "description": "Review order volume, prices, discounts, and plan mix."
+        },
+        {
+          "id": "cost-base",
+          "label": "Cost base",
+          "description": "Review ingredient, packaging, labor, delivery, and fixed costs."
+        }
+      ],
+      "maxBranches": 2,
+      "modelStructure": [
+        {
+          "branchId": "revenue-mix",
+          "title": "Revenue and mix",
+          "questions": ["Did discounts or plan mix reduce revenue per order?"]
+        },
+        {
+          "branchId": "cost-base",
+          "title": "Cost base",
+          "questions": ["Which unit costs grew faster than order volume?"]
+        }
+      ]
+    }
+  ],
+  "brainstormingPrompts": [
+    {
+      "id": "harborfresh-retention-ideas",
+      "title": "Improve subscriber retention",
+      "context": "First-month cancellations rose after HarborFresh changed its menu and delivery windows.",
+      "question": "Which actions should the team test first to improve retention?",
+      "selectionLimit": 2,
+      "priorityLimit": 1,
+      "priorityIdeaIds": ["pause-point-offer"],
+      "themes": [
+        {
+          "id": "customer-choice",
+          "label": "Customer choice",
+          "ideas": [
+            {
+              "id": "pause-point-offer",
+              "label": "Offer pause and delivery-window choices before cancellation.",
+              "relevant": true
+            },
+            {
+              "id": "remove-preferences",
+              "label": "Remove dietary preferences from account settings.",
+              "relevant": false
+            }
+          ]
+        },
+        {
+          "id": "service-learning",
+          "label": "Service learning",
+          "ideas": [
+            {
+              "id": "cancel-reason-test",
+              "label": "Track cancellation reasons by menu and delivery window.",
+              "relevant": true
+            },
+            {
+              "id": "annual-survey-only",
+              "label": "Wait for one annual survey before changing service.",
+              "relevant": false
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "synthesisPrompts": [
+    {
+      "id": "harborfresh-kitchen-synthesis",
+      "title": "Recommend a kitchen expansion",
+      "client": "HarborFresh",
+      "situation": "The current kitchen is near capacity, while demand differs sharply by neighborhood.",
+      "decision": "Recommend whether HarborFresh should lease a second kitchen this quarter.",
+      "facts": [
+        "The east neighborhood has enough committed demand to use 80% of a small kitchen.",
+        "A six-month lease option costs 20% more per month but limits long-term downside."
+      ],
+      "options": {
+        "recommendation": [
+          {
+            "id": "short-lease",
+            "label": "Use the six-month option for a small east kitchen."
+          },
+          {
+            "id": "large-long-lease",
+            "label": "Sign a five-year lease for a large citywide kitchen."
+          }
+        ],
+        "evidence": [
+          {
+            "id": "committed-utilization",
+            "label": "Committed east demand supports 80% utilization."
+          },
+          {
+            "id": "office-location",
+            "label": "The finance office is also in the east neighborhood."
+          }
+        ],
+        "risk": [
+          {
+            "id": "demand-decay",
+            "label": "Committed demand may weaken after launch."
+          },
+          {
+            "id": "paint-color",
+            "label": "The kitchen exterior may need a different paint color."
+          }
+        ],
+        "nextStep": [
+          {
+            "id": "verify-and-negotiate",
+            "label": "Verify commitments and negotiate volume gates before signing."
+          },
+          {
+            "id": "sign-immediately",
+            "label": "Sign the long lease before checking customer commitments."
+          }
+        ]
+      },
+      "correctResponse": {
+        "recommendation": "short-lease",
+        "evidence": "committed-utilization",
+        "risk": "demand-decay",
+        "nextStep": "verify-and-negotiate"
+      },
+      "modelClose": "HarborFresh should use the six-month option for a small east kitchen because committed demand supports 80% utilization. The main risk is demand decay, so the team should verify commitments and negotiate volume gates before signing."
+    }
+  ],
+  "lessons": [
+    {
+      "id": "harborfresh-contribution-lesson",
+      "knowledgeCheck": {
+        "correctOptionId": "six-dollars",
+        "explanation": "Contribution per box equals $18 minus $12, or $6.",
+        "options": [
+          {
+            "id": "six-dollars",
+            "label": "$6 per box"
+          },
+          {
+            "id": "thirty-dollars",
+            "label": "$30 per box"
+          }
+        ],
+        "prompt": "A box sells for $18 and has $12 of variable cost. What is contribution per box?"
+      },
+      "objective": "Connect price and variable cost to contribution per unit.",
+      "principles": [
+        "Contribution per unit equals price minus variable cost per unit.",
+        "Use contribution, not revenue, to cover fixed costs."
+      ],
+      "title": "Calculate contribution per unit",
+      "topic": "business_economics",
+      "workedExample": {
+        "answer": "Contribution is $8 per box.",
+        "prompt": "A box sells for $20 and has $12 of variable cost.",
+        "steps": ["Subtract $12 of variable cost from the $20 price."]
+      }
+    }
+  ],
+  "fitPrompts": [
+    {
+      "id": "harborfresh-impact-fit",
+      "competency": "impact",
+      "prompt": "Tell me about a time you improved an important operating result.",
+      "followUps": [
+        "How did you identify the opportunity?",
+        "How did you measure the result?"
+      ]
+    }
+  ],
+  "fullCases": [
+    {
+      "id": "harborfresh-pickup-full-case",
+      "client": "HarborFresh",
+      "title": "Neighborhood pickup rollout",
+      "situation": "HarborFresh tested pickup points in two neighborhoods and must decide where to expand next quarter.",
+      "calculationQuestionId": "east-weekly-contribution",
+      "structure": {
+        "id": "harborfresh-pickup-structure",
+        "title": "Structure the pickup decision",
+        "industry": "Meal kits",
+        "situation": "Pickup adoption and unit economics differ between the east and west pilots.",
+        "objective": "Determine whether and where to expand neighborhood pickup.",
+        "hypotheses": [
+          {
+            "id": "east-first",
+            "label": "Expand east first if contribution and repeat demand remain attractive.",
+            "rationale": "This is a market-specific hypothesis tied to measurable economics and demand."
+          },
+          {
+            "id": "expand-both",
+            "label": "Expand both neighborhoods because each pilot attracted some users.",
+            "rationale": "Any adoption is not enough to establish attractive economics."
+          }
+        ],
+        "acceptedHypothesisId": "east-first",
+        "branchOptions": [
+          {
+            "id": "pickup-demand",
+            "label": "Demand",
+            "description": "Assess adoption, repeat use, and addressable order volume."
+          },
+          {
+            "id": "pickup-economics",
+            "label": "Economics",
+            "description": "Assess contribution, setup costs, and break-even volume."
+          }
+        ],
+        "maxBranches": 2,
+        "modelStructure": [
+          {
+            "branchId": "pickup-demand",
+            "title": "Demand",
+            "questions": ["Which neighborhood has durable pickup adoption?"]
+          },
+          {
+            "branchId": "pickup-economics",
+            "title": "Economics",
+            "questions": ["Which pilot generates enough contribution to cover setup costs?"]
+          }
+        ]
+      },
+      "exhibit": {
+        "id": "harborfresh-pickup-exhibit",
+        "title": "Pickup pilot performance",
+        "description": "Average weekly results from the final month of each pilot.",
+        "sourceNote": "Original synthetic practice data.",
+        "unit": "none",
+        "columns": [
+          {
+            "id": "neighborhood",
+            "label": "Neighborhood",
+            "role": "dimension",
+            "valueType": "text"
+          },
+          {
+            "id": "eligible-orders",
+            "label": "Eligible weekly orders",
+            "role": "metric",
+            "unit": "units",
+            "valueType": "number"
+          },
+          {
+            "id": "adoption",
+            "label": "Pickup adoption",
+            "role": "metric",
+            "unit": "percentage",
+            "valueType": "percentage"
+          },
+          {
+            "id": "contribution",
+            "label": "Contribution per pickup order",
+            "role": "metric",
+            "unit": "currency",
+            "valueType": "currency"
+          }
+        ],
+        "rows": [
+          {
+            "id": "east",
+            "label": "East",
+            "cells": {
+              "neighborhood": "East",
+              "eligible-orders": 6000,
+              "adoption": 0.25,
+              "contribution": 8
+            }
+          },
+          {
+            "id": "west",
+            "label": "West",
+            "cells": {
+              "neighborhood": "West",
+              "eligible-orders": 5000,
+              "adoption": 0.12,
+              "contribution": 5
+            }
+          }
+        ],
+        "visualization": {
+          "type": "table",
+          "title": "HarborFresh pickup performance",
+          "selectedColumnIds": [
+            "neighborhood",
+            "eligible-orders",
+            "adoption",
+            "contribution"
+          ]
+        },
+        "questions": [
+          {
+            "id": "east-weekly-contribution",
+            "difficulty": "intermediate",
+            "prompt": "What weekly contribution does the east pickup pilot generate?",
+            "tags": ["multiplication", "contribution_margin"],
+            "answer": {
+              "value": 12000,
+              "unit": "currency"
+            },
+            "explanation": {
+              "short": "Multiply eligible orders by adoption and contribution per pickup order.",
+              "steps": [
+                "Adopted orders are 6,000 x 25% = 1,500.",
+                "Weekly contribution is 1,500 x $8 = $12,000."
+              ]
+            },
+            "expectedTimeSeconds": 90
+          }
+        ]
+      },
+      "brainstorming": {
+        "id": "harborfresh-pickup-actions",
+        "title": "Improve pickup performance",
+        "context": "HarborFresh can run two tests before the next rollout decision.",
+        "question": "Which actions should HarborFresh test to improve demand and economics?",
+        "selectionLimit": 2,
+        "priorityLimit": 1,
+        "priorityIdeaIds": ["target-east-cohorts"],
+        "themes": [
+          {
+            "id": "pickup-growth",
+            "label": "Demand",
+            "ideas": [
+              {
+                "id": "target-east-cohorts",
+                "label": "Target east customers with high repeat meal-kit use.",
+                "relevant": true
+              },
+              {
+                "id": "citywide-launch",
+                "label": "Launch pickup citywide before another test.",
+                "relevant": false
+              }
+            ]
+          },
+          {
+            "id": "pickup-cost",
+            "label": "Economics",
+            "ideas": [
+              {
+                "id": "shared-hosts",
+                "label": "Test pickup hosts that use existing staffed counters.",
+                "relevant": true
+              },
+              {
+                "id": "custom-buildings",
+                "label": "Build dedicated pickup buildings in every neighborhood.",
+                "relevant": false
+              }
+            ]
+          }
+        ]
+      },
+      "synthesis": {
+        "id": "harborfresh-pickup-synthesis",
+        "title": "Recommend a pickup rollout",
+        "client": "HarborFresh",
+        "situation": "East produces stronger adoption and contribution than west.",
+        "decision": "Recommend the next pickup rollout step.",
+        "facts": [
+          "East generates $12,000 of weekly contribution.",
+          "West generates $3,000 of weekly contribution."
+        ],
+        "options": {
+          "recommendation": [
+            {
+              "id": "expand-east",
+              "label": "Expand east selectively and hold west."
+            },
+            {
+              "id": "expand-everywhere",
+              "label": "Expand every neighborhood immediately."
+            }
+          ],
+          "evidence": [
+            {
+              "id": "east-contribution",
+              "label": "East produces four times west's weekly contribution."
+            },
+            {
+              "id": "same-brand",
+              "label": "Both pilots use the HarborFresh brand."
+            }
+          ],
+          "risk": [
+            {
+              "id": "repeat-demand",
+              "label": "East adoption may not persist after the pilot offer ends."
+            },
+            {
+              "id": "office-move",
+              "label": "HarborFresh may move its accounting office."
+            }
+          ],
+          "nextStep": [
+            {
+              "id": "retention-test",
+              "label": "Run a four-week east retention test before adding sites."
+            },
+            {
+              "id": "long-leases",
+              "label": "Sign long leases across the city immediately."
+            }
+          ]
+        },
+        "correctResponse": {
+          "recommendation": "expand-east",
+          "evidence": "east-contribution",
+          "risk": "repeat-demand",
+          "nextStep": "retention-test"
+        },
+        "modelClose": "HarborFresh should expand pickup selectively in east and hold west because east produces four times the weekly contribution. The main risk is whether demand persists, so the next step is a four-week east retention test."
+      }
+    }
+  ]
+}

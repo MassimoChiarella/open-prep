@@ -1,0 +1,411 @@
+{
+  "$schema": "./question-pack-v3.schema.json",
+  "format": "math-drill-question-pack",
+  "schemaVersion": 3,
+  "kind": "case_practice",
+  "id": "aster-bikes-mobile-repair-full-case",
+  "packVersion": "1.0",
+  "title": "Aster Bikes Mobile Repair Full Case",
+  "description": "One original synthetic five-stage consulting case with a deterministic questioning rubric.",
+  "publisher": "Math Drill Example Library",
+  "license": "CC BY 4.0",
+  "fullCases": [
+    {
+      "id": "aster-bikes-repair-rollout",
+      "client": "Aster Bikes",
+      "title": "Mobile repair van rollout",
+      "situation": "Aster Bikes, a fictional regional bicycle retailer, piloted mobile repair vans in three districts. Management must decide where and how to expand the service next quarter without weakening contribution or service quality.",
+      "calculationQuestionId": "river-weekly-contribution",
+      "questioning": {
+        "id": "aster-bikes-rollout-questions",
+        "title": "Aster Bikes mobile repair rollout",
+        "industry": "Bicycle retail and services",
+        "situation": "Aster Bikes completed a three-district mobile repair pilot and must choose its next-quarter rollout plan.",
+        "objective": "Ask the questions needed to clarify the decision and diagnose the strongest expansion district.",
+        "language": "en",
+        "mode": "diagnostic",
+        "minimumQuestions": 4,
+        "maximumQuestions": 7,
+        "concepts": [
+          {
+            "id": "objective",
+            "label": "Success criteria",
+            "aliases": ["objective", "goal", "target", "success criteria"]
+          },
+          {
+            "id": "timing",
+            "label": "Time horizon",
+            "aliases": ["timeline", "quarter", "quarters", "deadline", "time horizon"]
+          },
+          {
+            "id": "geography",
+            "label": "Decision scope",
+            "aliases": ["district", "districts", "neighborhood", "neighborhoods", "market", "markets"]
+          },
+          {
+            "id": "demand",
+            "label": "Customer demand",
+            "aliases": ["demand", "booking", "bookings", "repeat use", "customers"]
+          },
+          {
+            "id": "economics",
+            "label": "Unit economics",
+            "aliases": ["economics", "contribution", "margin", "cost", "costs", "profitability"]
+          },
+          {
+            "id": "operations",
+            "label": "Operating capacity",
+            "aliases": ["operations", "mechanic", "mechanics", "capacity", "completion rate", "service quality"]
+          },
+          {
+            "id": "constraints",
+            "label": "Rollout constraints",
+            "aliases": ["constraint", "constraints", "budget", "vans", "fleet", "resources"]
+          }
+        ],
+        "intents": [
+          {
+            "id": "success-definition",
+            "label": "Success definition",
+            "feedback": "Clarify the decision criteria and the time horizon for results.",
+            "priority": true,
+            "weight": 20,
+            "requiredConceptGroups": [["objective"], ["timing"]],
+            "referenceQuestions": ["What defines a successful rollout, and over what time horizon?"]
+          },
+          {
+            "id": "decision-scope",
+            "label": "Decision scope",
+            "feedback": "Define which districts or neighborhoods are eligible for expansion.",
+            "priority": false,
+            "weight": 10,
+            "requiredConceptGroups": [["geography"]],
+            "referenceQuestions": ["Which districts or neighborhoods are in scope for expansion?"]
+          },
+          {
+            "id": "demand-quality",
+            "label": "Demand quality",
+            "feedback": "Compare booking volume and repeat demand by district.",
+            "priority": true,
+            "weight": 20,
+            "requiredConceptGroups": [["demand"]],
+            "referenceQuestions": ["How do booking volume and repeat use differ across districts?"]
+          },
+          {
+            "id": "unit-economics",
+            "label": "Unit economics",
+            "feedback": "Compare contribution and costs by district.",
+            "priority": true,
+            "weight": 25,
+            "requiredConceptGroups": [["economics"]],
+            "referenceQuestions": ["What contribution and costs does each district generate?"]
+          },
+          {
+            "id": "operating-feasibility",
+            "label": "Operating feasibility",
+            "feedback": "Test mechanic capacity and the constraints on a next-quarter rollout.",
+            "priority": false,
+            "weight": 25,
+            "requiredConceptGroups": [["operations"], ["constraints", "timing"]],
+            "supportingConceptIds": ["constraints"],
+            "referenceQuestions": ["Can mechanic capacity meet service targets within the fleet and next-quarter constraints?"]
+          }
+        ]
+      },
+      "structure": {
+        "id": "aster-bikes-rollout-structure",
+        "title": "Structure the mobile repair decision",
+        "industry": "Bicycle retail and services",
+        "situation": "The three pilot districts produced different demand, economics, and service performance.",
+        "objective": "Determine whether and where Aster Bikes should expand mobile repair next quarter.",
+        "hypotheses": [
+          {
+            "id": "selective-rollout",
+            "label": "Expand first in districts where repeat demand and reliable operations sustain attractive contribution.",
+            "rationale": "This hypothesis is market-specific and links the decision to demand, economics, and execution."
+          },
+          {
+            "id": "expand-everywhere",
+            "label": "Expand every district because all three pilots completed some repairs.",
+            "rationale": "Completing some repairs does not establish sufficient demand, economics, or operating reliability."
+          }
+        ],
+        "acceptedHypothesisId": "selective-rollout",
+        "branchOptions": [
+          {
+            "id": "repair-demand",
+            "label": "Customer demand",
+            "description": "Bookings, repeat use, customer segments, and addressable demand."
+          },
+          {
+            "id": "repair-economics",
+            "label": "Unit economics",
+            "description": "Contribution per job, route costs, and break-even volume."
+          },
+          {
+            "id": "repair-operations",
+            "label": "Operational feasibility",
+            "description": "Mechanic capacity, completion rates, travel time, and service quality."
+          },
+          {
+            "id": "rollout-risk",
+            "label": "Rollout and risk",
+            "description": "District sequencing, pilot gates, capital needs, and downside controls."
+          },
+          {
+            "id": "brand-campaign",
+            "label": "Corporate brand campaign",
+            "description": "A retailer-wide advertising refresh independent of repair-pilot performance."
+          }
+        ],
+        "maxBranches": 4,
+        "modelStructure": [
+          {
+            "branchId": "repair-demand",
+            "title": "Customer demand",
+            "questions": ["Which districts show sufficient bookings?", "Does demand repeat after the initial trial?"]
+          },
+          {
+            "branchId": "repair-economics",
+            "title": "Unit economics",
+            "questions": ["What contribution does each completed job generate?", "Which districts cover van and mechanic costs?"]
+          },
+          {
+            "branchId": "repair-operations",
+            "title": "Operational feasibility",
+            "questions": ["Can completion rates remain high at greater volume?", "Where are the mechanic or routing constraints?"]
+          },
+          {
+            "branchId": "rollout-risk",
+            "title": "Rollout and risk",
+            "questions": ["Which district should launch first?", "What evidence should trigger the next expansion?"]
+          }
+        ]
+      },
+      "exhibit": {
+        "id": "aster-bikes-pilot-performance",
+        "title": "Mobile repair pilot performance",
+        "description": "Average weekly results during the final month of the pilot.",
+        "sourceNote": "Original synthetic practice data.",
+        "unit": "none",
+        "columns": [
+          {
+            "id": "district",
+            "label": "District",
+            "role": "dimension",
+            "valueType": "text"
+          },
+          {
+            "id": "bookings",
+            "label": "Weekly bookings",
+            "role": "metric",
+            "unit": "units",
+            "valueType": "number"
+          },
+          {
+            "id": "completion-rate",
+            "label": "Completion rate",
+            "role": "metric",
+            "unit": "percentage",
+            "valueType": "percentage"
+          },
+          {
+            "id": "contribution-per-job",
+            "label": "Contribution per completed job",
+            "role": "metric",
+            "unit": "currency",
+            "valueType": "currency"
+          },
+          {
+            "id": "repeat-rate",
+            "label": "Eight-week repeat rate",
+            "role": "metric",
+            "unit": "percentage",
+            "valueType": "percentage"
+          }
+        ],
+        "rows": [
+          {
+            "id": "river",
+            "label": "River",
+            "cells": {
+              "district": "River",
+              "bookings": 400,
+              "completion-rate": 0.85,
+              "contribution-per-job": 35,
+              "repeat-rate": 0.42
+            }
+          },
+          {
+            "id": "hill",
+            "label": "Hill",
+            "cells": {
+              "district": "Hill",
+              "bookings": 360,
+              "completion-rate": 0.75,
+              "contribution-per-job": 32,
+              "repeat-rate": 0.34
+            }
+          },
+          {
+            "id": "south",
+            "label": "South",
+            "cells": {
+              "district": "South",
+              "bookings": 300,
+              "completion-rate": 0.6,
+              "contribution-per-job": 28,
+              "repeat-rate": 0.2
+            }
+          }
+        ],
+        "visualization": {
+          "type": "table",
+          "title": "Aster Bikes pilot performance by district",
+          "selectedColumnIds": ["district", "bookings", "completion-rate", "contribution-per-job", "repeat-rate"]
+        },
+        "questions": [
+          {
+            "id": "river-weekly-contribution",
+            "difficulty": "intermediate",
+            "prompt": "Using the River row, what weekly contribution does the mobile repair pilot generate?",
+            "tags": ["multiplication", "contribution_margin"],
+            "answer": {
+              "value": 11900,
+              "unit": "currency"
+            },
+            "explanation": {
+              "short": "Multiply weekly bookings by the completion rate and contribution per completed job.",
+              "steps": [
+                "Completed jobs are 400 x 85% = 340.",
+                "Weekly contribution is 340 x $35 = $11,900."
+              ],
+              "shortcut": "Combine the factors: 400 x 0.85 x $35."
+            },
+            "expectedTimeSeconds": 90
+          }
+        ]
+      },
+      "brainstorming": {
+        "id": "aster-bikes-rollout-actions",
+        "title": "Improve mobile repair performance",
+        "context": "Aster Bikes can test three actions during the next eight weeks before committing to more vans.",
+        "question": "Which actions should Aster Bikes prioritize to improve demand, economics, and service reliability?",
+        "selectionLimit": 3,
+        "priorityLimit": 2,
+        "priorityIdeaIds": ["recurring-slots", "route-clusters"],
+        "themes": [
+          {
+            "id": "repair-growth",
+            "label": "Demand quality",
+            "ideas": [
+              {
+                "id": "recurring-slots",
+                "label": "Offer recurring maintenance slots to high-frequency riders.",
+                "relevant": true
+              },
+              {
+                "id": "blanket-discounts",
+                "label": "Discount every repair indefinitely without measuring repeat use.",
+                "relevant": false
+              }
+            ]
+          },
+          {
+            "id": "repair-delivery",
+            "label": "Operations",
+            "ideas": [
+              {
+                "id": "route-clusters",
+                "label": "Cluster appointments geographically before assigning each van.",
+                "relevant": true
+              },
+              {
+                "id": "all-day-travel",
+                "label": "Let each van cross the entire region for every individual booking.",
+                "relevant": false
+              }
+            ]
+          },
+          {
+            "id": "repair-economics-actions",
+            "label": "Economics and learning",
+            "ideas": [
+              {
+                "id": "minimum-service-fee",
+                "label": "Test a minimum service fee for distant appointments.",
+                "relevant": true
+              },
+              {
+                "id": "buy-full-fleet",
+                "label": "Buy a full regional fleet before testing another district.",
+                "relevant": false
+              }
+            ]
+          }
+        ]
+      },
+      "synthesis": {
+        "id": "aster-bikes-rollout-synthesis",
+        "title": "Recommend the mobile repair rollout",
+        "client": "Aster Bikes",
+        "situation": "The pilot shows meaningful differences in contribution, repeat demand, and completion rates by district.",
+        "decision": "Recommend the next-quarter mobile repair rollout.",
+        "facts": [
+          "River generates $11,900 of weekly contribution with an 85% completion rate and 42% repeat rate.",
+          "Hill generates $8,640 of weekly contribution with a 75% completion rate and 34% repeat rate.",
+          "South generates $5,040 of weekly contribution with a 60% completion rate and 20% repeat rate."
+        ],
+        "options": {
+          "recommendation": [
+            {
+              "id": "river-first",
+              "label": "Expand River first, improve Hill, and pause South."
+            },
+            {
+              "id": "all-districts",
+              "label": "Expand all districts immediately."
+            }
+          ],
+          "evidence": [
+            {
+              "id": "river-performance",
+              "label": "River has the strongest weekly contribution, completion rate, and repeat rate."
+            },
+            {
+              "id": "same-brand",
+              "label": "All vans display the same Aster Bikes brand."
+            }
+          ],
+          "risk": [
+            {
+              "id": "capacity-at-scale",
+              "label": "River's completion rate may fall as appointment volume grows."
+            },
+            {
+              "id": "office-location",
+              "label": "The accounting office may move next year."
+            }
+          ],
+          "nextStep": [
+            {
+              "id": "gated-river-test",
+              "label": "Run an eight-week River capacity and repeat-demand test with explicit gates."
+            },
+            {
+              "id": "regional-purchase",
+              "label": "Purchase a regional van fleet before another test."
+            }
+          ]
+        },
+        "correctResponse": {
+          "recommendation": "river-first",
+          "evidence": "river-performance",
+          "risk": "capacity-at-scale",
+          "nextStep": "gated-river-test"
+        },
+        "modelClose": "Aster Bikes should expand mobile repair in River first because it leads the pilot on weekly contribution, completion, and repeat use. The main risk is that service quality falls at higher volume, so the next step is an eight-week River capacity and repeat-demand test with explicit performance gates."
+      }
+    }
+  ]
+}

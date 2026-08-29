@@ -1,0 +1,56 @@
+# Dependencies
+node_modules/
+
+# Environment files and local credentials
+.env*
+!.env.example
+.npmrc
+*.pem
+*.key
+*.p12
+*.pfx
+playwright/.auth/
+
+# Next.js and generated builds
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Tests and coverage
+coverage/
+playwright-report/
+test-results/
+
+# Desktop and verification builds
+dist/
+dist-desktop/
+.dist-verification/
+.runtime-cache/
+
+# Local browser profile data
+IndexedDB/
+Local Storage/
+Session Storage/
+Service Worker/
+Cache/
+Code Cache/
+GPUCache/
+Cookies
+Cookies-journal
+History
+History-journal
+Login Data
+Login Data-journal
+
+# Logs and local tool state
+*.log
+.eslintcache
+.vercel/
+.agents/
+.codex/
+
+# Operating-system metadata
+.DS_Store
+Thumbs.db
+Desktop.ini

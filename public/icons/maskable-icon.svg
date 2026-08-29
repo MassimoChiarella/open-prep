@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">Consulting mental math practice maskable icon</title>
+  <desc id="desc">A centered calculator mark with generous safe padding.</desc>
+  <rect width="512" height="512" fill="#20211f"/>
+  <rect x="96" y="72" width="320" height="360" fill="#f2f2ee"/>
+  <rect x="132" y="112" width="248" height="76" fill="#e7e2d8"/>
+  <path d="M156 150h124" stroke="#20211f" stroke-width="18"/>
+  <rect x="323" y="137" width="26" height="26" fill="#744732"/>
+  <g fill="#20211f">
+    <rect x="136" y="224" width="56" height="56"/>
+    <rect x="228" y="224" width="56" height="56"/>
+    <rect x="320" y="224" width="56" height="56"/>
+    <rect x="136" y="318" width="56" height="56"/>
+    <rect x="228" y="318" width="56" height="56"/>
+  </g>
+  <path d="M318 346l26 26 60-76" fill="none" stroke="#b38b6d" stroke-width="24"/>
+</svg>

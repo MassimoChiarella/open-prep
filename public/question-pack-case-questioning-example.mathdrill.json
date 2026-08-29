@@ -1,0 +1,70 @@
+{
+  "$schema": "./question-pack-v3.schema.json",
+  "format": "math-drill-question-pack",
+  "schemaVersion": 3,
+  "kind": "case_practice",
+  "id": "customer-retention-questioning",
+  "packVersion": "1.0",
+  "title": "Customer Retention Questioning",
+  "description": "An original questioning exercise with a deterministic authored rubric.",
+  "publisher": "Example Publisher",
+  "license": "CC BY 4.0",
+  "questioningPrompts": [
+    {
+      "id": "subscription_churn_questions",
+      "title": "Northline Software Churn",
+      "industry": "B2B software",
+      "situation": "Northline Software has seen monthly customer churn rise from 2% to 5% in six months, with the largest increase among smaller customers.",
+      "objective": "Ask diagnostic questions that identify where and why customer churn increased.",
+      "language": "en",
+      "mode": "diagnostic",
+      "minimumQuestions": 3,
+      "maximumQuestions": 8,
+      "concepts": [
+        { "id": "segment", "label": "Segments", "aliases": ["segment", "segments", "customer size", "cohort", "plan"] },
+        { "id": "timing", "label": "Timing", "aliases": ["timing", "month", "months", "trend", "begin", "start"] },
+        { "id": "usage", "label": "Product usage", "aliases": ["usage", "adoption", "feature", "features", "engagement"] },
+        { "id": "price", "label": "Pricing", "aliases": ["price", "pricing", "fee", "fees", "contract"] },
+        { "id": "service", "label": "Customer service", "aliases": ["support", "onboarding", "service", "success team", "response time"] }
+      ],
+      "intents": [
+        {
+          "id": "churn_pattern",
+          "label": "Churn pattern",
+          "feedback": "Locate the increase by customer segment and time period.",
+          "priority": true,
+          "weight": 30,
+          "requiredConceptGroups": [["segment"], ["timing"]],
+          "referenceQuestions": ["When did churn begin to rise, and which customer segments account for the increase?"]
+        },
+        {
+          "id": "product_value",
+          "label": "Product value and usage",
+          "feedback": "Compare adoption and engagement between retained and lost customers.",
+          "priority": true,
+          "weight": 25,
+          "requiredConceptGroups": [["usage"]],
+          "referenceQuestions": ["How do product usage and feature adoption differ for retained and churned customers?"]
+        },
+        {
+          "id": "pricing",
+          "label": "Pricing and contracts",
+          "feedback": "Test whether price, packaging, or contract changes affected churn.",
+          "priority": true,
+          "weight": 25,
+          "requiredConceptGroups": [["price"]],
+          "referenceQuestions": ["Did pricing, packaging, or contract terms change before churn increased?"]
+        },
+        {
+          "id": "customer_success",
+          "label": "Onboarding and support",
+          "feedback": "Investigate onboarding quality and customer-support performance.",
+          "priority": false,
+          "weight": 20,
+          "requiredConceptGroups": [["service"]],
+          "referenceQuestions": ["Did onboarding, support response time, or customer-success coverage deteriorate?"]
+        }
+      ]
+    }
+  ]
+}

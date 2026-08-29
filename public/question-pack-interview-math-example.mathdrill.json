@@ -1,0 +1,101 @@
+{
+  "$schema": "./question-pack-v2.schema.json",
+  "format": "math-drill-question-pack",
+  "schemaVersion": 2,
+  "kind": "generated_template",
+  "id": "example-interview-math-retail-revenue",
+  "packVersion": "1.0.0",
+  "title": "Example Interview Math Retail Revenue",
+  "description": "An original Interview Math template covering equation selection, exact calculation in millions, units, and interpretation.",
+  "publisher": "Example Learning Lab",
+  "license": "CC BY 4.0",
+  "templates": [
+    {
+      "id": "retail-network-annual-revenue-001",
+      "category": "case_math",
+      "tags": ["revenue", "multiplication", "unit_conversion"],
+      "difficulty": ["beginner", "intermediate"],
+      "promptTemplate": "A retailer operates {stores} stores. Each store serves {customersPerStoreDay} customers per day for {operatingDays} days per year, and the average basket is ${averageBasket}. What is annual revenue? Enter the answer in $M.",
+      "variables": {
+        "stores": {
+          "type": "integer",
+          "values": [10, 20],
+          "unit": "stores"
+        },
+        "customersPerStoreDay": {
+          "type": "integer",
+          "values": [200, 400],
+          "unit": "customers"
+        },
+        "operatingDays": {
+          "type": "integer",
+          "values": [250, 300],
+          "unit": "days"
+        },
+        "averageBasket": {
+          "type": "currency",
+          "values": [20, 40],
+          "unit": "currency"
+        }
+      },
+      "formula": {
+        "expression": "stores * customersPerStoreDay * operatingDays * averageBasket / 1000000",
+        "outputVariable": "annualRevenueMillions"
+      },
+      "answerUnit": "m",
+      "explanationTemplate": {
+        "steps": [
+          "Setup: annual revenue equals stores x customers per store per day x operating days x average basket.",
+          "Annual transactions are {stores} x {customersPerStoreDay} x {operatingDays}.",
+          "Multiply annual transactions by the ${averageBasket} basket and divide by 1,000,000 to convert dollars to millions.",
+          "Annual revenue is ${annualRevenueMillions}M, before costs or profit margins."
+        ],
+        "shortcut": "Group factors into round numbers before multiplying, then convert dollars to millions once at the end."
+      },
+      "caseStyle": {
+        "calculationStepCount": 2,
+        "industry": "retail",
+        "interviewMath": {
+          "expectedUnit": "m",
+          "equationOptions": [
+            {
+              "id": "equation-correct",
+              "label": "{stores} x {customersPerStoreDay} x {operatingDays} x ${averageBasket} / 1,000,000",
+              "formulaCorrect": true,
+              "setupCorrect": true
+            },
+            {
+              "id": "equation-setup-wrong",
+              "label": "{stores} x {customersPerStoreDay} x {operatingDays} x ${averageBasket} / 1,000",
+              "formulaCorrect": true,
+              "setupCorrect": false
+            },
+            {
+              "id": "equation-formula-wrong",
+              "label": "({stores} + {customersPerStoreDay}) x {operatingDays} x ${averageBasket} / 1,000,000",
+              "formulaCorrect": false,
+              "setupCorrect": false
+            }
+          ],
+          "interpretationOptions": [
+            {
+              "id": "interpretation-correct",
+              "label": "This is annual revenue before subtracting operating costs or applying a profit margin.",
+              "isCorrect": true
+            },
+            {
+              "id": "interpretation-daily",
+              "label": "This is one day of revenue for a single store.",
+              "isCorrect": false
+            },
+            {
+              "id": "interpretation-profit",
+              "label": "This is annual profit after all operating costs have been deducted.",
+              "isCorrect": false
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,83 @@
+{
+  "$schema": "./question-pack-v2.schema.json",
+  "format": "math-drill-question-pack",
+  "schemaVersion": 2,
+  "kind": "benchmark",
+  "id": "example-foundations-benchmark",
+  "packVersion": "1.0",
+  "title": "Example Foundations Benchmark",
+  "description": "A short original timed benchmark with two beginner questions.",
+  "publisher": "Example Learning Lab",
+  "license": "CC BY 4.0",
+  "benchmarks": [
+    {
+      "id": "foundations-check",
+      "title": "Foundations Check",
+      "description": "Complete two basic business-math questions within two minutes.",
+      "difficulty": "beginner",
+      "totalSessionSeconds": 120,
+      "scoreBands": [
+        {
+          "label": "needs_work",
+          "minAccuracy": 0,
+          "title": "Needs more practice"
+        },
+        {
+          "label": "developing",
+          "minAccuracy": 0.5,
+          "title": "Developing"
+        },
+        {
+          "label": "strong",
+          "minAccuracy": 0.75,
+          "title": "Strong"
+        },
+        {
+          "label": "excellent",
+          "minAccuracy": 1,
+          "title": "Excellent"
+        }
+      ],
+      "questions": [
+        {
+          "id": "sum-weekly-orders",
+          "type": "numeric",
+          "category": "arithmetic",
+          "tags": ["addition"],
+          "difficulty": "beginner",
+          "prompt": "A shop receives 125 orders on Monday and 175 on Tuesday. How many orders does it receive in total?",
+          "answer": {
+            "value": 300,
+            "unit": "units",
+            "roundingRule": "exact"
+          },
+          "explanation": {
+            "short": "Add the two daily totals.",
+            "steps": ["125 + 175 = 300 orders."],
+            "shortcut": "Pair 25 and 75 to make 100."
+          },
+          "expectedTimeSeconds": 30
+        },
+        {
+          "id": "calculate-unit-cost",
+          "type": "numeric",
+          "category": "business_math",
+          "tags": ["cost", "division"],
+          "difficulty": "beginner",
+          "prompt": "A batch costs $480 and contains 60 units. What is the cost per unit?",
+          "answer": {
+            "value": 8,
+            "unit": "currency",
+            "roundingRule": "exact"
+          },
+          "explanation": {
+            "short": "Divide the total cost by the number of units.",
+            "steps": ["$480 / 60 units = $8 per unit."],
+            "shortcut": "Cancel one zero, then compute 48 / 6."
+          },
+          "expectedTimeSeconds": 30
+        }
+      ]
+    }
+  ]
+}

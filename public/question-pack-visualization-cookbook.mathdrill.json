@@ -1,0 +1,678 @@
+{
+  "$schema": "./question-pack-v2.schema.json",
+  "format": "math-drill-question-pack",
+  "schemaVersion": 2,
+  "kind": "exhibit",
+  "id": "example-visualization-cookbook",
+  "packVersion": "1.0",
+  "title": "Example Exhibit Visualization Cookbook",
+  "description": "Eight compact original exhibits demonstrating every supported visualization and both exhibit response types.",
+  "publisher": "Example Learning Lab",
+  "license": "CC BY 4.0",
+  "datasets": [
+    {
+      "id": "regional-customer-table",
+      "title": "Customers by Region",
+      "description": "A service provider reports active customers in three regions.",
+      "sourceNote": "Synthetic figures created for this example.",
+      "unit": "customers",
+      "columns": [
+        {
+          "id": "region",
+          "label": "Region",
+          "role": "dimension",
+          "valueType": "text"
+        },
+        {
+          "id": "active_customers",
+          "label": "Active customers",
+          "role": "metric",
+          "valueType": "number",
+          "unit": "customers"
+        }
+      ],
+      "rows": [
+        {
+          "id": "north",
+          "cells": {
+            "region": "North",
+            "active_customers": 480
+          }
+        },
+        {
+          "id": "central",
+          "cells": {
+            "region": "Central",
+            "active_customers": 620
+          }
+        },
+        {
+          "id": "south",
+          "cells": {
+            "region": "South",
+            "active_customers": 550
+          }
+        }
+      ],
+      "visualization": {
+        "type": "table",
+        "title": "Active Customers",
+        "selectedColumnIds": ["region", "active_customers"]
+      },
+      "questions": [
+        {
+          "id": "total-active-customers",
+          "responseType": "numeric",
+          "difficulty": "beginner",
+          "prompt": "How many active customers are shown in total?",
+          "tags": ["addition"],
+          "answer": {
+            "value": 1650,
+            "unit": "customers",
+            "roundingRule": "exact"
+          },
+          "explanation": {
+            "short": "Add the customer counts for all three regions.",
+            "steps": ["480 + 620 + 550 = 1,650 customers."]
+          },
+          "expectedTimeSeconds": 30
+        }
+      ]
+    },
+    {
+      "id": "lead-source-bar-chart",
+      "title": "Qualified Leads by Source",
+      "description": "A business compares quarterly qualified leads across acquisition sources.",
+      "sourceNote": "Synthetic figures created for this example.",
+      "unit": "users",
+      "columns": [
+        {
+          "id": "source",
+          "label": "Source",
+          "role": "dimension",
+          "valueType": "text"
+        },
+        {
+          "id": "quarter_1",
+          "label": "Quarter 1 leads",
+          "role": "metric",
+          "valueType": "number",
+          "unit": "users"
+        },
+        {
+          "id": "quarter_2",
+          "label": "Quarter 2 leads",
+          "role": "metric",
+          "valueType": "number",
+          "unit": "users"
+        }
+      ],
+      "rows": [
+        {
+          "id": "referrals",
+          "cells": {
+            "source": "Referrals",
+            "quarter_1": 400,
+            "quarter_2": 520
+          }
+        },
+        {
+          "id": "search",
+          "cells": {
+            "source": "Search",
+            "quarter_1": 650,
+            "quarter_2": 720
+          }
+        },
+        {
+          "id": "partnerships",
+          "cells": {
+            "source": "Partnerships",
+            "quarter_1": 280,
+            "quarter_2": 460
+          }
+        }
+      ],
+      "visualization": {
+        "type": "bar_chart",
+        "title": "Qualified Leads by Source and Quarter",
+        "xColumnId": "source",
+        "yColumnIds": ["quarter_1", "quarter_2"]
+      },
+      "questions": [
+        {
+          "id": "largest-lead-increase",
+          "responseType": "multiple_choice",
+          "difficulty": "beginner",
+          "prompt": "Which source had the largest increase in qualified leads from Quarter 1 to Quarter 2?",
+          "tags": ["subtraction"],
+          "choices": [
+            {
+              "id": "referrals",
+              "label": "Referrals"
+            },
+            {
+              "id": "search",
+              "label": "Search"
+            },
+            {
+              "id": "partnerships",
+              "label": "Partnerships"
+            }
+          ],
+          "correctChoiceId": "partnerships",
+          "explanation": {
+            "short": "Partnerships produced the largest quarter-over-quarter increase.",
+            "steps": ["Referrals increased by 120, Search by 70, and Partnerships by 180 leads."]
+          },
+          "expectedTimeSeconds": 40
+        }
+      ]
+    },
+    {
+      "id": "revenue-line-chart",
+      "title": "Annual Subscription Revenue",
+      "description": "A subscription company tracks revenue over three years; currency values are stored in full base units.",
+      "sourceNote": "Synthetic figures created for this example.",
+      "unit": "currency",
+      "columns": [
+        {
+          "id": "year",
+          "label": "Year",
+          "role": "dimension",
+          "valueType": "year"
+        },
+        {
+          "id": "revenue",
+          "label": "Revenue",
+          "role": "metric",
+          "valueType": "currency",
+          "unit": "currency"
+        }
+      ],
+      "rows": [
+        {
+          "id": "year-2024",
+          "cells": {
+            "year": 2024,
+            "revenue": 24000000
+          }
+        },
+        {
+          "id": "year-2025",
+          "cells": {
+            "year": 2025,
+            "revenue": 30000000
+          }
+        },
+        {
+          "id": "year-2026",
+          "cells": {
+            "year": 2026,
+            "revenue": 39000000
+          }
+        }
+      ],
+      "visualization": {
+        "type": "line_chart",
+        "title": "Annual Subscription Revenue",
+        "xColumnId": "year",
+        "yColumnIds": ["revenue"]
+      },
+      "questions": [
+        {
+          "id": "latest-revenue-increase",
+          "responseType": "numeric",
+          "difficulty": "beginner",
+          "prompt": "By how much did revenue increase from 2025 to 2026?",
+          "tags": ["subtraction", "revenue"],
+          "answer": {
+            "value": 9000000,
+            "unit": "currency",
+            "roundingRule": "exact"
+          },
+          "explanation": {
+            "short": "Subtract 2025 revenue from 2026 revenue.",
+            "steps": ["$39 million - $30 million = $9 million."]
+          },
+          "expectedTimeSeconds": 30
+        }
+      ]
+    },
+    {
+      "id": "account-mix-pie-chart",
+      "title": "Customer Accounts by Tier",
+      "description": "A software company shows its account mix across three customer tiers.",
+      "sourceNote": "Synthetic figures created for this example.",
+      "unit": "customers",
+      "columns": [
+        {
+          "id": "tier",
+          "label": "Customer tier",
+          "role": "dimension",
+          "valueType": "text"
+        },
+        {
+          "id": "accounts",
+          "label": "Accounts",
+          "role": "metric",
+          "valueType": "number",
+          "unit": "customers"
+        }
+      ],
+      "rows": [
+        {
+          "id": "small-business",
+          "cells": {
+            "tier": "Small business",
+            "accounts": 150
+          }
+        },
+        {
+          "id": "mid-market",
+          "cells": {
+            "tier": "Mid-market",
+            "accounts": 120
+          }
+        },
+        {
+          "id": "enterprise",
+          "cells": {
+            "tier": "Enterprise",
+            "accounts": 80
+          }
+        }
+      ],
+      "visualization": {
+        "type": "pie_chart",
+        "title": "Account Mix by Tier",
+        "categoryColumnId": "tier",
+        "valueColumnId": "accounts"
+      },
+      "questions": [
+        {
+          "id": "largest-account-tier",
+          "responseType": "multiple_choice",
+          "difficulty": "beginner",
+          "prompt": "Which customer tier represents the largest share of accounts?",
+          "tags": ["ratio_conversion"],
+          "choices": [
+            {
+              "id": "small-business",
+              "label": "Small business"
+            },
+            {
+              "id": "mid-market",
+              "label": "Mid-market"
+            },
+            {
+              "id": "enterprise",
+              "label": "Enterprise"
+            }
+          ],
+          "correctChoiceId": "small-business",
+          "explanation": {
+            "short": "Small business has the largest account count and therefore the largest pie slice.",
+            "steps": ["Small business has 150 accounts, compared with 120 Mid-market and 80 Enterprise accounts."]
+          },
+          "expectedTimeSeconds": 25
+        }
+      ]
+    },
+    {
+      "id": "training-quality-scatterplot",
+      "title": "Training and Quality by Site",
+      "description": "Four operating sites compare monthly training hours with quality scores; the scatterplot declares one Y series.",
+      "sourceNote": "Synthetic figures created for this example.",
+      "unit": "none",
+      "columns": [
+        {
+          "id": "site",
+          "label": "Site",
+          "role": "dimension",
+          "valueType": "text"
+        },
+        {
+          "id": "training_hours",
+          "label": "Training hours per employee",
+          "role": "metric",
+          "valueType": "number",
+          "unit": "none"
+        },
+        {
+          "id": "quality_score",
+          "label": "Quality score",
+          "role": "metric",
+          "valueType": "number",
+          "unit": "none"
+        }
+      ],
+      "rows": [
+        {
+          "id": "site-a",
+          "cells": {
+            "site": "Site A",
+            "training_hours": 8,
+            "quality_score": 78
+          }
+        },
+        {
+          "id": "site-b",
+          "cells": {
+            "site": "Site B",
+            "training_hours": 12,
+            "quality_score": 86
+          }
+        },
+        {
+          "id": "site-c",
+          "cells": {
+            "site": "Site C",
+            "training_hours": 15,
+            "quality_score": 91
+          }
+        },
+        {
+          "id": "site-d",
+          "cells": {
+            "site": "Site D",
+            "training_hours": 10,
+            "quality_score": 82
+          }
+        }
+      ],
+      "visualization": {
+        "type": "scatterplot",
+        "title": "Training Hours Versus Quality Score",
+        "categoryColumnId": "site",
+        "xColumnId": "training_hours",
+        "yColumnIds": ["quality_score"]
+      },
+      "questions": [
+        {
+          "id": "highest-quality-site",
+          "responseType": "multiple_choice",
+          "difficulty": "beginner",
+          "prompt": "Which site has the highest quality score?",
+          "tags": ["mixed_operations"],
+          "choices": [
+            {
+              "id": "site-a",
+              "label": "Site A"
+            },
+            {
+              "id": "site-b",
+              "label": "Site B"
+            },
+            {
+              "id": "site-c",
+              "label": "Site C"
+            },
+            {
+              "id": "site-d",
+              "label": "Site D"
+            }
+          ],
+          "correctChoiceId": "site-c",
+          "explanation": {
+            "short": "Site C is the highest point on the quality-score axis.",
+            "steps": ["Site C has a quality score of 91, the highest of the four sites."]
+          },
+          "expectedTimeSeconds": 25
+        }
+      ]
+    },
+    {
+      "id": "customer-source-stacked-bar",
+      "title": "Customers by Region and Source",
+      "description": "Regional customer totals are split between new customers and renewals.",
+      "sourceNote": "Synthetic figures created for this example.",
+      "unit": "customers",
+      "columns": [
+        {
+          "id": "region",
+          "label": "Region",
+          "role": "dimension",
+          "valueType": "text"
+        },
+        {
+          "id": "new_customers",
+          "label": "New customers",
+          "role": "metric",
+          "valueType": "number",
+          "unit": "customers"
+        },
+        {
+          "id": "renewals",
+          "label": "Renewals",
+          "role": "metric",
+          "valueType": "number",
+          "unit": "customers"
+        }
+      ],
+      "rows": [
+        {
+          "id": "east",
+          "cells": {
+            "region": "East",
+            "new_customers": 340,
+            "renewals": 660
+          }
+        },
+        {
+          "id": "west",
+          "cells": {
+            "region": "West",
+            "new_customers": 290,
+            "renewals": 610
+          }
+        },
+        {
+          "id": "north",
+          "cells": {
+            "region": "North",
+            "new_customers": 260,
+            "renewals": 540
+          }
+        }
+      ],
+      "visualization": {
+        "type": "stacked_bar",
+        "title": "Customers by Region and Source",
+        "xColumnId": "region",
+        "yColumnIds": ["new_customers", "renewals"]
+      },
+      "questions": [
+        {
+          "id": "east-total-customers",
+          "responseType": "numeric",
+          "difficulty": "beginner",
+          "prompt": "What is the East region's total customer count?",
+          "tags": ["addition"],
+          "answer": {
+            "value": 1000,
+            "unit": "customers",
+            "roundingRule": "exact"
+          },
+          "explanation": {
+            "short": "Add both stacked components for the East region.",
+            "steps": ["340 new customers + 660 renewals = 1,000 customers."]
+          },
+          "expectedTimeSeconds": 30
+        }
+      ]
+    },
+    {
+      "id": "performance-index-chart",
+      "title": "Price and Volume Indices",
+      "description": "Price and volume are already indexed to a 2024 base of 100; the app plots the authored index values without recalculating them.",
+      "sourceNote": "Synthetic figures created for this example.",
+      "unit": "none",
+      "columns": [
+        {
+          "id": "year",
+          "label": "Year",
+          "role": "dimension",
+          "valueType": "year"
+        },
+        {
+          "id": "price_index",
+          "label": "Price index",
+          "role": "metric",
+          "valueType": "number",
+          "unit": "none"
+        },
+        {
+          "id": "volume_index",
+          "label": "Volume index",
+          "role": "metric",
+          "valueType": "number",
+          "unit": "none"
+        }
+      ],
+      "rows": [
+        {
+          "id": "year-2024",
+          "cells": {
+            "year": 2024,
+            "price_index": 100,
+            "volume_index": 100
+          }
+        },
+        {
+          "id": "year-2025",
+          "cells": {
+            "year": 2025,
+            "price_index": 107,
+            "volume_index": 104
+          }
+        },
+        {
+          "id": "year-2026",
+          "cells": {
+            "year": 2026,
+            "price_index": 115,
+            "volume_index": 110
+          }
+        }
+      ],
+      "visualization": {
+        "type": "index_chart",
+        "title": "Price and Volume Indices, 2024 = 100",
+        "xColumnId": "year",
+        "yColumnIds": ["price_index", "volume_index"]
+      },
+      "questions": [
+        {
+          "id": "index-gap-2026",
+          "responseType": "numeric",
+          "difficulty": "beginner",
+          "prompt": "How many index points separate the price and volume indices in 2026?",
+          "tags": ["subtraction"],
+          "answer": {
+            "value": 5,
+            "unit": "none",
+            "roundingRule": "exact"
+          },
+          "explanation": {
+            "short": "Subtract the two authored 2026 index values.",
+            "steps": ["115 price-index points - 110 volume-index points = 5 index points."]
+          },
+          "expectedTimeSeconds": 25
+        }
+      ]
+    },
+    {
+      "id": "profit-waterfall",
+      "title": "Operating Profit Bridge",
+      "description": "Ordered deltas bridge starting profit to an ending-profit total; the final total row stores the absolute ending value.",
+      "sourceNote": "Synthetic figures created for this example.",
+      "unit": "currency",
+      "columns": [
+        {
+          "id": "driver",
+          "label": "Driver",
+          "role": "dimension",
+          "valueType": "text"
+        },
+        {
+          "id": "impact",
+          "label": "Profit impact",
+          "role": "metric",
+          "valueType": "currency",
+          "unit": "currency"
+        }
+      ],
+      "rows": [
+        {
+          "id": "starting-profit",
+          "cells": {
+            "driver": "Starting profit",
+            "impact": 50000000
+          }
+        },
+        {
+          "id": "price",
+          "cells": {
+            "driver": "Price",
+            "impact": 5000000
+          }
+        },
+        {
+          "id": "volume",
+          "cells": {
+            "driver": "Volume",
+            "impact": 8000000
+          }
+        },
+        {
+          "id": "labor",
+          "cells": {
+            "driver": "Labor cost",
+            "impact": -12000000
+          }
+        },
+        {
+          "id": "overhead",
+          "cells": {
+            "driver": "Overhead",
+            "impact": -7000000
+          }
+        },
+        {
+          "id": "ending-profit",
+          "cells": {
+            "driver": "Ending profit",
+            "impact": 44000000
+          }
+        }
+      ],
+      "visualization": {
+        "type": "waterfall",
+        "title": "Operating Profit Bridge",
+        "xColumnId": "driver",
+        "yColumnIds": ["impact"],
+        "totalRowIds": ["ending-profit"]
+      },
+      "questions": [
+        {
+          "id": "ending-operating-profit",
+          "responseType": "numeric",
+          "difficulty": "intermediate",
+          "prompt": "What ending operating profit does the bridge produce?",
+          "tags": ["mixed_operations", "profit"],
+          "answer": {
+            "value": 44000000,
+            "unit": "currency",
+            "roundingRule": "exact"
+          },
+          "explanation": {
+            "short": "Apply the ordered deltas to starting profit and compare the result with the absolute total row.",
+            "steps": ["$50 million + $5 million + $8 million - $12 million - $7 million = $44 million.", "The ending-profit row therefore stores the absolute value $44 million."]
+          },
+          "expectedTimeSeconds": 45
+        }
+      ]
+    }
+  ]
+}

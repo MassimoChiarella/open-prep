@@ -1,0 +1,48 @@
+{
+  "$schema": "./question-pack-v2.schema.json",
+  "format": "math-drill-question-pack",
+  "schemaVersion": 2,
+  "kind": "generated_template",
+  "id": "example-generated-retail",
+  "packVersion": "1.0",
+  "title": "Example Generated Retail Practice",
+  "description": "An original template that generates several revenue questions locally.",
+  "publisher": "Example Learning Lab",
+  "license": "CC BY 4.0",
+  "templates": [
+    {
+      "id": "retail_revenue_generated_001",
+      "category": "business_math",
+      "tags": ["revenue", "multiplication"],
+      "difficulty": ["beginner", "intermediate"],
+      "promptTemplate": "A pop-up shop sells {units} items at ${price} each. What is total revenue?",
+      "variables": {
+        "units": {
+          "type": "integer",
+          "min": 100,
+          "max": 300,
+          "step": 50,
+          "unit": "units"
+        },
+        "price": {
+          "type": "currency",
+          "values": [8, 12, 15],
+          "unit": "currency"
+        }
+      },
+      "formula": {
+        "expression": "units * price",
+        "outputVariable": "revenue"
+      },
+      "answerUnit": "currency",
+      "explanationTemplate": {
+        "steps": [
+          "Revenue equals items sold times price per item.",
+          "{units} x ${price} = ${revenue}.",
+          "Total revenue is ${answer}."
+        ],
+        "shortcut": "Multiply the non-zero digits first, then restore any place-value zeros."
+      }
+    }
+  ]
+}

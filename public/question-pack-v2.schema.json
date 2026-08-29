@@ -1,0 +1,2330 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Math Drill Question Pack v2",
+  "description": "Strict author-facing schema for fixed-numeric, generated-template, exhibit, market-sizing, benchmark, and case-practice packs.",
+  "type": "object",
+  "unevaluatedProperties": false,
+  "required": [
+    "format",
+    "schemaVersion",
+    "kind",
+    "id",
+    "packVersion",
+    "title"
+  ],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "format": "uri-reference",
+      "pattern": "\\S",
+      "maxLength": 500
+    },
+    "format": {
+      "const": "math-drill-question-pack"
+    },
+    "schemaVersion": {
+      "const": 2
+    },
+    "kind": {
+      "description": "Selects the kind-specific content contract; case_practice may bundle any nonempty combination of its six related collections.",
+      "enum": ["fixed_numeric", "generated_template", "exhibit", "market_sizing", "benchmark", "case_practice"]
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "packVersion": {
+      "$ref": "#/$defs/nonBlank100"
+    },
+    "title": {
+      "$ref": "#/$defs/nonBlank100"
+    },
+    "description": {
+      "type": "string",
+      "pattern": "\\S",
+      "maxLength": 500
+    },
+    "publisher": {
+      "$ref": "#/$defs/nonBlank100"
+    },
+    "license": {
+      "$ref": "#/$defs/nonBlank100"
+    }
+  },
+  "oneOf": [
+    {
+      "title": "Fixed-numeric pack",
+      "required": ["kind", "questions"],
+      "properties": {
+        "kind": {
+          "const": "fixed_numeric"
+        },
+        "questions": {
+          "$ref": "#/$defs/fixedNumericQuestionArray"
+        }
+      }
+    },
+    {
+      "title": "Generated template pack",
+      "required": ["kind", "templates"],
+      "properties": {
+        "kind": {
+          "const": "generated_template"
+        },
+        "templates": {
+          "oneOf": [
+            {
+              "$ref": "#/$defs/nonCaseTemplateArray"
+            },
+            {
+              "$ref": "#/$defs/caseTemplateArray"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "title": "Exhibit pack",
+      "required": ["kind", "datasets"],
+      "properties": {
+        "kind": {
+          "const": "exhibit"
+        },
+        "datasets": {
+          "$ref": "#/$defs/exhibitDatasetArray"
+        }
+      }
+    },
+    {
+      "title": "Market-sizing pack",
+      "required": ["kind", "templates"],
+      "properties": {
+        "kind": {
+          "const": "market_sizing"
+        },
+        "templates": {
+          "$ref": "#/$defs/marketSizingTemplateArray"
+        }
+      }
+    },
+    {
+      "title": "Benchmark pack",
+      "required": ["kind", "benchmarks"],
+      "properties": {
+        "kind": {
+          "const": "benchmark"
+        },
+        "benchmarks": {
+          "$ref": "#/$defs/benchmarkArray"
+        }
+      }
+    },
+    {
+      "title": "Case-practice pack",
+      "required": ["kind"],
+      "properties": {
+        "kind": {
+          "const": "case_practice"
+        },
+        "structuringPrompts": {
+          "$ref": "#/$defs/caseStructuringPromptArray"
+        },
+        "brainstormingPrompts": {
+          "$ref": "#/$defs/brainstormingPromptArray"
+        },
+        "synthesisPrompts": {
+          "$ref": "#/$defs/synthesisPromptArray"
+        },
+        "lessons": {
+          "$ref": "#/$defs/conceptLessonArray"
+        },
+        "fitPrompts": {
+          "$ref": "#/$defs/fitPracticePromptArray"
+        },
+        "fullCases": {
+          "$ref": "#/$defs/fullCaseSimulationArray"
+        }
+      },
+      "anyOf": [
+        {
+          "required": ["structuringPrompts"]
+        },
+        {
+          "required": ["brainstormingPrompts"]
+        },
+        {
+          "required": ["synthesisPrompts"]
+        },
+        {
+          "required": ["lessons"]
+        },
+        {
+          "required": ["fitPrompts"]
+        },
+        {
+          "required": ["fullCases"]
+        }
+      ]
+    }
+  ],
+  "$defs": {
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9_-]{0,79}$",
+      "not": {
+        "enum": ["__proto__", "constructor", "prototype"]
+      }
+    },
+    "identifier": {
+      "type": "string",
+      "pattern": "^[A-Za-z_][A-Za-z0-9_]{0,79}$",
+      "not": {
+        "enum": ["answer", "__proto__", "constructor", "prototype"]
+      }
+    },
+    "nonBlank100": {
+      "type": "string",
+      "pattern": "\\S",
+      "maxLength": 100
+    },
+    "nonBlank200": {
+      "type": "string",
+      "pattern": "\\S",
+      "maxLength": 200
+    },
+    "nonBlank500": {
+      "type": "string",
+      "pattern": "\\S",
+      "maxLength": 500
+    },
+    "nonBlank1000": {
+      "type": "string",
+      "pattern": "\\S",
+      "maxLength": 1000
+    },
+    "nonBlank2000": {
+      "type": "string",
+      "pattern": "\\S",
+      "maxLength": 2000
+    },
+    "category": {
+      "enum": [
+        "arithmetic",
+        "percentages",
+        "fractions_decimals_ratios",
+        "growth_compounding",
+        "weighted_averages",
+        "business_math",
+        "case_math",
+        "market_sizing",
+        "exhibit_math"
+      ]
+    },
+    "tag": {
+      "enum": [
+        "addition",
+        "subtraction",
+        "multiplication",
+        "division",
+        "mixed_operations",
+        "percentage_of_number",
+        "percentage_change",
+        "reverse_percentage",
+        "percentage_points",
+        "margin",
+        "fraction_conversion",
+        "ratio_conversion",
+        "simple_growth",
+        "compound_growth",
+        "cagr",
+        "rule_of_72",
+        "weighted_average",
+        "revenue",
+        "profit",
+        "cost",
+        "contribution_margin",
+        "breakeven",
+        "roi",
+        "payback",
+        "market_share",
+        "capacity_utilization",
+        "k_m_b_conversion",
+        "unit_conversion"
+      ]
+    },
+    "difficulty": {
+      "enum": ["beginner", "intermediate", "advanced", "expert"]
+    },
+    "unit": {
+      "enum": [
+        "none",
+        "currency",
+        "percentage",
+        "percentage_points",
+        "units",
+        "customers",
+        "users",
+        "years",
+        "months",
+        "days",
+        "stores",
+        "k",
+        "m",
+        "b"
+      ]
+    },
+    "nonCaseTemplateArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/nonCaseTemplate"
+      }
+    },
+    "caseTemplateArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/caseTemplate"
+      }
+    },
+    "nonCaseTemplate": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/template"
+        },
+        {
+          "not": {
+            "required": ["caseStyle"]
+          }
+        }
+      ]
+    },
+    "caseTemplate": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/template"
+        },
+        {
+          "required": ["caseStyle"],
+          "properties": {
+            "category": {
+              "const": "case_math"
+            }
+          }
+        }
+      ]
+    },
+    "template": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "category",
+        "tags",
+        "difficulty",
+        "promptTemplate",
+        "variables",
+        "formula",
+        "explanationTemplate"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "category": {
+          "$ref": "#/$defs/category"
+        },
+        "tags": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/tag"
+          }
+        },
+        "difficulty": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 4,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/difficulty"
+          }
+        },
+        "caseStyle": {
+          "$ref": "#/$defs/caseStyle"
+        },
+        "promptTemplate": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 2000
+        },
+        "variables": {
+          "type": "object",
+          "minProperties": 1,
+          "maxProperties": 20,
+          "propertyNames": {
+            "$ref": "#/$defs/identifier"
+          },
+          "additionalProperties": {
+            "$ref": "#/$defs/variableSpec"
+          }
+        },
+        "formula": {
+          "$ref": "#/$defs/formula"
+        },
+        "answerUnit": {
+          "$ref": "#/$defs/unit",
+          "description": "When caseStyle is present, this must equal interviewMath.expectedUnit; omission is equivalent to none."
+        },
+        "explanationTemplate": {
+          "$ref": "#/$defs/explanationTemplate"
+        }
+      }
+    },
+    "variableSpec": {
+      "type": "object",
+      "description": "Use values or a min/max range. The importer limits a range to 10,001 reachable values.",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "enum": ["integer", "decimal", "percentage", "currency"]
+        },
+        "values": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 100,
+          "uniqueItems": true,
+          "items": {
+            "type": "number"
+          }
+        },
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "step": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "unit": {
+          "$ref": "#/$defs/unit"
+        }
+      },
+      "oneOf": [
+        {
+          "required": ["values"],
+          "not": {
+            "anyOf": [
+              { "required": ["min"] },
+              { "required": ["max"] },
+              { "required": ["step"] }
+            ]
+          }
+        },
+        {
+          "required": ["min", "max"],
+          "not": {
+            "required": ["values"]
+          }
+        }
+      ],
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "type": {
+                "const": "integer"
+              }
+            },
+            "required": ["type"]
+          },
+          "then": {
+            "properties": {
+              "values": {
+                "items": {
+                  "type": "integer"
+                }
+              },
+              "min": {
+                "type": "integer"
+              },
+              "max": {
+                "type": "integer"
+              },
+              "step": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        }
+      ]
+    },
+    "formula": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expression"],
+      "properties": {
+        "expression": {
+          "type": "string",
+          "maxLength": 500,
+          "allOf": [
+            {
+              "pattern": "\\S"
+            },
+            {
+              "pattern": "^[A-Za-z0-9_+*/^().\\s-]+$"
+            }
+          ]
+        },
+        "outputVariable": {
+          "$ref": "#/$defs/identifier"
+        }
+      }
+    },
+    "explanationTemplate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["steps"],
+      "properties": {
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "pattern": "\\S",
+            "maxLength": 1000
+          }
+        },
+        "shortcut": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 1000
+        }
+      }
+    },
+    "caseStyle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["calculationStepCount", "industry", "interviewMath"],
+      "properties": {
+        "calculationStepCount": {
+          "enum": [2, 3, 4, 5, 6]
+        },
+        "industry": {
+          "enum": [
+            "airlines",
+            "banking",
+            "consumer_goods",
+            "healthcare",
+            "insurance",
+            "manufacturing",
+            "marketplaces",
+            "retail",
+            "saas",
+            "telecom"
+          ]
+        },
+        "interviewMath": {
+          "$ref": "#/$defs/interviewMath"
+        }
+      }
+    },
+    "interviewMath": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expectedUnit", "equationOptions", "interpretationOptions"],
+      "properties": {
+        "expectedUnit": {
+          "$ref": "#/$defs/unit",
+          "description": "Must equal the template answerUnit, or none when answerUnit is omitted."
+        },
+        "equationOptions": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/equationOption"
+          },
+          "contains": {
+            "type": "object",
+            "required": ["setupCorrect"],
+            "properties": {
+              "setupCorrect": {
+                "const": true
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        "interpretationOptions": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/interpretationOption"
+          },
+          "contains": {
+            "type": "object",
+            "required": ["isCorrect"],
+            "properties": {
+              "isCorrect": {
+                "const": true
+              }
+            }
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      }
+    },
+    "equationOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "formulaCorrect", "setupCorrect"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 1000
+        },
+        "formulaCorrect": {
+          "type": "boolean"
+        },
+        "setupCorrect": {
+          "type": "boolean"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "setupCorrect": {
+                "const": true
+              }
+            },
+            "required": ["setupCorrect"]
+          },
+          "then": {
+            "properties": {
+              "formulaCorrect": {
+                "const": true
+              }
+            }
+          }
+        }
+      ]
+    },
+    "interpretationOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "isCorrect"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 1000
+        },
+        "isCorrect": {
+          "type": "boolean"
+        }
+      }
+    },
+    "roundingRule": {
+      "enum": ["exact", "nearest_whole", "nearest_0_1", "nearest_1k", "nearest_1m"]
+    },
+    "tolerance": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": {
+              "const": "absolute"
+            },
+            "value": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "value"],
+          "properties": {
+            "type": {
+              "const": "percentage"
+            },
+            "value": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["type", "min", "max"],
+          "properties": {
+            "type": {
+              "const": "range"
+            },
+            "min": {
+              "type": "number"
+            },
+            "max": {
+              "type": "number"
+            }
+          }
+        }
+      ]
+    },
+    "answerErrorChecks": {
+      "type": "object",
+      "additionalProperties": false,
+      "minProperties": 1,
+      "properties": {
+        "percentagePointValue": {
+          "type": "number"
+        },
+        "roundingTolerance": {
+          "$ref": "#/$defs/tolerance"
+        }
+      }
+    },
+    "answer": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": {
+          "type": "number"
+        },
+        "unit": {
+          "$ref": "#/$defs/unit"
+        },
+        "tolerance": {
+          "$ref": "#/$defs/tolerance"
+        },
+        "errorChecks": {
+          "$ref": "#/$defs/answerErrorChecks"
+        },
+        "roundingRule": {
+          "$ref": "#/$defs/roundingRule"
+        }
+      }
+    },
+    "explanation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["short", "steps"],
+      "properties": {
+        "short": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 1000
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "type": "string",
+            "pattern": "\\S",
+            "maxLength": 1000
+          }
+        },
+        "shortcut": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 1000
+        }
+      }
+    },
+    "questionTags": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/tag"
+      }
+    },
+    "exhibitDatasetArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/exhibitDataset"
+      }
+    },
+    "exhibitDataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "description",
+        "unit",
+        "columns",
+        "rows",
+        "visualization",
+        "questions"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "description": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 500
+        },
+        "sourceNote": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 500
+        },
+        "unit": {
+          "$ref": "#/$defs/unit"
+        },
+        "columns": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/exhibitColumn"
+          }
+        },
+        "rows": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/exhibitRow"
+          }
+        },
+        "visualization": {
+          "$ref": "#/$defs/exhibitVisualization"
+        },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/exhibitQuestion"
+          }
+        }
+      }
+    },
+    "exhibitColumn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "role", "valueType"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "description": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 500
+        },
+        "role": {
+          "enum": ["dimension", "metric"]
+        },
+        "valueType": {
+          "enum": ["currency", "number", "percentage", "text", "year"]
+        },
+        "unit": {
+          "$ref": "#/$defs/unit"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "dimension"
+              }
+            },
+            "required": ["role"]
+          },
+          "then": {
+            "properties": {
+              "valueType": {
+                "enum": ["text", "year"]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "role": {
+                "const": "metric"
+              }
+            },
+            "required": ["role"]
+          },
+          "then": {
+            "properties": {
+              "valueType": {
+                "enum": ["currency", "number", "percentage"]
+              }
+            }
+          }
+        }
+      ]
+    },
+    "exhibitRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "cells"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "cells": {
+          "type": "object",
+          "minProperties": 2,
+          "maxProperties": 20,
+          "propertyNames": {
+            "$ref": "#/$defs/id"
+          },
+          "additionalProperties": {
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string",
+                "pattern": "\\S",
+                "maxLength": 500
+              }
+            ]
+          }
+        }
+      }
+    },
+    "columnIdArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 8,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/id"
+      }
+    },
+    "exhibitVisualization": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/tableVisualization"
+        },
+        {
+          "$ref": "#/$defs/pieVisualization"
+        },
+        {
+          "$ref": "#/$defs/scatterVisualization"
+        },
+        {
+          "$ref": "#/$defs/seriesVisualization"
+        },
+        {
+          "$ref": "#/$defs/waterfallVisualization"
+        }
+      ]
+    },
+    "tableVisualization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "const": "table"
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "selectedColumnIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    "pieVisualization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "categoryColumnId", "valueColumnId"],
+      "properties": {
+        "type": {
+          "const": "pie_chart"
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "categoryColumnId": {
+          "$ref": "#/$defs/id"
+        },
+        "valueColumnId": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "scatterVisualization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "xColumnId", "yColumnIds"],
+      "properties": {
+        "type": {
+          "const": "scatterplot"
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "xColumnId": {
+          "$ref": "#/$defs/id"
+        },
+        "yColumnIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "categoryColumnId": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "seriesVisualization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "xColumnId", "yColumnIds"],
+      "properties": {
+        "type": {
+          "enum": ["bar_chart", "line_chart", "index_chart", "stacked_bar"]
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "xColumnId": {
+          "$ref": "#/$defs/id"
+        },
+        "yColumnIds": {
+          "$ref": "#/$defs/columnIdArray"
+        }
+      }
+    },
+    "waterfallVisualization": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["type", "xColumnId", "yColumnIds"],
+      "properties": {
+        "type": {
+          "const": "waterfall"
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "xColumnId": {
+          "$ref": "#/$defs/id"
+        },
+        "yColumnIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "totalRowIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 500,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        }
+      }
+    },
+    "exhibitQuestion": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/exhibitNumericQuestion"
+        },
+        {
+          "$ref": "#/$defs/exhibitMultipleChoiceQuestion"
+        }
+      ]
+    },
+    "exhibitNumericQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "difficulty", "prompt", "tags", "answer", "explanation"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "responseType": {
+          "const": "numeric"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/difficulty"
+        },
+        "prompt": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 2000
+        },
+        "tags": {
+          "$ref": "#/$defs/questionTags"
+        },
+        "answer": {
+          "$ref": "#/$defs/answer"
+        },
+        "explanation": {
+          "$ref": "#/$defs/explanation"
+        },
+        "expectedTimeSeconds": {
+          "type": "integer",
+          "description": "Target time in the standard exhibit flow and the actual per-question Exhibit Sprint countdown.",
+          "minimum": 1,
+          "maximum": 3600
+        }
+      }
+    },
+    "exhibitMultipleChoiceQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "responseType",
+        "difficulty",
+        "prompt",
+        "tags",
+        "choices",
+        "correctChoiceId",
+        "explanation"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "responseType": {
+          "const": "multiple_choice"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/difficulty"
+        },
+        "prompt": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 2000
+        },
+        "tags": {
+          "$ref": "#/$defs/questionTags"
+        },
+        "choices": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/exhibitChoice"
+          }
+        },
+        "correctChoiceId": {
+          "$ref": "#/$defs/id"
+        },
+        "explanation": {
+          "$ref": "#/$defs/explanation"
+        },
+        "expectedTimeSeconds": {
+          "type": "integer",
+          "description": "Target time in the standard exhibit flow and the actual per-question Exhibit Sprint countdown.",
+          "minimum": 1,
+          "maximum": 3600
+        }
+      }
+    },
+    "exhibitChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 500
+        }
+      }
+    },
+    "marketSizingTemplateArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/marketSizingTemplate"
+      }
+    },
+    "marketSizingTemplate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "prompt",
+        "description",
+        "difficulty",
+        "industry",
+        "sizingType",
+        "inputSteps",
+        "finalFormula",
+        "outputUnit",
+        "rubric",
+        "senseCheck"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "prompt": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 2000
+        },
+        "description": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 500
+        },
+        "difficulty": {
+          "$ref": "#/$defs/difficulty"
+        },
+        "industry": {
+          "enum": [
+            "airlines",
+            "banking",
+            "consumer_goods",
+            "healthcare",
+            "insurance",
+            "manufacturing",
+            "marketplaces",
+            "retail",
+            "saas",
+            "telecom"
+          ]
+        },
+        "sizingType": {
+          "enum": ["capacity_based", "demand_side", "revenue_pool", "supply_side"]
+        },
+        "inputSteps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 30,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/marketSizingInputStep"
+          }
+        },
+        "finalFormula": {
+          "$ref": "#/$defs/marketSizingFormula"
+        },
+        "outputUnit": {
+          "$ref": "#/$defs/unit"
+        },
+        "rubric": {
+          "$ref": "#/$defs/marketSizingRubric"
+        },
+        "senseCheck": {
+          "$ref": "#/$defs/marketSizingSenseCheck"
+        }
+      }
+    },
+    "marketSizingInputStep": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/marketSizingNumericInputStep"
+        },
+        {
+          "$ref": "#/$defs/marketSizingChoiceInputStep"
+        },
+        {
+          "$ref": "#/$defs/marketSizingSimpleInputStep"
+        }
+      ]
+    },
+    "marketSizingNumericInputStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "inputKind", "required", "variableName"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 200
+        },
+        "inputKind": {
+          "enum": ["currency", "integer", "number", "percentage"]
+        },
+        "required": {
+          "const": true,
+          "description": "Numeric formula inputs are always required."
+        },
+        "helperText": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 500
+        },
+        "unit": {
+          "$ref": "#/$defs/unit"
+        },
+        "variableName": {
+          "$ref": "#/$defs/identifier"
+        },
+        "assumptionRange": {
+          "$ref": "#/$defs/marketSizingAssumptionRange"
+        }
+      }
+    },
+    "marketSizingChoiceInputStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "inputKind", "required", "options"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 200
+        },
+        "inputKind": {
+          "const": "choice"
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "helperText": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 500
+        },
+        "unit": {
+          "$ref": "#/$defs/unit"
+        },
+        "options": {
+          "$ref": "#/$defs/marketSizingChoices"
+        }
+      }
+    },
+    "marketSizingSimpleInputStep": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "inputKind", "required"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 200
+        },
+        "inputKind": {
+          "enum": ["boolean", "note"]
+        },
+        "required": {
+          "type": "boolean"
+        },
+        "helperText": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 500
+        },
+        "unit": {
+          "$ref": "#/$defs/unit"
+        }
+      }
+    },
+    "marketSizingAssumptionRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["min", "max"],
+      "properties": {
+        "min": {
+          "type": "number"
+        },
+        "max": {
+          "type": "number"
+        },
+        "unit": {
+          "$ref": "#/$defs/unit"
+        }
+      }
+    },
+    "marketSizingChoices": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/marketSizingChoice"
+      }
+    },
+    "marketSizingChoice": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 500
+        }
+      }
+    },
+    "marketSizingFormula": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["expression", "roundingRule", "tolerance"],
+      "properties": {
+        "expression": {
+          "type": "string",
+          "maxLength": 500,
+          "allOf": [
+            {
+              "pattern": "\\S"
+            },
+            {
+              "pattern": "^[A-Za-z0-9_+*/^().\\s-]+$"
+            }
+          ]
+        },
+        "outputVariable": {
+          "$ref": "#/$defs/identifier"
+        },
+        "roundingRule": {
+          "$ref": "#/$defs/roundingRule"
+        },
+        "tolerance": {
+          "$ref": "#/$defs/tolerance"
+        }
+      }
+    },
+    "marketSizingRubric": {
+      "type": "array",
+      "minItems": 6,
+      "maxItems": 6,
+      "items": {
+        "$ref": "#/$defs/marketSizingRubricDimension"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "structure"
+              }
+            },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "assumptions"
+              }
+            },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "math"
+              }
+            },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "units"
+              }
+            },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "sense_check"
+              }
+            },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "id": {
+                "const": "interpretation"
+              }
+            },
+            "required": ["id"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    },
+    "marketSizingRubricDimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "maxPoints"],
+      "properties": {
+        "id": {
+          "enum": ["structure", "assumptions", "math", "units", "sense_check", "interpretation"]
+        },
+        "label": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "maxPoints": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "marketSizingSenseCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["prompt", "required"],
+      "properties": {
+        "prompt": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 1000
+        },
+        "required": {
+          "type": "boolean",
+          "description": "When true, an explicit boolean input step named sense_check controls completion when present; otherwise an interpretation or review note completes the sense-check."
+        },
+        "interpretationOptions": {
+          "$ref": "#/$defs/marketSizingChoices"
+        }
+      }
+    },
+    "benchmarkArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 25,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/benchmark"
+      }
+    },
+    "benchmark": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "description",
+        "difficulty",
+        "totalSessionSeconds",
+        "scoreBands",
+        "questions"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "description": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 500
+        },
+        "difficulty": {
+          "$ref": "#/$defs/difficulty"
+        },
+        "totalSessionSeconds": {
+          "type": "integer",
+          "minimum": 30,
+          "maximum": 7200
+        },
+        "scoreBands": {
+          "$ref": "#/$defs/benchmarkScoreBands"
+        },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/fixedNumericQuestion"
+          }
+        }
+      }
+    },
+    "benchmarkScoreBands": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/benchmarkScoreBand"
+      },
+      "allOf": [
+        {
+          "contains": {
+            "properties": {
+              "label": {
+                "const": "needs_work"
+              },
+              "minAccuracy": {
+                "const": 0
+              }
+            },
+            "required": ["label", "minAccuracy"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "label": {
+                "const": "developing"
+              }
+            },
+            "required": ["label"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "label": {
+                "const": "strong"
+              }
+            },
+            "required": ["label"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        },
+        {
+          "contains": {
+            "properties": {
+              "label": {
+                "const": "excellent"
+              }
+            },
+            "required": ["label"]
+          },
+          "minContains": 1,
+          "maxContains": 1
+        }
+      ]
+    },
+    "benchmarkScoreBand": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "minAccuracy", "title"],
+      "properties": {
+        "label": {
+          "enum": ["needs_work", "developing", "strong", "excellent"]
+        },
+        "minAccuracy": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        }
+      }
+    },
+    "caseStructuringPromptArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/caseStructuringPrompt"
+      }
+    },
+    "caseStructuringPrompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "industry",
+        "situation",
+        "objective",
+        "hypotheses",
+        "acceptedHypothesisId",
+        "branchOptions",
+        "maxBranches",
+        "modelStructure"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "industry": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "situation": {
+          "$ref": "#/$defs/nonBlank2000"
+        },
+        "objective": {
+          "$ref": "#/$defs/nonBlank1000"
+        },
+        "hypotheses": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/caseStructuringHypothesis"
+          }
+        },
+        "acceptedHypothesisId": {
+          "$ref": "#/$defs/id"
+        },
+        "branchOptions": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/caseStructuringBranchOption"
+          }
+        },
+        "maxBranches": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 12
+        },
+        "modelStructure": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 12,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/caseStructuringModelBranch"
+          }
+        }
+      }
+    },
+    "caseStructuringHypothesis": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "rationale"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "$ref": "#/$defs/nonBlank500"
+        },
+        "rationale": {
+          "$ref": "#/$defs/nonBlank1000"
+        }
+      }
+    },
+    "caseStructuringBranchOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "description"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "$ref": "#/$defs/nonBlank200"
+        },
+        "description": {
+          "$ref": "#/$defs/nonBlank1000"
+        }
+      }
+    },
+    "caseStructuringModelBranch": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["branchId", "title", "questions"],
+      "properties": {
+        "branchId": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank200"
+        },
+        "questions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonBlank1000"
+          }
+        }
+      }
+    },
+    "brainstormingPromptArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/brainstormingPrompt"
+      }
+    },
+    "brainstormingPrompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "context",
+        "question",
+        "selectionLimit",
+        "priorityLimit",
+        "priorityIdeaIds",
+        "themes"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "context": {
+          "$ref": "#/$defs/nonBlank2000"
+        },
+        "question": {
+          "$ref": "#/$defs/nonBlank1000"
+        },
+        "selectionLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 30
+        },
+        "priorityLimit": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 10
+        },
+        "priorityIdeaIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
+        },
+        "themes": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 6,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/brainstormingTheme"
+          }
+        }
+      }
+    },
+    "brainstormingTheme": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "ideas"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "$ref": "#/$defs/nonBlank200"
+        },
+        "ideas": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/brainstormingIdea"
+          }
+        }
+      }
+    },
+    "brainstormingIdea": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "relevant"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "$ref": "#/$defs/nonBlank500"
+        },
+        "relevant": {
+          "type": "boolean"
+        }
+      }
+    },
+    "synthesisPromptArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/synthesisPrompt"
+      }
+    },
+    "synthesisPrompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "title",
+        "client",
+        "situation",
+        "decision",
+        "facts",
+        "options",
+        "correctResponse",
+        "modelClose"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "client": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "situation": {
+          "$ref": "#/$defs/nonBlank2000"
+        },
+        "decision": {
+          "$ref": "#/$defs/nonBlank1000"
+        },
+        "facts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonBlank1000"
+          }
+        },
+        "options": {
+          "$ref": "#/$defs/synthesisOptions"
+        },
+        "correctResponse": {
+          "$ref": "#/$defs/synthesisResponse"
+        },
+        "modelClose": {
+          "$ref": "#/$defs/nonBlank2000"
+        }
+      }
+    },
+    "synthesisOptions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recommendation", "evidence", "risk", "nextStep"],
+      "properties": {
+        "recommendation": {
+          "$ref": "#/$defs/synthesisOptionArray"
+        },
+        "evidence": {
+          "$ref": "#/$defs/synthesisOptionArray"
+        },
+        "risk": {
+          "$ref": "#/$defs/synthesisOptionArray"
+        },
+        "nextStep": {
+          "$ref": "#/$defs/synthesisOptionArray"
+        }
+      }
+    },
+    "synthesisOptionArray": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/synthesisOption"
+      }
+    },
+    "synthesisOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "$ref": "#/$defs/nonBlank1000"
+        }
+      }
+    },
+    "synthesisResponse": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recommendation", "evidence", "risk", "nextStep"],
+      "properties": {
+        "recommendation": {
+          "$ref": "#/$defs/id"
+        },
+        "evidence": {
+          "$ref": "#/$defs/id"
+        },
+        "risk": {
+          "$ref": "#/$defs/id"
+        },
+        "nextStep": {
+          "$ref": "#/$defs/id"
+        }
+      }
+    },
+    "conceptLessonArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/conceptLesson"
+      }
+    },
+    "conceptLesson": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "knowledgeCheck", "objective", "principles", "title", "topic", "workedExample"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "knowledgeCheck": {
+          "$ref": "#/$defs/conceptKnowledgeCheck"
+        },
+        "objective": {
+          "$ref": "#/$defs/nonBlank1000"
+        },
+        "principles": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonBlank1000"
+          }
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "topic": {
+          "enum": [
+            "brainstorming",
+            "business_economics",
+            "exhibit_reading",
+            "issue_tree",
+            "mental_math",
+            "synthesis"
+          ]
+        },
+        "workedExample": {
+          "$ref": "#/$defs/conceptWorkedExample"
+        }
+      }
+    },
+    "conceptKnowledgeCheck": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["correctOptionId", "explanation", "options", "prompt"],
+      "properties": {
+        "correctOptionId": {
+          "$ref": "#/$defs/id"
+        },
+        "explanation": {
+          "$ref": "#/$defs/nonBlank2000"
+        },
+        "options": {
+          "type": "array",
+          "minItems": 2,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/conceptKnowledgeCheckOption"
+          }
+        },
+        "prompt": {
+          "$ref": "#/$defs/nonBlank2000"
+        }
+      }
+    },
+    "conceptKnowledgeCheckOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "label": {
+          "$ref": "#/$defs/nonBlank1000"
+        }
+      }
+    },
+    "conceptWorkedExample": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["answer", "prompt", "steps"],
+      "properties": {
+        "answer": {
+          "$ref": "#/$defs/nonBlank2000"
+        },
+        "prompt": {
+          "$ref": "#/$defs/nonBlank2000"
+        },
+        "steps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": {
+            "$ref": "#/$defs/nonBlank1000"
+          }
+        }
+      }
+    },
+    "fitPracticePromptArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/fitPracticePrompt"
+      }
+    },
+    "fitPracticePrompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "competency", "prompt", "followUps"],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "competency": {
+          "enum": ["conflict", "failure", "impact", "leadership"]
+        },
+        "prompt": {
+          "$ref": "#/$defs/nonBlank2000"
+        },
+        "followUps": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/nonBlank1000"
+          }
+        }
+      }
+    },
+    "fullCaseSimulationArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 25,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/fullCaseSimulation"
+      }
+    },
+    "fullCaseSimulation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "client",
+        "title",
+        "situation",
+        "calculationQuestionId",
+        "structure",
+        "exhibit",
+        "brainstorming",
+        "synthesis"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "client": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "title": {
+          "$ref": "#/$defs/nonBlank100"
+        },
+        "situation": {
+          "$ref": "#/$defs/nonBlank2000"
+        },
+        "calculationQuestionId": {
+          "$ref": "#/$defs/id"
+        },
+        "structure": {
+          "$ref": "#/$defs/caseStructuringPrompt"
+        },
+        "exhibit": {
+          "$ref": "#/$defs/exhibitDataset"
+        },
+        "brainstorming": {
+          "$ref": "#/$defs/brainstormingPrompt"
+        },
+        "synthesis": {
+          "$ref": "#/$defs/synthesisPrompt"
+        }
+      }
+    },
+    "fixedNumericQuestionArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 500,
+      "items": {
+        "$ref": "#/$defs/fixedNumericQuestion"
+      }
+    },
+    "fixedNumericQuestion": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "type",
+        "category",
+        "tags",
+        "difficulty",
+        "prompt",
+        "answer",
+        "explanation"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "type": {
+          "const": "numeric"
+        },
+        "category": {
+          "$ref": "#/$defs/category"
+        },
+        "tags": {
+          "$ref": "#/$defs/questionTags"
+        },
+        "difficulty": {
+          "$ref": "#/$defs/difficulty"
+        },
+        "prompt": {
+          "type": "string",
+          "pattern": "\\S",
+          "maxLength": 2000
+        },
+        "answer": {
+          "$ref": "#/$defs/answer"
+        },
+        "explanation": {
+          "$ref": "#/$defs/explanation"
+        },
+        "expectedTimeSeconds": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 3600
+        }
+      }
+    }
+  }
+}

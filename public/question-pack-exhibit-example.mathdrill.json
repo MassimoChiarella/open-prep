@@ -1,0 +1,79 @@
+{
+  "$schema": "./question-pack-v2.schema.json",
+  "format": "math-drill-question-pack",
+  "schemaVersion": 2,
+  "kind": "exhibit",
+  "id": "example-delivery-channel-exhibit",
+  "packVersion": "1.0",
+  "title": "Example Delivery Channel Exhibit",
+  "description": "A small original table exhibit for practicing data extraction and addition.",
+  "publisher": "Example Learning Lab",
+  "license": "CC BY 4.0",
+  "datasets": [
+    {
+      "id": "delivery-channel-orders",
+      "title": "Orders by Delivery Channel",
+      "description": "A retailer compares completed orders across two delivery channels.",
+      "sourceNote": "Synthetic figures created for this example.",
+      "unit": "units",
+      "columns": [
+        {
+          "id": "channel",
+          "label": "Channel",
+          "role": "dimension",
+          "valueType": "text"
+        },
+        {
+          "id": "orders",
+          "label": "Orders",
+          "role": "metric",
+          "valueType": "number",
+          "unit": "units"
+        }
+      ],
+      "rows": [
+        {
+          "id": "online",
+          "label": "Online",
+          "cells": {
+            "channel": "Online",
+            "orders": 140
+          }
+        },
+        {
+          "id": "partner",
+          "label": "Partner",
+          "cells": {
+            "channel": "Partner",
+            "orders": 210
+          }
+        }
+      ],
+      "visualization": {
+        "type": "table",
+        "title": "Completed Orders",
+        "selectedColumnIds": ["channel", "orders"]
+      },
+      "questions": [
+        {
+          "id": "total-orders",
+          "responseType": "numeric",
+          "difficulty": "beginner",
+          "prompt": "How many completed orders are shown in total?",
+          "tags": ["addition"],
+          "answer": {
+            "value": 350,
+            "unit": "units",
+            "roundingRule": "exact"
+          },
+          "explanation": {
+            "short": "Add the orders from both channels.",
+            "steps": ["140 online orders + 210 partner orders = 350 total orders."],
+            "shortcut": "Add 14 + 21, then restore the trailing zero."
+          },
+          "expectedTimeSeconds": 30
+        }
+      ]
+    }
+  ]
+}

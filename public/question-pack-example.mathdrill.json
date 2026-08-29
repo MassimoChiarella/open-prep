@@ -1,0 +1,67 @@
+{
+  "$schema": "./question-pack-v2.schema.json",
+  "format": "math-drill-question-pack",
+  "schemaVersion": 2,
+  "kind": "fixed_numeric",
+  "id": "example-retail-practice",
+  "packVersion": "1.0",
+  "title": "Example Retail Practice",
+  "description": "Two original fixed numeric questions demonstrating tolerance and error checks.",
+  "publisher": "Example Learning Lab",
+  "license": "CC BY 4.0",
+  "questions": [
+    {
+      "id": "retail-revenue-001",
+      "type": "numeric",
+      "category": "business_math",
+      "tags": ["revenue", "multiplication"],
+      "difficulty": "beginner",
+      "prompt": "A fictional retailer sells 24,000 annual subscriptions at $20 each. What is annual revenue?",
+      "answer": {
+        "value": 480000,
+        "unit": "currency",
+        "roundingRule": "exact"
+      },
+      "explanation": {
+        "short": "Revenue equals subscriptions multiplied by price.",
+        "steps": [
+          "Revenue = volume x price.",
+          "24,000 x $20 = $480,000.",
+          "Annual revenue is $480,000."
+        ],
+        "shortcut": "Multiply 24 x 2, then append four zeros."
+      },
+      "expectedTimeSeconds": 30
+    },
+    {
+      "id": "share-growth-001",
+      "type": "numeric",
+      "category": "percentages",
+      "tags": ["percentage_change", "percentage_points"],
+      "difficulty": "intermediate",
+      "prompt": "A fictional product's market share rises from 20% to 25%. What is the relative percentage increase?",
+      "answer": {
+        "value": 0.25,
+        "unit": "percentage",
+        "tolerance": {
+          "type": "absolute",
+          "value": 0.001
+        },
+        "errorChecks": {
+          "percentagePointValue": 0.05
+        },
+        "roundingRule": "nearest_0_1"
+      },
+      "explanation": {
+        "short": "Divide the five-percentage-point increase by the original 20% share.",
+        "steps": [
+          "The share increased by 25% - 20% = 5 percentage points.",
+          "Relative increase = 5 / 20 = 0.25.",
+          "The relative percentage increase is 25%."
+        ],
+        "shortcut": "A five-point gain on a base of 20 is one quarter, or 25%."
+      },
+      "expectedTimeSeconds": 45
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "format": "math-drill-question-pack",
+  "schemaVersion": 2,
+  "kind": "fixed_numeric",
+  "id": "my-practice-pack",
+  "packVersion": "1.0",
+  "title": "My Practice Pack",
+  "questions": [
+    {
+      "id": "question-001",
+      "type": "numeric",
+      "category": "arithmetic",
+      "tags": ["multiplication"],
+      "difficulty": "beginner",
+      "prompt": "A workshop prepares 18 kits for each of 6 groups. How many kits are needed?",
+      "answer": {
+        "value": 108,
+        "unit": "units"
+      },
+      "explanation": {
+        "short": "Multiply the kits per group by the number of groups.",
+        "steps": [
+          "18 x 6 = 108.",
+          "The workshop needs 108 kits."
+        ]
+      }
+    }
+  ]
+}

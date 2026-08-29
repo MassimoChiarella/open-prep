@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Math Drill Case-Practice Question Pack v3",
+  "description": "Schema version 3 adds deterministic questioning prompts and five-stage full cases.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["format", "schemaVersion", "kind", "id", "packVersion", "title"],
+  "properties": {
+    "$schema": { "type": "string", "minLength": 1, "maxLength": 500 },
+    "format": { "const": "math-drill-question-pack" },
+    "schemaVersion": { "const": 3 },
+    "kind": { "const": "case_practice" },
+    "id": { "$ref": "./question-pack-v2.schema.json#/$defs/id" },
+    "packVersion": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank100" },
+    "title": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank100" },
+    "description": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank500" },
+    "publisher": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank100" },
+    "license": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank100" },
+    "structuringPrompts": { "$ref": "./question-pack-v2.schema.json#/$defs/caseStructuringPromptArray" },
+    "brainstormingPrompts": { "$ref": "./question-pack-v2.schema.json#/$defs/brainstormingPromptArray" },
+    "synthesisPrompts": { "$ref": "./question-pack-v2.schema.json#/$defs/synthesisPromptArray" },
+    "lessons": { "$ref": "./question-pack-v2.schema.json#/$defs/conceptLessonArray" },
+    "fitPrompts": { "$ref": "./question-pack-v2.schema.json#/$defs/fitPracticePromptArray" },
+    "questioningPrompts": { "$ref": "#/$defs/questioningPromptArray" },
+    "fullCases": { "$ref": "#/$defs/fullCaseSimulationArray" }
+  },
+  "anyOf": [
+    { "required": ["structuringPrompts"] },
+    { "required": ["brainstormingPrompts"] },
+    { "required": ["synthesisPrompts"] },
+    { "required": ["lessons"] },
+    { "required": ["fitPrompts"] },
+    { "required": ["questioningPrompts"] },
+    { "required": ["fullCases"] }
+  ],
+  "$defs": {
+    "questioningConcept": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "aliases"],
+      "properties": {
+        "id": { "$ref": "./question-pack-v2.schema.json#/$defs/id" },
+        "label": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank200" },
+        "aliases": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank100" }
+        }
+      }
+    },
+    "conceptIdGroup": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 10,
+      "uniqueItems": true,
+      "items": { "$ref": "./question-pack-v2.schema.json#/$defs/id" }
+    },
+    "questioningIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "feedback", "priority", "weight", "requiredConceptGroups", "referenceQuestions"],
+      "properties": {
+        "id": { "$ref": "./question-pack-v2.schema.json#/$defs/id" },
+        "label": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank200" },
+        "feedback": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank1000" },
+        "priority": { "type": "boolean" },
+        "weight": { "type": "number", "exclusiveMinimum": 0 },
+        "requiredConceptGroups": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": { "$ref": "#/$defs/conceptIdGroup" }
+        },
+        "supportingConceptIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "uniqueItems": true,
+          "items": { "$ref": "./question-pack-v2.schema.json#/$defs/id" }
+        },
+        "referenceQuestions": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "items": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank1000" }
+        }
+      }
+    },
+    "questioningPrompt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "title", "industry", "situation", "objective", "language", "mode", "minimumQuestions", "maximumQuestions", "concepts", "intents"],
+      "properties": {
+        "id": { "$ref": "./question-pack-v2.schema.json#/$defs/id" },
+        "title": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank100" },
+        "industry": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank100" },
+        "situation": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank2000" },
+        "objective": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank1000" },
+        "language": { "type": "string", "minLength": 1, "maxLength": 35 },
+        "mode": { "enum": ["clarifying", "diagnostic"] },
+        "minimumQuestions": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "maximumQuestions": { "type": "integer", "minimum": 1, "maximum": 12 },
+        "concepts": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 50,
+          "items": { "$ref": "#/$defs/questioningConcept" }
+        },
+        "intents": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 20,
+          "items": { "$ref": "#/$defs/questioningIntent" }
+        }
+      }
+    },
+    "questioningPromptArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 100,
+      "items": { "$ref": "#/$defs/questioningPrompt" }
+    },
+    "fullCaseSimulation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "client", "title", "situation", "calculationQuestionId", "questioning", "structure", "exhibit", "brainstorming", "synthesis"],
+      "properties": {
+        "id": { "$ref": "./question-pack-v2.schema.json#/$defs/id" },
+        "client": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank100" },
+        "title": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank100" },
+        "situation": { "$ref": "./question-pack-v2.schema.json#/$defs/nonBlank2000" },
+        "calculationQuestionId": { "$ref": "./question-pack-v2.schema.json#/$defs/id" },
+        "questioning": { "$ref": "#/$defs/questioningPrompt" },
+        "structure": { "$ref": "./question-pack-v2.schema.json#/$defs/caseStructuringPrompt" },
+        "exhibit": { "$ref": "./question-pack-v2.schema.json#/$defs/exhibitDataset" },
+        "brainstorming": { "$ref": "./question-pack-v2.schema.json#/$defs/brainstormingPrompt" },
+        "synthesis": { "$ref": "./question-pack-v2.schema.json#/$defs/synthesisPrompt" }
+      }
+    },
+    "fullCaseSimulationArray": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 25,
+      "items": { "$ref": "#/$defs/fullCaseSimulation" }
+    }
+  }
+}
