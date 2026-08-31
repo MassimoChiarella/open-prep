@@ -291,6 +291,50 @@ describe("drill persistence", () => {
     ]);
   });
 
+  it("atomically persists a 50-question all-wrong session", async () => {
+    const storage = new MemoryAppStorage();
+    const completed = createFiftyQuestionAllWrongSession();
+
+    await persistCompletedDrillSession({
+      questions: completed.questions,
+      session: completed.session,
+      storage,
+      updatedAt: "2026-06-02T00:01:00.000Z"
+    });
+
+    expect(await storage.getAll("drill_sessions")).toHaveLength(1);
+    expect(await storage.getAll("responses")).toHaveLength(50);
+    expect(await storage.getAll("mistake_notebook")).toHaveLength(50);
+    expect(await storage.getAll("retry_schedules")).toHaveLength(50);
+  });
+
+  it("rejects duplicate completed-session question references before writing", async () => {
+    const storage = new MemoryAppStorage();
+    const completed = createFiftyQuestionAllWrongSession();
+    completed.session.questionIds[1] = completed.session.questionIds[0];
+
+    await expect(
+      persistCompletedDrillSession({ questions: completed.questions, session: completed.session, storage })
+    ).rejects.toThrow("Completed drill session questions are inconsistent.");
+
+    expect(await storage.getAll("drill_sessions")).toEqual([]);
+    expect(await storage.getAll("responses")).toEqual([]);
+  });
+
+  it.each([0, 1, 51, 52, 150])("leaves no partial 50-question session when atomic operation %i fails", async (failAt) => {
+    const storage = new MemoryAppStorage(failAt);
+    const completed = createFiftyQuestionAllWrongSession();
+
+    await expect(
+      persistCompletedDrillSession({ questions: completed.questions, session: completed.session, storage })
+    ).rejects.toThrow("Injected atomic mutation failure");
+
+    expect(await storage.getAll("drill_sessions")).toEqual([]);
+    expect(await storage.getAll("responses")).toEqual([]);
+    expect(await storage.getAll("mistake_notebook")).toEqual([]);
+    expect(await storage.getAll("retry_schedules")).toEqual([]);
+  });
+
   it("loads the latest completed stored session as a summary snapshot", async () => {
     const storage = new MemoryAppStorage();
     const older = createCompletedSession("older", "2026-06-02T00:00:00.000Z", "2026-06-02T00:00:10.000Z");
@@ -377,6 +421,46 @@ function createCompletedSession(
       questions: created.questions,
       endedAt
     })
+  };
+}
+
+function createFiftyQuestionAllWrongSession() {
+  const one = createCompletedSession("persist-fifty", undefined, undefined, "0");
+  const baseQuestion = one.questions[0];
+  const baseResponse = one.session.responses[0];
+  const questions = Array.from({ length: 50 }, (_, index) => ({
+    ...baseQuestion,
+    id: `question-${index + 1}`
+  }));
+  const responses = questions.map((question, index) => ({
+    ...baseResponse,
+    questionId: question.id,
+    submittedAt: `2026-06-02T00:00:${String(index).padStart(2, "0")}.000Z`
+  }));
+
+  return {
+    questions,
+    session: {
+      ...one.session,
+      questionIds: questions.map((question) => question.id),
+      responses,
+      score: {
+        ...one.session.score!,
+        accuracy: 0,
+        averageTimeSeconds: 5,
+        categoryBreakdown: one.session.score!.categoryBreakdown.map((category) => ({
+          ...category,
+          accuracy: 0,
+          averageTimeSeconds: 5,
+          questionCount: 50
+        })),
+        correctCount: 0,
+        errorBreakdown: one.session.score!.errorBreakdown.map((error) => ({ ...error, count: 50 })),
+        incorrectCount: 50,
+        totalScore: 0
+      },
+      settings: { ...one.session.settings, questionCount: 50 }
+    }
   };
 }
 

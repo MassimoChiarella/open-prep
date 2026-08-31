@@ -14,7 +14,10 @@ import { cx, uiInputs } from "@/components/uiStyles";
 import {
   type Locale,
   type LocalePreference,
+  type Messages,
+  type PartialMessageCatalog,
   isLocalePreference,
+  languageNameKeys,
   localeDirection,
   localePreferenceStorageKey,
   locales,
@@ -22,8 +25,7 @@ import {
   translate,
   type TranslationVariables
 } from "@/features/i18n/i18n";
-import { appMessages } from "@/features/i18n/messages";
-import { languageNameKeys } from "@/features/i18n/messages/core";
+import englishMessages from "@/features/i18n/locales/en";
 
 interface I18nContextValue {
   formatDate: (value: Date | number | string, options?: Intl.DateTimeFormatOptions) => string;
@@ -37,34 +39,77 @@ interface I18nContextValue {
 }
 
 const fallbackLocale: Locale = "en";
+const fallbackCatalog: PartialMessageCatalog = { en: englishMessages };
+const localeLoaders = {
+  ar: () => import("@/features/i18n/locales/ar"),
+  de: () => import("@/features/i18n/locales/de"),
+  es: () => import("@/features/i18n/locales/es"),
+  fr: () => import("@/features/i18n/locales/fr"),
+  hi: () => import("@/features/i18n/locales/hi"),
+  ja: () => import("@/features/i18n/locales/ja"),
+  pt: () => import("@/features/i18n/locales/pt"),
+  "zh-Hans": () => import("@/features/i18n/locales/zh-Hans"),
+  "zh-Hant": () => import("@/features/i18n/locales/zh-Hant")
+} satisfies Record<Exclude<Locale, "en">, () => Promise<{ default: Messages }>>;
 const I18nContext = createContext<I18nContextValue>({
   formatDate: (value, options) =>
     new Intl.DateTimeFormat(fallbackLocale, options).format(value instanceof Date ? value : new Date(value)),
-  formatDuration: (totalSeconds) => formatLocalizedDuration(fallbackLocale, totalSeconds),
+  formatDuration: (totalSeconds) => formatLocalizedDuration(fallbackCatalog, fallbackLocale, totalSeconds),
   formatNumber: (value, options) => new Intl.NumberFormat(fallbackLocale, options).format(value),
   formatPercent: (value, options) =>
     new Intl.NumberFormat(fallbackLocale, { maximumFractionDigits: 0, style: "percent", ...options }).format(value),
   locale: fallbackLocale,
   preference: "auto",
   setPreference: () => undefined,
-  t: (message, variables) => translate(appMessages, fallbackLocale, message, variables)
+  t: (message, variables) => translate(fallbackCatalog, fallbackLocale, message, variables)
 });
 
 export function I18nProvider({ children }: { children: ReactNode }) {
   const [preference, setPreferenceState] = useState<LocalePreference>("auto");
   const [locale, setLocale] = useState<Locale>("en");
+  const [requestedLocale, setRequestedLocale] = useState<Locale>("en");
+  const [messages, setMessages] = useState<PartialMessageCatalog>(fallbackCatalog);
   const [initialized, setInitialized] = useState(false);
+  const requestLocale = useCallback((nextLocale: Locale) => {
+    setRequestedLocale(nextLocale);
+    if (nextLocale === "en") {
+      setMessages(fallbackCatalog);
+      setLocale("en");
+    }
+  }, []);
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
       const storedPreference = readStoredPreference();
       setPreferenceState(storedPreference);
-      setLocale(storedPreference === "auto" ? matchLocale(systemLanguages()) : storedPreference);
+      requestLocale(storedPreference === "auto" ? matchLocale(systemLanguages()) : storedPreference);
       setInitialized(true);
     });
 
     return () => window.clearTimeout(timeoutId);
-  }, []);
+  }, [requestLocale]);
+
+  useEffect(() => {
+    let current = true;
+
+    if (requestedLocale === "en") {
+      return undefined;
+    }
+
+    void localeLoaders[requestedLocale]().then(({ default: localizedMessages }) => {
+      if (!current) return;
+      setMessages({ en: englishMessages, [requestedLocale]: localizedMessages });
+      setLocale(requestedLocale);
+    }).catch(() => {
+      if (!current) return;
+      setMessages(fallbackCatalog);
+      setLocale("en");
+    });
+
+    return () => {
+      current = false;
+    };
+  }, [requestedLocale]);
 
   useEffect(() => {
     document.documentElement.lang = locale;
@@ -74,24 +119,24 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!initialized || preference !== "auto") return;
 
-    const handleLanguageChange = () => setLocale(matchLocale(systemLanguages()));
+    const handleLanguageChange = () => requestLocale(matchLocale(systemLanguages()));
     window.addEventListener("languagechange", handleLanguageChange);
     return () => window.removeEventListener("languagechange", handleLanguageChange);
-  }, [initialized, preference]);
+  }, [initialized, preference, requestLocale]);
 
   const setPreference = useCallback((nextPreference: LocalePreference) => {
     setPreferenceState(nextPreference);
-    setLocale(nextPreference === "auto" ? matchLocale(systemLanguages()) : nextPreference);
+    requestLocale(nextPreference === "auto" ? matchLocale(systemLanguages()) : nextPreference);
     try {
       window.localStorage.setItem(localePreferenceStorageKey, nextPreference);
     } catch {
       // The preference still applies for this session when storage is unavailable.
     }
-  }, []);
+  }, [requestLocale]);
 
   const t = useCallback(
-    (message: string, variables?: TranslationVariables) => translate(appMessages, locale, message, variables),
-    [locale]
+    (message: string, variables?: TranslationVariables) => translate(messages, locale, message, variables),
+    [locale, messages]
   );
   const formatNumber = useCallback(
     (value: number, options?: Intl.NumberFormatOptions) => new Intl.NumberFormat(locale, options).format(value),
@@ -108,8 +153,8 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     [locale]
   );
   const formatDuration = useCallback(
-    (totalSeconds: number) => formatLocalizedDuration(locale, totalSeconds),
-    [locale]
+    (totalSeconds: number) => formatLocalizedDuration(messages, locale, totalSeconds),
+    [locale, messages]
   );
 
   const value = useMemo<I18nContextValue>(
@@ -161,14 +206,14 @@ function systemLanguages(): readonly string[] {
   return navigator.languages.length > 0 ? navigator.languages : [navigator.language];
 }
 
-function formatLocalizedDuration(locale: Locale, totalSeconds: number): string {
+function formatLocalizedDuration(catalog: PartialMessageCatalog, locale: Locale, totalSeconds: number): string {
   const roundedSeconds = Math.max(0, Math.round(totalSeconds));
   const minutes = Math.floor(roundedSeconds / 60);
   const seconds = roundedSeconds % 60;
   const numberFormat = new Intl.NumberFormat(locale);
   return seconds === 0
-    ? translate(appMessages, locale, "{minutes} min", { minutes: numberFormat.format(minutes) })
-    : translate(appMessages, locale, "{minutes}m {seconds}s", {
+    ? translate(catalog, locale, "{minutes} min", { minutes: numberFormat.format(minutes) })
+    : translate(catalog, locale, "{minutes}m {seconds}s", {
         minutes: numberFormat.format(minutes),
         seconds: numberFormat.format(seconds)
       });

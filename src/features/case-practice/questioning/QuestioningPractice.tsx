@@ -8,6 +8,7 @@ import { badgeClass, buttonClass, cx, uiInputs, uiText } from "@/components/uiSt
 import { questioningPrompts } from "@/data/casePractice/questioningPrompts";
 import { savePracticeAttempt } from "@/features/case-practice/practiceRecords";
 import {
+  isCompleteCaseQuestion,
   scoreCaseQuestioning,
   type CaseQuestioningPrompt,
   type CaseQuestioningQuestion,
@@ -98,7 +99,7 @@ export function QuestioningPractice({
 
   async function submitQuestions(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (questions.some((question) => question.text.trim() === "")) return;
+    if (questions.some((question) => !isCompleteCaseQuestion(question.text, prompt.language))) return;
 
     const score = scoreCaseQuestioning(prompt, {
       includeRanking,
@@ -130,7 +131,7 @@ export function QuestioningPractice({
     }
   }
 
-  const canSubmit = questions.every((question) => question.text.trim() !== "");
+  const canSubmit = questions.every((question) => isCompleteCaseQuestion(question.text, prompt.language));
 
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
@@ -143,7 +144,7 @@ export function QuestioningPractice({
 
       <section
         aria-labelledby="questioning-prompt-heading"
-        className="grid gap-5 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
+        className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
       >
         <label className={uiText.controlLabel} htmlFor="questioning-prompt">
           {t("Practice case")}
@@ -162,18 +163,18 @@ export function QuestioningPractice({
           ))}
         </select>
 
-        <div className="grid gap-2 border-t border-ink/10 pt-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <p className={cx(uiText.eyebrow, "text-xs text-teal")} dir="auto" lang={prompt.language}>{prompt.industry}</p>
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 border-t border-ink/10 pt-5">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <p className={cx(uiText.eyebrow, "min-w-0 max-w-full text-xs text-teal [overflow-wrap:anywhere]")} dir="auto" lang={prompt.language}>{prompt.industry}</p>
             <span className={badgeClass("neutral")}>
               {prompt.mode === "clarifying" ? t("Clarifying") : t("Diagnostic")}
             </span>
           </div>
           <h2 className={uiText.sectionTitle} dir="auto" id="questioning-prompt-heading" lang={prompt.language}>{prompt.title}</h2>
-          <p className={uiText.bodyStrong} dir="auto" lang={prompt.language}>{prompt.situation}</p>
-          <p className={uiText.body}>
+          <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")} dir="auto" lang={prompt.language}>{prompt.situation}</p>
+          <p className={cx(uiText.body, "min-w-0")}>
             <strong className="text-ink">{t("Your task:")}</strong>{" "}
-            <span dir="auto" lang={prompt.language}>{prompt.objective}</span>
+            <span className="[overflow-wrap:anywhere]" dir="auto" lang={prompt.language}>{prompt.objective}</span>
           </p>
         </div>
       </section>
@@ -272,6 +273,8 @@ export function QuestioningResponseFields({
             <label className="grid gap-1" htmlFor={question.id}>
               <span className="sr-only">{t("Question {number}", { number: formatNumber(index + 1) })}</span>
               <textarea
+                aria-describedby={question.text.trim() !== "" && !isCompleteCaseQuestion(question.text, prompt.language) ? `${question.id}-quality` : undefined}
+                aria-invalid={question.text.trim() !== "" && !isCompleteCaseQuestion(question.text, prompt.language)}
                 className={cx(uiInputs.textarea, "min-h-20")}
                 dir="auto"
                 id={question.id}
@@ -281,6 +284,11 @@ export function QuestioningResponseFields({
                 required
                 value={question.text}
               />
+              {question.text.trim() !== "" && !isCompleteCaseQuestion(question.text, prompt.language) ? (
+                <span className="text-xs leading-5 text-coral" id={`${question.id}-quality`}>
+                  {t("Write a complete question with enough detail to show what relationship or evidence you want to test.")}
+                </span>
+              ) : null}
             </label>
             <div className="flex min-h-11 gap-2 sm:justify-end">
               {includeRanking ? (
@@ -352,7 +360,7 @@ function QuestioningResult({
   const conceptById = new Map(prompt.concepts.map((concept) => [concept.id, concept]));
 
   return (
-    <section aria-labelledby="questioning-result-heading" className="grid gap-6 border-t border-ink/10 pt-8">
+    <section aria-labelledby="questioning-result-heading" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 border-t border-ink/10 pt-8">
       <div
         className={cx(
           "grid gap-5 border border-ink/15 border-t-2 bg-white p-5 sm:p-6",
@@ -392,13 +400,13 @@ function QuestioningResult({
         <h2 className={uiText.sectionTitle}>{t("Question-by-question feedback")}</h2>
         <div className="grid gap-3">
           {result.matches.map((match, index) => (
-            <article className="border border-ink/15 border-t-2 border-t-teal bg-white p-4" key={match.questionId}>
+            <article className="min-w-0 border border-ink/15 border-t-2 border-t-teal bg-white p-4" key={match.questionId}>
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div className="min-w-0 flex-1">
                   <p className={cx(uiText.eyebrow, "text-xs text-ink/55")}>{t("Question {number}", { number: formatNumber(index + 1) })}</p>
                   <p className={cx(uiText.bodyStrong, "mt-1 break-words")} dir="auto">{match.text}</p>
                 </div>
-                <span className={badgeClass(match.duplicateOfQuestionId ? "warning" : match.intentId ? "success" : "neutral")} dir="auto">
+                <span className={cx(badgeClass(match.duplicateOfQuestionId ? "warning" : match.intentId ? "success" : "neutral"), "min-w-0 max-w-full whitespace-normal [overflow-wrap:anywhere]")} dir="auto">
                   {match.duplicateOfQuestionId ? t("Repeated theme") : match.intentLabel ?? t("No rubric match")}
                 </span>
               </div>
@@ -406,12 +414,12 @@ function QuestioningResult({
                 <p className={cx(uiText.body, "mt-3")}>{t("No authored theme was recognized. Try naming the business measure, segment, process, or decision you want to test.")}</p>
               ) : (
                 <div className="mt-3 grid gap-2">
-                  <p className={uiText.body} dir="auto" lang={prompt.language}>{intentById.get(match.intentId)?.feedback}</p>
+                  <p className={cx(uiText.body, "min-w-0 [overflow-wrap:anywhere]")} dir="auto" lang={prompt.language}>{intentById.get(match.intentId)?.feedback}</p>
                   <p className={uiText.dense}>
                     {t("Match confidence: {percent}", { percent: formatPercent(match.similarity) })}
                   </p>
                   {match.matchedConceptIds.length > 0 ? (
-                    <p className={uiText.dense}>
+                    <p className={cx(uiText.dense, "min-w-0 [overflow-wrap:anywhere]")}>
                       {t("Recognized concepts: {concepts}", {
                         concepts: match.matchedConceptIds.map((id) => conceptById.get(id)?.label ?? id).join(", ")
                       })}
@@ -431,14 +439,14 @@ function QuestioningResult({
           {prompt.intents.map((intent) => {
             const matched = result.coverage.matchedIntentIds.includes(intent.id);
             return (
-              <article className="border border-ink/15 border-t-2 border-t-coral bg-white p-4" key={intent.id}>
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              <article className="min-w-0 border border-ink/15 border-t-2 border-t-coral bg-white p-4" key={intent.id}>
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                   <h3 className={uiText.subsectionTitle} dir="auto" lang={prompt.language}>{intent.label}</h3>
                   <span className={badgeClass(matched ? "success" : "warning")}>{matched ? t("Covered") : t("Missed")}</span>
                 </div>
-                <p className={cx(uiText.body, "mt-2")} dir="auto" lang={prompt.language}>{intent.feedback}</p>
-                <ul className="mt-3 grid gap-2 text-sm leading-6 text-ink/70">
-                  {intent.referenceQuestions.map((question) => <li className="border-s-2 border-teal/30 ps-3" dir="auto" key={question} lang={prompt.language}>{question}</li>)}
+                <p className={cx(uiText.body, "mt-2 min-w-0 [overflow-wrap:anywhere]")} dir="auto" lang={prompt.language}>{intent.feedback}</p>
+                <ul className="mt-3 grid min-w-0 gap-2 text-sm leading-6 text-ink/70">
+                  {intent.referenceQuestions.map((question) => <li className="min-w-0 border-s-2 border-teal/30 ps-3 [overflow-wrap:anywhere]" dir="auto" key={question} lang={prompt.language}>{question}</li>)}
                 </ul>
               </article>
             );

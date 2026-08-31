@@ -28,6 +28,10 @@ describe("scoreResponse", () => {
     expect(scoreResponse(userResponse({ isCorrect: false, errorTypes: ["arithmetic_error"] }))).toBe(0);
   });
 
+  it("fails closed when an incorrect response contradicts a no-error marker", () => {
+    expect(scoreResponse(userResponse({ isCorrect: false, errorTypes: ["none"] }))).toBe(0);
+  });
+
   it("uses the deterministic component total for Interview Math responses", () => {
     const response = userResponse({
       errorTypes: ["setup_error"],

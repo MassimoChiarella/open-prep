@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { benchmarkScoreBands, benchmarkTests } from "@/data/questionBank/benchmarkTests";
-import { getBenchmarkScoreBand } from "@/features/benchmarks/benchmarkScoring";
+import {
+  analyzeBenchmarkReachability,
+  getBenchmarkScoreBand
+} from "@/features/benchmarks/benchmarkScoring";
+import type { BenchmarkScoreBand } from "@/features/benchmarks/benchmarkTypes";
 import type { Question } from "@/lib/domain";
 import { validateAnswer } from "@/lib/validation/validateAnswer";
 
@@ -82,7 +86,88 @@ describe("benchmark tests", () => {
       title: "Excellent"
     });
   });
+
+  it.each([
+    {
+      expectedSelectable: ["needs_work", "excellent"],
+      expectedThresholds: ["needs_work", "excellent"],
+      questionCount: 1,
+      scoreBands: scoreBandsAt(0.25, 0.5, 1)
+    },
+    {
+      expectedSelectable: ["needs_work", "developing", "excellent"],
+      expectedThresholds: ["needs_work", "developing", "excellent"],
+      questionCount: 2,
+      scoreBands: scoreBandsAt(0.5, 0.75, 1)
+    },
+    {
+      expectedSelectable: ["needs_work", "developing", "strong", "excellent"],
+      expectedThresholds: ["needs_work", "developing"],
+      questionCount: 6,
+      scoreBands: scoreBandsAt(0.5, 0.75, 0.9)
+    },
+    {
+      expectedSelectable: ["needs_work", "developing", "strong", "excellent"],
+      expectedThresholds: ["needs_work", "developing", "strong", "excellent"],
+      questionCount: 50,
+      scoreBands: scoreBandsAt(0.02, 0.98, 1)
+    }
+  ])(
+    "enumerates all outcomes and reports score-band reachability for $questionCount questions",
+    ({ expectedSelectable, expectedThresholds, questionCount, scoreBands }) => {
+      const result = analyzeBenchmarkReachability(questionCount, scoreBands);
+
+      expect(result.outcomes).toHaveLength(questionCount + 1);
+      expect(result.outcomes.map((outcome) => outcome.correctCount)).toEqual(
+        Array.from({ length: questionCount + 1 }, (_, correctCount) => correctCount)
+      );
+      expect(result.outcomes[0]).toMatchObject({ accuracy: 0, correctCount: 0 });
+      expect(result.outcomes.at(-1)).toMatchObject({ accuracy: 1, correctCount: questionCount });
+      expect(result.scoreBands.filter((band) => band.isThresholdAttainable).map((band) => band.label)).toEqual(
+        expectedThresholds
+      );
+      expect(result.scoreBands.filter((band) => band.isSelectable).map((band) => band.label)).toEqual(
+        expectedSelectable
+      );
+      expect(result.areAllBandsSelectable).toBe(expectedSelectable.length === scoreBands.length);
+    }
+  );
+
+  it("keeps exact threshold attainability separate from runtime band selection", () => {
+    const result = analyzeBenchmarkReachability(6, scoreBandsAt(0.5, 0.75, 0.9));
+
+    expect(result.scoreBands.find((band) => band.label === "strong")).toMatchObject({
+      isSelectable: true,
+      isThresholdAttainable: false
+    });
+    expect(result.outcomes.find((outcome) => outcome.correctCount === 5)).toMatchObject({
+      accuracy: 5 / 6,
+      scoreBandLabel: "strong"
+    });
+  });
+
+  it("requires a positive whole-number question count", () => {
+    expect(() => analyzeBenchmarkReachability(0, benchmarkScoreBands)).toThrow(
+      "Benchmark question count must be a positive integer."
+    );
+    expect(() => analyzeBenchmarkReachability(1.5, benchmarkScoreBands)).toThrow(
+      "Benchmark question count must be a positive integer."
+    );
+  });
 });
+
+function scoreBandsAt(
+  developing: number,
+  strong: number,
+  excellent: number
+): readonly BenchmarkScoreBand[] {
+  return [
+    { label: "needs_work", minAccuracy: 0, title: "Needs work" },
+    { label: "developing", minAccuracy: developing, title: "Developing" },
+    { label: "strong", minAccuracy: strong, title: "Strong" },
+    { label: "excellent", minAccuracy: excellent, title: "Excellent" }
+  ];
+}
 
 function correctInputFor(question: Question): string {
   if (question.answer.unit === "percentage") {

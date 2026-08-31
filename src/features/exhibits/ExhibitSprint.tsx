@@ -23,11 +23,13 @@ import { useI18n } from "@/features/i18n/I18nProvider";
 import { formatLabel } from "@/lib/format";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 import type { AppStorage } from "@/lib/storage/appStorageTypes";
+import { nextLocalPracticeNonce } from "@/lib/localPracticeNonce";
 import type { ValidationResult } from "@/lib/validation/validateAnswer";
 
 interface ExhibitSprintProps {
   backHref?: string;
   datasets: readonly ExhibitDataset[];
+  seed?: string | number;
   storageFactory?: () => AppStorage;
 }
 
@@ -50,11 +52,16 @@ type SprintPhase = "active" | "setup" | "summary";
 export function ExhibitSprint({
   backHref = "/exhibits",
   datasets,
+  seed,
   storageFactory = createIndexedDbAppStorage
 }: ExhibitSprintProps) {
-  const { formatNumber, formatPercent, t } = useI18n();
+  const { formatNumber, formatPercent, locale, t } = useI18n();
   const [questionCount, setQuestionCount] = useState<(typeof exhibitSprintQuestionCounts)[number]>(5);
-  const items = useMemo(() => buildExhibitSprintItems(datasets, questionCount), [datasets, questionCount]);
+  const [sprintSeed, setSprintSeed] = useState<string | number | undefined>(seed);
+  const items = useMemo(
+    () => buildExhibitSprintItems(datasets, questionCount, sprintSeed),
+    [datasets, questionCount, sprintSeed]
+  );
   const [phase, setPhase] = useState<SprintPhase>("setup");
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answerDraft, setAnswerDraft] = useState("");
@@ -75,7 +82,7 @@ export function ExhibitSprint({
         return;
       }
 
-      const validation = validateExhibitResponse(answerDraft, item.question, { timedOut });
+      const validation = validateExhibitResponse(answerDraft, item.question, { locale, timedOut });
       const initialFeedback: SprintFeedback = {
         message: timedOut ? t("Time expired. Review the answer, then continue.") : t(validation.feedbackMessage),
         saveStatus: "saving",
@@ -121,7 +128,7 @@ export function ExhibitSprint({
         });
       }
     },
-    [answerDraft, feedback, item, storageFactory, t]
+    [answerDraft, feedback, item, locale, storageFactory, t]
   );
 
   useEffect(() => {
@@ -180,11 +187,15 @@ export function ExhibitSprint({
         <button
           className="inline-flex min-h-11 w-fit items-center justify-center rounded-md bg-ink px-5 text-sm font-semibold text-white transition hover:bg-teal motion-reduce:transform-none active:scale-[0.98]"
           onClick={() => {
+            const nextSeed = seed ?? nextLocalPracticeNonce("exhibit-sprint");
+            const nextItems = buildExhibitSprintItems(datasets, questionCount, nextSeed);
+
+            setSprintSeed(nextSeed);
             setQuestionIndex(0);
             setAnswerDraft("");
             setFeedback(undefined);
             setResults([]);
-            setSecondsRemaining(questionSeconds(items[0]));
+            setSecondsRemaining(questionSeconds(nextItems[0]));
             startedAtRef.current = new Date().toISOString();
             setPhase("active");
           }}
@@ -200,8 +211,8 @@ export function ExhibitSprint({
     const correctCount = results.filter((result) => result.isCorrect).length;
 
     return (
-      <section className="grid gap-6" data-testid="exhibit-sprint-summary">
-        <div className="grid gap-3 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6">
+      <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6" data-testid="exhibit-sprint-summary">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6">
           <p className="text-sm font-semibold uppercase tracking-wide text-teal">{t("Sprint complete")}</p>
           <h2 className="text-2xl font-semibold text-ink">
             {t("{correct} of {total} correct", {
@@ -215,9 +226,9 @@ export function ExhibitSprint({
             })}
           </p>
         </div>
-        <ol className="grid gap-3">
+        <ol className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
           {results.map((result, index) => (
-            <li className="border border-ink/15 border-s-2 border-s-teal bg-white p-4" key={`${result.prompt}-${index}`}>
+            <li className="min-w-0 border border-ink/15 border-s-2 border-s-teal bg-white p-4 [overflow-wrap:anywhere]" key={`${result.prompt}-${index}`}>
               <p className="text-xs font-semibold uppercase tracking-wide text-ink/65">{result.datasetTitle}</p>
               <p className="mt-1 text-sm font-semibold leading-6 text-ink">{result.prompt}</p>
               <p className={`mt-2 text-sm font-semibold ${result.isCorrect ? "text-teal" : "text-coral"}`}>
@@ -246,11 +257,11 @@ export function ExhibitSprint({
   }
 
   return item === undefined ? null : (
-    <section className="grid gap-5" data-testid="exhibit-sprint-active">
-      <header className="grid gap-4 border border-ink/15 border-t-2 border-t-coral bg-white p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
-        <div className="grid gap-2" data-testid="exhibit-sprint-prompt">
+    <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5" data-testid="exhibit-sprint-active">
+      <header className="grid min-w-0 gap-4 border border-ink/15 border-t-2 border-t-coral bg-white p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2" data-testid="exhibit-sprint-prompt">
           <p className="text-xs font-semibold uppercase tracking-wide text-coral">{t("Timed exhibit")}</p>
-          <h2 className="text-xl font-semibold text-ink">{item.question.prompt}</h2>
+          <h2 className="min-w-0 text-xl font-semibold text-ink [overflow-wrap:anywhere]">{item.question.prompt}</h2>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 sm:grid sm:justify-items-end">
           <div className="text-start sm:text-end">
@@ -283,7 +294,7 @@ export function ExhibitSprint({
         </div>
 
         <aside
-          className="grid h-fit gap-5 border border-ink/15 border-t-2 border-t-teal bg-white p-5 lg:sticky lg:top-6"
+          className="grid h-fit min-w-0 grid-cols-[minmax(0,1fr)] gap-5 border border-ink/15 border-t-2 border-t-teal bg-white p-5 lg:sticky lg:top-6"
           data-testid="exhibit-sprint-response"
         >
           <ExhibitAnswerInput
@@ -347,7 +358,7 @@ function SprintFeedbackPanel({
 
   return (
     <section
-      className={`grid gap-3 border-s-2 px-3 py-3 ${feedback.validation.isCorrect ? "border-teal bg-mint" : "border-coral bg-coral/10"}`}
+      className={`grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border-s-2 px-3 py-3 [overflow-wrap:anywhere] ${feedback.validation.isCorrect ? "border-teal bg-mint" : "border-coral bg-coral/10"}`}
       data-testid="exhibit-sprint-feedback"
       role="status"
     >

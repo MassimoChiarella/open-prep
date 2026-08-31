@@ -27,9 +27,12 @@ describe("FullCaseSimulation", () => {
   });
 
   it("renders the authored chart and labels the calculation with its answer unit", async () => {
+    const situation = "S".repeat(2_000);
+    const calculationPrompt = "Q".repeat(2_000);
     const simulation: FullCaseSimulationSpec = {
       ...brightCartFullCase,
       questioning: undefined,
+      situation,
       exhibit: {
         ...brightCartFullCase.exhibit,
         visualization: {
@@ -41,18 +44,25 @@ describe("FullCaseSimulation", () => {
         questions: brightCartFullCase.exhibit.questions.map((question) =>
           question.id !== brightCartFullCase.calculationQuestionId || question.responseType === "multiple_choice"
             ? question
-            : { ...question, answer: { ...question.answer, unit: "percentage" } }
+            : {
+                ...question,
+                answer: { ...question.answer, unit: "percentage" },
+                prompt: calculationPrompt
+              }
         )
       }
     };
 
     render(<FullCaseSimulation simulation={simulation} />);
 
+    expect(screen.getByText(situation)).toHaveClass("min-w-0", "[overflow-wrap:anywhere]");
+
     fireEvent.click(screen.getByRole("radio", { name: /BrightCart should expand first/ }));
     fireEvent.click(screen.getByRole("checkbox", { name: /Customer demand/ }));
     fireEvent.click(screen.getByRole("button", { name: "Continue to Exhibit and math" }));
 
     expect(await screen.findByTestId("exhibit-chart-brightcart_pilot_performance")).toBeInTheDocument();
+    expect(screen.getByText(calculationPrompt)).toHaveClass("min-w-0", "[overflow-wrap:anywhere]");
     expect(screen.getByLabelText("Your answer (Percentage)")).toBeInTheDocument();
     expect(screen.queryByText("Use eligible orders x adoption x contribution per adopted order.")).not.toBeInTheDocument();
   });

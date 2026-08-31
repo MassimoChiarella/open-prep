@@ -26,21 +26,21 @@ export function ExhibitAnswerInput({
     return (
       <fieldset className="grid min-w-0 gap-2" disabled={disabled}>
         <legend className="text-sm font-medium text-ink/80">{t("Answer")}</legend>
-        <div className="grid gap-2">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
           {question.choices.map((choice) => (
             <label
-              className="flex min-h-11 cursor-pointer items-center gap-3 rounded-md border border-ink/20 px-3 py-2 text-sm font-medium text-ink transition hover:border-teal hover:bg-paper focus-within:border-teal focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-teal has-[:checked]:border-teal has-[:checked]:bg-mint"
+              className="flex min-h-11 min-w-0 cursor-pointer items-center gap-3 rounded-md border border-ink/20 px-3 py-2 text-sm font-medium text-ink transition hover:border-teal hover:bg-paper focus-within:border-teal focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-teal has-[:checked]:border-teal has-[:checked]:bg-mint"
               key={choice.id}
             >
               <input
                 checked={value === choice.id}
-                className="h-4 w-4 accent-teal"
+                className="h-4 w-4 shrink-0 accent-teal"
                 name={name}
                 onChange={() => onChange(choice.id)}
                 type="radio"
                 value={choice.id}
               />
-              <span>{choice.label}</span>
+              <span className="min-w-0 [overflow-wrap:anywhere]">{choice.label}</span>
             </label>
           ))}
         </div>

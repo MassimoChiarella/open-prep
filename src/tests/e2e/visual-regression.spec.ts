@@ -19,10 +19,6 @@ const viewportCases = [
 ] as const;
 
 test.describe("release viewport visual baselines", () => {
-  test.beforeEach(async ({ page }) => {
-    await clearLocalDatabase(page);
-  });
-
   for (const viewport of viewportCases) {
     test(`${viewport.label} release routes match approved screenshots`, async ({ page }) => {
       await page.setViewportSize({ height: viewport.height, width: viewport.width });
@@ -121,18 +117,5 @@ async function installStableScreenshotStyles(page: Page): Promise<void> {
         transition-duration: 0s !important;
       }
     `
-  });
-}
-
-async function clearLocalDatabase(page: Page): Promise<void> {
-  await page.goto("/");
-  await page.evaluate(() => {
-    return new Promise<void>((resolve, reject) => {
-      const request = indexedDB.deleteDatabase("consulting_math_drill_tool");
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-      request.onblocked = () => resolve();
-    });
   });
 }

@@ -2,6 +2,7 @@ import { createSessionSummarySnapshot, type SessionSummarySnapshot } from "@/fea
 import type { DrillSession, DrillSettings, Question } from "@/lib/domain";
 import type {
   AppStorage,
+  AppStorageMutation,
   MistakeNotebookRecord,
   MistakeNotebookSourceType,
   RetryScheduleRecord,
@@ -78,56 +79,87 @@ export async function persistInProgressDrillSession(
 }
 
 export async function persistCompletedDrillSession(options: PersistCompletedDrillSessionOptions): Promise<void> {
-  const storedSession = createStoredDrillSession(options.session, options.questions, options.updatedAt);
+  assertCompletedSessionReferences(options.session, options.questions);
+
+  const persistedAt = options.updatedAt ?? new Date().toISOString();
+  const storedSession = createStoredDrillSession(options.session, options.questions, persistedAt);
   const storedResponses = createStoredUserResponses(options.session, options.questions);
   const mistakeRecords = createStoredMistakeNotebookRecords(options.session, options.questions);
   const questionById = new Map(options.questions.map((question) => [question.id, question]));
+  const responseByQuestionId = new Map(storedResponses.map((response) => [response.questionId, response]));
+  const skippedAt = options.session.endedAt ?? persistedAt;
+  const reviews = [
+    ...storedResponses.flatMap((response) => {
+      const mistakeId = retryMistakeId(questionById.get(response.questionId));
 
-  await options.storage.put("drill_sessions", storedSession);
+      return mistakeId === undefined
+        ? []
+        : [{ mistakeId, outcome: response.isCorrect ? "correct" as const : "incorrect" as const, reviewedAt: response.submittedAt }];
+    }),
+    ...options.questions.flatMap((question) => {
+      const mistakeId = retryMistakeId(question);
 
-  for (const response of storedResponses) {
-    await options.storage.put("responses", response);
-  }
+      return mistakeId === undefined || responseByQuestionId.has(question.id)
+        ? []
+        : [{ mistakeId, outcome: "skipped" as const, reviewedAt: skippedAt }];
+    })
+  ];
+  const reviewRecords = await Promise.all(reviews.map(async (review) => ({
+    ...review,
+    mistake: await options.storage.get("mistake_notebook", review.mistakeId),
+    schedule: await options.storage.get("retry_schedules", buildRetryScheduleId(review.mistakeId))
+  })));
+  const operations: AppStorageMutation[] = [
+    { storeName: "drill_sessions", type: "put", value: storedSession },
+    ...storedResponses.map((value) => ({ storeName: "responses" as const, type: "put" as const, value })),
+    ...mistakeRecords.flatMap((mistake): AppStorageMutation[] => [
+      { storeName: "mistake_notebook", type: "put", value: mistake },
+      { storeName: "retry_schedules", type: "put", value: createRetryScheduleRecord(mistake) }
+    ])
+  ];
 
-  for (const mistake of mistakeRecords) {
-    await options.storage.put("mistake_notebook", mistake);
-    await options.storage.put("retry_schedules", createRetryScheduleRecord(mistake));
-  }
-
-  for (const response of storedResponses) {
-    const mistakeId = retryMistakeId(questionById.get(response.questionId));
-
-    if (mistakeId === undefined) {
+  for (const review of reviewRecords) {
+    if (review.outcome === "skipped") {
+      if (review.schedule !== undefined) {
+        operations.push({
+          storeName: "retry_schedules",
+          type: "put",
+          value: createReviewedRetrySchedule(review.schedule, review.outcome, review.reviewedAt)
+        });
+      }
       continue;
     }
 
-    const mistake = await options.storage.get("mistake_notebook", mistakeId);
-
-    if (mistake === undefined) {
+    if (review.mistake === undefined) {
       continue;
     }
 
-    await options.storage.put("mistake_notebook", {
-      ...mistake,
-      lastRetriedAt: response.submittedAt,
-      resolvedAt: response.isCorrect ? response.submittedAt : mistake.resolvedAt,
-      retryCount: mistake.retryCount + 1,
-      status: response.isCorrect ? "resolved" : mistake.status
+    operations.push({
+      storeName: "mistake_notebook",
+      type: "put",
+      value: {
+        ...review.mistake,
+        lastRetriedAt: review.reviewedAt,
+        resolvedAt: review.outcome === "correct" ? review.reviewedAt : review.mistake.resolvedAt,
+        retryCount: review.mistake.retryCount + 1,
+        status: review.outcome === "correct" ? "resolved" : review.mistake.status
+      }
     });
 
-    await updateRetryScheduleAfterReview(options.storage, mistakeId, response.isCorrect ? "correct" : "incorrect", response.submittedAt);
-  }
-
-  const responseByQuestionId = new Map(storedResponses.map((response) => [response.questionId, response]));
-  const skippedAt = options.session.endedAt ?? options.updatedAt ?? new Date().toISOString();
-
-  for (const question of options.questions) {
-    const mistakeId = retryMistakeId(question);
-
-    if (mistakeId !== undefined && !responseByQuestionId.has(question.id)) {
-      await updateRetryScheduleAfterReview(options.storage, mistakeId, "skipped", skippedAt);
+    if (review.schedule !== undefined) {
+      operations.push(
+        review.outcome === "correct"
+          ? { key: review.schedule.id, storeName: "retry_schedules", type: "delete" }
+          : {
+              storeName: "retry_schedules",
+              type: "put",
+              value: createReviewedRetrySchedule(review.schedule, review.outcome, review.reviewedAt)
+            }
+      );
     }
   }
+
+  await options.storage.mutate(operations);
 }
 
 export async function loadLatestStoredSessionSummarySnapshot(
@@ -315,34 +347,45 @@ function buildRetryScheduleId(mistakeId: string): string {
   return `retry-schedule-${mistakeId}`;
 }
 
-async function updateRetryScheduleAfterReview(
-  storage: AppStorage,
-  mistakeId: string,
+function createReviewedRetrySchedule(
+  schedule: RetryScheduleRecord,
   outcome: "correct" | "incorrect" | "skipped",
   reviewedAt: string
-): Promise<void> {
-  const schedule = await storage.get("retry_schedules", buildRetryScheduleId(mistakeId));
-
-  if (schedule === undefined) {
-    return;
-  }
-
-  if (outcome === "correct") {
-    await storage.delete("retry_schedules", schedule.id);
-    return;
-  }
-
+): RetryScheduleRecord {
   const attemptCount = outcome === "incorrect" ? schedule.attemptCount + 1 : schedule.attemptCount;
   const intervalDays = retryScheduleIntervalForAttempt(attemptCount);
 
-  await storage.put("retry_schedules", {
+  return {
     ...schedule,
     attemptCount,
     dueAt: addDays(reviewedAt, intervalDays),
     intervalDays,
     lastReviewedAt: reviewedAt,
     updatedAt: reviewedAt
-  });
+  };
+}
+
+function assertCompletedSessionReferences(session: DrillSession, questions: readonly Question[]): void {
+  const questionIds = new Set(questions.map((question) => question.id));
+  const sessionQuestionIds = new Set(session.questionIds);
+
+  if (
+    questionIds.size !== questions.length ||
+    sessionQuestionIds.size !== questionIds.size ||
+    session.questionIds.length !== questions.length ||
+    session.questionIds.some((questionId) => !questionIds.has(questionId))
+  ) {
+    throw new Error("Completed drill session questions are inconsistent.");
+  }
+
+  const responseQuestionIds = new Set<string>();
+
+  for (const response of session.responses) {
+    if (!questionIds.has(response.questionId) || responseQuestionIds.has(response.questionId)) {
+      throw new Error("Completed drill session responses are inconsistent.");
+    }
+    responseQuestionIds.add(response.questionId);
+  }
 }
 
 function addDays(value: string, days: number): string {

@@ -1,5 +1,7 @@
 "use client";
 
+import { memo } from "react";
+
 import { getExhibitColumnById, isExhibitMetricColumn } from "@/features/exhibits/exhibitDataset";
 import {
   formatExhibitCellValue,
@@ -12,7 +14,7 @@ interface ExhibitTableRendererProps {
   dataset: ExhibitDataset;
 }
 
-export function ExhibitTableRenderer({ dataset }: ExhibitTableRendererProps) {
+export const ExhibitTableRenderer = memo(function ExhibitTableRenderer({ dataset }: ExhibitTableRendererProps) {
   const { formatNumber, t } = useI18n();
   const columns = getExhibitTableColumns(dataset);
 
@@ -25,10 +27,10 @@ export function ExhibitTableRenderer({ dataset }: ExhibitTableRendererProps) {
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid min-w-0 gap-2">
           <p className="text-sm font-semibold uppercase tracking-wide text-teal">{t("Table Exhibit")}</p>
-          <h2 className="break-words text-2xl font-semibold text-ink" id={`${dataset.id}-heading`}>
+          <h2 className="min-w-0 break-words text-2xl font-semibold text-ink [overflow-wrap:anywhere]" id={`${dataset.id}-heading`}>
             {dataset.title}
           </h2>
-          <p className="max-w-3xl text-sm leading-6 text-ink/70">{dataset.description}</p>
+          <p className="min-w-0 max-w-3xl text-sm leading-6 text-ink/70 [overflow-wrap:anywhere]">{dataset.description}</p>
         </div>
         <dl className="grid grid-cols-2 gap-2 text-sm">
           <TableStat label={t("Rows")} value={formatNumber(dataset.rows.length)} />
@@ -41,8 +43,13 @@ export function ExhibitTableRenderer({ dataset }: ExhibitTableRendererProps) {
           {t("Scroll table sideways to compare all columns.")}
         </p>
         <div
+          aria-label={t("Scrollable exhibit table: {title}", {
+            title: dataset.visualization.title ?? dataset.title
+          })}
           className="max-h-[32rem] max-w-full overflow-auto overscroll-contain border border-ink/15"
           data-testid="exhibit-table-scroll"
+          role="region"
+          tabIndex={0}
         >
           <table className="min-w-[42rem] w-full border-separate border-spacing-0 text-start text-sm">
             <caption className="sr-only">{dataset.visualization.title ?? dataset.title}</caption>
@@ -69,21 +76,21 @@ export function ExhibitTableRenderer({ dataset }: ExhibitTableRendererProps) {
                   data-testid={`exhibit-table-row-${row.id}`}
                   key={row.id}
                 >
-                  {columns.map((column, columnIndex) => (
-                    <td
-                      className={[
-                        "border-t border-white px-3 py-2 align-middle",
-                        isExhibitMetricColumn(column)
-                          ? "text-end font-semibold tabular-nums text-ink"
-                          : "min-w-36 text-start text-ink/80",
-                        columnIndex === 0 ? "sticky start-0 z-10 bg-paper" : ""
-                      ].join(" ")}
-                      data-testid={`exhibit-table-cell-${row.id}-${column.id}`}
-                      key={column.id}
-                    >
-                      {formatExhibitCellValue(row.cells[column.id], column)}
-                    </td>
-                  ))}
+                  {columns.map((column, columnIndex) => {
+                    const className = tableCellClass(column, columnIndex);
+                    const value = formatExhibitCellValue(row.cells[column.id], column);
+                    const testId = `exhibit-table-cell-${row.id}-${column.id}`;
+
+                    return columnIndex === 0 ? (
+                      <th className={className} data-testid={testId} key={column.id} scope="row">
+                        {value}
+                      </th>
+                    ) : (
+                      <td className={className} data-testid={testId} key={column.id}>
+                        {value}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>
@@ -92,11 +99,11 @@ export function ExhibitTableRenderer({ dataset }: ExhibitTableRendererProps) {
       </div>
 
       {dataset.sourceNote !== undefined ? (
-        <p className="text-xs leading-5 text-ink/65">{dataset.sourceNote}</p>
+        <p className="min-w-0 text-xs leading-5 text-ink/65 [overflow-wrap:anywhere]">{dataset.sourceNote}</p>
       ) : null}
     </section>
   );
-}
+});
 
 function tableHeaderClass(column: ExhibitColumn): string {
   return [
@@ -104,6 +111,16 @@ function tableHeaderClass(column: ExhibitColumn): string {
     isExhibitMetricColumn(column)
       ? "z-10 min-w-28 text-end tabular-nums"
       : "sticky start-0 z-20 min-w-36 bg-white text-start"
+  ].join(" ");
+}
+
+function tableCellClass(column: ExhibitColumn, columnIndex: number): string {
+  return [
+    "border-t border-white px-3 py-2 align-middle",
+    isExhibitMetricColumn(column)
+      ? "text-end font-semibold tabular-nums text-ink"
+      : "min-w-36 text-start font-normal text-ink/80",
+    columnIndex === 0 ? "sticky start-0 z-10 bg-paper" : ""
   ].join(" ");
 }
 

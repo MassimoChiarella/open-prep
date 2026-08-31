@@ -294,6 +294,8 @@ export interface QuestionTemplate {
   variables: Record<string, VariableSpec>;
   formula: FormulaSpec;
   answerUnit?: UnitType;
+  tolerance?: ToleranceSpec;
+  roundingRule?: RoundingRule;
   explanationTemplate: ExplanationTemplate;
 }
 

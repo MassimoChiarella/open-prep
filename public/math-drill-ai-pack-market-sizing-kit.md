@@ -1,8 +1,8 @@
-# Math Drill AI Pack Kit: Market Sizing
+# Open Prep AI Pack Kit: Market Sizing
 
-Kit revision: **2026-08-18**
+Kit revision: **2026-08-29**
 
-Pair this module with `math-drill-ai-pack-authoring-start.md`. It covers only `kind: "market_sizing"` packages.
+This focused component is included inside the complete market-sizing bundle. For advanced modular use, pair it with `math-drill-ai-pack-authoring-start.md`, the named schema, and the complete examples/cookbook below. It covers only `kind: "market_sizing"` packages.
 
 ## Canonical contract
 
@@ -30,7 +30,7 @@ Each template requires:
 
 Use only the input kinds `currency`, `integer`, `number`, `percentage`, `choice`, `boolean`, and `note`.
 
-A numeric input step requires `required: true` and a unique formula `variableName`. It may define an `assumptionRange` with ordered `min`/`max` and an optional unit. A `choice` step has 2 to 20 unique options. Boolean and note steps do not create formula variables. Percentage values and range bounds use fractions (`0.4` means 40%); the form accepts learner input such as `40%` and normalizes it.
+A numeric input step requires `required: true` and a unique formula `variableName`. It may define an `assumptionRange` with ordered `min`/`max` and an optional unit. Both range bounds for an `integer` step must be whole numbers, and learners must enter a whole number. A `choice` step has 2 to 20 unique options. Boolean and note steps do not create formula variables. Percentage values and range bounds use fractions (`0.4` means 40%); the form accepts learner input such as `40%` and normalizes it.
 
 Practical numeric step and formula pattern:
 
@@ -70,7 +70,7 @@ This is a shape fragment, not a complete package. Copy the canonical example for
 
 The formula language is arithmetic only: numeric literals, declared numeric variables, parentheses, unary signs, and `+ - * / ^`. It has no functions, assignments, comparisons, JavaScript, or `%` operator. The expression must reference every numeric input variable and no undeclared name. `outputVariable` is optional metadata and cannot duplicate an input name.
 
-Evaluate a midpoint and every risky range boundary. Denominators must remain non-zero for plausible learner inputs. If learner assumptions cause division by zero or another non-finite result, the app shows an actionable calculation error and blocks completion and persistence until inputs are corrected.
+The importer deterministically probes authored numeric ranges at minimum, maximum, midpoint, and the closest representable value to zero, plus combined corners and pairwise variations, capped at 256 samples per template. Any sampled error or non-finite result blocks import. This is bounded safety validation, not a proof of all possible learner inputs. Denominators must remain non-zero throughout the intended domain. If learner assumptions cause division by zero or another non-finite result, the app shows an actionable calculation error and blocks completion and persistence until inputs are corrected.
 
 `roundingRule` only tells the learner how to display the estimate. It never changes grading. `tolerance` controls grading and must be absolute, fractional percentage, or ordered range. Use a tolerance consistent with the requested rounding and the natural uncertainty of the exercise.
 
@@ -89,6 +89,8 @@ For an explicit completion checkbox, add a boolean input step with ID exactly `s
 - The estimation approach, variables, units, and formula describe one coherent frame without double counting.
 - Every numeric input variable appears in the formula and every formula identifier is declared.
 - Ranges are plausible, ordered, scale-consistent, and safe at zero/boundaries.
+- Integer-step range bounds and intended learner values are whole numbers.
 - The final output unit matches the formula scale; percent values use canonical fractions.
 - All six rubric dimensions appear exactly once, and sense-check choices are not disguised correct/incorrect answers.
+- Every sense-check option is a legitimate analytical lens, and a human has reviewed the facts, formula, ranges, units, rubric, and permission to use the source.
 - The final response follows the Start Here binding output contract and is ready for app validation.

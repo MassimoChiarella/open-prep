@@ -7,6 +7,7 @@ import {
   localProgressExportAppId,
   localProgressExportSchemaVersion,
   localProgressExportStoreNames,
+  localProgressImportLimits,
   replaceLocalProgressWithImport,
   serializeLocalProgressExport,
   validateLocalProgressImportPayload,
@@ -26,12 +27,13 @@ describe("local progress export schema", () => {
     const exported = emptyProgressExport("2026-06-02T00:00:00.000Z");
 
     expect(localProgressExportAppId).toBe(appDatabaseName);
-    expect(localProgressExportSchemaVersion).toBe(3);
+    expect(localProgressExportSchemaVersion).toBe(4);
     expect(localProgressExportStoreNames).toEqual(progressStoreNames);
     expect(exported).toEqual({
       app: "consulting_math_drill_tool",
       exportedAt: "2026-06-02T00:00:00.000Z",
-      schemaVersion: 3,
+      privacyScope: "standard",
+      schemaVersion: 4,
       stores: Object.fromEntries(progressStoreNames.map((storeName) => [storeName, []]))
     });
   });
@@ -49,8 +51,39 @@ describe("local progress export schema", () => {
     expect(exported.stores).not.toHaveProperty("question_packs");
     expect(exported.stores.user_settings).toEqual([settings]);
     expect(exported.stores.drill_sessions).toEqual([]);
-    expect(serializeLocalProgressExport(exported)).toContain('"schemaVersion": 3');
-    expect(buildLocalProgressExportFileName(exported.exportedAt)).toBe("math-drill-progress-2026-06-02.json");
+    expect(serializeLocalProgressExport(exported)).toContain('"schemaVersion": 4');
+    expect(buildLocalProgressExportFileName(exported.exportedAt)).toBe("open-prep-progress-2026-06-02.json");
+  });
+
+  it("excludes private Fit stories by default and includes them only in a complete export", async () => {
+    const storage = new MemoryAppStorage();
+    const story = {
+      action: "I aligned the team.",
+      competency: "leadership" as const,
+      id: "fit-story-1",
+      kind: "fit_story" as const,
+      reflection: "I would delegate earlier.",
+      result: "Delivery recovered.",
+      situation: "A private client situation.",
+      task: "Recover delivery.",
+      title: "Private leadership story",
+      updatedAt: "2026-06-02T00:00:00.000Z"
+    };
+
+    await storage.put("practice_records", story);
+
+    const standard = await createLocalProgressExport(storage, "2026-06-02T00:01:00.000Z");
+    const complete = await createLocalProgressExport(storage, "2026-06-02T00:01:00.000Z", "complete");
+
+    expect(standard.privacyScope).toBe("standard");
+    expect(standard.stores.practice_records).toEqual([]);
+    expect(serializeLocalProgressExport(standard)).not.toContain(story.situation);
+    expect(complete.privacyScope).toBe("complete");
+    expect(complete.stores.practice_records).toEqual([story]);
+    expect(validateLocalProgressImportPayload(JSON.parse(serializeLocalProgressExport(complete)))).toEqual({
+      exportData: complete,
+      status: "valid"
+    });
   });
 
   it("replaces existing local data with imported records", async () => {
@@ -69,6 +102,20 @@ describe("local progress export schema", () => {
     expect(await storage.getAll("user_settings")).toEqual([newSettings]);
     expect(await storage.getAll("drill_sessions")).toEqual([]);
     expect(await storage.getAll("question_packs")).toEqual([questionPack]);
+  });
+
+  it.each([0, 4, 9])("keeps existing progress when atomic replacement fails at operation %i", async (failAt) => {
+    const storage = new MemoryAppStorage(failAt);
+    const oldSettings = createUserSettingsRecord(createDrillSettings({ questionCount: 3 }), "2026-06-02T00:00:00.000Z");
+    const newSettings = createUserSettingsRecord(createDrillSettings({ questionCount: 8 }), "2026-06-03T00:00:00.000Z");
+    const importData = emptyProgressExport("2026-06-03T00:01:00.000Z");
+
+    importData.stores.user_settings = [newSettings];
+    await storage.put("user_settings", oldSettings);
+
+    await expect(replaceLocalProgressWithImport(storage, importData)).rejects.toThrow("Injected atomic mutation failure");
+    expect(await storage.getAll("user_settings")).toEqual([oldSettings]);
+    expect(await storage.getAll("responses")).toEqual([]);
   });
 
   it("summarizes imported local progress counts", () => {
@@ -159,7 +206,7 @@ describe("local progress export schema", () => {
       status: "invalid"
     });
     expect(validateLocalProgressImportPayload({ ...valid, schemaVersion: 999 })).toEqual({
-      errors: ["Import schema version must be 3."],
+      errors: ["Import schema version must be 3 or 4."],
       status: "invalid"
     });
     expect(
@@ -176,12 +223,205 @@ describe("local progress export schema", () => {
       status: "invalid"
     });
   });
+
+  it("rejects shallow response impostors and does not mutate existing progress", async () => {
+    const storage = new MemoryAppStorage();
+    const existing = createUserSettingsRecord(createDrillSettings({ questionCount: 3 }), "2026-06-02T00:00:00.000Z");
+    const malformed = {
+      ...emptyProgressExport("2026-06-03T00:00:00.000Z"),
+      stores: {
+        ...emptyProgressExport("2026-06-03T00:00:00.000Z").stores,
+        responses: [{ id: "bad" }]
+      }
+    };
+
+    await storage.put("user_settings", existing);
+
+    expect(validateLocalProgressImportPayload(malformed)).toEqual({
+      errors: ['Store "responses" record 1 has invalid or missing fields.'],
+      status: "invalid"
+    });
+    await expect(replaceLocalProgressWithImport(storage, malformed as LocalProgressExportV1)).rejects.toThrow(
+      'Store "responses" record 1'
+    );
+    expect(await storage.getAll("user_settings")).toEqual([existing]);
+  });
+
+  it.each([
+    { type: "absolute" },
+    { type: "absolute", value: -1 },
+    { type: "percentage", value: 1.1 },
+    { max: 1, min: 2, type: "range" },
+    { min: 0, type: "range" }
+  ])("rejects an invalid stored answer tolerance: %o", (tolerance) => {
+    const malformed = emptyProgressExport("2026-06-03T00:00:00.000Z");
+
+    malformed.stores.drill_sessions = [{
+      id: "session-with-invalid-tolerance",
+      questionIds: ["question-1"],
+      questions: [{
+        answer: { tolerance, unit: "none", value: 1 },
+        category: "arithmetic",
+        difficulty: "beginner",
+        explanation: { short: "Add the values.", steps: ["1 + 0 = 1"] },
+        id: "question-1",
+        prompt: "What is 1 + 0?",
+        tags: ["addition"],
+        type: "numeric"
+      }],
+      responses: [],
+      settings: createDrillSettings({ questionCount: 1 }),
+      startedAt: "2026-06-03T00:00:00.000Z",
+      updatedAt: "2026-06-03T00:01:00.000Z"
+    } as never];
+
+    expect(validateLocalProgressImportPayload(malformed)).toEqual({
+      errors: ['Store "drill_sessions" record 1 has invalid or missing fields.'],
+      status: "invalid"
+    });
+  });
+
+  it("deep-validates every progress store", () => {
+    for (const storeName of progressStoreNames) {
+      const valid = emptyProgressExport("2026-06-03T00:00:00.000Z");
+      const malformed = {
+        ...valid,
+        stores: {
+          ...valid.stores,
+          [storeName]: [{ id: storeName === "user_settings" ? "default" : "bad" }]
+        }
+      };
+
+      expect(validateLocalProgressImportPayload(malformed)).toEqual({
+        errors: [`Store "${storeName}" record 1 has invalid or missing fields.`],
+        status: "invalid"
+      });
+    }
+  });
+
+  it("enforces byte and nested-string limits at their boundaries", () => {
+    const valid = emptyProgressExport("2026-06-02T00:00:00.000Z");
+    const story = {
+      action: "",
+      competency: "impact",
+      id: "fit-story-boundary",
+      kind: "fit_story",
+      reflection: "",
+      result: "",
+      situation: "x".repeat(localProgressImportLimits.maxStringLength),
+      task: "",
+      title: "",
+      updatedAt: "2026-06-02T00:00:00.000Z"
+    };
+    const atStringLimit = { ...valid, stores: { ...valid.stores, practice_records: [story] } };
+
+    expect(validateLocalProgressImportPayload(valid, { sourceBytes: localProgressImportLimits.maxFileBytes }).status).toBe("valid");
+    expect(
+      validateLocalProgressImportPayload(valid, { sourceBytes: localProgressImportLimits.maxFileBytes + 1 })
+    ).toEqual({
+      errors: [`Import file must be ${localProgressImportLimits.maxFileBytes} bytes or smaller.`],
+      status: "invalid"
+    });
+    expect(validateLocalProgressImportPayload(atStringLimit).status).toBe("valid");
+    expect(
+      validateLocalProgressImportPayload({
+        ...atStringLimit,
+        stores: {
+          ...atStringLimit.stores,
+          practice_records: [{ ...story, situation: `${story.situation}x` }]
+        }
+      })
+    ).toEqual({
+      errors: [`Import file strings must be ${localProgressImportLimits.maxStringLength} characters or shorter.`],
+      status: "invalid"
+    });
+  });
+
+  it("accepts count limits exactly and rejects one additional record", () => {
+    const valid = emptyProgressExport("2026-06-02T00:00:00.000Z");
+    const attempts = Array.from({ length: localProgressImportLimits.maxRecordsPerStore }, (_, index) => ({
+      completedAt: "2026-06-02T00:00:00.000Z",
+      id: `attempt-${index}`,
+      itemId: "item",
+      kind: "attempt",
+      maxScore: 10,
+      module: "questioning",
+      score: 5
+    }));
+    const exhibits = Array.from({ length: localProgressImportLimits.maxRecordsPerStore }, (_, index) => ({
+      exhibitId: "exhibit",
+      id: `exhibit-${index}`,
+      startedAt: "2026-06-02T00:00:00.000Z"
+    }));
+    const atLimits = {
+      ...valid,
+      stores: { ...valid.stores, exhibit_attempts: exhibits, practice_records: attempts }
+    };
+
+    expect(validateLocalProgressImportPayload(atLimits).status).toBe("valid");
+
+    const oneOverTotal = {
+      ...atLimits,
+      stores: {
+        ...atLimits.stores,
+        market_sizing_attempts: [
+          { id: "market-over", startedAt: "2026-06-02T00:00:00.000Z", templateId: "template" }
+        ]
+      }
+    };
+    const totalResult = validateLocalProgressImportPayload(oneOverTotal);
+
+    expect(totalResult.status).toBe("invalid");
+    expect(totalResult).toMatchObject({
+      errors: expect.arrayContaining([
+        `Import file must contain ${localProgressImportLimits.maxTotalRecords} records or fewer.`
+      ])
+    });
+
+    const oneOverStore = {
+      ...valid,
+      stores: {
+        ...valid.stores,
+        practice_records: [
+          ...attempts,
+          {
+            completedAt: "2026-06-02T00:00:00.000Z",
+            id: "attempt-over",
+            itemId: "item",
+            kind: "attempt",
+            maxScore: 10,
+            module: "questioning",
+            score: 5
+          }
+        ]
+      }
+    };
+    const storeResult = validateLocalProgressImportPayload(oneOverStore);
+
+    expect(storeResult.status).toBe("invalid");
+    expect(storeResult).toMatchObject({
+      errors: expect.arrayContaining([
+        `Store "practice_records" must contain ${localProgressImportLimits.maxRecordsPerStore} records or fewer.`
+      ])
+    });
+  });
+
+  it("normalizes supported legacy schema 3 exports as complete exports", () => {
+    const current = emptyProgressExport("2026-06-02T00:00:00.000Z");
+    const legacy = { ...current, privacyScope: undefined, schemaVersion: 3 };
+
+    expect(validateLocalProgressImportPayload(legacy)).toEqual({
+      exportData: { ...current, privacyScope: "complete" },
+      status: "valid"
+    });
+  });
 });
 
 function emptyProgressExport(exportedAt: string): LocalProgressExportV1 {
   return {
     app: localProgressExportAppId,
     exportedAt,
+    privacyScope: "standard",
     schemaVersion: localProgressExportSchemaVersion,
     stores: Object.fromEntries(
       progressStoreNames.map((storeName) => [storeName, []])

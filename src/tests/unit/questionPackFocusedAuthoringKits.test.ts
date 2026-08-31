@@ -52,13 +52,14 @@ describe("focused AI pack authoring kits", () => {
 
     expect(size).toBeGreaterThanOrEqual(10_000);
     expect(size).toBeLessThanOrEqual(20_000);
-    expect(guide).toContain("Kit revision: **2026-08-18**");
+    expect(guide).toContain("Kit revision: **2026-08-29**");
     expect(guide).toContain("math-drill-question-pack");
-    expect(guide).toContain("exactly one `json` fenced code block");
+    expect(guide).toContain("return exactly one complete JSON object");
     expect(guide).toContain("5 MiB (5,242,880 bytes)");
     expect(guide).toContain("10 to 25 ordinary questions");
     expect(guide).toContain("copy **all** validation errors");
-    expect(guide).toContain("Pair this file with exactly one of");
+    expect(guide).toContain("If this text is already inside a complete family bundle, stop here");
+    expect(guide).toContain("return concise clarification questions and no JSON");
   });
 
   it("provides one small module for every supported top-level kind", () => {
@@ -79,7 +80,7 @@ describe("focused AI pack authoring kits", () => {
       expect(existsSync(path), filename).toBe(true);
       const guide = readFileSync(path, "utf8");
       expect(Buffer.byteLength(guide), filename).toBeLessThanOrEqual(12_000);
-      expect(guide, filename).toContain("Kit revision: **2026-08-18**");
+      expect(guide, filename).toContain("Kit revision: **2026-08-29**");
       expect(guide, filename).toContain("math-drill-ai-pack-authoring-start.md");
       expect(guide, filename).toContain("math-drill-question-pack");
       expect(guide, filename).toContain(`Kind: \`${kind}\``);
@@ -87,6 +88,7 @@ describe("focused AI pack authoring kits", () => {
       expect(guide, filename).toContain(example);
       expect(guide, filename).toContain("binding output contract");
       expect(guide, filename).toContain("ready for app validation");
+      expect(guide, filename).toContain("complete");
     }
   });
 
@@ -106,5 +108,10 @@ describe("focused AI pack authoring kits", () => {
     expect(caseModule).toContain("Unranked attempts therefore have an 85-point maximum");
     expect(exhibitModule).toContain("do not embed an image");
     expect(exhibitModule).toContain("Do not rely on color alone");
+    expect(exhibitModule).toContain("does not parse or sort text dates");
+    expect(exhibitModule).toContain("does not seed, replace, or reset the running total");
+    expect(caseModule).toContain("acceptedHypothesisIds");
+    expect(caseModule).toContain("Questioning → Structure → Exhibit and math → Brainstorm → Synthesize");
+    expect(caseModule).toContain("cannot be the only alias signal");
   });
 });

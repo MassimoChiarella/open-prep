@@ -48,20 +48,56 @@ describe("weakness analysis", () => {
 
   it("selects the weakest supported tag within each category", () => {
     const [weakness] = rankWeaknesses([
-      response("revenue-1", "business_math", false, 30, ["revenue", "revenue"]),
-      response("cost-1", "business_math", false, 10, ["cost"]),
-      response("margin-1", "business_math", true, 10, ["margin"]),
-      response("margin-2", "business_math", false, 30, ["margin"])
+      ...Array.from({ length: 10 }, (_, index) =>
+        response(`revenue-${index}`, "business_math", false, 30, ["revenue", "revenue"])
+      ),
+      ...Array.from({ length: 10 }, (_, index) =>
+        response(`cost-${index}`, "business_math", index === 0, 10, ["cost"])
+      ),
+      ...Array.from({ length: 20 }, (_, index) =>
+        response(`margin-${index}`, "business_math", index % 2 === 0, 20, ["margin"])
+      )
     ]);
 
     expect(weakness.focusTag).toBe("revenue");
     expect(weakness.focusTagStatistics).toEqual({
       accuracy: 0,
-      attemptCount: 1,
+      attemptCount: 10,
       averageTimeSeconds: 30,
       correctCount: 0,
-      incorrectCount: 1
+      incorrectCount: 10
     });
+  });
+
+  it("does not let a one-sample miss outrank a sufficiently sampled weak tag", () => {
+    const [weakness] = rankWeaknesses([
+      response("one-revenue-miss", "business_math", false, 60, ["revenue"]),
+      ...Array.from({ length: 20 }, (_, index) =>
+        response(`cost-${index}`, "business_math", index % 2 === 0, 20, ["cost"])
+      )
+    ]);
+
+    expect(weakness.focusTag).toBe("cost");
+    expect(weakness.focusTagStatistics).toMatchObject({ accuracy: 0.5, attemptCount: 20 });
+  });
+
+  it("requires the shared evidence floor and breaks eligible tag ties deterministically", () => {
+    const belowFloor = rankWeaknesses(
+      Array.from({ length: 9 }, (_, index) =>
+        response(`revenue-${index}`, "business_math", false, 20, ["revenue"])
+      )
+    )[0];
+    const tied = rankWeaknesses([
+      ...Array.from({ length: 10 }, (_, index) =>
+        response(`subtraction-${index}`, "arithmetic", false, 20, ["subtraction"])
+      ),
+      ...Array.from({ length: 10 }, (_, index) =>
+        response(`addition-${index}`, "arithmetic", false, 20, ["addition"])
+      )
+    ])[0];
+
+    expect(belowFloor.focusTag).toBeUndefined();
+    expect(tied.focusTag).toBe("addition");
   });
 
   it("handles empty records and missing category or tag data", () => {

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { buildDrillSettingsQuery } from "@/features/drills/drillSettingsOptions";
 import { buildDrillSessionSeed, parseDrillSettingsQuery } from "@/features/drills/drillSessionQuery";
 import { createDrillSettings } from "@/features/drills/drillSettings";
+import { createDrillSession } from "@/features/drills/sessionFactory";
 
 describe("drill settings options", () => {
   it("serializes drill settings for the session route without external state", () => {
@@ -58,6 +59,25 @@ describe("drill settings options", () => {
     );
   });
 
+  it("varies normal session nonces while preserving explicit-seed reproducibility", () => {
+    const settings = createDrillSettings({
+      categories: ["arithmetic"],
+      questionCount: 5,
+      tags: ["addition", "subtraction"]
+    });
+    const firstSeed = buildDrillSessionSeed(settings, 0);
+    const secondSeed = buildDrillSessionSeed(settings, 1);
+    const firstQuestions = createDrillSession({ seed: firstSeed, settings }).questions;
+    const secondQuestions = createDrillSession({ seed: secondSeed, settings }).questions;
+
+    expect(firstSeed).not.toBe(secondSeed);
+    expect(firstQuestions).not.toEqual(secondQuestions);
+    expect(createDrillSession({ seed: firstSeed, settings }).questions).toEqual(firstQuestions);
+    expect(buildDrillSessionSeed(settings, "debug-seed")).toBe(
+      buildDrillSessionSeed(settings, "debug-seed")
+    );
+  });
+
   it("round-trips granular arithmetic, hints, units, and custom counts", () => {
     const settings = createDrillSettings({
       arithmeticAllowNegatives: true,
@@ -95,6 +115,33 @@ describe("drill settings options", () => {
   it("continues to accept legacy custom question counts", () => {
     expect(parseDrillSettingsQuery(new URLSearchParams({ count: "3" })).settings.questionCount).toBe(3);
     expect(parseDrillSettingsQuery(new URLSearchParams({ count: "8" })).settings.questionCount).toBe(8);
+  });
+
+  it("normalizes stale negative settings before creating remainder questions", () => {
+    const settings = createDrillSettings({
+      arithmeticAllowNegatives: true,
+      arithmeticDivisionMode: "remainder",
+      categories: ["arithmetic"],
+      questionCount: 5,
+      tags: ["division"]
+    });
+    const created = createDrillSession({ seed: "non-negative-remainders", settings });
+
+    expect(settings.arithmeticAllowNegatives).toBe(false);
+    expect(created.session.settings.arithmeticAllowNegatives).toBe(false);
+    expect(created.questions).toHaveLength(5);
+    expect(
+      created.questions
+        .flatMap((question) => Object.values(question.metadata?.variables ?? {}))
+        .every((value) => typeof value !== "number" || value >= 0)
+    ).toBe(true);
+
+    expect(createDrillSettings({
+      arithmeticAllowNegatives: true,
+      arithmeticDivisionMode: "remainder",
+      categories: ["arithmetic"],
+      tags: ["addition"]
+    }).arithmeticAllowNegatives).toBe(true);
   });
 
   it("round-trips case filters and Interview Math requirements", () => {

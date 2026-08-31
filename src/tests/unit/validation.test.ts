@@ -68,6 +68,50 @@ describe("validateAnswer", () => {
     });
   });
 
+  it("accepts canonical and legacy percent-value answers without changing magnitude", () => {
+    const canonical: AnswerSpec = { value: 0.2, unit: "percentage" };
+    const legacy: AnswerSpec = { value: 20, unit: "none" };
+
+    expect(validateAnswer("20%", canonical)).toMatchObject({ isCorrect: true, normalizedUserValue: 0.2 });
+    expect(validateAnswer("20", canonical, { selectedUnit: "percentage" })).toMatchObject({ isCorrect: true, normalizedUserValue: 0.2 });
+    expect(validateAnswer("20%", legacy)).toMatchObject({ isCorrect: true, normalizedUserValue: 20 });
+    expect(validateAnswer("20", legacy)).toMatchObject({ isCorrect: true, normalizedUserValue: 20 });
+    expect(validateAnswer("200%", canonical).isCorrect).toBe(false);
+  });
+
+  it("keeps typed and selected scale semantics coherent", () => {
+    const answer: AnswerSpec = { value: 12, unit: "m" };
+
+    expect(validateAnswer("12M", answer, { selectedUnit: "m" })).toMatchObject({
+      isCorrect: true,
+      normalizedUserValue: 12,
+      unitStatus: "compatible"
+    });
+    expect(validateAnswer("12", answer, { selectedUnit: "m" })).toMatchObject({ isCorrect: true });
+    expect(validateAnswer("0.012K", answer, { selectedUnit: "m" })).toMatchObject({
+      isCorrect: false,
+      unitStatus: "incompatible"
+    });
+  });
+
+  it("reports explicit, omitted, and incompatible unit states independently from numeric accuracy", () => {
+    const answer: AnswerSpec = { value: 1_000_000, unit: "currency" };
+
+    expect(validateAnswer("$1M", answer).unitStatus).toBe("compatible");
+    expect(validateAnswer("1M", answer).unitStatus).toBe("omitted");
+    expect(validateAnswer("1M", answer, { selectedUnit: "percentage" }).unitStatus).toBe("incompatible");
+    expect(validateAnswer("$1000000", answer, { selectedUnit: "percentage" })).toMatchObject({
+      isCorrect: false,
+      numericMatch: true,
+      unitStatus: "incompatible"
+    });
+  });
+
+  it("passes locale separator policy through validation", () => {
+    expect(validateAnswer("1.234", { value: 1_234 }, { locale: "de" }).isCorrect).toBe(true);
+    expect(validateAnswer("1.234", { value: 1_234 }, { locale: "en" }).isCorrect).toBe(false);
+  });
+
   it("classifies magnitude errors", () => {
     const answer: AnswerSpec = { value: 120_000_000, unit: "currency" };
 

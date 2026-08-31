@@ -81,6 +81,30 @@ describe("personal bests", () => {
       expect(findBest(bests, "drill_streak:beginner:untimed:streak")?.sourceId).toBe("session-a");
     }
   });
+
+  it("calculates the longest streak with the same injected local-calendar policy", () => {
+    const sessions = [
+      sessionAt("session-1", "2026-06-01T23:30:00.000Z"),
+      sessionAt("session-2", "2026-06-02T03:30:00.000Z")
+    ];
+    const torontoBests = createPersonalBestRecords({ sessions, timeZone: "America/Toronto" });
+    const utcBests = createPersonalBestRecords({ sessions, timeZone: "UTC" });
+
+    expect(findBest(torontoBests, "drill_streak:beginner:untimed:streak")?.value).toBe(1);
+    expect(findBest(utcBests, "drill_streak:beginner:untimed:streak")?.value).toBe(2);
+  });
+
+  it.each([1_000, 5_000, 10_000, 20_000])(
+    "preserves aggregate bests while appending %i sessions linearly",
+    (count) => {
+      const sessions = Array.from({ length: count }, (_, index) =>
+        session(`scale-session-${index}`, "2026-06-01", [response("question-1", true, 10)])
+      );
+      const bests = createPersonalBestRecords({ sessions });
+
+      expect(findBest(bests, "drill_streak:beginner:untimed:streak")?.value).toBe(1);
+    }
+  );
 });
 
 function session(id: string, date: string, responses: StoredDrillSession["responses"]): StoredDrillSession {
@@ -100,6 +124,14 @@ function session(id: string, date: string, responses: StoredDrillSession["respon
     settings: createDrillSettings({ categories: ["business_math"], difficulty: "beginner", questionCount: responses.length }),
     startedAt: `${date}T12:00:00.000Z`,
     updatedAt: `${date}T12:05:00.000Z`
+  };
+}
+
+function sessionAt(id: string, completedAt: string): StoredDrillSession {
+  return {
+    ...session(id, completedAt.slice(0, 10), [response("question-1", true, 10)]),
+    startedAt: completedAt,
+    updatedAt: completedAt
   };
 }
 

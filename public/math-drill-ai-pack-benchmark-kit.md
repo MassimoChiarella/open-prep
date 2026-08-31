@@ -1,8 +1,8 @@
-# Math Drill AI Pack Kit: Benchmarks
+# Open Prep AI Pack Kit: Benchmarks
 
-Kit revision: **2026-08-18**
+Kit revision: **2026-08-29**
 
-Pair this module with `math-drill-ai-pack-authoring-start.md`. It covers only `kind: "benchmark"` packages.
+This focused component is included inside the complete benchmark bundle. For advanced modular use, pair it with `math-drill-ai-pack-authoring-start.md`, the named schema, and the complete example below. It covers only `kind: "benchmark"` packages.
 
 ## Canonical contract
 
@@ -42,7 +42,7 @@ Use all four labels exactly once and in this semantic order:
 ]
 ```
 
-`minAccuracy` values are fractions from 0 to 1, must strictly increase in label order, and `needs_work` must start at 0. Thresholds need not match the example, but they should be attainable with the number of questions. For 10 questions, thresholds align naturally to 0.1 increments; avoid a threshold such as 0.83 that no raw score can produce.
+`minAccuracy` values are fractions from 0 to 1, must strictly increase in label order, and `needs_work` must start at 0. With `n` questions, the only attainable accuracies are `0/n, 1/n, ... n/n`. Choose thresholds from those exact outcomes and verify that at least one possible outcome selects every band. For 10 questions, thresholds align naturally to 0.1 increments; avoid a threshold such as 0.83 that no raw score can produce.
 
 The complete canonical example supplies the package envelope and nested question fields. Do not copy its publisher/license metadata unless accurate.
 
@@ -58,8 +58,9 @@ The complete canonical example supplies the package envelope and nested question
 ## Authoring quality check
 
 - Exactly four unique band labels exist, begin at zero, and strictly increase.
-- Every threshold is reachable or intentionally conservative for the question count.
+- Every threshold equals one attainable `correct / total` outcome, and every score band can be selected by at least one outcome.
 - Question IDs are unique across every benchmark in the package.
 - Nested answer units/scales and explanations match the expected typed value.
 - The session timer is realistic and is not confused with question target times.
+- A human has reviewed every answer, unit, tolerance, explanation, score band, factual claim, and permission to use the source.
 - The final response follows the Start Here binding output contract and is ready for app validation.

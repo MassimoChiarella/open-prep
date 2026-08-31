@@ -65,6 +65,7 @@ Publish the contents of `out/` to any static web host with these settings:
 - Preserve the generated directory structure and trailing-slash routes.
 - Serve `sw.js` from the origin root.
 - Avoid long-lived immutable caching for `sw.js`; the hashed files under `_next/static/` can be cached immutably.
+- Enable Brotli or gzip for HTML, JavaScript, CSS, JSON, SVG, and text responses.
 
 No runtime environment variables, API server, database, account system, or platform-specific launcher are required.
 
@@ -95,6 +96,8 @@ npm run e2e
 ```
 
 `npm run e2e` runs against the current `out/` artifact, so run `npm run build` first. `npm run check` runs the authoring validation plus every command above.
+
+`npm run build` also checks generated locale payloads and enforces dependency-free size budgets for the largest JavaScript chunk, per-route Brotli JavaScript, and the service-worker install precache. Run `npm run i18n:sync` after editing translation catalogs.
 
 ## Runtime Guarantees
 

@@ -59,6 +59,27 @@ describe("submitAnswer", () => {
     expect(result.validation.feedbackMessage).toBe("Check the calculation and try again.");
   });
 
+  it("never normalizes malformed numeric fragments into a persisted response value", () => {
+    const created = createDrillSession({
+      seed: "submit-malformed",
+      startedAt: "2026-06-02T00:00:00.000Z",
+      settings: { questionCount: 1 }
+    });
+
+    for (const rawInput of ["1 2", "1 usd 2", "$1$2", "1%2", "15%%", "1M%"]) {
+      const result = submitAnswer({
+        session: created.session,
+        question: created.questions[0],
+        rawInput,
+        timeTakenSeconds: 1
+      });
+
+      expect(result.response.isCorrect, rawInput).toBe(false);
+      expect(result.response.normalizedValue, rawInput).toBeUndefined();
+      expect(result.response.errorTypes, rawInput).toEqual(["arithmetic_error"]);
+    }
+  });
+
   it("records timeout responses without normalized values", () => {
     const created = createDrillSession({
       seed: "submit-timeout",

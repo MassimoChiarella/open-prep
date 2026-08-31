@@ -53,6 +53,37 @@ describe("full-case scoring", () => {
     expect(result.sections.every((section) => section.maxScore === 25)).toBe(true);
   });
 
+  it("accepts an alternate structuring hypothesis in v3 and legacy full cases", () => {
+    const alternate = brightCartFullCase.structure.hypotheses.find(
+      (hypothesis) => hypothesis.id !== brightCartFullCase.structure.acceptedHypothesisId
+    );
+    if (alternate === undefined) throw new Error("Expected an alternate hypothesis.");
+    const simulation = {
+      ...brightCartFullCase,
+      structure: {
+        ...brightCartFullCase.structure,
+        acceptedHypothesisIds: [brightCartFullCase.structure.acceptedHypothesisId, alternate.id]
+      }
+    };
+    const submission = {
+      ...perfectSubmission(),
+      structure: {
+        ...perfectSubmission().structure,
+        hypothesisId: alternate.id
+      }
+    };
+
+    const v3 = scoreFullCaseSimulation(simulation, submission);
+    const { questioning: _questioning, ...legacySimulation } = simulation;
+    const { questioning: _submission, ...legacySubmission } = submission;
+    const v2 = scoreFullCaseSimulation(legacySimulation, legacySubmission);
+
+    expect(v3.structure).toMatchObject({ hypothesisAccepted: true, hypothesisPoints: 35 });
+    expect(v3.totalScore).toBe(100);
+    expect(v2.structure).toMatchObject({ hypothesisAccepted: true, hypothesisPoints: 35 });
+    expect(v2.totalScore).toBe(100);
+  });
+
   it("rejects a simulation without the configured numeric question", () => {
     expect(() =>
       getFullCaseCalculationQuestion({

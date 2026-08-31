@@ -8,16 +8,16 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Consulting Mental Math Practice",
-    template: "%s | Consulting Mental Math Practice"
+    default: "Open Prep",
+    template: "%s | Open Prep"
   },
-  applicationName: "Consulting Mental Math Practice",
-  description: "A private, local-first consulting mental math practice web app.",
+  applicationName: "Open Prep",
+  description: "Open-source, accessible, local-first consulting interview preparation with offline support.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Mental Math Practice"
+    title: "Open Prep"
   },
   formatDetection: {
     telephone: false
@@ -28,19 +28,36 @@ export const metadata: Metadata = {
         rel: "icon",
         type: "image/svg+xml",
         url: "/icons/app-icon.svg"
+      },
+      {
+        rel: "icon",
+        sizes: "192x192",
+        type: "image/png",
+        url: "/icons/app-icon-192.png"
+      },
+      {
+        rel: "icon",
+        sizes: "512x512",
+        type: "image/png",
+        url: "/icons/app-icon-512.png"
       }
     ],
     apple: [
       {
         rel: "apple-touch-icon",
-        url: "/icons/maskable-icon.svg"
+        sizes: "180x180",
+        type: "image/png",
+        url: "/icons/apple-touch-icon-180.png"
       }
     ]
   }
 };
 
 export const viewport: Viewport = {
-  themeColor: "#20211f"
+  themeColor: [
+    { color: "#f2f2ee", media: "(prefers-color-scheme: light)" },
+    { color: "#20211f", media: "(prefers-color-scheme: dark)" }
+  ]
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

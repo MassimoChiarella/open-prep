@@ -43,7 +43,14 @@ describe("LocalSettingsView", () => {
     const importConfirmation = within(localData).getByLabelText(
       "I understand this replaces local progress on this device."
     );
+    const includePrivateStories = within(localData).getByLabelText(
+      "Include saved Fit/PEI story text in this export."
+    );
 
+    expect(localData).toHaveTextContent("Saved Fit/PEI stories can contain private personal text");
+    expect(includePrivateStories).not.toBeChecked();
+    fireEvent.click(includePrivateStories);
+    expect(includePrivateStories).toBeChecked();
     expect(importConfirmation).toBeDisabled();
     expect(within(localData).getByRole("button", { name: "Import And Replace" })).toBeDisabled();
 

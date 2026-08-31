@@ -22,8 +22,10 @@ import type {
 import type { ExhibitQuestionPackRecord } from "@/lib/storage/appStorageTypes";
 import {
   boundedArray,
+  createQuestionPackValidationErrors,
   enumValue,
   finiteNumber,
+  finalizeQuestionPackValidationErrors,
   hasOwn,
   idArray,
   idValue,
@@ -131,14 +133,14 @@ export function validateExhibitQuestionPackPayload(
   payload: unknown,
   importedAt = new Date().toISOString()
 ): ExhibitQuestionPackValidationResult {
-  const errors: string[] = [];
+  const errors = createQuestionPackValidationErrors();
   const envelope = readQuestionPackEnvelope(payload, "exhibit", ["datasets"], errors);
-  if (envelope === undefined) return { status: "invalid", errors };
+  if (envelope === undefined) return { status: "invalid", errors: finalizeQuestionPackValidationErrors(errors) };
   const { value, id, packVersion, title, description, publisher, license } = envelope;
   const datasets = readDatasets(value.datasets, errors);
 
   if (errors.length > 0 || id === undefined || packVersion === undefined || title === undefined || datasets === undefined) {
-    return { status: "invalid", errors };
+    return { status: "invalid", errors: finalizeQuestionPackValidationErrors(errors) };
   }
   return {
     status: "valid",

@@ -100,6 +100,24 @@ describe("DrillSettingsForm", () => {
     expect(startParams.get("feedbackMode")).toBe("end_of_session");
   });
 
+  it("disables infeasible presets and clamps the audited 24-item filter", async () => {
+    render(<DrillSettingsForm />);
+
+    fireEvent.click(screen.getByLabelText("Growth and compounding"));
+    fireEvent.click(screen.getByLabelText("Arithmetic"));
+    fireEvent.click(screen.getByRole("button", { name: "Expert" }));
+    openDisclosure("drill-skill-options");
+    fireEvent.click(screen.getByRole("button", { name: "Compound growth" }));
+
+    await waitFor(() => expect(screen.getByLabelText("Custom question count")).toHaveAttribute("max", "24"));
+    expect(within(screen.getByLabelText("Preset")).getByRole("option", { name: "30" })).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("Custom question count"), { target: { value: "30" } });
+
+    expect(screen.getByLabelText("Custom question count")).toHaveValue(24);
+    expect(searchParamsForLink("Start Drill").get("count")).toBe("24");
+  });
+
   it("serializes granular arithmetic controls, hints, units, and a custom count", () => {
     render(<DrillSettingsForm />);
 
@@ -135,6 +153,42 @@ describe("DrillSettingsForm", () => {
       unit: "m"
     });
     expect(screen.getByLabelText("Preset")).toHaveValue("custom");
+  });
+
+  it("clears and disables negative values for remainder division across reloads", async () => {
+    const storage = new MemoryAppStorage();
+    const view = render(<DrillSettingsForm storageFactory={() => storage} />);
+
+    expect(await screen.findByText(/Built-in defaults loaded/)).toBeInTheDocument();
+
+    openDisclosure("drill-arithmetic-options");
+    const negativeValues = screen.getByLabelText("Include negative values");
+    fireEvent.click(negativeValues);
+    expect(negativeValues).toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remainder" }));
+
+    expect(negativeValues).toBeDisabled();
+    expect(negativeValues).not.toBeChecked();
+    expect(screen.getByText("Remainder division uses non-negative whole-number operands.")).toBeInTheDocument();
+    expect(searchParamsForLink("Start Drill").get("negatives")).toBe("0");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save as my defaults" }));
+    await waitFor(() => expect(storage.peekAll("user_settings")[0]?.settings).toMatchObject({
+      arithmeticAllowNegatives: false,
+      arithmeticDivisionMode: "remainder"
+    }));
+
+    view.unmount();
+    render(<DrillSettingsForm storageFactory={() => storage} />);
+    openDisclosure("drill-arithmetic-options");
+    await waitFor(() => expect(screen.getByRole("button", { name: "Remainder" })).toHaveAttribute("aria-pressed", "true"));
+    expect(screen.getByLabelText("Include negative values")).toBeDisabled();
+    expect(screen.getByLabelText("Include negative values")).not.toBeChecked();
+
+    fireEvent.click(screen.getByRole("button", { name: "Exact" }));
+    expect(screen.getByLabelText("Include negative values")).toBeEnabled();
+    expect(screen.getByLabelText("Include negative values")).not.toBeChecked();
   });
 
   it("configures a compatible case-only Interview Math session", () => {

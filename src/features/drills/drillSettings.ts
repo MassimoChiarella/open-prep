@@ -9,10 +9,24 @@ export const defaultDrillSettings: DrillSettings = {
 };
 
 export function createDrillSettings(overrides: Partial<DrillSettings> = {}): DrillSettings {
-  return {
+  const settings: DrillSettings = {
     ...defaultDrillSettings,
     ...overrides,
     categories: overrides.categories ?? defaultDrillSettings.categories,
     tags: overrides.tags
   };
+
+  if (hasActiveRemainderDivision(settings)) {
+    settings.arithmeticAllowNegatives = false;
+  }
+
+  return settings;
+}
+
+export function hasActiveRemainderDivision(
+  settings: Pick<DrillSettings, "arithmeticDivisionMode" | "categories" | "tags">
+): boolean {
+  return settings.arithmeticDivisionMode === "remainder" &&
+    settings.categories.includes("arithmetic") &&
+    (settings.tags === undefined || settings.tags.includes("division"));
 }

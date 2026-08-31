@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { createProgressSummary, loadProgressSummary } from "@/features/progress/progressAggregation";
 import type { Question, SkillCategory, SkillTag, UserResponse } from "@/lib/domain";
@@ -154,18 +154,60 @@ describe("progress aggregation", () => {
       sessions: [
         storedSession({ id: "s1", date: "2026-06-01" }),
         storedSession({ id: "s2", date: "2026-06-02" })
-      ]
+      ],
+      timeZone: "UTC"
     });
     const stale = createProgressSummary({
       now: "2026-06-05T12:00:00.000Z",
       sessions: [
         storedSession({ id: "s1", date: "2026-06-01" }),
         storedSession({ id: "s2", date: "2026-06-02" })
-      ]
+      ],
+      timeZone: "UTC"
     });
 
     expect(active.dashboard.currentStreakDays).toBe(2);
     expect(stale.dashboard.currentStreakDays).toBe(0);
+  });
+
+  it("uses the injected local calendar across midnight and Toronto daylight-saving boundaries", () => {
+    const sameTorontoDay = createProgressSummary({
+      now: "2026-06-02T16:00:00.000Z",
+      sessions: [
+        storedSessionAt("same-day-1", "2026-06-01T23:30:00.000Z"),
+        storedSessionAt("same-day-2", "2026-06-02T03:30:00.000Z")
+      ],
+      timeZone: "America/Toronto"
+    });
+    const sameTimestampsInUtc = createProgressSummary({
+      now: "2026-06-02T16:00:00.000Z",
+      sessions: [
+        storedSessionAt("utc-day-1", "2026-06-01T23:30:00.000Z"),
+        storedSessionAt("utc-day-2", "2026-06-02T03:30:00.000Z")
+      ],
+      timeZone: "UTC"
+    });
+    const acrossTorontoMidnight = createProgressSummary({
+      now: "2026-06-02T16:00:00.000Z",
+      sessions: [
+        storedSessionAt("midnight-1", "2026-06-02T03:30:00.000Z"),
+        storedSessionAt("midnight-2", "2026-06-02T04:30:00.000Z")
+      ],
+      timeZone: "America/Toronto"
+    });
+    const acrossDstStart = createProgressSummary({
+      now: "2026-03-09T16:00:00.000Z",
+      sessions: [
+        storedSessionAt("dst-1", "2026-03-08T04:30:00.000Z"),
+        storedSessionAt("dst-2", "2026-03-08T07:30:00.000Z")
+      ],
+      timeZone: "America/Toronto"
+    });
+
+    expect(sameTorontoDay.dashboard.currentStreakDays).toBe(1);
+    expect(sameTimestampsInUtc.dashboard.currentStreakDays).toBe(2);
+    expect(acrossTorontoMidnight.dashboard.currentStreakDays).toBe(2);
+    expect(acrossDstStart.dashboard.currentStreakDays).toBe(2);
   });
 
   it("returns an empty summary when no local records exist", () => {
@@ -311,6 +353,69 @@ describe("progress aggregation", () => {
       ])
     });
   });
+
+  it("folds every benchmark result through bounded index pages without a full-store read", async () => {
+    const storage = new MemoryAppStorage();
+    const latestCompletedAt = "2026-06-02T12:00:00.000Z";
+    const history = Array.from({ length: 1_000 }, (_, index) =>
+      benchmarkRecord(
+        `history-${String(index).padStart(4, "0")}`,
+        index % 100,
+        new Date(Date.UTC(2026, 0, 1, 0, 0, index)).toISOString()
+      )
+    );
+    history.push(
+      benchmarkRecord("tie-z", 200, latestCompletedAt),
+      benchmarkRecord("tie-a", 200, latestCompletedAt)
+    );
+
+    await Promise.all(history.map((record) => storage.put("benchmark_results", record)));
+    const getAllSpy = vi.spyOn(storage, "getAll");
+    const getPageSpy = vi.spyOn(storage, "getPage");
+
+    const summary = await loadProgressSummary(storage);
+
+    expect(summary.personalBests).toContainEqual(
+      expect.objectContaining({
+        id: "benchmark:beginner:score",
+        sourceId: "tie-a",
+        value: 200
+      })
+    );
+    expect(getAllSpy.mock.calls.some(([storeName]) => storeName === "benchmark_results")).toBe(false);
+    expect(getPageSpy).toHaveBeenCalledTimes(3);
+    expect(getPageSpy.mock.calls.every(([, , options]) => options.limit === 500)).toBe(true);
+  });
+
+  it.each([1_000, 5_000, 10_000, 20_000])(
+    "keeps exact linear progress aggregates within the 20k budget at %i responses",
+    (count) => {
+      const responses = Array.from({ length: count }, (_, index) => ({
+        ...response({
+          isCorrect: index % 2 === 0,
+          questionId: `question-${index}`,
+          timeTakenSeconds: 10 + (index % 5)
+        }),
+        category: "arithmetic" as const,
+        id: `session-${index}:question-${index}`,
+        sessionId: `session-${index}`,
+        tags: ["addition" as const]
+      }));
+      const startedAt = performance.now();
+
+      const summary = createProgressSummary({ responses, sessions: [] });
+      const elapsedMs = performance.now() - startedAt;
+
+      expect(summary.dashboard).toMatchObject({
+        averageTimeSeconds: 12,
+        overallAccuracy: 0.5,
+        totalQuestionsAnswered: count
+      });
+      expect(summary.categoryPerformance[0]?.questionCount).toBe(count);
+      expect(summary.skillPerformance[0]?.questionCount).toBe(count);
+      expect(elapsedMs).toBeLessThan(2_500);
+    }
+  );
 });
 
 function storedSession({
@@ -352,6 +457,17 @@ function storedSession({
     },
     startedAt: `${date}T00:00:00.000Z`,
     updatedAt: `${date}T00:00:30.000Z`
+  };
+}
+
+function storedSessionAt(id: string, completedAt: string): StoredDrillSession {
+  const session = storedSession({ date: completedAt.slice(0, 10), id });
+
+  return {
+    ...session,
+    endedAt: completedAt,
+    startedAt: completedAt,
+    updatedAt: completedAt
   };
 }
 

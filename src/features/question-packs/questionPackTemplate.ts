@@ -7,18 +7,23 @@ import type {
   InterviewMathEquationOption,
   InterviewMathInterpretationOption,
   QuestionTemplate,
+  RoundingRule,
   SkillCategory,
   SkillTag,
+  ToleranceSpec,
   UnitType,
   VariableSpec
 } from "@/lib/domain";
-import { evaluateFormulaExpression } from "@/lib/math/formulaEvaluator";
+import { compileFormulaExpression } from "@/lib/math/formulaEvaluator";
 import { createSeededRandom } from "@/lib/random/seededRandom";
 import type { GeneratedTemplateQuestionPackRecord } from "@/lib/storage/appStorageTypes";
 import {
   booleanValue,
+  buildRepresentativeSamples,
+  createQuestionPackValidationErrors,
   enumValue,
   finiteNumber,
+  finalizeQuestionPackValidationErrors,
   hasOwn,
   idValue,
   identifier,
@@ -27,6 +32,7 @@ import {
   objectValue,
   optionalText,
   readQuestionPackEnvelope,
+  representativeValues,
   rejectUnknown,
   text,
   textArray,
@@ -40,8 +46,6 @@ const maxVariableValues = 100;
 const maxFormulaLength = 500;
 const maxPromptLength = 2_000;
 const maxTextLength = 1_000;
-// ponytail: representative probes are capped to keep imports responsive; raise this only if real packs evade it.
-const maxFormulaValidationSamples = 256;
 
 const categories = [
   "arithmetic",
@@ -117,6 +121,7 @@ const units = [
   "m",
   "b"
 ] as const satisfies readonly UnitType[];
+const roundingRules = ["exact", "nearest_whole", "nearest_0_1", "nearest_1k", "nearest_1m"] as const satisfies readonly RoundingRule[];
 
 export type GeneratedTemplatePackValidationResult =
   | { status: "valid"; pack: GeneratedTemplateQuestionPackRecord }
@@ -126,14 +131,14 @@ export function validateGeneratedTemplateQuestionPackPayload(
   payload: unknown,
   importedAt = new Date().toISOString()
 ): GeneratedTemplatePackValidationResult {
-  const errors: string[] = [];
+  const errors = createQuestionPackValidationErrors();
   const envelope = readQuestionPackEnvelope(payload, "generated_template", ["templates"], errors);
-  if (envelope === undefined) return { status: "invalid", errors };
+  if (envelope === undefined) return { status: "invalid", errors: finalizeQuestionPackValidationErrors(errors) };
   const { value, id, packVersion, title, description, publisher, license } = envelope;
   const templates = readTemplates(value.templates, errors);
 
   if (errors.length > 0 || id === undefined || packVersion === undefined || title === undefined || templates === undefined) {
-    return { status: "invalid", errors };
+    return { status: "invalid", errors: finalizeQuestionPackValidationErrors(errors) };
   }
 
   return {
@@ -192,6 +197,8 @@ function readTemplate(value: unknown, path: string, errors: string[]): QuestionT
     "variables",
     "formula",
     "answerUnit",
+    "tolerance",
+    "roundingRule",
     "explanationTemplate",
     "caseStyle"
   ], path, errors);
@@ -206,6 +213,12 @@ function readTemplate(value: unknown, path: string, errors: string[]): QuestionT
   const formula = readFormula(item.formula, variables, `${path}.formula`, errors);
   const answerUnit = hasOwn(item, "answerUnit")
     ? enumValue(item.answerUnit, units, `${path}.answerUnit`, errors)
+    : undefined;
+  const tolerance = hasOwn(item, "tolerance")
+    ? readTolerance(item.tolerance, `${path}.tolerance`, errors)
+    : undefined;
+  const roundingRule = hasOwn(item, "roundingRule")
+    ? enumValue(item.roundingRule, roundingRules, `${path}.roundingRule`, errors)
     : undefined;
   const explanationTemplate = readExplanationTemplate(item.explanationTemplate, `${path}.explanationTemplate`, errors);
   const caseStyle = hasOwn(item, "caseStyle")
@@ -233,6 +246,8 @@ function readTemplate(value: unknown, path: string, errors: string[]): QuestionT
     variables,
     formula,
     ...(answerUnit === undefined ? {} : { answerUnit }),
+    ...(tolerance === undefined ? {} : { tolerance }),
+    ...(roundingRule === undefined ? {} : { roundingRule }),
     explanationTemplate,
     ...(caseStyle === undefined ? {} : { caseStyle })
   };
@@ -250,6 +265,38 @@ function readTemplate(value: unknown, path: string, errors: string[]): QuestionT
     }
   }
   return template;
+}
+
+function readTolerance(value: unknown, path: string, errors: string[]): ToleranceSpec | undefined {
+  const item = objectValue(value, path, errors);
+  if (item === undefined) return undefined;
+  rejectUnknown(item, ["type", "value", "min", "max"], path, errors);
+  const before = errors.length;
+  const type = enumValue(item.type, ["absolute", "percentage", "range"] as const, `${path}.type`, errors);
+  if (type === undefined) return undefined;
+
+  if (type === "range") {
+    if (hasOwn(item, "value")) errors.push(`${path}.value is not allowed for range tolerance.`);
+    const min = finiteNumber(item.min, `${path}.min`, errors);
+    const max = finiteNumber(item.max, `${path}.max`, errors);
+    if (min !== undefined && max !== undefined && min > max) errors.push(`${path}.min must be <= max.`);
+    return errors.length > before || min === undefined || max === undefined
+      ? undefined
+      : { type, min, max };
+  }
+
+  if (hasOwn(item, "min") || hasOwn(item, "max")) {
+    errors.push(`${path}.min and ${path}.max are only allowed for range tolerance.`);
+  }
+  const amount = finiteNumber(item.value, `${path}.value`, errors);
+  if (amount !== undefined && amount < 0) errors.push(`${path}.value must be non-negative.`);
+  if (type === "percentage" && amount !== undefined && amount > 1) errors.push(`${path}.value must be at most 1.`);
+  if (type === "absolute" && amount !== undefined && amount > 1_000_000_000) {
+    errors.push(`${path}.value must be at most 1000000000.`);
+  }
+  return errors.length > before || amount === undefined
+    ? undefined
+    : { type, value: amount };
 }
 
 function readVariables(value: unknown, path: string, errors: string[]): Record<string, VariableSpec> | undefined {
@@ -539,10 +586,12 @@ function validateRepresentativeFormulaResults(template: QuestionTemplate, path: 
     representativeVariableValues(spec)
   ] as const);
   const samples = buildRepresentativeSamples(entries);
+  let evaluateFormula: ReturnType<typeof compileFormulaExpression> | undefined;
 
   for (const variables of samples) {
     try {
-      evaluateFormulaExpression(template.formula.expression, variables);
+      evaluateFormula ??= compileFormulaExpression(template.formula.expression);
+      evaluateFormula(variables);
     } catch (error) {
       const values = Object.entries(variables).map(([name, value]) => `${name}=${value}`).join(", ");
       errors.push(
@@ -571,70 +620,6 @@ function representativeVariableValues(spec: VariableSpec): number[] {
     valueAt(Math.floor(stepCount / 2)),
     valueAt(closestToZeroIndex)
   ]);
-}
-
-function representativeValues(values: readonly number[]): number[] {
-  const sorted = [...values].sort((left, right) => left - right);
-  const closestToZero = sorted.reduce((closest, value) =>
-    Math.abs(value) < Math.abs(closest) ? value : closest
-  );
-
-  return Array.from(new Set([
-    sorted[0],
-    sorted.at(-1) as number,
-    sorted[Math.floor((sorted.length - 1) / 2)],
-    closestToZero
-  ]));
-}
-
-function buildRepresentativeSamples(
-  entries: readonly (readonly [string, readonly number[]])[]
-): Record<string, number>[] {
-  const samples: Record<string, number>[] = [];
-  const seen = new Set<string>();
-  const add = (values: readonly number[]) => {
-    if (samples.length >= maxFormulaValidationSamples) return;
-    const key = values.join("\u0000");
-    if (seen.has(key)) return;
-    seen.add(key);
-    samples.push(Object.fromEntries(entries.map(([name], index) => [name, values[index]])));
-  };
-  const base = entries.map(([, values]) => values[0]);
-  const representativeCombinationCount = entries.reduce(
-    (total, [, values]) => Math.min(maxFormulaValidationSamples + 1, total * values.length),
-    1
-  );
-
-  if (representativeCombinationCount <= maxFormulaValidationSamples) {
-    const visit = (index: number, values: number[]) => {
-      if (index === entries.length) {
-        add(values);
-        return;
-      }
-      for (const value of entries[index][1]) visit(index + 1, [...values, value]);
-    };
-    visit(0, []);
-    return samples;
-  }
-
-  add(base);
-  const widestCandidateSet = Math.max(...entries.map(([, values]) => values.length));
-  for (let candidateIndex = 1; candidateIndex < widestCandidateSet; candidateIndex += 1) {
-    add(entries.map(([, values]) => values[Math.min(candidateIndex, values.length - 1)]));
-  }
-  entries.forEach(([, values], variableIndex) => {
-    values.forEach((value) => add(base.map((baseValue, index) => index === variableIndex ? value : baseValue)));
-  });
-  for (let left = 0; left < entries.length && samples.length < maxFormulaValidationSamples; left += 1) {
-    for (let right = left + 1; right < entries.length && samples.length < maxFormulaValidationSamples; right += 1) {
-      for (const leftValue of entries[left][1]) {
-        for (const rightValue of entries[right][1]) {
-          add(base.map((value, index) => index === left ? leftValue : index === right ? rightValue : value));
-        }
-      }
-    }
-  }
-  return samples;
 }
 
 function errorMessage(error: unknown): string {

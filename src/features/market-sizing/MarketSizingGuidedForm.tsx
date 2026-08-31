@@ -41,7 +41,7 @@ export function MarketSizingGuidedForm({
   storageFactory = createIndexedDbAppStorage,
   templates
 }: MarketSizingGuidedFormProps) {
-  const { formatNumber: formatLocaleNumber, t } = useI18n();
+  const { formatNumber: formatLocaleNumber, locale, t } = useI18n();
   const [selectedTemplateId, setSelectedTemplateId] = useState(() => templates[0]?.id ?? "");
   const startedAtRef = useRef(new Date().toISOString());
   const selectedTemplate = useMemo(
@@ -62,10 +62,11 @@ export function MarketSizingGuidedForm({
         ? undefined
         : evaluateMarketSizingDraft({
             finalAnswer: draft.finalAnswer,
+            locale,
             stepValues: draft.stepValues,
             template: selectedTemplate
           }),
-    [draft.finalAnswer, draft.stepValues, selectedTemplate]
+    [draft.finalAnswer, draft.stepValues, locale, selectedTemplate]
   );
   const assumptionEvaluationByStepId = useMemo(
     () => new Map((evaluation?.assumptionEvaluations ?? []).map((item) => [item.stepId, item])),
@@ -179,10 +180,10 @@ export function MarketSizingGuidedForm({
             </select>
           </label>
 
-          <div className="grid min-w-0 gap-2 border-y border-ink/15 bg-paper px-3 py-3">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 border-y border-ink/15 bg-paper px-3 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-ink/65">{t("Prompt")}</p>
-            <p className="break-words text-sm leading-6 text-ink">
-              <bdi className="block" dir="auto">{selectedTemplate.prompt}</bdi>
+            <p className="min-w-0 text-sm leading-6 text-ink [overflow-wrap:anywhere]">
+              <bdi className="block min-w-0 max-w-full" dir="auto">{selectedTemplate.prompt}</bdi>
             </p>
           </div>
         </section>
@@ -216,8 +217,8 @@ export function MarketSizingGuidedForm({
           />
 
           {activeStage === 0 ? (
-            <section className="grid gap-4" data-testid="market-sizing-assumptions-section">
-              <div className="flex flex-wrap items-center justify-between gap-3">
+            <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4" data-testid="market-sizing-assumptions-section">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
                 <div className="grid gap-1">
                   <p className="text-sm font-semibold uppercase tracking-wide text-coral">{t("Step 1 of 4")}</p>
                   <h2 className="text-xl font-semibold text-ink" ref={stageHeadingRef} tabIndex={-1}>
@@ -246,7 +247,7 @@ export function MarketSizingGuidedForm({
                 </p>
               ) : null}
 
-              <div className="grid gap-4">
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
                 {selectedTemplate.inputSteps.map((step) => (
                   <MarketSizingStepField
                     key={step.id}
@@ -353,10 +354,10 @@ export function MarketSizingGuidedForm({
                 </h2>
               </div>
               <ReviewResultPanel evaluation={evaluation} template={selectedTemplate} />
-              <div className="grid gap-2 rounded-md bg-saffron/10 px-3 py-3">
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 rounded-md bg-saffron/10 px-3 py-3">
                 <p className="text-xs font-semibold uppercase tracking-wide text-ink/65">{t("Sense-check")}</p>
-                <p className="text-sm leading-6 text-ink/80">
-                  <bdi className="block" dir="auto">{selectedTemplate.senseCheck.prompt}</bdi>
+                <p className="min-w-0 text-sm leading-6 text-ink/80 [overflow-wrap:anywhere]">
+                  <bdi className="block min-w-0 max-w-full" dir="auto">{selectedTemplate.senseCheck.prompt}</bdi>
                 </p>
               </div>
               <label className="grid min-w-0 gap-2 text-sm font-medium text-ink/80">
@@ -476,10 +477,10 @@ export function MarketSizingGuidedForm({
             />
           </dl>
 
-          <div className="grid min-w-0 gap-2 rounded-md bg-saffron/10 px-3 py-3">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 rounded-md bg-saffron/10 px-3 py-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-ink/65">{t("Sense-check")}</p>
-            <p className="break-words text-sm leading-6 text-ink/80">
-              <bdi className="block" dir="auto">{selectedTemplate.senseCheck.prompt}</bdi>
+            <p className="min-w-0 text-sm leading-6 text-ink/80 [overflow-wrap:anywhere]">
+              <bdi className="block min-w-0 max-w-full" dir="auto">{selectedTemplate.senseCheck.prompt}</bdi>
             </p>
           </div>
         </div>
@@ -587,16 +588,16 @@ function MarketSizingStepField({
 }) {
   const { t } = useI18n();
   const commonClasses =
-    "h-11 rounded-md border border-ink/50 bg-white px-3 text-base text-ink outline-none transition placeholder:text-ink/65 focus:border-teal";
+    "h-11 w-full min-w-0 max-w-full rounded-md border border-ink/50 bg-white px-3 text-base text-ink outline-none transition placeholder:text-ink/65 focus:border-teal";
   const showNumericFeedback = evaluation !== undefined && evaluation.status !== "not_applicable";
 
   return (
     <label
-      className="grid gap-3 border border-ink/15 px-3 py-3 text-sm font-medium text-ink/80 transition-colors hover:border-teal/50 focus-within:border-teal"
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border border-ink/15 px-3 py-3 text-sm font-medium text-ink/80 transition-colors hover:border-teal/50 focus-within:border-teal"
       data-testid={`market-sizing-field-${step.id}`}
     >
-      <span className="flex flex-wrap items-center gap-2">
-        <bdi dir="auto">{step.label}</bdi>
+      <span className="flex min-w-0 flex-wrap items-center gap-2">
+        <bdi className="min-w-0 [overflow-wrap:anywhere]" dir="auto">{step.label}</bdi>
         {step.required ? (
           <span className="rounded-md bg-mint px-2 py-0.5 text-xs font-semibold text-teal">{t("Required")}</span>
         ) : null}
@@ -604,7 +605,7 @@ function MarketSizingStepField({
       </span>
       {fieldForStep(step, value, onChange, commonClasses, t)}
       {step.helperText !== undefined ? (
-        <bdi className="text-xs leading-5 text-ink/65" dir="auto">{step.helperText}</bdi>
+        <bdi className="min-w-0 text-xs leading-5 text-ink/65 [overflow-wrap:anywhere]" dir="auto">{step.helperText}</bdi>
       ) : null}
       {showNumericFeedback ? <AssumptionRangeFeedback evaluation={evaluation} step={step} /> : null}
     </label>
@@ -625,19 +626,19 @@ function RequiredProgressPanel({
     <section
       aria-atomic="true"
       aria-live="polite"
-      className="grid gap-2 border-y border-ink/15 bg-paper px-3 py-3"
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 border-y border-ink/15 bg-paper px-3 py-3"
       data-testid="market-sizing-required-progress"
       id="market-sizing-required-progress"
       role="status"
     >
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
         <p className="text-sm font-semibold text-ink">{t("Required Assumption Progress")}</p>
         <span className="text-sm font-semibold text-ink/70">{t("{percent} complete", { percent: formatPercent(progressRatio) })}</span>
       </div>
       <div className="h-2 overflow-hidden rounded-full bg-white" aria-hidden="true">
         <div className="h-full rounded-full bg-teal" style={{ width: `${progressPercent}%` }} />
       </div>
-      <p className="text-xs leading-5 text-ink/65">
+      <p className="min-w-0 text-xs leading-5 text-ink/65 [overflow-wrap:anywhere]">
         {nextMissing === undefined
           ? t("All required assumptions are filled.")
           : t("Next required field: {field}.", { field: nextMissing })}
@@ -706,8 +707,8 @@ function CalculationPanel({
             const value = step.variableName === undefined ? undefined : evaluation?.variables[step.variableName];
 
             return (
-              <div className="border-s-2 border-teal/30 bg-white px-3 py-2" key={step.id}>
-                <dt className="text-xs font-semibold uppercase tracking-wide text-ink/65">
+              <div className="min-w-0 border-s-2 border-teal/30 bg-white px-3 py-2" key={step.id}>
+                <dt className="min-w-0 text-xs font-semibold uppercase tracking-wide text-ink/65 [overflow-wrap:anywhere]">
                   <bdi dir="auto">{step.label}</bdi>
                 </dt>
                 <dd className="mt-1 text-sm font-semibold text-ink">
@@ -864,20 +865,38 @@ function fieldForStep(
   }
 
   if (step.inputKind === "choice") {
+    const selectedValue = stringValue(value);
+    const selectedOption = (step.options ?? []).find((option) => option.id === selectedValue);
+    const selectedChoiceDescriptionId = `market-sizing-selected-choice-${step.id}`;
+
     return (
-      <select
-        aria-label={step.label}
-        className={className}
-        onChange={(event) => onChange(event.currentTarget.value)}
-        value={stringValue(value)}
-      >
-        <option value="">{t("Select option")}</option>
-        {(step.options ?? []).map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.label}
-          </option>
-        ))}
-      </select>
+      <span className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
+        <select
+          aria-describedby={selectedOption === undefined ? undefined : selectedChoiceDescriptionId}
+          aria-label={step.label}
+          className={className}
+          onChange={(event) => onChange(event.currentTarget.value)}
+          value={selectedValue}
+        >
+          <option value="">{t("Select option")}</option>
+          {(step.options ?? []).map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        {selectedOption === undefined ? null : (
+          <span
+            aria-live="polite"
+            className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1 border-s-2 border-teal/30 bg-paper px-3 py-2 text-sm text-ink/80 [overflow-wrap:anywhere]"
+            data-testid={selectedChoiceDescriptionId}
+            id={selectedChoiceDescriptionId}
+          >
+            <span className="text-xs font-semibold uppercase tracking-wide text-teal">{t("Selected")}</span>
+            <bdi className="min-w-0 max-w-full font-medium" dir="auto">{selectedOption.label}</bdi>
+          </span>
+        )}
+      </span>
     );
   }
 
@@ -885,7 +904,7 @@ function fieldForStep(
     return (
       <textarea
         aria-label={step.label}
-        className="min-h-24 rounded-md border border-ink/50 bg-white px-3 py-2 text-base text-ink outline-none transition placeholder:text-ink/65 focus:border-teal"
+        className="min-h-24 w-full min-w-0 max-w-full rounded-md border border-ink/50 bg-white px-3 py-2 text-base text-ink outline-none transition placeholder:text-ink/65 focus:border-teal"
         onChange={(event) => onChange(event.currentTarget.value)}
         value={stringValue(value)}
       />
@@ -897,8 +916,9 @@ function fieldForStep(
       <input
         aria-label={step.label}
         className={className}
-        inputMode="decimal"
+        inputMode={step.inputKind === "integer" ? "numeric" : "decimal"}
         onChange={(event) => onChange(event.currentTarget.value)}
+        step={step.inputKind === "integer" ? 1 : "any"}
         type="number"
         value={stringValue(value)}
       />

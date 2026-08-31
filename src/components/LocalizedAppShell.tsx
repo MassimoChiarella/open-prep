@@ -30,10 +30,10 @@ function AppChrome({ children }: { children: ReactNode }) {
           <div className="grid gap-2 py-1 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-6 sm:py-4">
             <div className="min-w-0">
               <p className="hidden text-[0.6875rem] font-semibold uppercase tracking-[0.14em] text-coral sm:block">
-                {t("Local-first practice")}
+                {t("Consulting interview preparation")}
               </p>
               <p className="text-lg font-semibold leading-6 tracking-tight text-ink sm:mt-0.5 sm:text-xl sm:leading-7">
-                {t("Consulting Math Practice")}
+                Open Prep
               </p>
             </div>
             <div className="flex min-w-0 items-center justify-between gap-2 sm:ml-auto sm:flex-wrap sm:justify-end">

@@ -96,15 +96,15 @@ function BenchmarkOptionCard({
   return (
     <article
       className={[
-        "flex h-full flex-col border border-t-2 bg-white p-5 transition-colors",
+        "flex h-full min-w-0 flex-col border border-t-2 bg-white p-5 transition-colors",
         isSelected ? "border-teal border-t-teal" : "border-ink/15 border-t-ink/25 hover:border-ink/30"
       ].join(" ")}
       data-testid={`benchmark-card-${benchmark.id}`}
     >
-      <h2 className="text-xl font-semibold text-ink">{t(benchmark.title)}</h2>
-      <p className="mt-2 text-sm leading-6 text-ink/65 xl:min-h-[4.5rem]">{t(benchmark.description)}</p>
+      <h2 className="min-w-0 text-xl font-semibold text-ink [overflow-wrap:anywhere]">{t(benchmark.title)}</h2>
+      <p className="mt-2 min-w-0 text-sm leading-6 text-ink/65 [overflow-wrap:anywhere] xl:min-h-[4.5rem]">{t(benchmark.description)}</p>
 
-      <dl className="mb-5 mt-5 grid grid-cols-2 gap-3 text-sm">
+      <dl className="mb-5 mt-5 grid grid-cols-1 gap-3 text-sm min-[360px]:grid-cols-2">
         <BenchmarkStat label={t("Difficulty")} value={t(formatLabel(benchmark.difficulty))} />
         <BenchmarkStat label={t("Time")} value={formatDuration(benchmark.settings.totalSessionSeconds ?? 0)} />
         <BenchmarkStat
@@ -135,9 +135,9 @@ function BenchmarkOptionCard({
 
 function BenchmarkStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-s-2 border-ink/15 bg-paper px-3 py-2">
-      <dt className="text-xs font-semibold uppercase tracking-wide text-ink/65">{label}</dt>
-      <dd className="mt-1 font-semibold text-ink">{value}</dd>
+    <div className="min-w-0 border-s-2 border-ink/15 bg-paper px-2 py-2">
+      <dt className="min-w-0 text-xs font-semibold uppercase tracking-wide text-ink/65 [overflow-wrap:anywhere]">{label}</dt>
+      <dd className="mt-1 min-w-0 text-[13px] font-semibold leading-5 text-ink [overflow-wrap:anywhere]">{value}</dd>
     </div>
   );
 }
@@ -158,12 +158,12 @@ function BenchmarkConfirmation({
       data-testid="benchmark-confirmation"
       id="benchmark-confirmation"
     >
-      <div>
+      <div className="min-w-0">
         <p className="text-xs font-semibold uppercase tracking-wide text-teal">{t("Selected benchmark")}</p>
         <h2 className="mt-1 text-xl font-semibold text-ink" id="benchmark-confirmation-heading">
           {t("Ready to begin?")}
         </h2>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-ink/65">
+        <p className="mt-2 min-w-0 max-w-3xl text-sm leading-6 text-ink/65 [overflow-wrap:anywhere]">
           {t("{title} is a locked {duration} run with {count} questions. Hints stay off and feedback appears after the final question.", {
             count: formatNumber(benchmark.questions.length),
             duration: formatDuration(benchmark.settings.totalSessionSeconds ?? 0),

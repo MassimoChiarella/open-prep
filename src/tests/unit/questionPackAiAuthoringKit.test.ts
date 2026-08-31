@@ -36,9 +36,11 @@ describe("AI pack authoring kit", () => {
     expect(kit).toContain("exactly one JSON code block");
     expect(kit).toContain("schemaVersion 3");
     expect(kit).toContain("questioningPrompts");
-    expect(kit).toContain("Authoring kit revision: 2026-08-18");
+    expect(kit).toContain("Authoring kit revision: 2026-08-29");
     expect(kit).toContain("not an AI-output target");
     expect(kit).toContain("webapp's import preview and runtime semantic validator are the authoritative acceptance gate");
+    expect(kit).toContain("return exactly one complete JSON object");
+    expect(kit).toContain("return concise clarification questions and no JSON");
 
     for (const kind of [
       "fixed_numeric",
@@ -60,6 +62,11 @@ describe("AI pack authoring kit", () => {
     expect(kit).toContain("renders the authored table or chart");
     expect(kit).toContain("An unranked attempt has an 85-point maximum");
     expect(kit).toContain("about 8 pie categories");
+    expect(kit).toContain("does not parse or sort them");
+    expect(kit).toContain("do not seed, change, or reset the running total");
+    expect(kit).toContain("acceptedHypothesisIds");
+    expect(kit).toContain("Questioning → Structure → Exhibit and math → Brainstorm → Synthesize");
+    expect(kit).toContain("cannot be the only alias signal");
   });
 
   it.each(embeddedAssetNames)("embeds the canonical %s asset", (assetName) => {

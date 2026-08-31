@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("theme follows the system and explicit choices persist without flashing back", async ({ page }) => {
+test("theme follows the system and explicit choices persist without flashing back", { tag: "@browser-smoke" }, async ({ page }) => {
   await page.emulateMedia({ colorScheme: "dark" });
   await page.goto("/settings");
 

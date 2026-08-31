@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
 
-import { scoreCaseQuestioning, type CaseQuestioningPrompt } from "@/features/case-practice/questioning/questioningScoring";
+import { questioningPrompts } from "@/data/casePractice/questioningPrompts";
+import {
+  analyzeCaseQuestioningReferences,
+  isCompleteCaseQuestion,
+  scoreCaseQuestioning,
+  type CaseQuestioningPrompt
+} from "@/features/case-practice/questioning/questioningScoring";
 
 const prompt: CaseQuestioningPrompt = {
   concepts: [
@@ -52,6 +58,89 @@ const prompt: CaseQuestioningPrompt = {
 };
 
 describe("case questioning scoring", () => {
+  it("does not award rubric credit to isolated concept aliases", () => {
+    const auditedPrompt = questioningPrompts[0];
+    const score = scoreCaseQuestioning(auditedPrompt, {
+      includeRanking: false,
+      questions: [
+        { id: "q1", text: "price" },
+        { id: "q2", text: "ingredients" },
+        { id: "q3", text: "shipping" }
+      ]
+    });
+
+    expect(score.coverage.score).toBe(0);
+    expect(score.relevance.score).toBe(0);
+    expect(score.relevance.recognizedQuestionIds).toEqual([]);
+    expect(score.totalScore).toBe(10);
+    expect(score.maxScore).toBe(85);
+    expect(score.totalScore / score.maxScore).toBeLessThan(0.8);
+  });
+
+  it("requires question structure and content beyond a copied alias list", () => {
+    const score = scoreCaseQuestioning(prompt, {
+      includeRanking: false,
+      questions: [
+        { id: "q1", text: "revenue, price, volume" },
+        { id: "q2", text: "Which costs increased?" },
+        { id: "q3", text: "Which region is affected?" }
+      ]
+    });
+
+    expect(score.matches[0]?.intentId).toBeUndefined();
+    expect(score.matches[0]?.matchedConceptIds).toEqual(["revenue", "price", "volume"]);
+    expect(score.relevance.unrecognizedQuestionIds).toContain("q1");
+    expect(isCompleteCaseQuestion("price", "en")).toBe(false);
+    expect(isCompleteCaseQuestion("¿Cambiaron los precios por región?", "es")).toBe(true);
+    expect(isCompleteCaseQuestion("هل تغيرت تكاليف الشحن؟", "ar")).toBe(true);
+    expect(isCompleteCaseQuestion("价格是否因地区而变化？", "zh-Hans")).toBe(true);
+    expect(isCompleteCaseQuestion("価格は地域によって変化しましたか？", "ja")).toBe(true);
+    expect(isCompleteCaseQuestion("क्या क्षेत्र के अनुसार कीमत बदली?", "hi")).toBe(true);
+    expect(isCompleteCaseQuestion("?!", "en")).toBe(false);
+  });
+
+  it("accepts the 300-character boundary and rejects longer direct submissions", () => {
+    const exactBoundary = `${"Did sales change because of price or volume? "}${"evidence ".repeat(40)}`.slice(0, 300);
+    const submission = {
+      includeRanking: false,
+      questions: [
+        { id: "q1", text: exactBoundary },
+        { id: "q2", text: "Which costs increased?" },
+        { id: "q3", text: "Which region is affected?" }
+      ]
+    } as const;
+
+    expect(exactBoundary).toHaveLength(300);
+    expect(scoreCaseQuestioning(prompt, submission).matches[0]?.intentId).toBe("revenue_drivers");
+    expect(() => scoreCaseQuestioning(prompt, {
+      ...submission,
+      questions: [{ id: "q1", text: `${exactBoundary}x` }, ...submission.questions.slice(1)]
+    })).toThrow("300 characters or fewer");
+  });
+
+  it("flags references that rely only on normalized-away question words", () => {
+    const timingPrompt: CaseQuestioningPrompt = {
+      ...prompt,
+      concepts: [{ id: "timing", label: "Timing", aliases: ["when", "timing", "cohort", "tenure"] }],
+      intents: [{
+        feedback: "Locate the change in time.",
+        id: "timing",
+        label: "Timing",
+        priority: true,
+        referenceQuestions: ["When did churn rise?", "How does churn vary by cohort or tenure?"],
+        requiredConceptGroups: [["timing"]],
+        weight: 1
+      }]
+    };
+
+    expect(analyzeCaseQuestioningReferences(timingPrompt)).toEqual([{
+      intentId: "timing",
+      intentIndex: 0,
+      matchedConceptIds: [],
+      referenceIndex: 0
+    }]);
+  });
+
   it("matches paraphrases through concepts, references, and typo-tolerant aliases", () => {
     const score = scoreCaseQuestioning(prompt, {
       includeRanking: false,
@@ -67,6 +156,24 @@ describe("case questioning scoring", () => {
     expect(score.distinctness.duplicateQuestionIds).toEqual([]);
     expect(score.totalScore).toBe(score.maxScore);
     expect(score.maxScore).toBe(85);
+  });
+
+  it("keeps prepared scoring and reference review byte-for-byte deterministic per call", () => {
+    const submission = {
+      includeRanking: false,
+      questions: [
+        { id: "q1", text: "Did sales change because of price or volume?" },
+        { id: "q2", text: "Which costs increased?" },
+        { id: "q3", text: "Which region is affected?" }
+      ]
+    } as const;
+    const promptBefore = JSON.stringify(prompt);
+    const firstScore = JSON.stringify(scoreCaseQuestioning(prompt, submission));
+    const firstReview = JSON.stringify(analyzeCaseQuestioningReferences(prompt));
+
+    expect(JSON.stringify(scoreCaseQuestioning(prompt, submission))).toBe(firstScore);
+    expect(JSON.stringify(analyzeCaseQuestioningReferences(prompt))).toBe(firstReview);
+    expect(JSON.stringify(prompt)).toBe(promptBefore);
   });
 
   it("does not treat a generic question as semantically relevant", () => {
@@ -114,6 +221,119 @@ describe("case questioning scoring", () => {
 
     expect(score.distinctness.duplicateQuestionIds).toEqual(["q2"]);
     expect(score.coverage.matchedIntentIds).toEqual(["revenue_drivers", "cost_drivers"]);
+  });
+
+  it("keeps the earlier multilingual paraphrase as the canonical question", () => {
+    const multilingualPrompt: CaseQuestioningPrompt = {
+      concepts: [
+        { id: "decline", label: "Caída", aliases: ["caída", "caidas", "decline"] },
+        { id: "region", label: "Región", aliases: ["región", "regiones", "region"] },
+        { id: "format", label: "Tipo de película", aliases: ["tipo de película", "tipos de peliculas", "film type"] },
+        { id: "cost", label: "Costos", aliases: ["costo", "costos", "cost"] }
+      ],
+      id: "multilingual_scope",
+      industry: "Entretenimiento",
+      intents: [
+        {
+          feedback: "Ubique la caída por región y tipo de película.",
+          id: "scope_decline",
+          label: "Alcance de la caída",
+          priority: true,
+          referenceQuestions: ["¿La caída está concentrada en ciertas regiones o tipos de película?"],
+          requiredConceptGroups: [["decline"], ["region"], ["format"]],
+          supportingConceptIds: ["region", "format"],
+          weight: 60
+        },
+        {
+          feedback: "Aclare los costos.",
+          id: "cost_driver",
+          label: "Costos",
+          priority: false,
+          referenceQuestions: ["¿Qué costos aumentaron?"],
+          requiredConceptGroups: [["cost"]],
+          weight: 40
+        }
+      ],
+      language: "es",
+      maximumQuestions: 5,
+      minimumQuestions: 3,
+      mode: "diagnostic",
+      objective: "Diagnosticar una caída de audiencia.",
+      situation: "La audiencia bajó.",
+      title: "Caída de audiencia"
+    };
+    const score = scoreCaseQuestioning(multilingualPrompt, {
+      includeRanking: false,
+      questions: [
+        { id: "q1", text: "¿La caída está concentrada en ciertas regiones o tipos de película?" },
+        { id: "q2", text: "En qué regiones o tipos de peliculas se concentra el problema?" },
+        { id: "q3", text: "¿Qué costos aumentaron?" }
+      ]
+    });
+
+    expect(score.matches[1]).toMatchObject({
+      duplicateOfQuestionId: "q1",
+      intentId: "scope_decline"
+    });
+    expect(score.distinctness.duplicateQuestionIds).toEqual(["q2"]);
+  });
+
+  it("normalizes diacritics and ordinary singular/plural variants conservatively", () => {
+    const score = scoreCaseQuestioning(prompt, {
+      includeRanking: false,
+      questions: [
+        { id: "q1", text: "Which cost increased in the region?" },
+        { id: "q2", text: "Which costs increased in the région?" },
+        { id: "q3", text: "Did sales change because of price or volume?" }
+      ]
+    });
+
+    expect(score.matches[1]?.duplicateOfQuestionId).toBe("q1");
+  });
+
+  it("keeps substantively distinct questions under one intent separate", () => {
+    const score = scoreCaseQuestioning(prompt, {
+      includeRanking: false,
+      questions: [
+        { id: "q1", text: "Have prices changed?" },
+        { id: "q2", text: "Did customer volume change?" },
+        { id: "q3", text: "Which costs increased?" }
+      ]
+    });
+
+    expect(score.matches[0]?.intentId).toBe("revenue_drivers");
+    expect(score.matches[1]?.intentId).toBe("revenue_drivers");
+    expect(score.distinctness.duplicateQuestionIds).toEqual([]);
+  });
+
+  it("does not collapse distinct cost drivers with similar wording", () => {
+    const score = scoreCaseQuestioning(prompt, {
+      includeRanking: false,
+      questions: [
+        { id: "q1", text: "Which fixed costs increased?" },
+        { id: "q2", text: "Which variable costs decreased?" },
+        { id: "q3", text: "Which region is affected?" }
+      ]
+    });
+
+    expect(score.matches[0]?.intentId).toBe("cost_drivers");
+    expect(score.matches[1]?.intentId).toBe("cost_drivers");
+    expect(score.distinctness.duplicateQuestionIds).toEqual([]);
+  });
+
+  it("keeps acquisition and retention cost questions distinct", () => {
+    const score = scoreCaseQuestioning(prompt, {
+      includeRanking: false,
+      questions: [
+        { id: "q1", text: "What is customer acquisition cost?" },
+        { id: "q2", text: "What is customer retention cost?" },
+        { id: "q3", text: "Which region is affected?" }
+      ]
+    });
+
+    expect(score.matches[0]?.intentId).toBe("cost_drivers");
+    expect(score.matches[1]?.intentId).toBe("cost_drivers");
+    expect(score.distinctness.duplicateQuestionIds).toEqual([]);
   });
 
   it("adds prioritization only when the learner enables ranking", () => {

@@ -11,8 +11,26 @@ export interface ExhibitChartDatum {
   values: Record<string, number>;
 }
 
-export const lightExhibitChartColors = ["#3c423e", "#744732", "#8a5f35", "#3f5f8a", "#5f6b32", "#6b4d87"] as const;
-export const darkExhibitChartColors = ["#a9cbb8", "#e29a7b", "#e6b86b", "#8fb8ef", "#b4cd7c", "#c7a0e3"] as const;
+export const lightExhibitChartColors = [
+  "#3c423e",
+  "#744732",
+  "#8a5f35",
+  "#3f5f8a",
+  "#5f6b32",
+  "#6b4d87",
+  "#426b6f",
+  "#8a3f62"
+] as const;
+export const darkExhibitChartColors = [
+  "#a9cbb8",
+  "#e29a7b",
+  "#e6b86b",
+  "#8fb8ef",
+  "#b4cd7c",
+  "#c7a0e3",
+  "#74c7cf",
+  "#e18ab3"
+] as const;
 export const exhibitChartColors = lightExhibitChartColors.map(
   (_, index) => `rgb(var(--color-chart-${index + 1}))`
 );

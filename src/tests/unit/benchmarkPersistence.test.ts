@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import { benchmarkTests } from "@/data/questionBank/benchmarkTests";
 import {
-  loadBenchmarkResults,
+  loadBenchmarkHistorySnapshot,
+  loadBenchmarkResultPage,
   persistBenchmarkResult,
 } from "@/features/benchmarks/benchmarkPersistence";
 import { createBenchmarkSession } from "@/features/benchmarks/benchmarkSession";
@@ -11,31 +12,25 @@ import { submitAnswer } from "@/features/drills/answerSubmission";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("benchmark result persistence", () => {
-  it("persists complete records and loads them newest first", async () => {
+  it("persists complete records", async () => {
     const storage = new MemoryAppStorage();
-    const older = createCompletedBenchmarkSession("beginner", "2026-06-02T12:00:00.000Z");
-    const newer = createCompletedBenchmarkSession("beginner", "2026-06-03T12:00:00.000Z");
-    const other = createCompletedBenchmarkSession("intermediate", "2026-06-04T12:00:00.000Z");
+    const completed = createCompletedBenchmarkSession("beginner", "2026-06-02T12:00:00.000Z");
 
-    await persistBenchmarkResult({ benchmarkId: "beginner", session: older.session, storage });
-    await persistBenchmarkResult({ benchmarkId: "beginner", session: newer.session, storage });
-    await persistBenchmarkResult({ benchmarkId: "intermediate", session: other.session, storage });
+    const persisted = await persistBenchmarkResult({
+      benchmarkId: "beginner",
+      session: completed.session,
+      storage
+    });
 
-    const beginnerResults = await loadBenchmarkResults(storage, "beginner");
-
-    expect(beginnerResults.map((result) => result.sessionId)).toEqual([
-      newer.session.id,
-      older.session.id
-    ]);
-    expect(beginnerResults[1]).toMatchObject({
+    expect(await storage.get("benchmark_results", persisted.id)).toEqual(persisted);
+    expect(persisted).toMatchObject({
       benchmarkId: "beginner",
       completedAt: "2026-06-02T12:00:10.000Z",
       difficulty: "beginner",
-      id: `benchmark-result-beginner-${older.session.id}`,
-      score: older.session.score,
-      sessionId: older.session.id
+      id: `benchmark-result-beginner-${completed.session.id}`,
+      score: completed.session.score,
+      sessionId: completed.session.id
     });
-    expect(await storage.getAll("benchmark_results")).toHaveLength(3);
   });
 
   it("rejects incomplete benchmark sessions", async () => {
@@ -51,6 +46,81 @@ describe("benchmark result persistence", () => {
       })
     ).rejects.toThrow("Only completed benchmark sessions can be persisted.");
   });
+
+  it("pages large histories without duplicates and builds compact summaries", async () => {
+    const storage = new MemoryAppStorage();
+    const completed = createCompletedBenchmarkSession("beginner", "2026-06-02T12:00:00.000Z");
+
+    await storage.mutate(
+      Array.from({ length: 160 }, (_, index) => ({
+        storeName: "benchmark_results" as const,
+        type: "put" as const,
+        value: {
+          benchmarkId: index % 2 === 0 ? "beginner" : "intermediate",
+          completedAt: "2026-06-02T12:00:10.000Z",
+          difficulty: "beginner" as const,
+          id: `result-${String(index).padStart(3, "0")}`,
+          score: completed.session.score!,
+          sessionId: `session-${index}`
+        }
+      }))
+    );
+
+    const snapshot = await loadBenchmarkHistorySnapshot(storage);
+
+    expect(snapshot.totalCount).toBe(160);
+    expect(snapshot.summaryRecordCount).toBe(160);
+    expect(snapshot.results).toHaveLength(75);
+    expect(snapshot.results[0]?.id).toBe("result-159");
+    expect(snapshot.results.at(-1)?.id).toBe("result-085");
+    expect(snapshot.aggregates.map((aggregate) => [aggregate.benchmarkId, aggregate.attempts])).toEqual([
+      ["intermediate", 80],
+      ["beginner", 80]
+    ]);
+    expect(snapshot.aggregates.find(({ benchmarkId }) => benchmarkId === "beginner")).toMatchObject({
+      best: { id: "result-000" },
+      bestScore: { id: "result-000" },
+      latest: { id: "result-158" },
+      previous: { id: "result-156" }
+    });
+
+    const secondPage = await loadBenchmarkResultPage(storage, snapshot.continuationKey);
+    const combinedIds = [...snapshot.results, ...secondPage.results].map((result) => result.id);
+
+    expect(secondPage.results).toHaveLength(75);
+    expect(secondPage.results[0]?.id).toBe("result-084");
+    expect(new Set(combinedIds).size).toBe(150);
+  });
+
+  it("keeps compact benchmark summaries exact beyond the 20,000-record performance target", async () => {
+    const storage = new MemoryAppStorage();
+    const completed = createCompletedBenchmarkSession("beginner", "2026-06-02T12:00:00.000Z");
+
+    await storage.mutate(
+      Array.from({ length: 20_001 }, (_, index) => ({
+        storeName: "benchmark_results" as const,
+        type: "put" as const,
+        value: {
+          benchmarkId: "beginner",
+          completedAt: new Date(Date.UTC(2026, 0, 1) + index).toISOString(),
+          difficulty: "beginner" as const,
+          id: `target-result-${String(index).padStart(5, "0")}`,
+          score: completed.session.score!,
+          sessionId: `target-session-${index}`
+        }
+      }))
+    );
+
+    const snapshot = await loadBenchmarkHistorySnapshot(storage);
+
+    expect(snapshot.summaryRecordCount).toBe(20_001);
+    expect(snapshot.aggregates).toHaveLength(1);
+    expect(snapshot.aggregates[0]).toMatchObject({
+      attempts: 20_001,
+      latest: { id: "target-result-20000" },
+      previous: { id: "target-result-19999" }
+    });
+  }, 30_000);
 });
 
 function createCompletedBenchmarkSession(

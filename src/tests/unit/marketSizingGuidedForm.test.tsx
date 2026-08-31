@@ -1,8 +1,9 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { marketSizingTemplates } from "@/data/marketSizing/marketSizingTemplates";
 import { MarketSizingGuidedForm } from "@/features/market-sizing/MarketSizingGuidedForm";
+import type { MarketSizingTemplate } from "@/features/market-sizing/marketSizingTypes";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("MarketSizingGuidedForm", () => {
@@ -20,6 +21,61 @@ describe("MarketSizingGuidedForm", () => {
     expect(screen.getByText(marketSizingTemplates[0].prompt)).toHaveAttribute("dir", "auto");
     expect(screen.getByText(marketSizingTemplates[0].description)).toHaveAttribute("dir", "auto");
     expect(screen.getAllByText(marketSizingTemplates[0].senseCheck.prompt)[0]).toHaveAttribute("dir", "auto");
+  });
+
+  it("uses whole-number controls and blocks fractional integer assumptions", () => {
+    render(<MarketSizingGuidedForm templates={marketSizingTemplates} />);
+
+    const population = screen.getByLabelText("Population");
+    const cupsPerDay = screen.getByLabelText("Purchased cups per drinker per day");
+    expect(population).toHaveAttribute("inputmode", "numeric");
+    expect(population).toHaveAttribute("step", "1");
+    expect(cupsPerDay).toHaveAttribute("inputmode", "decimal");
+    expect(cupsPerDay).toHaveAttribute("step", "any");
+
+    fireEvent.change(population, { target: { value: "3000000.5" } });
+    fireEvent.change(screen.getByLabelText("Percent who buy prepared coffee"), { target: { value: "60%" } });
+    fireEvent.change(cupsPerDay, { target: { value: "1" } });
+    fireEvent.change(screen.getByLabelText("Purchase days per year"), { target: { value: "365" } });
+    fireEvent.change(screen.getByLabelText("Average price per cup"), { target: { value: "$4" } });
+    fireEvent.click(screen.getByLabelText("Sense-check completed"));
+
+    expect(screen.getByTestId("market-sizing-range-population")).toHaveTextContent("Enter a whole number.");
+    expect(screen.getByRole("button", { name: "Continue to Calculation" })).toBeDisabled();
+  });
+
+  it("exposes the complete selected choice in an adjacent wrapping description", () => {
+    const selectedLabel = "C".repeat(500);
+    const choiceTemplate: MarketSizingTemplate = {
+      ...marketSizingTemplates[0],
+      inputSteps: [
+        {
+          id: "customer_segment",
+          inputKind: "choice",
+          label: "Customer segment",
+          options: [{ id: "enterprise", label: selectedLabel }],
+          required: false
+        },
+        ...marketSizingTemplates[0].inputSteps
+      ]
+    };
+
+    render(<MarketSizingGuidedForm templates={[choiceTemplate]} />);
+
+    const choice = screen.getByLabelText("Customer segment");
+    expect(screen.queryByTestId("market-sizing-selected-choice-customer_segment")).not.toBeInTheDocument();
+
+    fireEvent.change(choice, { target: { value: "enterprise" } });
+
+    const selectedChoice = screen.getByTestId("market-sizing-selected-choice-customer_segment");
+    expect(choice).toHaveValue("enterprise");
+    expect(choice).toHaveAttribute("aria-describedby", selectedChoice.id);
+    expect(selectedChoice).toHaveClass("min-w-0", "grid-cols-[minmax(0,1fr)]", "[overflow-wrap:anywhere]");
+    expect(within(selectedChoice).getByText(selectedLabel)).toHaveAttribute("dir", "auto");
+
+    fireEvent.change(choice, { target: { value: "" } });
+    expect(choice).not.toHaveAttribute("aria-describedby");
+    expect(screen.queryByTestId("market-sizing-selected-choice-customer_segment")).not.toBeInTheDocument();
   });
 
   it("scores and persists a completed guided estimate", async () => {

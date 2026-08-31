@@ -134,12 +134,12 @@ function QuestionReviewCard({
   return (
     <li
       className={[
-        "border border-s-2 px-3 py-4 text-sm leading-6",
+        "min-w-0 border border-s-2 px-3 py-4 text-sm leading-6",
         status.tone === "success" ? "border-teal/20 bg-mint/60" : "border-coral/25 bg-coral/10"
       ].join(" ")}
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <p className="font-medium text-ink">
+        <p className="min-w-0 flex-1 font-medium text-ink [overflow-wrap:anywhere]">
           <span className="font-semibold text-teal">{formatLocaleNumber(index + 1)}.</span> {result.prompt}
         </p>
         <span
@@ -190,7 +190,7 @@ function QuestionReviewCard({
           {t("Worked solution")}
           <span aria-hidden="true" className="text-lg text-teal transition-transform motion-reduce:transition-none group-open:rotate-45">+</span>
         </summary>
-        <div className="mt-2 grid gap-2 text-sm leading-6 text-ink/75">
+        <div className="mt-2 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 text-sm leading-6 text-ink/75 [overflow-wrap:anywhere]">
           <p>{result.explanation.short}</p>
           {result.explanation.steps.map((step) => (
             <p key={step}>{step}</p>

@@ -95,7 +95,7 @@ export function StructuringPractice({
 
       <section
         aria-labelledby="case-prompt-heading"
-        className="grid gap-5 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
+        className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
       >
         <label className={uiText.controlLabel} htmlFor="structuring-prompt">
           {t("Practice case")}
@@ -114,19 +114,20 @@ export function StructuringPractice({
           ))}
         </select>
 
-        <div className="grid gap-2 border-t border-ink/10 pt-5">
-          <p className={cx(uiText.eyebrow, "text-xs text-teal")}>{prompt.industry}</p>
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 border-t border-ink/10 pt-5">
+          <p className={cx(uiText.eyebrow, "min-w-0 text-xs text-teal [overflow-wrap:anywhere]")}>{prompt.industry}</p>
           <h2 className={uiText.sectionTitle} id="case-prompt-heading">
             {prompt.title}
           </h2>
-          <p className={uiText.bodyStrong}>{prompt.situation}</p>
-          <p className={uiText.body}>
-            <strong className="text-ink">{t("Your task:")}</strong> {prompt.objective}
+          <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{prompt.situation}</p>
+          <p className={cx(uiText.body, "min-w-0")}>
+            <strong className="text-ink">{t("Your task:")}</strong>{" "}
+            <span className="[overflow-wrap:anywhere]">{prompt.objective}</span>
           </p>
         </div>
       </section>
 
-      <form className="grid gap-8" onSubmit={submitStructure}>
+      <form className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-8" onSubmit={submitStructure}>
         <StructuringResponseFields
           branchIds={branchIds}
           disabled={result !== null}
@@ -174,19 +175,19 @@ export function StructuringResponseFields({
   const branchLimitReached = branchIds.length >= prompt.maxBranches;
 
   return (
-    <div className="grid gap-8">
-      <fieldset className="grid gap-4" disabled={disabled}>
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-8">
+      <fieldset className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4" disabled={disabled}>
         <legend className={uiText.sectionTitle}>{t("1. Choose an initial hypothesis")}</legend>
         <p className={uiText.body}>
           {t("Pick the most useful proposition to test first. It should focus the analysis without assuming the answer.")}
         </p>
-        <div className="grid gap-3 lg:grid-cols-3">
+        <div className="grid min-w-0 gap-3 lg:grid-cols-3">
           {prompt.hypotheses.map((hypothesis) => {
             const selected = hypothesisId === hypothesis.id;
             return (
               <label
                 className={cx(
-                  "flex min-h-28 cursor-pointer gap-3 border bg-white p-4 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-teal",
+                  "flex min-h-28 min-w-0 cursor-pointer gap-3 border bg-white p-4 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-teal",
                   selected ? "border-teal bg-mint/40" : "border-ink/15 hover:border-teal hover:bg-mint/20"
                 )}
                 key={hypothesis.id}
@@ -200,14 +201,14 @@ export function StructuringResponseFields({
                   type="radio"
                   value={hypothesis.id}
                 />
-                <span className={uiText.bodyStrong}>{hypothesis.label}</span>
+                <span className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{hypothesis.label}</span>
               </label>
             );
           })}
         </div>
       </fieldset>
 
-      <fieldset aria-describedby={`${prompt.id}-branch-limit`} className="grid gap-4" disabled={disabled}>
+      <fieldset aria-describedby={`${prompt.id}-branch-limit`} className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4" disabled={disabled}>
         <legend className={uiText.sectionTitle}>{t("2. Build the issue tree")}</legend>
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className={uiText.body} id={`${prompt.id}-branch-limit`}>
@@ -222,14 +223,14 @@ export function StructuringResponseFields({
             })}
           </span>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
+        <div className="grid min-w-0 gap-3 md:grid-cols-2">
           {prompt.branchOptions.map((branch) => {
             const selected = branchIds.includes(branch.id);
             const unavailable = branchLimitReached && !selected;
             return (
               <label
                 className={cx(
-                  "flex min-h-32 gap-3 border bg-white p-4 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-teal",
+                  "flex min-h-32 min-w-0 gap-3 border bg-white p-4 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-teal",
                   selected && "border-teal bg-mint/40",
                   !selected && !unavailable && "cursor-pointer border-ink/15 hover:border-teal hover:bg-mint/20",
                   unavailable && "cursor-not-allowed border-ink/15 opacity-55"
@@ -244,9 +245,9 @@ export function StructuringResponseFields({
                   type="checkbox"
                   value={branch.id}
                 />
-                <span>
-                  <span className="block text-sm font-semibold text-ink">{branch.label}</span>
-                  <span className="mt-1 block text-sm leading-6 text-ink/65">{branch.description}</span>
+                <span className="min-w-0">
+                  <span className="block min-w-0 text-sm font-semibold text-ink [overflow-wrap:anywhere]">{branch.label}</span>
+                  <span className="mt-1 block min-w-0 text-sm leading-6 text-ink/65 [overflow-wrap:anywhere]">{branch.description}</span>
                 </span>
               </label>
             );
@@ -274,7 +275,7 @@ function StructuringResult({
 }) {
   const { formatNumber, t } = useI18n();
   return (
-    <section aria-labelledby="structuring-result-heading" className="grid gap-6 border-t border-ink/10 pt-8">
+    <section aria-labelledby="structuring-result-heading" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 border-t border-ink/10 pt-8">
       <div
         className={cx(
           "grid gap-4 border border-ink/15 border-t-2 bg-white p-5 sm:p-6",
@@ -306,7 +307,7 @@ function StructuringResult({
 
         <ul className="grid gap-2 text-sm leading-6 text-ink/75">
           {result.feedback.map((item) => (
-            <li className="border-l-2 border-teal/40 pl-3" key={item}>
+            <li className="min-w-0 border-l-2 border-teal/40 pl-3 [overflow-wrap:anywhere]" key={item}>
               {t(item)}
             </li>
           ))}
@@ -336,8 +337,8 @@ function StructuringResult({
           {prompt.modelStructure.map((branch) => {
             const matched = result.matchedBranchIds.includes(branch.branchId);
             return (
-              <article className="border border-ink/15 border-t-2 border-t-teal bg-white p-4" key={branch.branchId}>
-                <div className="flex flex-wrap items-center justify-between gap-2">
+              <article className="min-w-0 border border-ink/15 border-t-2 border-t-teal bg-white p-4" key={branch.branchId}>
+                <div className="flex min-w-0 flex-wrap items-center justify-between gap-2">
                   <h3 className={uiText.subsectionTitle}>{branch.title}</h3>
                   <span className={badgeClass(matched ? "success" : "warning")}>
                     {matched ? t("Covered") : t("Missed")}
@@ -345,7 +346,7 @@ function StructuringResult({
                 </div>
                 <ul className="mt-3 grid gap-2 text-sm leading-6 text-ink/70">
                   {branch.questions.map((question) => (
-                    <li className="border-l-2 border-ink/10 pl-3" key={question}>
+                    <li className="min-w-0 border-l-2 border-ink/10 pl-3 [overflow-wrap:anywhere]" key={question}>
                       {question}
                     </li>
                   ))}

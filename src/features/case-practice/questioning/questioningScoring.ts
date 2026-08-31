@@ -80,6 +80,13 @@ export interface CaseQuestioningScore {
   totalScore: number;
 }
 
+export interface CaseQuestioningReferenceIssue {
+  intentId: string;
+  intentIndex: number;
+  matchedConceptIds: readonly string[];
+  referenceIndex: number;
+}
+
 export const questioningScoreWeights = {
   coverage: 40,
   distinctness: 10,
@@ -90,6 +97,7 @@ export const questioningScoreWeights = {
 export const questioningMatchThreshold = 0.58;
 export const questioningDuplicateThreshold = 0.72;
 const questioningSupportingConceptThreshold = 0.35;
+const minimumQuestionWordCount = 3;
 
 const stopWords = new Set([
   "a", "about", "an", "and", "any", "are", "as", "at", "be", "been", "being", "by", "can",
@@ -105,6 +113,28 @@ interface NormalizedQuestion {
   tokenSet: ReadonlySet<string>;
 }
 
+interface PreparedConcept {
+  id: string;
+  normalizedAliases: readonly (readonly string[])[];
+}
+
+interface PreparedReference {
+  featureSet: ReadonlySet<string>;
+  matchedConceptIds: readonly string[];
+  normalized: NormalizedQuestion;
+}
+
+interface PreparedIntent {
+  intent: CaseQuestioningIntent;
+  references: readonly PreparedReference[];
+}
+
+interface PreparedQuestioningPrompt {
+  concepts: readonly PreparedConcept[];
+  intents: readonly PreparedIntent[];
+  prompt: CaseQuestioningPrompt;
+}
+
 interface IntentCandidate {
   conceptCoverage: number;
   intent: CaseQuestioningIntent;
@@ -112,6 +142,25 @@ interface IntentCandidate {
   referenceSimilarity: number;
   similarity: number;
   typoSimilarity: number;
+}
+
+export function analyzeCaseQuestioningReferences(
+  prompt: CaseQuestioningPrompt
+): readonly CaseQuestioningReferenceIssue[] {
+  const prepared = prepareQuestioningPrompt(prompt);
+
+  return prepared.intents.flatMap(({ intent, references }, intentIndex) =>
+    references.flatMap(({ matchedConceptIds }, referenceIndex) => {
+      const matchedConceptSet = new Set(matchedConceptIds);
+      const matchedGroups = intent.requiredConceptGroups.filter((group) =>
+        group.some((conceptId) => matchedConceptSet.has(conceptId))
+      ).length;
+
+      return matchedConceptIds.length > 0 && matchedGroups / intent.requiredConceptGroups.length >= 0.5
+        ? []
+        : [{ intentId: intent.id, intentIndex, matchedConceptIds, referenceIndex }];
+    })
+  );
 }
 
 export function scoreCaseQuestioning(
@@ -131,11 +180,15 @@ export function scoreCaseQuestioning(
   if (new Set(questions.map((question) => question.id)).size !== questions.length) {
     throw new Error("Question IDs must be unique.");
   }
+  if (questions.some((question) => question.text.length > 300)) {
+    throw new RangeError("Questions must be 300 characters or fewer.");
+  }
   if (submission.includeRanking) validateRanks(questions);
 
   const normalized = questions.map((question) => normalizeQuestion(question.text, prompt.language));
+  const prepared = prepareQuestioningPrompt(prompt);
   const matches = questions.map((question, index) =>
-    matchQuestion(prompt, question, normalized[index])
+    matchQuestion(prepared, question, normalized[index])
   );
   const withDuplicates = markDuplicates(matches, normalized);
   const eligibleMatches = withDuplicates.filter(
@@ -211,19 +264,23 @@ export function scoreCaseQuestioning(
 }
 
 function matchQuestion(
-  prompt: CaseQuestioningPrompt,
+  prepared: PreparedQuestioningPrompt,
   question: CaseQuestioningQuestion,
   normalized: NormalizedQuestion
 ): CaseQuestioningMatch {
-  const matchedConceptIds = matchConcepts(prompt, normalized);
-  const candidates = prompt.intents
-    .map((intent) => scoreIntent(prompt, intent, normalized, matchedConceptIds))
-    .filter((candidate): candidate is IntentCandidate => candidate !== undefined)
-    .sort(
-      (left, right) =>
-        right.similarity - left.similarity ||
-        prompt.intents.indexOf(left.intent) - prompt.intents.indexOf(right.intent)
-    );
+  const matchedConceptIds = matchConcepts(prepared.concepts, normalized);
+  const questionFeatures = features(normalized, matchedConceptIds);
+  const candidates = isCompleteCaseQuestion(question.text, prepared.prompt.language) &&
+    hasNonAliasContent(prepared.concepts, matchedConceptIds, normalized)
+    ? prepared.intents
+        .map((intent) => scoreIntent(intent, normalized, questionFeatures, matchedConceptIds))
+        .filter((candidate): candidate is IntentCandidate => candidate !== undefined)
+        .sort(
+          (left, right) =>
+            right.similarity - left.similarity ||
+            prepared.prompt.intents.indexOf(left.intent) - prepared.prompt.intents.indexOf(right.intent)
+        )
+    : [];
   const best = candidates[0];
 
   return {
@@ -238,28 +295,48 @@ function matchQuestion(
   };
 }
 
+export function isCompleteCaseQuestion(value: string, language = "en"): boolean {
+  const trimmed = value.trim();
+  if (trimmed === "") return false;
+
+  try {
+    const segments = new Intl.Segmenter(language, { granularity: "word" }).segment(trimmed);
+    return [...segments].filter((segment) => segment.isWordLike).length >= minimumQuestionWordCount;
+  } catch {
+    return (trimmed.match(/[\p{L}\p{N}]+/gu) ?? []).length >= minimumQuestionWordCount;
+  }
+}
+
+function hasNonAliasContent(
+  concepts: readonly PreparedConcept[],
+  matchedConceptIds: readonly string[],
+  question: NormalizedQuestion
+): boolean {
+  const matchedConcepts = concepts.filter((concept) => matchedConceptIds.includes(concept.id));
+
+  return question.contentTokens.some((token) =>
+    !matchedConcepts.some((concept) =>
+      concept.normalizedAliases.some((alias) => alias.some((expected) => hasSimilarToken([token], expected)))
+    )
+  );
+}
+
 function scoreIntent(
-  prompt: CaseQuestioningPrompt,
-  intent: CaseQuestioningIntent,
+  prepared: PreparedIntent,
   question: NormalizedQuestion,
+  questionFeatures: ReadonlySet<string>,
   matchedConceptIds: readonly string[]
 ): IntentCandidate | undefined {
+  const { intent } = prepared;
   const matchedConceptSet = new Set(matchedConceptIds);
   const matchedGroups = intent.requiredConceptGroups.filter((group) =>
     group.some((conceptId) => matchedConceptSet.has(conceptId))
   ).length;
   const conceptCoverage = matchedGroups / intent.requiredConceptGroups.length;
-  const referenceScores = intent.referenceQuestions.map((reference) => {
-    const normalizedReference = normalizeQuestion(reference, prompt.language);
-    const referenceConceptIds = matchConcepts(prompt, normalizedReference);
-    return {
-      lexical: featureJaccard(
-        features(question, matchedConceptIds),
-        features(normalizedReference, referenceConceptIds)
-      ),
-      typo: trigramDice(question.normalized, normalizedReference.normalized)
-    };
-  });
+  const referenceScores = prepared.references.map((reference) => ({
+    lexical: featureJaccard(questionFeatures, reference.featureSet),
+    typo: trigramDice(question.normalized, reference.normalized.normalized)
+  }));
   const referenceSimilarity = Math.max(0, ...referenceScores.map((score) => score.lexical));
   const typoSimilarity = Math.max(0, ...referenceScores.map((score) => score.typo));
   const similarity = roundSimilarity(
@@ -290,22 +367,45 @@ function scoreIntent(
 }
 
 function matchConcepts(
-  prompt: CaseQuestioningPrompt,
+  concepts: readonly PreparedConcept[],
   question: NormalizedQuestion
 ): string[] {
-  return prompt.concepts
+  return concepts
     .filter((concept) =>
-      concept.aliases.some((alias) => {
-        const aliasTokens = normalizeQuestion(alias, prompt.language).contentTokens;
+      concept.normalizedAliases.some((aliasTokens) => {
         return aliasTokens.length > 0 && aliasTokens.every((token) => hasSimilarToken(question.contentTokens, token));
       })
     )
     .map((concept) => concept.id);
 }
 
+function prepareQuestioningPrompt(prompt: CaseQuestioningPrompt): PreparedQuestioningPrompt {
+  const concepts = prompt.concepts.map((concept) => ({
+    id: concept.id,
+    normalizedAliases: concept.aliases.map((alias) =>
+      normalizeQuestion(alias, prompt.language).contentTokens
+    )
+  }));
+  const intents = prompt.intents.map((intent) => ({
+    intent,
+    references: intent.referenceQuestions.map((reference) => {
+      const normalized = normalizeQuestion(reference, prompt.language);
+      const matchedConceptIds = matchConcepts(concepts, normalized);
+      return {
+        featureSet: features(normalized, matchedConceptIds),
+        matchedConceptIds,
+        normalized
+      };
+    })
+  }));
+
+  return { concepts, intents, prompt };
+}
+
 function hasSimilarToken(questionTokens: readonly string[], expected: string): boolean {
   return questionTokens.some((token) => {
     if (token === expected) return true;
+    if (areInflectionVariants(token, expected)) return true;
     if (token.length < 5 || expected.length < 5) return false;
     const allowedEdits = Math.max(1, Math.floor(Math.max(token.length, expected.length) / 5));
     return editDistance(token, expected, allowedEdits) <= allowedEdits || trigramDice(token, expected) >= 0.74;
@@ -330,9 +430,25 @@ function markDuplicates(
         new Set(candidate.matchedConceptIds),
         new Set(match.matchedConceptIds)
       );
+      const conceptContainment = overlapCoefficient(
+        new Set(candidate.matchedConceptIds),
+        new Set(match.matchedConceptIds)
+      );
+      const textContainment = tokenOverlapCoefficient(
+        normalized[candidateIndex].contentTokens,
+        normalized[index].contentTokens
+      );
+      const sharedConceptBreadth = Math.min(candidate.matchedConceptIds.length, match.matchedConceptIds.length);
       return lexicalSimilarity >= questioningDuplicateThreshold || (
-        conceptSimilarity === 1 &&
-        trigramDice(normalized[candidateIndex].normalized, normalized[index].normalized) >= 0.45
+        conceptContainment === 1 &&
+        (
+          conceptSimilarity === 1 && textContainment >= 0.75 ||
+          (
+            (conceptSimilarity < 1 && sharedConceptBreadth >= 2) ||
+            (conceptSimilarity === 1 && sharedConceptBreadth >= 3)
+          ) && textContainment >= 0.5 &&
+            trigramDice(normalized[candidateIndex].normalized, normalized[index].normalized) >= 0.45
+        )
       );
     });
 
@@ -402,6 +518,39 @@ function featureJaccard(left: ReadonlySet<string>, right: ReadonlySet<string>): 
   if (left.size === 0 && right.size === 0) return 1;
   const intersection = [...left].filter((value) => right.has(value)).length;
   return intersection / (left.size + right.size - intersection);
+}
+
+function overlapCoefficient(left: ReadonlySet<string>, right: ReadonlySet<string>): number {
+  if (left.size === 0 || right.size === 0) return 0;
+  const intersection = [...left].filter((value) => right.has(value)).length;
+  return intersection / Math.min(left.size, right.size);
+}
+
+function tokenOverlapCoefficient(left: readonly string[], right: readonly string[]): number {
+  const remaining = [...new Set(right)];
+  const leftTokens = [...new Set(left)];
+  if (leftTokens.length === 0 || remaining.length === 0) return 0;
+  let matches = 0;
+  for (const token of leftTokens) {
+    const index = remaining.findIndex((candidate) => areInflectionVariants(token, candidate));
+    if (index < 0) continue;
+    matches += 1;
+    remaining.splice(index, 1);
+  }
+  return matches / Math.min(leftTokens.length, new Set(right).size);
+}
+
+function areInflectionVariants(left: string, right: string): boolean {
+  if (left === right) return true;
+  return [...inflectionForms(left)].some((form) => inflectionForms(right).has(form));
+}
+
+function inflectionForms(token: string): Set<string> {
+  const forms = new Set([token]);
+  if (token.length > 4 && token.endsWith("s")) forms.add(token.slice(0, -1));
+  if (token.length > 5 && token.endsWith("es")) forms.add(token.slice(0, -2));
+  if (token.length > 5 && token.endsWith("ies")) forms.add(`${token.slice(0, -3)}y`);
+  return forms;
 }
 
 function trigramDice(left: string, right: string): number {

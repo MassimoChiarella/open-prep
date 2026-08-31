@@ -1,8 +1,14 @@
 import {
   appDatabaseName,
   appDatabaseVersion,
+  appStoreIndexNames,
   appStoreNames,
   type AppStorage,
+  type AppStorageMutation,
+  type AppStoragePage,
+  type AppStoragePageOptions,
+  type AppIndexedStoreName,
+  type AppStoreIndexName,
   type AppStoreKey,
   type AppStoreName,
   type AppStoreValue
@@ -38,6 +44,65 @@ class IndexedDbAppStorage implements AppStorage {
     return this.runStoreRequest(storeName, "readonly", (store) => store.getAll());
   }
 
+  async count<TStore extends AppStoreName>(storeName: TStore): Promise<number> {
+    return this.runStoreRequest(storeName, "readonly", (store) => store.count());
+  }
+
+  async getPage<TStore extends AppIndexedStoreName>(
+    storeName: TStore,
+    indexName: AppStoreIndexName<TStore>,
+    options: AppStoragePageOptions
+  ): Promise<AppStoragePage<AppStoreValue<TStore>>> {
+    if (!Number.isInteger(options.limit) || options.limit <= 0) {
+      throw new Error("IndexedDB pages require a positive whole-number limit.");
+    }
+
+    const database = await this.openDatabase();
+    const direction = options.direction ?? "next";
+
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(storeName, "readonly");
+      const values: AppStoreValue<TStore>[] = [];
+      let continuationKey: IDBValidKey | undefined;
+      let hasMore = false;
+
+      transaction.oncomplete = () => resolve({
+        ...(hasMore && continuationKey !== undefined ? { continuationKey } : {}),
+        values
+      });
+      transaction.onerror = () => reject(transaction.error ?? new Error(`IndexedDB page failed: ${storeName}.`));
+      transaction.onabort = () => reject(transaction.error ?? new Error(`IndexedDB page failed: ${storeName}.`));
+
+      try {
+        const range = options.afterKey === undefined
+          ? undefined
+          : direction === "prev"
+            ? IDBKeyRange.upperBound(options.afterKey, true)
+            : IDBKeyRange.lowerBound(options.afterKey, true);
+        const request = transaction.objectStore(storeName).index(indexName).openCursor(range, direction);
+
+        request.onerror = () => reject(request.error ?? new Error(`IndexedDB page request failed: ${storeName}.`));
+        request.onsuccess = () => {
+          const cursor = request.result;
+
+          if (cursor === null) {
+            return;
+          }
+          if (values.length === options.limit) {
+            hasMore = true;
+            return;
+          }
+
+          values.push(cursor.value as AppStoreValue<TStore>);
+          continuationKey = cursor.key;
+          cursor.continue();
+        };
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
   async put<TStore extends AppStoreName>(storeName: TStore, value: AppStoreValue<TStore>): Promise<void> {
     await this.runStoreRequest(storeName, "readwrite", (store) => store.put(value));
   }
@@ -50,20 +115,46 @@ class IndexedDbAppStorage implements AppStorage {
     await this.runStoreRequest(storeName, "readwrite", (store) => store.clear());
   }
 
-  async clearAll(): Promise<void> {
+  async mutate(operations: readonly AppStorageMutation[]): Promise<void> {
+    if (operations.length === 0) {
+      return;
+    }
+
     const database = await this.openDatabase();
+    const storeNames = [...new Set(operations.map((operation) => operation.storeName))];
 
     await new Promise<void>((resolve, reject) => {
-      const transaction = database.transaction(appStoreNames, "readwrite");
+      const transaction = database.transaction(storeNames, "readwrite");
 
       transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error ?? new Error("Unable to clear local data."));
-      transaction.onabort = () => reject(transaction.error ?? new Error("Unable to clear local data."));
+      transaction.onerror = () => reject(transaction.error ?? new Error("IndexedDB mutation failed."));
+      transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDB mutation was aborted."));
 
-      for (const storeName of appStoreNames) {
-        transaction.objectStore(storeName).clear();
+      try {
+        for (const operation of operations) {
+          const store = transaction.objectStore(operation.storeName);
+
+          if (operation.type === "clear") {
+            store.clear();
+          } else if (operation.type === "delete") {
+            store.delete(operation.key);
+          } else {
+            store.put(operation.value);
+          }
+        }
+      } catch (error) {
+        try {
+          transaction.abort();
+        } catch {
+          // The transaction may already have aborted because of the synchronous request failure.
+        }
+        reject(error);
       }
     });
+  }
+
+  async clearAll(): Promise<void> {
+    await this.mutate(appStoreNames.map((storeName) => ({ storeName, type: "clear" })));
   }
 
   close(): void {
@@ -117,7 +208,7 @@ function openIndexedDbDatabase(indexedDbFactory: IDBFactory): Promise<IDBDatabas
     const request = indexedDbFactory.open(appDatabaseName, appDatabaseVersion);
 
     request.onupgradeneeded = () => {
-      upgradeDatabase(request.result);
+      upgradeDatabase(request.result, request.transaction);
     };
     request.onsuccess = () => {
       const database = request.result;
@@ -132,7 +223,7 @@ function openIndexedDbDatabase(indexedDbFactory: IDBFactory): Promise<IDBDatabas
   });
 }
 
-function upgradeDatabase(database: IDBDatabase): void {
+function upgradeDatabase(database: IDBDatabase, transaction: IDBTransaction | null): void {
   if (database.objectStoreNames.contains("drill_presets")) {
     database.deleteObjectStore("drill_presets");
   }
@@ -141,5 +232,19 @@ function upgradeDatabase(database: IDBDatabase): void {
     if (!database.objectStoreNames.contains(storeName)) {
       database.createObjectStore(storeName, { keyPath: "id" });
     }
+  }
+
+  if (transaction === null) {
+    throw new Error("IndexedDB upgrade transaction is unavailable.");
+  }
+
+  const benchmarkStore = transaction.objectStore("benchmark_results");
+  if (!benchmarkStore.indexNames.contains(appStoreIndexNames.benchmark_results)) {
+    benchmarkStore.createIndex(appStoreIndexNames.benchmark_results, ["completedAt", "id"]);
+  }
+
+  const packStore = transaction.objectStore("question_packs");
+  if (!packStore.indexNames.contains(appStoreIndexNames.question_packs)) {
+    packStore.createIndex(appStoreIndexNames.question_packs, ["importedAt", "id"]);
   }
 }

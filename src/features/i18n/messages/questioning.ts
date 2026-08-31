@@ -244,6 +244,17 @@ Object.assign(hi, {
   "Build fixed numeric or case-questioning exercises here, or import a versioned pack for any supported practice area. Content stays in this browser and uses the app's deterministic local practice and progress engines.": "यहाँ निश्चित संख्यात्मक या केस-प्रश्न अभ्यास बनाएँ, या किसी समर्थित अभ्यास क्षेत्र के लिए संस्करणित पैक आयात करें। सामग्री इसी ब्राउज़र में रहती है और ऐप के नियतात्मक स्थानीय अभ्यास व प्रगति इंजन का उपयोग करती है।"
 });
 
+const completeQuestionMessage = "Write a complete question with enough detail to show what relationship or evidence you want to test.";
+Object.assign(es, { [completeQuestionMessage]: "Escribe una pregunta completa con suficiente detalle para mostrar qué relación o evidencia quieres comprobar." });
+Object.assign(fr, { [completeQuestionMessage]: "Rédigez une question complète, assez précise pour indiquer la relation ou les éléments que vous souhaitez vérifier." });
+Object.assign(de, { [completeQuestionMessage]: "Formuliere eine vollständige Frage mit genügend Details, um zu zeigen, welchen Zusammenhang oder Beleg du prüfen möchtest." });
+Object.assign(pt, { [completeQuestionMessage]: "Escreva uma pergunta completa com detalhes suficientes para mostrar qual relação ou evidência deseja testar." });
+Object.assign(zhHans, { [completeQuestionMessage]: "请写一个完整的问题，并提供足够细节，表明你想检验的关系或证据。" });
+Object.assign(zhHant, { [completeQuestionMessage]: "請寫一個完整的問題，並提供足夠細節，表明你想檢驗的關係或證據。" });
+Object.assign(ja, { [completeQuestionMessage]: "検証したい関係や根拠が分かるよう、十分に具体的な完全な質問を書いてください。" });
+Object.assign(ar, { [completeQuestionMessage]: "اكتب سؤالًا كاملًا بتفاصيل كافية لتوضيح العلاقة أو الدليل الذي تريد اختباره." });
+Object.assign(hi, { [completeQuestionMessage]: "एक पूरा प्रश्न लिखें जिसमें यह स्पष्ट करने के लिए पर्याप्त विवरण हो कि आप किस संबंध या प्रमाण की जाँच करना चाहते हैं।" });
+
 export const questioningMessages = {
   en: {}, es, fr, de, pt, "zh-Hans": zhHans, "zh-Hant": zhHant, ja, ar, hi
 } satisfies PartialMessageCatalog;

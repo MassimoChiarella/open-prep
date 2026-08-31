@@ -64,6 +64,67 @@ describe("case-practice question packs", () => {
     });
   });
 
+  it("preserves accepted hypothesis alternatives through standalone and full-case serialization", () => {
+    const payload: unknown = clone(validPayload());
+    const pack = asRecord(payload);
+    const standalone = asRecord(asArray(pack.structuringPrompts)[0]);
+    const fullCaseStructure = asRecord(asRecord(asArray(pack.fullCases)[0]).structure);
+    const standaloneAlternate = asRecord(asArray(standalone.hypotheses)[1]).id;
+    const fullCaseAlternate = asRecord(asArray(fullCaseStructure.hypotheses)[1]).id;
+    standalone.acceptedHypothesisIds = [standalone.acceptedHypothesisId, standaloneAlternate];
+    fullCaseStructure.acceptedHypothesisIds = [fullCaseStructure.acceptedHypothesisId, fullCaseAlternate];
+
+    const result = validateQuestionPackPayload(payload, "2026-08-12T12:00:00.000Z");
+    if (result.status === "invalid") throw new Error(result.errors.join("\n"));
+    const serialized = serializeQuestionPack(result.pack);
+    const revalidated = validateQuestionPackPayload(JSON.parse(serialized) as unknown);
+
+    expect(revalidated.status).toBe("valid");
+    if (revalidated.status === "invalid") throw new Error(revalidated.errors.join("\n"));
+    expect(revalidated.pack).toMatchObject({
+      structuringPrompts: [{ acceptedHypothesisIds: standalone.acceptedHypothesisIds }],
+      fullCases: [{ structure: { acceptedHypothesisIds: fullCaseStructure.acceptedHypothesisIds } }]
+    });
+  });
+
+  it("defines accepted hypothesis alternatives in the canonical v2 schema", () => {
+    const schema = asRecord(JSON.parse(
+      readFileSync(resolve(process.cwd(), "public", "question-pack-v2.schema.json"), "utf8")
+    ) as unknown);
+    const definition = asRecord(asRecord(schema.$defs).caseStructuringPrompt);
+    const property = asRecord(asRecord(definition.properties).acceptedHypothesisIds);
+
+    expect(property).toMatchObject({
+      type: "array",
+      minItems: 1,
+      maxItems: 10,
+      uniqueItems: true
+    });
+    expect(asRecord(property.items).$ref).toBe("#/$defs/id");
+  });
+
+  it("preserves accepted hypothesis alternatives in version-three full cases", () => {
+    const payload: unknown = clone(validV3Payload());
+    const structure = asRecord(asRecord(asArray(asRecord(payload).fullCases)[0]).structure);
+    structure.acceptedHypothesisIds = [
+      structure.acceptedHypothesisId,
+      asRecord(asArray(structure.hypotheses)[1]).id
+    ];
+
+    const validated = validateQuestionPackPayload(payload);
+    if (validated.status === "invalid") throw new Error(validated.errors.join("\n"));
+    const revalidated = validateQuestionPackPayload(
+      JSON.parse(serializeQuestionPack(validated.pack)) as unknown
+    );
+
+    expect(revalidated.status).toBe("valid");
+    if (revalidated.status === "invalid") throw new Error(revalidated.errors.join("\n"));
+    expect(revalidated.pack).toMatchObject({
+      schemaVersion: 3,
+      fullCases: [{ structure: { acceptedHypothesisIds: structure.acceptedHypothesisIds } }]
+    });
+  });
+
   it("accepts the shipped case-practice authoring example", () => {
     const payload = JSON.parse(
       readFileSync(
@@ -210,6 +271,34 @@ describe("case-practice question packs", () => {
         expect.stringContaining("knowledgeCheck.correctOptionId must reference an option ID"),
         expect.stringContaining("calculationQuestionId must reference an exhibit question ID")
       ])
+    );
+  });
+
+  it("rejects invalid accepted hypothesis alternatives", () => {
+    const duplicatePayload: unknown = clone(validPayload());
+    const duplicatePrompt = asRecord(asArray(asRecord(duplicatePayload).structuringPrompts)[0]);
+    duplicatePrompt.acceptedHypothesisIds = [
+      duplicatePrompt.acceptedHypothesisId,
+      duplicatePrompt.acceptedHypothesisId
+    ];
+    expect(expectInvalid(duplicatePayload)).toContain(
+      "$.structuringPrompts[0].acceptedHypothesisIds must not contain duplicate IDs."
+    );
+
+    const unknownPayload: unknown = clone(validPayload());
+    const unknownPrompt = asRecord(asArray(asRecord(unknownPayload).structuringPrompts)[0]);
+    unknownPrompt.acceptedHypothesisIds = [unknownPrompt.acceptedHypothesisId, "missing"];
+    expect(expectInvalid(unknownPayload)).toContain(
+      "$.structuringPrompts[0].acceptedHypothesisIds[1] must reference a hypothesis ID."
+    );
+
+    const missingPrimaryPayload: unknown = clone(validPayload());
+    const missingPrimaryPrompt = asRecord(asArray(asRecord(missingPrimaryPayload).structuringPrompts)[0]);
+    missingPrimaryPrompt.acceptedHypothesisIds = [
+      asRecord(asArray(missingPrimaryPrompt.hypotheses)[1]).id
+    ];
+    expect(expectInvalid(missingPrimaryPayload)).toContain(
+      "$.structuringPrompts[0].acceptedHypothesisIds must include acceptedHypothesisId."
     );
   });
 

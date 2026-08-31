@@ -84,7 +84,7 @@ export function CasePracticeHub({
   const { t } = useI18n();
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
       <PageHeader
         action={action === undefined ? undefined : { ...action, label: t(action.label) }}
         description={t(description)}
@@ -92,30 +92,30 @@ export function CasePracticeHub({
         title={t(title)}
       />
 
-      <section aria-labelledby="case-practice-modules" className="grid gap-5">
-        <div className="grid max-w-3xl gap-2 border-b border-ink/20 pb-5">
+      <section aria-labelledby="case-practice-modules" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
+        <div className="grid min-w-0 max-w-3xl grid-cols-[minmax(0,1fr)] gap-2 border-b border-ink/20 pb-5">
           <h2 className="text-2xl font-semibold text-ink" id="case-practice-modules">
             {t("Choose a focused skill")}
           </h2>
-          <p className={uiText.body}>{t(summary)}</p>
+          <p className={`${uiText.body} min-w-0 [overflow-wrap:anywhere]`}>{t(summary)}</p>
         </div>
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {modules.map((module, index) => (
             <article
-              className="group flex min-h-56 flex-col gap-4 border border-ink/15 border-t-2 border-t-teal bg-white p-5 transition-colors hover:bg-mint/20 focus-within:border-teal sm:p-6"
+              className="group flex min-h-56 min-w-0 flex-col gap-4 border border-ink/15 border-t-2 border-t-teal bg-white p-5 transition-colors hover:bg-mint/20 focus-within:border-teal sm:p-6"
               key={module.href}
             >
-              <div className="flex items-center justify-between gap-3">
-                <span className={badgeClass("neutral")}>{t(module.meta)}</span>
+              <div className="flex min-w-0 items-center justify-between gap-3">
+                <span className={`${badgeClass("neutral")} min-w-0 max-w-full whitespace-normal [overflow-wrap:anywhere]`}>{t(module.meta)}</span>
                 <span aria-hidden="true" className="font-mono text-xs font-semibold text-ink/45">
                   {String(index + 1).padStart(2, "0")}
                 </span>
               </div>
-              <h3 className="text-xl font-semibold tracking-[-0.02em] text-ink">{t(module.label)}</h3>
-              <p className={uiText.body}>{t(module.description)}</p>
-              <Link className={buttonClass("secondary", "mt-auto gap-3")} href={module.href}>
-                <span>{t("Open {module}", { module: t(module.label) })}</span>
-                <span aria-hidden="true">
+              <h3 className="min-w-0 text-xl font-semibold tracking-[-0.02em] text-ink [overflow-wrap:anywhere]">{t(module.label)}</h3>
+              <p className={`${uiText.body} min-w-0 [overflow-wrap:anywhere]`}>{t(module.description)}</p>
+              <Link className={buttonClass("secondary", "mt-auto max-w-full gap-3 whitespace-normal")} href={module.href}>
+                <span className="min-w-0 [overflow-wrap:anywhere]">{t("Open {module}", { module: t(module.label) })}</span>
+                <span aria-hidden="true" className="shrink-0">
                   <span className="rtl:hidden">→</span>
                   <span className="hidden rtl:inline">←</span>
                 </span>

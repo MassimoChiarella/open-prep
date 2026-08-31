@@ -3,7 +3,11 @@ import { describe, expect, it } from "vitest";
 
 import { exhibitDatasets } from "@/data/exhibits/exhibitDatasets";
 import { ExhibitTableRenderer, getExhibitTableColumns } from "@/features/exhibits/ExhibitTableRenderer";
-import { formatExhibitCellValue } from "@/features/exhibits/exhibitFormatting";
+import {
+  formatExhibitAnswerValue,
+  formatExhibitAxisValue,
+  formatExhibitCellValue
+} from "@/features/exhibits/exhibitFormatting";
 import type { ExhibitColumn } from "@/features/exhibits/exhibitTypes";
 
 const tableDataset = exhibitDatasets.find((dataset) => dataset.id === "exhibit_retail_formats_001");
@@ -22,10 +26,14 @@ describe("ExhibitTableRenderer", () => {
     expect(within(table).getByText("Rows")).toBeInTheDocument();
     expect(within(table).getByText("3")).toBeInTheDocument();
     expect(within(table).getByText("Synthetic local dataset authored for deterministic practice.")).toBeInTheDocument();
-    expect(within(table).getByTestId("exhibit-table-scroll")).toHaveClass(
+    const scrollRegion = within(table).getByRole("region", {
+      name: "Scrollable exhibit table: Store Format Comparison"
+    });
+    expect(scrollRegion).toHaveClass(
       "max-h-[32rem]",
       "overflow-auto"
     );
+    expect(scrollRegion).toHaveAttribute("tabindex", "0");
 
     const headers = within(table).getAllByRole("columnheader").map((header) => header.textContent);
 
@@ -35,6 +43,8 @@ describe("ExhibitTableRenderer", () => {
     expect(screen.getByTestId("exhibit-table-cell-downtown_flagship-format")).toHaveTextContent(
       "Downtown flagship"
     );
+    expect(within(table).getAllByRole("rowheader")).toHaveLength(tableDataset.rows.length);
+    expect(screen.getByTestId("exhibit-table-cell-downtown_flagship-format")).toHaveAttribute("scope", "row");
     expect(screen.getByTestId("exhibit-table-cell-downtown_flagship-format")).toHaveClass("sticky", "start-0", "text-start");
     expect(screen.getByTestId("exhibit-table-cell-downtown_flagship-stores")).toHaveTextContent("8");
     expect(screen.getByTestId("exhibit-table-cell-downtown_flagship-stores")).toHaveClass("text-end");
@@ -61,6 +71,13 @@ describe("ExhibitTableRenderer", () => {
     expect(formatExhibitCellValue(18_500, column("number"))).toBe("18,500");
     expect(formatExhibitCellValue(2024, column("year"))).toBe("2024");
     expect(formatExhibitCellValue("Enterprise", column("text"))).toBe("Enterprise");
+  });
+
+  it("keeps practical currency values distinct while axis ticks remain compact", () => {
+    expect(formatExhibitCellValue(1_350_000, column("currency"))).toBe("$1.35M");
+    expect(formatExhibitCellValue(1_400_000, column("currency"))).toBe("$1.4M");
+    expect(formatExhibitAnswerValue(1_350_000, "currency")).toBe("$1.35M");
+    expect(formatExhibitAxisValue(1_350_000, column("currency"))).toBe("$1.4M");
   });
 });
 

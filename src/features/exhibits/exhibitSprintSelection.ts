@@ -24,12 +24,23 @@ const visualizationOrder: readonly ExhibitVisualizationType[] = [
 
 export function buildExhibitSprintItems(
   datasets: readonly ExhibitDataset[],
-  requestedCount: number
+  requestedCount: number,
+  seed?: string | number
 ): ExhibitSprintItem[] {
   const count = Number.isFinite(requestedCount)
     ? Math.min(5, Math.max(3, Math.trunc(requestedCount)))
     : 3;
   const items: ExhibitSprintItem[] = [];
+  const itemIds = new Set<string>();
+
+  const addItem = (dataset: ExhibitDataset, question: ExhibitQuestionSpec) => {
+    const id = `${dataset.id}:${question.id}`;
+
+    if (!itemIds.has(id)) {
+      itemIds.add(id);
+      items.push({ dataset, question });
+    }
+  };
 
   for (const [index, visualizationType] of visualizationOrder.entries()) {
     const dataset = datasets.find(
@@ -37,25 +48,30 @@ export function buildExhibitSprintItems(
     );
 
     if (dataset !== undefined) {
-      items.push({ dataset, question: dataset.questions[index % dataset.questions.length] });
-    }
-
-    if (items.length === count) {
-      return items;
+      addItem(dataset, dataset.questions[index % dataset.questions.length]);
     }
   }
 
   for (const dataset of datasets) {
     for (const question of dataset.questions) {
-      if (!items.some((item) => item.dataset.id === dataset.id && item.question.id === question.id)) {
-        items.push({ dataset, question });
-      }
-
-      if (items.length === count) {
-        return items;
-      }
+      addItem(dataset, question);
     }
   }
 
-  return items;
+  const offset = seed === undefined || items.length === 0 ? 0 : rotationOffset(seed, items.length);
+  return [...items.slice(offset), ...items.slice(0, offset)].slice(0, count);
+}
+
+function rotationOffset(seed: string | number, itemCount: number): number {
+  if (typeof seed === "number" && Number.isFinite(seed)) {
+    return Math.abs(Math.trunc(seed)) % itemCount;
+  }
+
+  let hash = 2_166_136_261;
+
+  for (const character of String(seed)) {
+    hash = Math.imul(hash ^ character.charCodeAt(0), 16_777_619);
+  }
+
+  return (hash >>> 0) % itemCount;
 }

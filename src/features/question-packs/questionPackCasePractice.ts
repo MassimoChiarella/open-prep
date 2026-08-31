@@ -37,8 +37,10 @@ import type { CasePracticeQuestionPackRecord } from "@/lib/storage/appStorageTyp
 import {
   booleanValue,
   boundedArray,
+  createQuestionPackValidationErrors,
   enumValue,
   finiteNumber,
+  finalizeQuestionPackValidationErrors,
   hasOwn,
   idArray,
   idValue,
@@ -82,9 +84,9 @@ export function validateCasePracticeQuestionPackPayload(
   payload: unknown,
   importedAt = new Date().toISOString()
 ): CasePracticeQuestionPackValidationResult {
-  const errors: string[] = [];
+  const errors = createQuestionPackValidationErrors();
   const envelope = readQuestionPackEnvelope(payload, "case_practice", collectionKeys, errors, [2, 3]);
-  if (envelope === undefined) return { status: "invalid", errors };
+  if (envelope === undefined) return { status: "invalid", errors: finalizeQuestionPackValidationErrors(errors) };
   const { value, schemaVersion, id, packVersion, title, description, publisher, license } = envelope;
 
   if (!collectionKeys.some((key) => hasOwn(value, key))) {
@@ -124,7 +126,7 @@ export function validateCasePracticeQuestionPackPayload(
     : undefined;
 
   if (errors.length > 0 || schemaVersion === undefined || id === undefined || packVersion === undefined || title === undefined) {
-    return { status: "invalid", errors };
+    return { status: "invalid", errors: finalizeQuestionPackValidationErrors(errors) };
   }
 
   return {
@@ -286,7 +288,7 @@ function normalizeAlias(value: string): string {
 function readStructuringPrompt(value: unknown, path: string, errors: string[]): CaseStructuringPrompt | undefined {
   const item = objectValue(value, path, errors);
   if (item === undefined) return undefined;
-  rejectUnknown(item, ["id", "title", "industry", "situation", "objective", "hypotheses", "acceptedHypothesisId", "branchOptions", "maxBranches", "modelStructure"], path, errors);
+  rejectUnknown(item, ["id", "title", "industry", "situation", "objective", "hypotheses", "acceptedHypothesisId", "acceptedHypothesisIds", "branchOptions", "maxBranches", "modelStructure"], path, errors);
   const before = errors.length;
   const id = idValue(item.id, `${path}.id`, errors);
   const title = text(item.title, `${path}.title`, 100, errors);
@@ -295,12 +297,29 @@ function readStructuringPrompt(value: unknown, path: string, errors: string[]): 
   const objective = text(item.objective, `${path}.objective`, 1_000, errors);
   const hypotheses = readCollection(item.hypotheses, `${path}.hypotheses`, 10, "hypothesis", readHypothesis, errors, 2);
   const acceptedHypothesisId = idValue(item.acceptedHypothesisId, `${path}.acceptedHypothesisId`, errors);
+  const acceptedHypothesisIds = hasOwn(item, "acceptedHypothesisIds")
+    ? idArray(item.acceptedHypothesisIds, `${path}.acceptedHypothesisIds`, 1, 10, errors)
+    : undefined;
   const branchOptions = readCollection(item.branchOptions, `${path}.branchOptions`, 12, "branch", readBranch, errors, 2);
   const maxBranches = integer(item.maxBranches, `${path}.maxBranches`, 1, 12, errors);
   const modelStructure = readModelStructure(item.modelStructure, `${path}.modelStructure`, errors);
 
   if (hypotheses !== undefined && acceptedHypothesisId !== undefined && !hypotheses.some((entry) => entry.id === acceptedHypothesisId)) {
     errors.push(`${path}.acceptedHypothesisId must reference a hypothesis ID.`);
+  }
+  if (hypotheses !== undefined && acceptedHypothesisIds !== undefined) {
+    acceptedHypothesisIds.forEach((hypothesisId, index) => {
+      if (!hypotheses.some((entry) => entry.id === hypothesisId)) {
+        errors.push(`${path}.acceptedHypothesisIds[${index}] must reference a hypothesis ID.`);
+      }
+    });
+  }
+  if (
+    acceptedHypothesisId !== undefined &&
+    acceptedHypothesisIds !== undefined &&
+    !acceptedHypothesisIds.includes(acceptedHypothesisId)
+  ) {
+    errors.push(`${path}.acceptedHypothesisIds must include acceptedHypothesisId.`);
   }
   if (branchOptions !== undefined && maxBranches !== undefined && maxBranches > branchOptions.length) {
     errors.push(`${path}.maxBranches must not exceed the number of branch options.`);
@@ -329,7 +348,19 @@ function readStructuringPrompt(value: unknown, path: string, errors: string[]): 
     maxBranches === undefined ||
     modelStructure === undefined
   ) return undefined;
-  return { id, title, industry, situation, objective, hypotheses, acceptedHypothesisId, branchOptions, maxBranches, modelStructure };
+  return {
+    id,
+    title,
+    industry,
+    situation,
+    objective,
+    hypotheses,
+    acceptedHypothesisId,
+    ...(acceptedHypothesisIds === undefined ? {} : { acceptedHypothesisIds }),
+    branchOptions,
+    maxBranches,
+    modelStructure
+  };
 }
 
 function readHypothesis(value: unknown, path: string, errors: string[]): CaseStructuringHypothesis | undefined {

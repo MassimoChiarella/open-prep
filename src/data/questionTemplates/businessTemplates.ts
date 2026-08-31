@@ -140,15 +140,15 @@ export const businessMathTemplates: QuestionTemplate[] = [
     category: "business_math",
     tags: ["margin"],
     difficulty: ["beginner"],
-    promptTemplate: "Profit is {profit} on revenue of {revenue}. What is margin? Enter the percent value.",
+    promptTemplate: "Profit is {profit} on revenue of {revenue}. What is margin? Enter the percentage as a number or with %.",
     variables: {
       profit: { type: "currency", values: [100, 200, 500, 1_000] },
       revenue: { type: "currency", values: [1_000, 2_000, 5_000, 10_000] }
     },
-    formula: { expression: "profit / revenue * 100" },
-    answerUnit: "none",
+    formula: { expression: "profit / revenue" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Margin equals profit divided by revenue.", "{profit} / {revenue} x 100 = {answer}."]
+      steps: ["Margin equals profit divided by revenue.", "{profit} / {revenue} = {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -156,15 +156,15 @@ export const businessMathTemplates: QuestionTemplate[] = [
     category: "business_math",
     tags: ["margin", "contribution_margin"],
     difficulty: ["beginner"],
-    promptTemplate: "A unit sells for {price} with unit cost {cost}. What is unit margin? Enter the percent value.",
+    promptTemplate: "A unit sells for {price} with unit cost {cost}. What is unit margin? Enter the percentage as a number or with %.",
     variables: {
       price: { type: "currency", values: [20, 40, 50, 80, 100] },
       cost: { type: "currency", values: [5, 10, 20, 30, 40] }
     },
-    formula: { expression: "(price - cost) / price * 100" },
-    answerUnit: "none",
+    formula: { expression: "(price - cost) / price" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Unit margin equals unit profit divided by price.", "({price} - {cost}) / {price} x 100 = {answer}."]
+      steps: ["Unit margin equals unit profit divided by price.", "({price} - {cost}) / {price} = {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -172,15 +172,15 @@ export const businessMathTemplates: QuestionTemplate[] = [
     category: "business_math",
     tags: ["margin", "profit"],
     difficulty: ["beginner"],
-    promptTemplate: "Revenue is {revenue} and cost is {cost}. What is margin? Enter the percent value.",
+    promptTemplate: "Revenue is {revenue} and cost is {cost}. What is margin? Enter the percentage as a number or with %.",
     variables: {
       revenue: { type: "currency", values: [500, 1_000, 2_000, 5_000] },
       cost: { type: "currency", values: [100, 400, 800, 1_500] }
     },
-    formula: { expression: "(revenue - cost) / revenue * 100" },
-    answerUnit: "none",
+    formula: { expression: "(revenue - cost) / revenue" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Find profit first, then divide by revenue.", "({revenue} - {cost}) / {revenue} x 100 = {answer}."]
+      steps: ["Find profit first, then divide by revenue.", "({revenue} - {cost}) / {revenue} = {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -253,15 +253,15 @@ export const businessMathTemplates: QuestionTemplate[] = [
     category: "business_math",
     tags: ["roi"],
     difficulty: ["beginner"],
-    promptTemplate: "An investment of {investment} produces a gain of {gain}. What is ROI? Enter the percent value.",
+    promptTemplate: "An investment of {investment} produces a gain of {gain}. What is ROI? Enter the percentage as a number or with %.",
     variables: {
       investment: { type: "currency", values: [100, 200, 500, 1_000] },
       gain: { type: "currency", values: [150, 300, 750, 1_500] }
     },
-    formula: { expression: "(gain - investment) / investment * 100" },
-    answerUnit: "none",
+    formula: { expression: "(gain - investment) / investment" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["ROI equals net gain divided by investment.", "({gain} - {investment}) / {investment} x 100 = {answer}."]
+      steps: ["ROI equals net gain divided by investment.", "({gain} - {investment}) / {investment} = {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -269,15 +269,15 @@ export const businessMathTemplates: QuestionTemplate[] = [
     category: "business_math",
     tags: ["roi"],
     difficulty: ["beginner"],
-    promptTemplate: "A project costs {investment} and returns {returnAmount}. What is ROI? Enter the percent value.",
+    promptTemplate: "A project costs {investment} and returns {returnAmount}. What is ROI? Enter the percentage as a number or with %.",
     variables: {
       investment: { type: "currency", values: [1_000, 2_000, 4_000, 5_000] },
       returnAmount: { type: "currency", values: [1_500, 3_000, 6_000, 10_000] }
     },
-    formula: { expression: "(returnAmount - investment) / investment * 100" },
-    answerUnit: "none",
+    formula: { expression: "(returnAmount - investment) / investment" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Subtract investment from return, then divide by investment.", "({returnAmount} - {investment}) / {investment} x 100 = {answer}."]
+      steps: ["Subtract investment from return, then divide by investment.", "({returnAmount} - {investment}) / {investment} = {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -301,15 +301,15 @@ export const businessMathTemplates: QuestionTemplate[] = [
     category: "business_math",
     tags: ["market_share"],
     difficulty: ["beginner"],
-    promptTemplate: "Company sales are {companySales} in a {marketSales} market. What is market share? Enter the percent value.",
+    promptTemplate: "Company sales are {companySales} in a {marketSales} market. What is market share? Enter the percentage as a number or with %.",
     variables: {
       companySales: { type: "currency", values: [100, 200, 500, 1_000] },
       marketSales: { type: "currency", values: [1_000, 2_000, 5_000, 10_000] }
     },
-    formula: { expression: "companySales / marketSales * 100" },
-    answerUnit: "none",
+    formula: { expression: "companySales / marketSales" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Market share equals company sales divided by total market sales.", "{companySales} / {marketSales} x 100 = {answer}."]
+      steps: ["Market share equals company sales divided by total market sales.", "{companySales} / {marketSales} = {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -317,15 +317,15 @@ export const businessMathTemplates: QuestionTemplate[] = [
     category: "business_math",
     tags: ["capacity_utilization"],
     difficulty: ["beginner"],
-    promptTemplate: "Actual output is {actualOutput} units and max capacity is {capacity} units. What is capacity utilization? Enter the percent value.",
+    promptTemplate: "Actual output is {actualOutput} units and max capacity is {capacity} units. What is capacity utilization? Enter the percentage as a number or with %.",
     variables: {
       actualOutput: { type: "integer", values: [400, 600, 800, 1_000] },
       capacity: { type: "integer", values: [1_000, 1_200, 1_600, 2_000] }
     },
-    formula: { expression: "actualOutput / capacity * 100" },
-    answerUnit: "none",
+    formula: { expression: "actualOutput / capacity" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Capacity utilization equals actual output divided by maximum capacity.", "{actualOutput} / {capacity} x 100 = {answer}."]
+      steps: ["Capacity utilization equals actual output divided by maximum capacity.", "{actualOutput} / {capacity} = {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -837,18 +837,18 @@ export const businessMathTemplates: QuestionTemplate[] = [
     category: "business_math",
     tags: ["market_share", "revenue"],
     difficulty: ["expert"],
-    promptTemplate: "A market currently worth {marketRevenue} will grow by {growth}%. What market share is required to reach revenue of {targetRevenue}? Enter the percent value.",
+    promptTemplate: "A market currently worth {marketRevenue} will grow by {growth}%. What market share is required to reach revenue of {targetRevenue}? Enter the percentage as a number or with %.",
     variables: {
       marketRevenue: { type: "currency", values: [5_000_000, 10_000_000] },
       growth: { type: "percentage", values: [10, 25] },
       targetRevenue: { type: "currency", values: [500_000, 1_000_000] }
     },
-    formula: { expression: "targetRevenue / (marketRevenue * (1 + growth / 100)) * 100" },
-    answerUnit: "none",
+    formula: { expression: "targetRevenue / (marketRevenue * (1 + growth / 100))" },
+    answerUnit: "percentage",
     explanationTemplate: {
       steps: [
         "Divide target revenue by the market's future value to find required share.",
-        "{targetRevenue} / ({marketRevenue} x (1 + {growth}/100)) x 100 = {answer}."
+        "{targetRevenue} / ({marketRevenue} x (1 + {growth}/100)) = {answer} as a decimal; enter the equivalent percentage."
       ]
     }
   },
@@ -857,18 +857,18 @@ export const businessMathTemplates: QuestionTemplate[] = [
     category: "business_math",
     tags: ["capacity_utilization"],
     difficulty: ["intermediate", "advanced"],
-    promptTemplate: "A plant with capacity of {capacity} units currently runs at {currentUtilization}% utilization. Demand rises by {additionalDemand} units. What utilization rate is required? Enter the percent value.",
+    promptTemplate: "A plant with capacity of {capacity} units currently runs at {currentUtilization}% utilization. Demand rises by {additionalDemand} units. What utilization rate is required? Enter the percentage as a number or with %.",
     variables: {
       capacity: { type: "integer", values: [100_000, 200_000] },
       currentUtilization: { type: "percentage", values: [60, 70] },
       additionalDemand: { type: "integer", values: [10_000, 20_000] }
     },
-    formula: { expression: "(capacity * currentUtilization / 100 + additionalDemand) / capacity * 100" },
-    answerUnit: "none",
+    formula: { expression: "(capacity * currentUtilization / 100 + additionalDemand) / capacity" },
+    answerUnit: "percentage",
     explanationTemplate: {
       steps: [
         "Add incremental demand to current output, then divide by capacity.",
-        "({capacity} x {currentUtilization}/100 + {additionalDemand}) / {capacity} x 100 = {answer}."
+        "({capacity} x {currentUtilization}/100 + {additionalDemand}) / {capacity} = {answer} as a decimal; enter the equivalent percentage."
       ]
     }
   },
@@ -936,17 +936,17 @@ export const weightedAverageTemplates: QuestionTemplate[] = [
     category: "weighted_averages",
     tags: ["weighted_average"],
     difficulty: ["beginner"],
-    promptTemplate: "Segment A is {shareA}% at margin {marginA}%. Segment B is {shareB}% at margin {marginB}%. What is blended margin? Enter the percent value.",
+    promptTemplate: "Segment A is {shareA}% at margin {marginA}%. Segment B is {shareB}% at margin {marginB}%. What is blended margin? Enter the percentage as a number or with %.",
     variables: {
       shareA: { type: "percentage", values: [25, 40, 50, 60] },
       marginA: { type: "percentage", values: [10, 20, 30, 40] },
       shareB: { type: "percentage", values: [40, 50, 60, 75] },
       marginB: { type: "percentage", values: [20, 30, 40, 50] }
     },
-    formula: { expression: "(shareA * marginA + shareB * marginB) / (shareA + shareB)" },
-    answerUnit: "none",
+    formula: { expression: "(shareA * marginA + shareB * marginB) / (shareA + shareB) / 100" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Weight each margin by its share.", "({shareA} x {marginA} + {shareB} x {marginB}) / ({shareA} + {shareB}) = {answer}."]
+      steps: ["Weight each margin by its share.", "Divide the weighted percent value by 100 to get {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -990,17 +990,17 @@ export const weightedAverageTemplates: QuestionTemplate[] = [
     category: "weighted_averages",
     tags: ["weighted_average"],
     difficulty: ["beginner"],
-    promptTemplate: "Channel A converts at {rateA}% with {leadsA} leads. Channel B converts at {rateB}% with {leadsB} leads. What is blended conversion rate? Enter the percent value.",
+    promptTemplate: "Channel A converts at {rateA}% with {leadsA} leads. Channel B converts at {rateB}% with {leadsB} leads. What is blended conversion rate? Enter the percentage as a number or with %.",
     variables: {
       rateA: { type: "percentage", values: [10, 20, 30, 40] },
       leadsA: { type: "integer", values: [100, 200, 500] },
       rateB: { type: "percentage", values: [20, 30, 40, 50] },
       leadsB: { type: "integer", values: [100, 200, 500] }
     },
-    formula: { expression: "(rateA * leadsA + rateB * leadsB) / (leadsA + leadsB)" },
-    answerUnit: "none",
+    formula: { expression: "(rateA * leadsA + rateB * leadsB) / (leadsA + leadsB) / 100" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Weight each conversion rate by leads.", "({rateA} x {leadsA} + {rateB} x {leadsB}) / ({leadsA} + {leadsB}) = {answer}."]
+      steps: ["Weight each conversion rate by leads.", "Divide the weighted percent value by 100 to get {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -1026,17 +1026,17 @@ export const weightedAverageTemplates: QuestionTemplate[] = [
     category: "weighted_averages",
     tags: ["weighted_average"],
     difficulty: ["beginner"],
-    promptTemplate: "Two plants produce {unitsA} units with defect rate {rateA}% and {unitsB} units with defect rate {rateB}%. What is blended defect rate? Enter the percent value.",
+    promptTemplate: "Two plants produce {unitsA} units with defect rate {rateA}% and {unitsB} units with defect rate {rateB}%. What is blended defect rate? Enter the percentage as a number or with %.",
     variables: {
       unitsA: { type: "integer", values: [100, 200, 500] },
       rateA: { type: "percentage", values: [2, 5, 10] },
       unitsB: { type: "integer", values: [100, 200, 500] },
       rateB: { type: "percentage", values: [5, 10, 15] }
     },
-    formula: { expression: "(unitsA * rateA + unitsB * rateB) / (unitsA + unitsB)" },
-    answerUnit: "none",
+    formula: { expression: "(unitsA * rateA + unitsB * rateB) / (unitsA + unitsB) / 100" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Weight each defect rate by units produced.", "({unitsA} x {rateA} + {unitsB} x {rateB}) / ({unitsA} + {unitsB}) = {answer}."]
+      steps: ["Weight each defect rate by units produced.", "Divide the weighted percent value by 100 to get {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -1067,7 +1067,7 @@ export const weightedAverageTemplates: QuestionTemplate[] = [
     category: "weighted_averages",
     tags: ["weighted_average", "margin"],
     difficulty: ["beginner", "expert"],
-    promptTemplate: "Product A is {shareA}% of sales at {marginA}% margin, Product B is {shareB}% at {marginB}%, and Product C is {shareC}% at {marginC}%. What is blended margin? Enter the percent value.",
+    promptTemplate: "Product A is {shareA}% of sales at {marginA}% margin, Product B is {shareB}% at {marginB}%, and Product C is {shareC}% at {marginC}%. What is blended margin? Enter the percentage as a number or with %.",
     variables: {
       shareA: { type: "percentage", values: [20, 30, 40] },
       marginA: { type: "percentage", values: [15, 20, 25] },
@@ -1076,12 +1076,12 @@ export const weightedAverageTemplates: QuestionTemplate[] = [
       shareC: { type: "percentage", values: [20, 30, 40] },
       marginC: { type: "percentage", values: [35, 40, 45] }
     },
-    formula: { expression: "(shareA * marginA + shareB * marginB + shareC * marginC) / (shareA + shareB + shareC)" },
-    answerUnit: "none",
+    formula: { expression: "(shareA * marginA + shareB * marginB + shareC * marginC) / (shareA + shareB + shareC) / 100" },
+    answerUnit: "percentage",
     explanationTemplate: {
       steps: [
         "Weight each margin by its sales share.",
-        "({shareA} x {marginA} + {shareB} x {marginB} + {shareC} x {marginC}) / ({shareA} + {shareB} + {shareC}) = {answer}."
+        "Divide the weighted percent value by 100 to get {answer} as a decimal; enter the equivalent percentage."
       ]
     }
   },
@@ -1178,18 +1178,18 @@ export const weightedAverageTemplates: QuestionTemplate[] = [
     category: "weighted_averages",
     tags: ["weighted_average"],
     difficulty: ["advanced"],
-    promptTemplate: "A blended average must equal {target}. Segment A averages {valueA}, Segment B averages {valueB}, and their shares total 100%. What percentage share must Segment A have?",
+    promptTemplate: "A blended average must equal {target}. Segment A averages {valueA}, Segment B averages {valueB}, and their shares total 100%. What percentage share must Segment A have? Enter the percentage as a number or with %.",
     variables: {
       target: { type: "integer", values: [50, 55, 60] },
       valueA: { type: "integer", values: [80, 90] },
       valueB: { type: "integer", values: [20, 30] }
     },
-    formula: { expression: "(target - valueB) / (valueA - valueB) * 100" },
-    answerUnit: "none",
+    formula: { expression: "(target - valueB) / (valueA - valueB)" },
+    answerUnit: "percentage",
     explanationTemplate: {
       steps: [
         "The required share equals the target's distance above Segment B divided by the gap between segment values.",
-        "({target} - {valueB}) / ({valueA} - {valueB}) x 100 = {answer}."
+        "({target} - {valueB}) / ({valueA} - {valueB}) = {answer} as a decimal; enter the equivalent percentage."
       ]
     }
   },

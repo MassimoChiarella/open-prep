@@ -42,6 +42,7 @@ describe("locale matching and translation", () => {
     expect(translate(catalog, "fr", "Hello, {name}", { name: "Ari" })).toBe("Bonjour, Ari");
     expect(translate(catalog, "de", "Hello, {name}", { name: "Ari" })).toBe("Hello, Ari");
     expect(translate(catalog, "ja", "Unknown message")).toBe("Unknown message");
+    expect(translate(catalog, "fr", "constructor")).toBe("constructor");
   });
 });
 

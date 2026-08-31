@@ -35,7 +35,7 @@ export function ExhibitQuestionFlow({
   datasets,
   storageFactory = createIndexedDbAppStorage
 }: ExhibitQuestionFlowProps) {
-  const { formatDuration, t } = useI18n();
+  const { formatDuration, locale, t } = useI18n();
   const [selectedDatasetId, setSelectedDatasetId] = useState(() => datasets[0]?.id ?? "");
   const startedAtRef = useRef(new Date().toISOString());
   const selectedDataset = useMemo(
@@ -136,7 +136,7 @@ export function ExhibitQuestionFlow({
         data-testid="exhibit-workspace"
       >
         <section
-          className="order-1 grid gap-2 border border-ink/15 border-t-2 border-t-coral bg-white p-4 lg:col-start-2 lg:row-start-1 lg:p-5"
+          className="order-1 grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 border border-ink/15 border-t-2 border-t-coral bg-white p-4 lg:col-start-2 lg:row-start-1 lg:p-5"
           data-testid="exhibit-question-prompt-panel"
         >
           <p className="text-sm font-semibold uppercase tracking-wide text-coral">
@@ -145,7 +145,7 @@ export function ExhibitQuestionFlow({
           <h2 className="text-xl font-semibold text-ink" id="exhibit-question-heading">
             {t("Exhibit Question")}
           </h2>
-          <p className="text-base font-semibold leading-7 text-ink" data-testid="exhibit-question-prompt">
+          <p className="min-w-0 text-base font-semibold leading-7 text-ink [overflow-wrap:anywhere]" data-testid="exhibit-question-prompt">
             {currentQuestion.prompt}
           </p>
           <p className="text-xs font-semibold text-ink/65">
@@ -196,6 +196,7 @@ export function ExhibitQuestionFlow({
                 void submitExhibitAttempt({
                   answerDraft,
                   dataset: selectedDataset,
+                  locale,
                   question: selectedQuestion,
                   setAttemptStatus,
                   setSaveStatus,
@@ -241,13 +242,13 @@ function DatasetContextPanel({ dataset }: { dataset: ExhibitDataset }) {
 
   return (
     <details
-      className="group max-w-full min-w-0 overflow-hidden border border-ink/15 bg-paper"
+      className="group max-w-full min-w-0 border border-ink/15 bg-paper"
       data-testid="exhibit-dataset-context"
     >
-      <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-4 px-3 py-3 transition-colors marker:content-none hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-teal">
-        <span className="grid min-w-0 gap-1">
+      <summary className="flex min-h-14 min-w-0 cursor-pointer list-none items-center justify-between gap-4 px-3 py-3 transition-colors marker:content-none hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-teal">
+        <span className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1">
           <span className="text-xs font-semibold uppercase tracking-wide text-ink/65">{t("Dataset details")}</span>
-          <span className="truncate text-sm font-semibold text-ink">{dataset.title}</span>
+          <span className="min-w-0 text-sm font-semibold text-ink [overflow-wrap:anywhere]">{dataset.title}</span>
         </span>
         <span aria-hidden="true" className="text-xl font-semibold text-teal group-open:rotate-45">
           +
@@ -299,7 +300,7 @@ function SolutionPanel({ question }: { question: ExhibitQuestionSpec }) {
   const { t } = useI18n();
 
   return (
-    <section className="grid gap-3 border-s-2 border-teal bg-mint px-3 py-3" data-testid="exhibit-solution-panel">
+    <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border-s-2 border-teal bg-mint px-3 py-3 [overflow-wrap:anywhere]" data-testid="exhibit-solution-panel">
       <div className="grid gap-1">
         <p className="text-xs font-semibold uppercase tracking-wide text-teal">{t("Solution")}</p>
         <p className="text-sm font-semibold leading-6 text-ink">
@@ -319,6 +320,7 @@ function SolutionPanel({ question }: { question: ExhibitQuestionSpec }) {
 async function submitExhibitAttempt({
   answerDraft,
   dataset,
+  locale,
   question,
   setAttemptStatus,
   setSaveStatus,
@@ -330,6 +332,7 @@ async function submitExhibitAttempt({
 }: {
   answerDraft: string;
   dataset: ExhibitDataset;
+  locale?: string;
   question: ExhibitQuestionSpec;
   setAttemptStatus: (status: string | undefined) => void;
   setSaveStatus: (status: AttemptSaveStatus) => void;
@@ -347,7 +350,7 @@ async function submitExhibitAttempt({
     return;
   }
 
-  const validation = validateExhibitResponse(answerDraft, question);
+  const validation = validateExhibitResponse(answerDraft, question, { locale });
 
   setValidationResult(validation);
   setSolutionVisible(true);

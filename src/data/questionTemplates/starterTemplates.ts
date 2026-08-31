@@ -632,15 +632,15 @@ const percentageTemplates: QuestionTemplate[] = [
     category: "percentages",
     tags: ["percentage_change"],
     difficulty: ["beginner"],
-    promptTemplate: "What is the percent change from {oldValue} to {newValue}? Enter the percent value.",
+    promptTemplate: "What is the percent change from {oldValue} to {newValue}? Enter the percentage as a number or with %.",
     variables: {
       oldValue: { type: "integer", values: [100, 200, 400, 500] },
       newValue: { type: "integer", values: [120, 240, 480, 600] }
     },
-    formula: { expression: "(newValue - oldValue) / oldValue * 100" },
-    answerUnit: "none",
+    formula: { expression: "(newValue - oldValue) / oldValue" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Subtract old from new, then divide by the old value.", "({newValue} - {oldValue}) / {oldValue} x 100 = {answer}."]
+      steps: ["Subtract old from new, then divide by the old value.", "({newValue} - {oldValue}) / {oldValue} = {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -648,15 +648,15 @@ const percentageTemplates: QuestionTemplate[] = [
     category: "percentages",
     tags: ["percentage_change"],
     difficulty: ["beginner"],
-    promptTemplate: "Revenue moves from {oldValue} to {newValue}. What is the percent increase? Enter the percent value.",
+    promptTemplate: "Revenue moves from {oldValue} to {newValue}. What is the percent increase? Enter the percentage as a number or with %.",
     variables: {
       oldValue: { type: "integer", values: [100, 200, 300] },
       newValue: { type: "integer", values: [400, 500, 600] }
     },
-    formula: { expression: "(newValue - oldValue) / oldValue * 100" },
-    answerUnit: "none",
+    formula: { expression: "(newValue - oldValue) / oldValue" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Find the increase, then divide by the starting revenue.", "({newValue} - {oldValue}) / {oldValue} x 100 = {answer}."]
+      steps: ["Find the increase, then divide by the starting revenue.", "({newValue} - {oldValue}) / {oldValue} = {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -664,15 +664,15 @@ const percentageTemplates: QuestionTemplate[] = [
     category: "percentages",
     tags: ["percentage_change"],
     difficulty: ["beginner"],
-    promptTemplate: "Cost drops from {oldValue} to {newValue}. What is the percent decrease? Enter the percent value.",
+    promptTemplate: "Cost drops from {oldValue} to {newValue}. What is the percent decrease? Enter the percentage as a number or with %.",
     variables: {
       oldValue: { type: "integer", values: [400, 800, 1_000] },
       newValue: { type: "integer", values: [100, 200, 400] }
     },
-    formula: { expression: "(oldValue - newValue) / oldValue * 100" },
-    answerUnit: "none",
+    formula: { expression: "(oldValue - newValue) / oldValue" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Find the drop, then divide by the starting cost.", "({oldValue} - {newValue}) / {oldValue} x 100 = {answer}."]
+      steps: ["Find the drop, then divide by the starting cost.", "({oldValue} - {newValue}) / {oldValue} = {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -807,15 +807,15 @@ const progressivePercentageTemplates: QuestionTemplate[] = [
     category: "percentages",
     tags: ["percentage_change"],
     difficulty: ["intermediate"],
-    promptTemplate: "What is the signed percent change from {oldValue} to {newValue}? Enter the percent value.",
+    promptTemplate: "What is the signed percent change from {oldValue} to {newValue}? Enter the percentage as a number or with %.",
     variables: {
       oldValue: { type: "integer", values: [240, 320, 480, 640, 800] },
       newValue: { type: "integer", values: [210, 275, 525, 710, 920] }
     },
-    formula: { expression: "(newValue - oldValue) / oldValue * 100" },
-    answerUnit: "none",
+    formula: { expression: "(newValue - oldValue) / oldValue" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Divide the change by the starting value.", "({newValue} - {oldValue}) / {oldValue} x 100 = {answer}."],
+      steps: ["Divide the change by the starting value.", "({newValue} - {oldValue}) / {oldValue} = {answer} as a decimal; enter the equivalent percentage."],
       shortcut: "Keep the sign of new minus old to distinguish growth from decline."
     }
   },
@@ -825,17 +825,17 @@ const progressivePercentageTemplates: QuestionTemplate[] = [
     tags: ["percentage_change"],
     difficulty: ["advanced"],
     promptTemplate:
-      "A value rises by {increase}% and then falls by {decrease}%. What is the net percent change from the original value?",
+      "A value rises by {increase}% and then falls by {decrease}%. What is the net percent change from the original value? Enter the percentage as a number or with %.",
     variables: {
       increase: { type: "percentage", values: [12, 18, 24, 35, 42] },
       decrease: { type: "percentage", values: [8, 15, 22, 28, 36] }
     },
-    formula: { expression: "((1 + increase / 100) * (1 - decrease / 100) - 1) * 100" },
-    answerUnit: "none",
+    formula: { expression: "(1 + increase / 100) * (1 - decrease / 100) - 1" },
+    answerUnit: "percentage",
     explanationTemplate: {
       steps: [
         "Multiply the increase and decrease factors, then compare the result with 1.",
-        "((1 + {increase}/100) x (1 - {decrease}/100) - 1) x 100 = {answer}."
+        "(1 + {increase}/100) x (1 - {decrease}/100) - 1 = {answer} as a decimal; enter the equivalent percentage."
       ],
       shortcut: "Successive percentages compound; they do not cancel by direct subtraction."
     }
@@ -846,20 +846,20 @@ const progressivePercentageTemplates: QuestionTemplate[] = [
     tags: ["percentage_change"],
     difficulty: ["expert"],
     promptTemplate:
-      "Revenue rises {firstGrowth}%, falls {decline}%, then rises {secondGrowth}%. What is the total percent change from the starting revenue?",
+      "Revenue rises {firstGrowth}%, falls {decline}%, then rises {secondGrowth}%. What is the total percent change from the starting revenue? Enter the percentage as a number or with %.",
     variables: {
       firstGrowth: { type: "percentage", values: [12.5, 18.5, 24.5, 31.5] },
       decline: { type: "percentage", values: [7.5, 13.5, 19.5, 26.5] },
       secondGrowth: { type: "percentage", values: [6.5, 11.5, 16.5, 22.5] }
     },
     formula: {
-      expression: "((1 + firstGrowth / 100) * (1 - decline / 100) * (1 + secondGrowth / 100) - 1) * 100"
+      expression: "(1 + firstGrowth / 100) * (1 - decline / 100) * (1 + secondGrowth / 100) - 1"
     },
-    answerUnit: "none",
+    answerUnit: "percentage",
     explanationTemplate: {
       steps: [
         "Multiply all three sequential change factors, then subtract the original factor of 1.",
-        "((1 + {firstGrowth}/100) x (1 - {decline}/100) x (1 + {secondGrowth}/100) - 1) x 100 = {answer}."
+        "(1 + {firstGrowth}/100) x (1 - {decline}/100) x (1 + {secondGrowth}/100) - 1 = {answer} as a decimal; enter the equivalent percentage."
       ],
       shortcut: "Track a starting index of 100 through each change."
     }
@@ -1026,15 +1026,15 @@ const fractionDecimalTemplates: QuestionTemplate[] = [
     category: "fractions_decimals_ratios",
     tags: ["fraction_conversion"],
     difficulty: ["beginner"],
-    promptTemplate: "What percent value equals {numerator}/{denominator}? Enter the percent value.",
+    promptTemplate: "What percent value equals {numerator}/{denominator}? Enter the percentage as a number or with %.",
     variables: {
       numerator: { type: "integer", values: [1, 2, 3, 4, 5] },
       denominator: { type: "integer", values: [10, 20, 25, 50, 100] }
     },
-    formula: { expression: "numerator / denominator * 100" },
-    answerUnit: "none",
+    formula: { expression: "numerator / denominator" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Convert the fraction to a decimal, then multiply by 100.", "{numerator} / {denominator} x 100 = {answer}."]
+      steps: ["Convert the fraction to a decimal, then express it as a percentage.", "{numerator} / {denominator} = {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -1059,14 +1059,14 @@ const fractionDecimalTemplates: QuestionTemplate[] = [
     category: "fractions_decimals_ratios",
     tags: ["fraction_conversion"],
     difficulty: ["beginner"],
-    promptTemplate: "What is {decimalValue} as a percent value? Enter the percent value.",
+    promptTemplate: "What is {decimalValue} as a percent value? Enter the percentage as a number or with %.",
     variables: {
       decimalValue: { type: "decimal", values: [0.1, 0.2, 0.25, 0.5, 0.75] }
     },
-    formula: { expression: "decimalValue * 100" },
-    answerUnit: "none",
+    formula: { expression: "decimalValue" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Multiply the decimal by 100.", "{decimalValue} x 100 = {answer}."]
+      steps: ["Express the decimal as a percentage.", "{decimalValue} is {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -1105,15 +1105,15 @@ const fractionDecimalTemplates: QuestionTemplate[] = [
     category: "fractions_decimals_ratios",
     tags: ["ratio_conversion"],
     difficulty: ["beginner"],
-    promptTemplate: "What percent value is {part} out of {total}? Enter the percent value.",
+    promptTemplate: "What percent value is {part} out of {total}? Enter the percentage as a number or with %.",
     variables: {
       part: { type: "integer", values: [1, 2, 4, 5] },
       total: { type: "integer", values: [10, 20, 40, 100] }
     },
-    formula: { expression: "part / total * 100" },
-    answerUnit: "none",
+    formula: { expression: "part / total" },
+    answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Divide part by total, then multiply by 100.", "{part} / {total} x 100 = {answer}."]
+      steps: ["Divide part by total, then express the result as a percentage.", "{part} / {total} = {answer} as a decimal; enter the equivalent percentage."]
     }
   }
 ];

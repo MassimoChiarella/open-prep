@@ -9,6 +9,18 @@ export type TranslationVariables = Record<string, string | number>;
 
 export const defaultLocale: Locale = "en";
 export const localePreferenceStorageKey = "consulting_math_locale_preference";
+export const languageNameKeys = {
+  en: "English",
+  es: "Spanish",
+  fr: "French",
+  de: "German",
+  pt: "Portuguese",
+  "zh-Hans": "Simplified Chinese",
+  "zh-Hant": "Traditional Chinese",
+  ja: "Japanese",
+  ar: "Arabic",
+  hi: "Hindi"
+} satisfies Record<Locale, string>;
 
 const localeSet = new Set<string>(locales);
 
@@ -46,12 +58,20 @@ export function mergeCatalogs(...catalogs: readonly PartialMessageCatalog[]): Me
 }
 
 export function translate(
-  catalog: MessageCatalog,
+  catalog: PartialMessageCatalog,
   locale: Locale,
   message: string,
   variables: TranslationVariables = {}
 ): string {
-  const template = catalog[locale][message] ?? catalog.en[message] ?? message;
+  const localizedMessages = catalog[locale];
+  const englishMessages = catalog.en;
+  const localized = localizedMessages !== undefined && Object.prototype.hasOwnProperty.call(localizedMessages, message)
+    ? localizedMessages[message]
+    : undefined;
+  const english = englishMessages !== undefined && Object.prototype.hasOwnProperty.call(englishMessages, message)
+    ? englishMessages[message]
+    : undefined;
+  const template = localized ?? english ?? message;
   return template.replace(/\{(\w+)\}/g, (match, key: string) =>
     Object.prototype.hasOwnProperty.call(variables, key) ? String(variables[key]) : match
   );

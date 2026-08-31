@@ -1,10 +1,10 @@
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { benchmarkTests } from "@/data/questionBank/benchmarkTests";
 import { BenchmarkHistoryView } from "@/features/benchmarks/BenchmarkHistoryView";
 import type { SessionScore } from "@/lib/domain";
-import type { AppStoreName, AppStoreValue, BenchmarkResultRecord } from "@/lib/storage/appStorageTypes";
+import type { AppStoreName, BenchmarkResultRecord } from "@/lib/storage/appStorageTypes";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("BenchmarkHistoryView", () => {
@@ -172,6 +172,47 @@ describe("BenchmarkHistoryView", () => {
     expect(screen.getAllByText("Recorded").length).toBeGreaterThanOrEqual(1);
   });
 
+  it("bounds the initial 10,000-result table and reveals ordered pages without gaps", async () => {
+    const results = Array.from({ length: 10_000 }, (_, index) =>
+      benchmarkResultRecord({
+        accuracy: (index % 21) / 20,
+        benchmarkId: "beginner",
+        completedAt: new Date(Date.UTC(2026, 0, 1) + index * 60_000).toISOString(),
+        correctCount: index % 21,
+        difficulty: "beginner",
+        id: `large-result-${index}`,
+        sessionId: `large-session-${index}`,
+        totalScore: index
+      })
+    );
+    const storage = new MemoryAppStorage();
+    await storage.mutate(
+      results.map((value) => ({ storeName: "benchmark_results", type: "put" as const, value }))
+    );
+
+    render(<BenchmarkHistoryView benchmarks={benchmarkTests} storageFactory={() => storage} />);
+
+    const table = await screen.findByRole("table", { name: "Saved benchmark results" });
+    const firstPageLinks = within(table).getAllByRole("link", { name: "Review" });
+
+    expect(within(table).getAllByRole("row")).toHaveLength(76);
+    expect(firstPageLinks).toHaveLength(75);
+    expect(firstPageLinks[0]).toHaveAttribute("href", "/drills/summary?id=large-session-9999");
+    expect(firstPageLinks.at(-1)).toHaveAttribute("href", "/drills/summary?id=large-session-9925");
+    expect(new Set(firstPageLinks.map((link) => link.getAttribute("href"))).size).toBe(75);
+
+    fireEvent.click(screen.getByRole("button", { name: "More: Saved benchmark results" }));
+
+    await waitFor(() => {
+      expect(within(table).getAllByRole("row")).toHaveLength(151);
+    });
+
+    const secondPageLinks = within(table).getAllByRole("link", { name: "Review" });
+    expect(secondPageLinks).toHaveLength(150);
+    expect(secondPageLinks.at(-1)).toHaveAttribute("href", "/drills/summary?id=large-session-9850");
+    expect(new Set(secondPageLinks.map((link) => link.getAttribute("href"))).size).toBe(150);
+  }, 20_000);
+
   it("shows an unavailable state when storage cannot be opened", async () => {
     render(
       <BenchmarkHistoryView
@@ -191,8 +232,8 @@ describe("BenchmarkHistoryView", () => {
 });
 
 class PendingReadStorage extends MemoryAppStorage {
-  async getAll<TStore extends AppStoreName>(_storeName: TStore): Promise<AppStoreValue<TStore>[]> {
-    return new Promise<AppStoreValue<TStore>[]>(() => undefined);
+  async count<TStore extends AppStoreName>(_storeName: TStore): Promise<number> {
+    return new Promise<number>(() => undefined);
   }
 }
 

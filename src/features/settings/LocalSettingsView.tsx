@@ -12,6 +12,7 @@ import {
   buildLocalProgressExportFileName,
   createLocalProgressExport,
   createLocalProgressImportSummary,
+  localProgressImportLimits,
   replaceLocalProgressWithImport,
   serializeLocalProgressExport,
   validateLocalProgressImportPayload,
@@ -44,6 +45,7 @@ export function LocalSettingsView({
   const [connectionState, setConnectionState] = useState<ConnectionState>("online");
   const [exportStatus, setExportStatus] = useState<ExportStatus>("idle");
   const [importConfirmed, setImportConfirmed] = useState(false);
+  const [includePrivateStories, setIncludePrivateStories] = useState(false);
   const [importErrors, setImportErrors] = useState<string[]>([]);
   const [importSummary, setImportSummary] = useState<LocalProgressImportSummary | undefined>();
   const [importStatus, setImportStatus] = useState<ImportStatus>("idle");
@@ -125,7 +127,11 @@ export function LocalSettingsView({
 
     try {
       storage = storageFactory();
-      const exported = await createLocalProgressExport(storage);
+      const exported = await createLocalProgressExport(
+        storage,
+        undefined,
+        includePrivateStories ? "complete" : "standard"
+      );
 
       downloadLocalProgressExport(exported);
       setExportStatus("exported");
@@ -149,9 +155,16 @@ export function LocalSettingsView({
       return;
     }
 
+    if (file.size > localProgressImportLimits.maxFileBytes) {
+      setImportErrors([`Import file must be ${localProgressImportLimits.maxFileBytes} bytes or smaller.`]);
+      setImportStatus("invalid");
+      return;
+    }
+
     try {
-      const parsed: unknown = JSON.parse(await file.text());
-      const validation = validateLocalProgressImportPayload(parsed);
+      const text = await file.text();
+      const parsed: unknown = JSON.parse(text);
+      const validation = validateLocalProgressImportPayload(parsed, { sourceBytes: file.size });
 
       if (validation.status === "invalid") {
         setImportErrors(validation.errors);
@@ -285,6 +298,18 @@ export function LocalSettingsView({
           >
             {t(exportStatus === "exporting" ? "Exporting..." : "Export Local Progress")}
           </button>
+          <p className="text-sm leading-6 text-ink/65">
+            {t("Exports stay on this device until you choose where to save them. Saved Fit/PEI stories can contain private personal text and are excluded by default.")}
+          </p>
+          <label className="flex min-h-11 items-center gap-3 rounded-md border border-ink/10 px-3 py-2 text-sm font-medium text-ink has-[:checked]:border-teal has-[:checked]:bg-teal/10">
+            <input
+              checked={includePrivateStories}
+              className="h-4 w-4 accent-teal"
+              onChange={(event) => setIncludePrivateStories(event.currentTarget.checked)}
+              type="checkbox"
+            />
+            {t("Include saved Fit/PEI story text in this export.")}
+          </label>
           <ExportStatusMessage status={exportStatus} />
 
           <div className="grid gap-3 border border-ink/15 border-t-2 border-t-coral px-3 py-3">

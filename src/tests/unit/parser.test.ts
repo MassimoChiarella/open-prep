@@ -69,6 +69,7 @@ describe("parseAnswer", () => {
       value: 0.25,
       isPercentageInput: false
     });
+    expect(parseAnswer("(1,000)")).toMatchObject({ value: -1_000 });
   });
 
   it("accepts common international number and unit conventions", () => {
@@ -86,11 +87,39 @@ describe("parseAnswer", () => {
     expect(parseAnswer("1,5/3")).toMatchObject({ value: 0.5 });
   });
 
+  it("uses the active locale for ambiguous decimal and grouping separators", () => {
+    expect(parseAnswer("1,234", { locale: "en" })).toMatchObject({ value: 1_234 });
+    expect(parseAnswer("1.234", { locale: "en" })).toMatchObject({ value: 1.234 });
+    expect(parseAnswer("1.234", { locale: "de" })).toMatchObject({ value: 1_234 });
+    expect(parseAnswer("1,234", { locale: "de" })).toMatchObject({ value: 1.234 });
+    expect(parseAnswer("1 234,56 €", { locale: "fr" })).toMatchObject({ value: 1_234.56 });
+    expect(parseAnswer("١٢٬٥٠٠٫٥", { locale: "ar" })).toMatchObject({ value: 12_500.5 });
+    expect(parseAnswer("12,5", { locale: "en" }).parseError).toBe("Enter a valid number.");
+  });
+
+  it("rejects separated, repeated, and interleaved numeric tokens", () => {
+    for (const input of ["1 2", "1 usd 2", "$1$2", "1%2", "15%%", "1M%", "1m2", "1//2"]) {
+      expect(parseAnswer(input).parseError, input).toBeDefined();
+      expect(parseAnswer(input).value, input).toBeNull();
+    }
+  });
+
+  it("never joins two numeric runs while normalizing supported affixes", () => {
+    const affixes = ["", "$", "usd ", " percent", "%", "M"];
+    for (const affix of affixes) {
+      const input = affix === "M" ? `1 2${affix}` : `${affix.startsWith("$") || affix.endsWith(" ") ? affix : ""}1 2${affix.startsWith("$") || affix.endsWith(" ") ? "" : affix}`;
+      expect(parseAnswer(input).parseError, input).toBeDefined();
+    }
+  });
+
   it("returns parse errors for malformed inputs", () => {
     expect(parseAnswer("").parseError).toBe("Enter a number.");
     expect(parseAnswer("abc").parseError).toBe("Enter a valid number.");
     expect(parseAnswer("1/0").parseError).toBe("Fraction denominator cannot be zero.");
     expect(parseAnswer("$15%").parseError).toBe("Use either a currency or percentage unit, not both.");
     expect(parseAnswer("1M million").parseError).toBe("Use only one scale suffix or word.");
+    for (const repeatedSign of ["(-1)", "+-1", "++1", "--1", "-+1"]) {
+      expect(parseAnswer(repeatedSign).parseError, repeatedSign).toBe("Enter a valid number.");
+    }
   });
 });

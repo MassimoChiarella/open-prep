@@ -10,10 +10,51 @@ import {
 import { renderTemplateText, type TemplateRenderValues } from "@/features/questions/templateRenderer";
 import { resolveTemplateVariables } from "@/features/questions/variableResolver";
 
+export const generatedAnswerDefaultTolerance = 0.005;
+export const generatedPercentageAnswerDefaultTolerance = 0.00005;
+
 export interface GenerateQuestionOptions {
   difficulty: Difficulty;
   random: SeededRandom;
   settings?: DrillSettings;
+}
+
+export function getQuestionGenerationCapacity(
+  templates: readonly QuestionTemplate[],
+  settings: DrillSettings,
+  maximum = 50
+): number {
+  const boundedMaximum = Number.isFinite(maximum)
+    ? Math.max(0, Math.floor(maximum))
+    : 0;
+
+  if (boundedMaximum === 0) {
+    return 0;
+  }
+
+  const eligibleTemplates = getEligibleQuestionTemplates(templates, settings);
+  if (eligibleTemplates.length === 0) {
+    return 0;
+  }
+
+  const usesCustomArithmetic =
+    hasCustomArithmeticSettings(settings) &&
+    eligibleTemplates.some((template) => template.category === "arithmetic");
+
+  if (!usesCustomArithmetic) {
+    return countTemplateVariants(eligibleTemplates, boundedMaximum);
+  }
+
+  try {
+    return generateQuestionsFromTemplates(
+      eligibleTemplates,
+      { ...settings, questionCount: boundedMaximum },
+      `capacity:${JSON.stringify({ ...settings, questionCount: boundedMaximum })}`,
+      true
+    ).length;
+  } catch {
+    return 0;
+  }
 }
 
 export function generateQuestionFromTemplate(
@@ -46,7 +87,14 @@ export function generateQuestionFromTemplate(
     prompt: renderTemplateText(template.promptTemplate, renderValues),
     answer: {
       value: answerValue,
-      unit: template.answerUnit
+      unit: template.answerUnit,
+      tolerance: template.tolerance ?? {
+        type: "absolute",
+        value: template.answerUnit === "percentage"
+          ? generatedPercentageAnswerDefaultTolerance
+          : generatedAnswerDefaultTolerance
+      },
+      ...(template.roundingRule === undefined ? {} : { roundingRule: template.roundingRule })
     },
     explanation: renderExplanation(template, renderValues),
     metadata: {
@@ -130,6 +178,38 @@ function hasDifferentQuestionContent(source: Question, candidate: Question): boo
     source.answer.value !== candidate.answer.value ||
     JSON.stringify(source.metadata?.variables) !== JSON.stringify(candidate.metadata?.variables)
   );
+}
+
+function countTemplateVariants(
+  templates: readonly QuestionTemplate[],
+  maximum: number
+): number {
+  let total = 0;
+
+  for (const template of templates) {
+    let variants = 1;
+
+    for (const variable of Object.values(template.variables)) {
+      const count = variable.values === undefined
+        ? variable.min === undefined || variable.max === undefined
+          ? 0
+          : Math.floor((variable.max - variable.min) / (variable.step ?? (variable.type === "integer" ? 1 : 0.1))) + 1
+        : new Set(variable.values).size;
+
+      variants *= Math.max(0, count);
+      if (variants >= maximum) {
+        variants = maximum;
+        break;
+      }
+    }
+
+    total += variants;
+    if (total >= maximum) {
+      return maximum;
+    }
+  }
+
+  return total;
 }
 
 function buildRenderValues(

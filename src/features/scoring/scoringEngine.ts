@@ -34,11 +34,15 @@ export function scoreResponse(response: UserResponse, rules: ScoringRules = defa
     return 0;
   }
 
+  if (!response.isCorrect && response.errorTypes.includes("none")) {
+    return 0;
+  }
+
   if (response.interviewMath !== undefined) {
     return response.interviewMath.score.total;
   }
 
-  const baseScore = response.isCorrect || response.errorTypes.includes("none") ? rules.correct : baseIncorrectScore(response, rules);
+  const baseScore = response.isCorrect ? rules.correct : baseIncorrectScore(response, rules);
   const scoreWithBonus = baseScore + speedBonus(response, rules);
 
   return Math.max(0, Math.round(scoreWithBonus));

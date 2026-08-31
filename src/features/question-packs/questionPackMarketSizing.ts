@@ -9,12 +9,15 @@ import type {
   MarketSizingType
 } from "@/features/market-sizing/marketSizingTypes";
 import type { Difficulty, RoundingRule, ToleranceSpec, UnitType } from "@/lib/domain";
-import { evaluateFormulaExpression } from "@/lib/math/formulaEvaluator";
+import { compileFormulaExpression } from "@/lib/math/formulaEvaluator";
 import type { MarketSizingQuestionPackRecord } from "@/lib/storage/appStorageTypes";
 import {
   booleanValue,
+  buildRepresentativeSamples,
+  createQuestionPackValidationErrors,
   enumValue,
   finiteNumber,
+  finalizeQuestionPackValidationErrors,
   hasOwn,
   idValue,
   identifier,
@@ -49,13 +52,13 @@ export function validateMarketSizingQuestionPackPayload(
   payload: unknown,
   importedAt = new Date().toISOString()
 ): ValidationResult {
-  const errors: string[] = [];
+  const errors = createQuestionPackValidationErrors();
   const envelope = readQuestionPackEnvelope(payload, "market_sizing", ["templates"], errors);
-  if (envelope === undefined) return { status: "invalid", errors };
+  if (envelope === undefined) return { status: "invalid", errors: finalizeQuestionPackValidationErrors(errors) };
   const { value: root, id, packVersion, title, description, publisher, license } = envelope;
   const templates = readTemplates(root.templates, errors);
   if (errors.length || id === undefined || packVersion === undefined || title === undefined || templates === undefined) {
-    return { status: "invalid", errors };
+    return { status: "invalid", errors: finalizeQuestionPackValidationErrors(errors) };
   }
   return {
     status: "valid",
@@ -163,6 +166,10 @@ function readInputStep(value: unknown, path: string, errors: string[]): MarketSi
     if (inputKind === "choice" && options === undefined) errors.push(`${path}.options is required for choice inputs.`);
     if (inputKind !== "choice" && options !== undefined) errors.push(`${path}.options is only allowed for choice inputs.`);
     if (!numericInputKinds.has(inputKind) && assumptionRange !== undefined) errors.push(`${path}.assumptionRange is only allowed for numeric inputs.`);
+    if (inputKind === "integer" && assumptionRange !== undefined) {
+      if (!Number.isInteger(assumptionRange.min)) errors.push(`${path}.assumptionRange.min must be a whole number for integer inputs.`);
+      if (!Number.isInteger(assumptionRange.max)) errors.push(`${path}.assumptionRange.max must be a whole number for integer inputs.`);
+    }
   }
   if (errors.length > before || id === undefined || label === undefined || inputKind === undefined || required === undefined) return undefined;
   return {
@@ -225,13 +232,35 @@ function readFinalFormula(
     for (const name of used) if (!variables.includes(name)) errors.push(`${path}.expression references undeclared variable "${name}".`);
     for (const name of variables) if (!used.has(name)) errors.push(`${path}.expression does not use declared variable "${name}".`);
     if (outputVariable !== undefined && variables.includes(outputVariable)) errors.push(`${path}.outputVariable must not duplicate an input variable.`);
-    if (used.size > 0 && [...used].every((name) => variables.includes(name))) {
-      const sample = Object.fromEntries(steps.flatMap((step) => step.variableName === undefined ? [] : [[step.variableName, step.assumptionRange === undefined ? 1 : (step.assumptionRange.min + step.assumptionRange.max) / 2]]));
-      try { evaluateFormulaExpression(expression, sample); } catch (error) { errors.push(`${path}.expression could not produce a finite sample: ${errorMessage(error)}`); }
+    if ([...used].every((name) => variables.includes(name))) {
+      const samples = buildRepresentativeSamples(steps.flatMap((step) =>
+        step.variableName === undefined ? [] : [[step.variableName, representativeInputValues(step)] as const]
+      ));
+      let evaluateFormula: ReturnType<typeof compileFormulaExpression> | undefined;
+      for (const sample of samples) {
+        try {
+          evaluateFormula ??= compileFormulaExpression(expression);
+          evaluateFormula(sample);
+        } catch (error) {
+          const values = Object.entries(sample).map(([name, sampleValue]) => `${name}=${sampleValue}`).join(", ");
+          errors.push(`${path}.expression fails for representative values (${values}): ${errorMessage(error)}`);
+          break;
+        }
+      }
     }
   }
   if (errors.length > before || expression === undefined || roundingRule === undefined || tolerance === undefined) return undefined;
   return { expression, ...(outputVariable === undefined ? {} : { outputVariable }), roundingRule, tolerance };
+}
+
+function representativeInputValues(step: MarketSizingInputStep): number[] {
+  if (step.assumptionRange === undefined) return [1];
+
+  const { min, max } = step.assumptionRange;
+  const rangeMidpoint = min / 2 + max / 2;
+  const midpoint = step.inputKind === "integer" ? Math.round(rangeMidpoint) : rangeMidpoint;
+  const closestToZero = min <= 0 && max >= 0 ? 0 : Math.abs(min) <= Math.abs(max) ? min : max;
+  return Array.from(new Set([min, max, midpoint, closestToZero]));
 }
 
 function readTolerance(value: unknown, path: string, errors: string[]): ToleranceSpec | undefined {

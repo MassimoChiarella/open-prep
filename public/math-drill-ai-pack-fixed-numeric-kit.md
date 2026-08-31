@@ -1,8 +1,8 @@
-# Math Drill AI Pack Kit: Fixed Numeric
+# Open Prep AI Pack Kit: Fixed Numeric
 
-Kit revision: **2026-08-18**
+Kit revision: **2026-08-29**
 
-Pair this module with `math-drill-ai-pack-authoring-start.md`. It covers only `kind: "fixed_numeric"` packages.
+This focused component is included inside the complete fixed-numeric bundle. For advanced modular use, pair it with `math-drill-ai-pack-authoring-start.md`, the named schema, and the complete examples below. It covers only `kind: "fixed_numeric"` packages.
 
 ## Canonical contract
 
@@ -85,4 +85,5 @@ Optional `errorChecks.percentagePointValue` and `errorChecks.roundingTolerance` 
 - The explanation derives the exact authored answer without introducing unstated assumptions.
 - Approximation is intentional and represented by tolerance, not vague prompt wording alone.
 - Questions are original or authorized and do not require live information.
+- A human has independently checked every source fact, answer key, unit, tolerance, date, and explanation; structural validity does not prove factual correctness.
 - The final response follows the Start Here binding output contract and is ready for app validation.

@@ -6,16 +6,16 @@
   "id": "example-foundations-benchmark",
   "packVersion": "1.0",
   "title": "Example Foundations Benchmark",
-  "description": "A short original timed benchmark with two beginner questions.",
+  "description": "A short original timed benchmark with four beginner questions.",
   "publisher": "Example Learning Lab",
   "license": "CC BY 4.0",
   "benchmarks": [
     {
       "id": "foundations-check",
       "title": "Foundations Check",
-      "description": "Complete two basic business-math questions within two minutes.",
+      "description": "Complete four basic business-math questions within four minutes.",
       "difficulty": "beginner",
-      "totalSessionSeconds": 120,
+      "totalSessionSeconds": 240,
       "scoreBands": [
         {
           "label": "needs_work",
@@ -74,6 +74,42 @@
             "short": "Divide the total cost by the number of units.",
             "steps": ["$480 / 60 units = $8 per unit."],
             "shortcut": "Cancel one zero, then compute 48 / 6."
+          },
+          "expectedTimeSeconds": 30
+        },
+        {
+          "id": "calculate-weekly-profit",
+          "type": "numeric",
+          "category": "business_math",
+          "tags": ["profit", "subtraction"],
+          "difficulty": "beginner",
+          "prompt": "A fictional kiosk earns $950 in weekly revenue and incurs $620 in weekly costs. What is weekly profit?",
+          "answer": {
+            "value": 330,
+            "unit": "currency",
+            "roundingRule": "exact"
+          },
+          "explanation": {
+            "short": "Subtract weekly costs from weekly revenue.",
+            "steps": ["$950 - $620 = $330 of weekly profit."]
+          },
+          "expectedTimeSeconds": 30
+        },
+        {
+          "id": "calculate-network-units",
+          "type": "numeric",
+          "category": "arithmetic",
+          "tags": ["multiplication"],
+          "difficulty": "beginner",
+          "prompt": "A fictional network has 24 stores and each store receives 75 units. How many units are delivered in total?",
+          "answer": {
+            "value": 1800,
+            "unit": "units",
+            "roundingRule": "exact"
+          },
+          "explanation": {
+            "short": "Multiply the number of stores by the units per store.",
+            "steps": ["24 x 75 = 1,800 units."]
           },
           "expectedTimeSeconds": 30
         }

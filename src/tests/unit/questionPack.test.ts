@@ -16,9 +16,30 @@ import {
   toQuestionPackQuestions,
   validateQuestionPackPayload
 } from "@/features/question-packs/questionPack";
+import {
+  buildRepresentativeSamples,
+  maxFormulaValidationSamples,
+  questionPackMaxValidationErrors
+} from "@/features/question-packs/questionPackValidation";
 import type { Difficulty } from "@/lib/domain";
 import type { FixedNumericQuestionPackRecord } from "@/lib/storage/appStorageTypes";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
+
+const publicQuestionPackAssets = [
+  "question-pack-benchmark-example.mathdrill.json",
+  "question-pack-case-practice-example.mathdrill.json",
+  "question-pack-case-questioning-example.mathdrill.json",
+  "question-pack-chart-example.mathdrill.json",
+  "question-pack-example.mathdrill.json",
+  "question-pack-exhibit-example.mathdrill.json",
+  "question-pack-interview-math-example.mathdrill.json",
+  "question-pack-market-sizing-cookbook.mathdrill.json",
+  "question-pack-market-sizing-example.mathdrill.json",
+  "question-pack-starter.mathdrill.json",
+  "question-pack-template-example.mathdrill.json",
+  "question-pack-v3-full-case-example.mathdrill.json",
+  "question-pack-visualization-cookbook.mathdrill.json"
+] as const;
 
 describe("validateQuestionPackPayload", () => {
   it("accepts the public one-question starter", () => {
@@ -78,6 +99,28 @@ describe("validateQuestionPackPayload", () => {
         shortcut: "Cancel the millions before dividing."
       }
     });
+  });
+
+  it("bounds diagnostics without changing their order or logical validation count", () => {
+    const payload = validPayload();
+    payload.questions = Array.from({ length: questionPackMaxQuestions }, (_, index) => {
+      const question = validQuestion(`invalid-${index + 1}`);
+      Reflect.deleteProperty(question.answer, "unit");
+      return question;
+    });
+
+    const errors = expectInvalidErrors(validateQuestionPackPayload(payload));
+
+    expect(errors).toHaveLength(questionPackMaxValidationErrors + 1);
+    expect(errors.slice(0, questionPackMaxValidationErrors)).toEqual(
+      Array.from(
+        { length: questionPackMaxValidationErrors },
+        (_, index) => `$.questions[${index}].answer.unit is required.`
+      )
+    );
+    expect(errors.at(-1)).toBe(
+      `${questionPackMaxQuestions - questionPackMaxValidationErrors} additional validation errors were suppressed after the first ${questionPackMaxValidationErrors}.`
+    );
   });
 
   it("accepts the public generated-template v2 example and rejects unsafe template content", () => {
@@ -148,6 +191,44 @@ describe("validateQuestionPackPayload", () => {
         expect.stringContaining("Formula cannot divide by zero")
       ])
     );
+  });
+
+  it("validates and preserves generated-template comparison policies", () => {
+    const template = {
+      id: "generated-rounding-policy",
+      category: "arithmetic",
+      tags: ["division"],
+      difficulty: ["beginner"],
+      promptTemplate: "Divide {numerator} by {denominator}.",
+      variables: {
+        numerator: { type: "integer", values: [2] },
+        denominator: { type: "integer", values: [3] }
+      },
+      formula: { expression: "numerator / denominator" },
+      answerUnit: "none",
+      tolerance: { type: "absolute", value: 0.005 },
+      roundingRule: "nearest_0_1",
+      explanationTemplate: { steps: ["The answer is {answer}."] }
+    };
+    const valid = validateQuestionPackPayload(generatedPayload([template]));
+
+    expect(valid.status).toBe("valid");
+    if (valid.status === "invalid" || valid.pack.kind !== "generated_template") return;
+    expect(valid.pack.templates[0]).toMatchObject({
+      tolerance: { type: "absolute", value: 0.005 },
+      roundingRule: "nearest_0_1"
+    });
+
+    for (const [tolerance, expectedError] of [
+      [{ type: "absolute", value: -1 }, "value must be non-negative"],
+      [{ type: "absolute", value: 1_000_000_001 }, "value must be at most 1000000000"],
+      [{ type: "percentage", value: 1.1 }, "value must be at most 1"],
+      [{ type: "range", min: 2, max: 1 }, "min must be <= max"],
+      [{ type: "absolute", value: 1, min: 0 }, "min and $.templates[0].tolerance.max are only allowed"]
+    ] as const) {
+      const errors = expectInvalidErrors(validateQuestionPackPayload(generatedPayload([{ ...template, tolerance }])));
+      expect(errors.some((error) => error.includes(expectedError)), JSON.stringify(tolerance)).toBe(true);
+    }
   });
 
   it("accepts a strict all-case v2 pack with Interview Math choices", () => {
@@ -382,7 +463,48 @@ describe("validateQuestionPackPayload", () => {
   });
 });
 
+describe("representative formula sampling", () => {
+  it("covers small domains completely and caps large domains deterministically", () => {
+    expect(buildRepresentativeSamples([
+      ["left", [1, 2]],
+      ["right", [10, 20]]
+    ])).toEqual([
+      { left: 1, right: 10 },
+      { left: 1, right: 20 },
+      { left: 2, right: 10 },
+      { left: 2, right: 20 }
+    ]);
+
+    const largeDomain = Array.from(
+      { length: 10 },
+      (_, index) => [`value${index}`, [0, 1, 2, 3]] as const
+    );
+    const samples = buildRepresentativeSamples(largeDomain);
+
+    expect(samples).toHaveLength(maxFormulaValidationSamples);
+    expect(buildRepresentativeSamples(largeDomain)).toEqual(samples);
+  });
+});
+
 describe("question-pack runtime", () => {
+  it("imports, serializes, revalidates, installs, and reloads all 13 public examples", async () => {
+    const storage = new MemoryAppStorage();
+
+    for (const assetName of publicQuestionPackAssets) {
+      const first = validateQuestionPackPayload(readPublicJson(assetName), "2026-08-29T12:00:00.000Z");
+      expect(first.status, first.status === "invalid" ? first.errors.join("\n") : assetName).toBe("valid");
+      if (first.status === "invalid") continue;
+      const second = validateQuestionPackPayload(
+        JSON.parse(serializeQuestionPack(first.pack)),
+        "2026-08-29T12:00:00.000Z"
+      );
+      expect(second.status, second.status === "invalid" ? second.errors.join("\n") : assetName).toBe("valid");
+      if (second.status === "valid") await saveQuestionPack(storage, second.pack);
+    }
+
+    expect(await loadQuestionPacks(storage)).toHaveLength(publicQuestionPackAssets.length);
+  });
+
   it("serializes a validated pack without local storage metadata", () => {
     const serialized = JSON.parse(serializeQuestionPack(validatedPack())) as Record<string, unknown>;
 

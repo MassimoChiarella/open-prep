@@ -6,14 +6,14 @@ import { useEffect, useMemo, useState } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
 import { getBenchmarkScoreBand } from "@/features/benchmarks/benchmarkScoring";
-import { loadBenchmarkResults } from "@/features/benchmarks/benchmarkPersistence";
+import {
+  loadBenchmarkHistorySnapshot,
+  loadBenchmarkResultPage,
+  type BenchmarkHistoryAggregate,
+  type BenchmarkHistorySnapshot
+} from "@/features/benchmarks/benchmarkPersistence";
 import type { BenchmarkTest } from "@/features/benchmarks/benchmarkTypes";
 import { useI18n } from "@/features/i18n/I18nProvider";
-import {
-  createPersonalBestRecords,
-  findSourcePersonalBests,
-  type PersonalBestRecord
-} from "@/features/progress/personalBests";
 import { formatLabel } from "@/lib/format";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 import type { AppStorage, BenchmarkResultRecord } from "@/lib/storage/appStorageTypes";
@@ -25,7 +25,7 @@ interface BenchmarkHistoryViewProps {
 
 type HistoryState =
   | { status: "error" }
-  | { results: BenchmarkResultRecord[]; status: "loaded" }
+  | (BenchmarkHistorySnapshot & { loadingMore: boolean; pageError: boolean; status: "loaded" })
   | { status: "loading" };
 
 export function BenchmarkHistoryView({
@@ -44,10 +44,10 @@ export function BenchmarkHistoryView({
     try {
       const storage = storageFactory();
 
-      void loadBenchmarkResults(storage)
-        .then((results) => {
+      void loadBenchmarkHistorySnapshot(storage)
+        .then((snapshot) => {
           if (!cancelled) {
-            setState({ results, status: "loaded" });
+            setState({ ...snapshot, loadingMore: false, pageError: false, status: "loaded" });
           }
         })
         .catch(() => {
@@ -69,6 +69,40 @@ export function BenchmarkHistoryView({
     };
   }, [storageFactory]);
 
+  async function handleLoadMore(): Promise<void> {
+    if (state.status !== "loaded" || state.continuationKey === undefined || state.loadingMore) {
+      return;
+    }
+
+    const afterKey = state.continuationKey;
+    setState({ ...state, loadingMore: true, pageError: false });
+
+    let storage: AppStorage | undefined;
+
+    try {
+      storage = storageFactory();
+      const page = await loadBenchmarkResultPage(storage, afterKey);
+
+      setState((current) => current.status !== "loaded"
+        ? current
+        : {
+            ...current,
+            ...(page.continuationKey === undefined
+              ? { continuationKey: undefined }
+              : { continuationKey: page.continuationKey }),
+            loadingMore: false,
+            pageError: false,
+            results: [...current.results, ...page.results]
+          });
+    } catch {
+      setState((current) => current.status === "loaded"
+        ? { ...current, loadingMore: false, pageError: true }
+        : current);
+    } finally {
+      storage?.close();
+    }
+  }
+
   return (
     <section
       aria-labelledby="benchmark-history-heading"
@@ -84,7 +118,7 @@ export function BenchmarkHistoryView({
         </div>
         {state.status === "loaded" && state.results.length > 0 ? (
           <span className="border border-teal/20 bg-mint px-3 py-2 text-sm font-semibold text-teal">
-            {t("{count} saved", { count: formatNumber(state.results.length) })}
+            {t("{count} saved", { count: formatNumber(state.totalCount) })}
           </span>
         ) : null}
       </div>
@@ -112,18 +146,39 @@ export function BenchmarkHistoryView({
         />
       ) : null}
       {state.status === "loaded" && state.results.length > 0 ? (
-        <HistoryTable benchmarkById={benchmarkById} results={state.results} />
+        <HistoryTable
+          aggregates={state.aggregates}
+          benchmarkById={benchmarkById}
+          hasMore={state.continuationKey !== undefined}
+          loadingMore={state.loadingMore}
+          onLoadMore={() => void handleLoadMore()}
+          pageError={state.pageError}
+          results={state.results}
+          totalCount={state.totalCount}
+        />
       ) : null}
     </section>
   );
 }
 
 function HistoryTable({
+  aggregates,
   benchmarkById,
-  results
+  hasMore,
+  loadingMore,
+  onLoadMore,
+  pageError,
+  results,
+  totalCount
 }: {
+  aggregates: readonly BenchmarkHistoryAggregate[];
   benchmarkById: Map<string, BenchmarkTest>;
+  hasMore: boolean;
+  loadingMore: boolean;
+  onLoadMore: () => void;
+  pageError: boolean;
   results: readonly BenchmarkResultRecord[];
+  totalCount: number;
 }) {
   const { formatDate, formatNumber, formatPercent, t } = useI18n();
   const latest = results[0];
@@ -131,15 +186,14 @@ function HistoryTable({
   const latestBand = latestBenchmark === undefined
     ? undefined
     : getBenchmarkScoreBand(latest.score.accuracy, latestBenchmark.scoreBands);
-  const summaries = createBenchmarkSummaries(results, benchmarkById);
-  const personalBests = createPersonalBestRecords({ benchmarkResults: results, sessions: [] });
+  const summaries = createBenchmarkSummaries(aggregates, benchmarkById);
   const latestSummary = summaries.find((summary) => summary.benchmarkId === latest.benchmarkId);
-  const bestOverall = summaries
-    .flatMap((summary) => summary.results)
-    .reduce<BenchmarkResultRecord | undefined>(
-      (best, result) => (best === undefined || result.score.accuracy > best.score.accuracy ? result : best),
-      undefined
-    );
+  const bestOverall = aggregates.reduce<BenchmarkResultRecord | undefined>(
+    (best, summary) => best === undefined || summary.best.score.accuracy > best.score.accuracy
+      ? summary.best
+      : best,
+    undefined
+  );
   const bestOverallBenchmark = bestOverall === undefined ? undefined : benchmarkById.get(bestOverall.benchmarkId);
 
   return (
@@ -159,7 +213,7 @@ function HistoryTable({
             <p className="w-fit bg-paper px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ink/70">
               {t("Baseline recorded")}
             </p>
-          ) : isNewBenchmarkBest(latest, personalBests) ? (
+          ) : isNewBenchmarkBest(latest, latestSummary) ? (
             <p className="w-fit border border-teal/20 bg-mint px-2 py-1 text-xs font-semibold uppercase tracking-wide text-teal">
               {t("New Best benchmark score")}
             </p>
@@ -179,7 +233,7 @@ function HistoryTable({
             label={t("Change")}
             value={formatAccuracyChange(latest, latestSummary?.previous, formatNumber, t)}
           />
-          <HistoryStat label={t("Attempts")} value={t("{count} saved", { count: formatNumber(results.length) })} />
+          <HistoryStat label={t("Attempts")} value={t("{count} saved", { count: formatNumber(totalCount) })} />
         </dl>
       </section>
 
@@ -197,14 +251,14 @@ function HistoryTable({
               data-testid={`benchmark-history-summary-${summary.benchmarkId}`}
               key={summary.benchmarkId}
             >
-              <div>
+              <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
-                  <h4 className="text-sm font-semibold text-ink">{t(summary.title)}</h4>
+                  <h4 className="min-w-0 text-sm font-semibold text-ink [overflow-wrap:anywhere]">{t(summary.title)}</h4>
                   {summary.latest.score.correctCount === 0 ? (
                     <span className="bg-paper px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ink/70">
                       {t("Baseline recorded")}
                     </span>
-                  ) : isNewBenchmarkBest(summary.latest, personalBests) ? (
+                  ) : isNewBenchmarkBest(summary.latest, summary) ? (
                     <span className="border border-teal/20 bg-mint px-2 py-1 text-xs font-semibold uppercase tracking-wide text-teal">
                       {t("New Best")}
                     </span>
@@ -227,6 +281,7 @@ function HistoryTable({
       <div
         className="max-h-[30rem] overflow-auto overscroll-contain border border-ink/15"
         data-testid="benchmark-history-results-table"
+        id="benchmark-history-results"
       >
         <p className="px-3 pt-3 text-xs font-semibold uppercase tracking-wide text-ink/65 sm:hidden">
           {t("Scroll table sideways to compare all columns.")}
@@ -273,60 +328,58 @@ function HistoryTable({
           </tbody>
         </table>
       </div>
+      {pageError ? (
+        <p className="text-sm font-medium text-coral" role="alert">
+          {t("Benchmark history could not load.")}
+        </p>
+      ) : null}
+      {hasMore ? (
+        <button
+          aria-controls="benchmark-history-results"
+          aria-label={`${t("More")}: ${t("Saved benchmark results")}`}
+          className="inline-flex min-h-11 w-fit items-center justify-center rounded-md border border-ink/30 px-5 text-sm font-semibold text-ink transition hover:border-teal hover:bg-paper"
+          disabled={loadingMore}
+          onClick={onLoadMore}
+          type="button"
+        >
+          {t(loadingMore ? "Loading..." : "More")}
+        </button>
+      ) : null}
     </div>
   );
 }
 
-function isNewBenchmarkBest(result: BenchmarkResultRecord, personalBests: readonly PersonalBestRecord[]): boolean {
-  return findSourcePersonalBests(personalBests, result.id).some((best) => best.scope === "benchmark");
+function isNewBenchmarkBest(
+  result: BenchmarkResultRecord,
+  summary: BenchmarkHistorySummary | undefined
+): boolean {
+  return summary?.bestScore.id === result.id;
 }
 
 interface BenchmarkHistorySummary {
   attempts: number;
   benchmarkId: string;
   best: BenchmarkResultRecord;
+  bestScore: BenchmarkResultRecord;
   latest: BenchmarkResultRecord;
   previous?: BenchmarkResultRecord;
-  results: BenchmarkResultRecord[];
   title: string;
 }
 
 function createBenchmarkSummaries(
-  results: readonly BenchmarkResultRecord[],
+  aggregates: readonly BenchmarkHistoryAggregate[],
   benchmarkById: Map<string, BenchmarkTest>
 ): BenchmarkHistorySummary[] {
-  const groups = new Map<string, BenchmarkResultRecord[]>();
-
-  for (const result of results) {
-    groups.set(result.benchmarkId, [...(groups.get(result.benchmarkId) ?? []), result]);
-  }
-
-  return Array.from(groups.entries())
-    .map(([benchmarkId, groupedResults]) => {
-      const sortedResults = [...groupedResults].sort(
-        (first, second) => Date.parse(second.completedAt) - Date.parse(first.completedAt)
-      );
-      const latest = sortedResults[0];
-      const best = sortedResults.reduce((currentBest, result) =>
-        result.score.accuracy > currentBest.score.accuracy ? result : currentBest
-      );
-
-      return {
-        attempts: sortedResults.length,
-        benchmarkId,
-        best,
-        latest,
-        previous: sortedResults[1],
-        results: sortedResults,
-        title: benchmarkById.get(benchmarkId)?.title ?? fallbackBenchmarkTitle(benchmarkId)
-      };
-    })
-    .sort((first, second) => Date.parse(second.latest.completedAt) - Date.parse(first.latest.completedAt));
+  return aggregates
+    .map((summary) => ({
+      ...summary,
+      title: benchmarkById.get(summary.benchmarkId)?.title ?? fallbackBenchmarkTitle(summary.benchmarkId)
+    }));
 }
 
 function HistoryStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="border-s-2 border-ink/15 bg-paper px-3 py-2">
+    <div className="min-w-0 border-s-2 border-ink/15 bg-paper px-3 py-2 [overflow-wrap:anywhere]">
       <dt className="text-xs font-semibold uppercase tracking-wide text-ink/65">{label}</dt>
       <dd className="mt-1 font-semibold text-ink">{value}</dd>
     </div>
@@ -335,7 +388,7 @@ function HistoryStat({ label, value }: { label: string; value: string }) {
 
 function HistoryInlineStat({ label, value }: { label: string; value: string }) {
   return (
-    <dl className="border-s-2 border-ink/15 bg-paper px-3 py-2">
+    <dl className="min-w-0 border-s-2 border-ink/15 bg-paper px-3 py-2 [overflow-wrap:anywhere]">
       <dt className="text-xs font-semibold uppercase tracking-wide text-ink/65">{label}</dt>
       <dd className="mt-1 text-sm font-semibold text-ink">{value}</dd>
     </dl>

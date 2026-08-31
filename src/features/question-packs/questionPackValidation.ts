@@ -1,6 +1,10 @@
 export type UnknownRecord = Record<string, unknown>;
 
 export const questionPackMaxFileBytes = 5 * 1024 * 1024;
+export const questionPackMaxValidationErrors = 200;
+
+// ponytail: representative probes are capped to keep imports responsive; raise only if real packs evade them.
+export const maxFormulaValidationSamples = 256;
 
 const questionPackMaxFileMiB = questionPackMaxFileBytes / 1024 / 1024;
 
@@ -8,6 +12,7 @@ const idPattern = /^[a-z0-9][a-z0-9_-]{0,79}$/;
 const identifierPattern = /^[A-Za-z_][A-Za-z0-9_]{0,79}$/;
 const reservedNames = new Set(["__proto__", "constructor", "prototype"]);
 const reservedIdentifiers = new Set([...reservedNames, "answer"]);
+const validationErrorStates = new WeakMap<string[], { count: number; messages: string[] }>();
 const envelopeProperties = [
   "$schema",
   "format",
@@ -30,6 +35,39 @@ export interface QuestionPackEnvelope {
   description: string | undefined;
   publisher: string | undefined;
   license: string | undefined;
+}
+
+export function createQuestionPackValidationErrors(): string[] {
+  const messages: string[] = [];
+  const state = { count: 0, messages };
+  const push = (...newErrors: string[]): number => {
+    state.count += newErrors.length;
+    const remaining = questionPackMaxValidationErrors - messages.length;
+    if (remaining > 0) Array.prototype.push.apply(messages, newErrors.slice(0, remaining));
+    return state.count;
+  };
+  const errors = new Proxy(messages, {
+    get(target, property, receiver) {
+      // Readers compare lengths before and after parsing; keep that logical count even when messages are capped.
+      if (property === "length") return state.count;
+      if (property === "push") return push;
+      return Reflect.get(target, property, receiver);
+    }
+  });
+
+  validationErrorStates.set(errors, state);
+  return errors;
+}
+
+export function finalizeQuestionPackValidationErrors(errors: string[]): string[] {
+  const state = validationErrorStates.get(errors);
+  if (state === undefined || state.count <= state.messages.length) return [...errors];
+
+  const suppressed = state.count - state.messages.length;
+  return [
+    ...state.messages,
+    `${suppressed} additional validation ${suppressed === 1 ? "error was" : "errors were"} suppressed after the first ${questionPackMaxValidationErrors}.`
+  ];
 }
 
 export function readQuestionPackEnvelope(
@@ -462,4 +500,84 @@ export function serializedByteLength(value: unknown): number | undefined {
 
 export function hasOwn(value: object, property: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, property);
+}
+
+export function representativeValues(values: readonly number[]): number[] {
+  const sorted = [...values].sort((left, right) => left - right);
+  const closestToZero = sorted.reduce((closest, value) =>
+    Math.abs(value) < Math.abs(closest) ? value : closest
+  );
+
+  return Array.from(new Set([
+    sorted[0],
+    sorted.at(-1) as number,
+    sorted[Math.floor((sorted.length - 1) / 2)],
+    closestToZero
+  ]));
+}
+
+export function buildRepresentativeSamples(
+  entries: readonly (readonly [string, readonly number[]])[]
+): Record<string, number>[] {
+  const samples: Record<string, number>[] = [];
+  const seen = new Set<string>();
+  const add = (values: readonly number[]) => {
+    if (samples.length >= maxFormulaValidationSamples) return;
+    const key = values.join("\u0000");
+    if (seen.has(key)) return;
+    seen.add(key);
+    samples.push(Object.fromEntries(entries.map(([name], index) => [name, values[index]])));
+  };
+  const base = entries.map(([, values]) => values[0]);
+  const representativeCombinationCount = entries.reduce(
+    (total, [, values]) => Math.min(maxFormulaValidationSamples + 1, total * values.length),
+    1
+  );
+
+  if (representativeCombinationCount <= maxFormulaValidationSamples) {
+    const visit = (index: number, values: number[]) => {
+      if (index === entries.length) {
+        add(values);
+        return;
+      }
+      for (const value of entries[index][1]) visit(index + 1, [...values, value]);
+    };
+    visit(0, []);
+    return samples;
+  }
+
+  add(base);
+  const widestCandidateSet = Math.max(...entries.map(([, values]) => values.length));
+  for (let candidateIndex = 1; candidateIndex < widestCandidateSet; candidateIndex += 1) {
+    add(entries.map(([, values]) => values[Math.min(candidateIndex, values.length - 1)]));
+  }
+  entries.forEach(([, values], variableIndex) => {
+    values.forEach((value) => add(base.map((baseValue, index) => index === variableIndex ? value : baseValue)));
+  });
+
+  const cornerSampleLimit = samples.length + Math.floor((maxFormulaValidationSamples - samples.length) / 2);
+  const visitCorners = (index: number, values: number[]) => {
+    if (samples.length >= cornerSampleLimit) return;
+    if (index === entries.length) {
+      add(values);
+      return;
+    }
+    const candidates = Array.from(new Set([
+      Math.min(...entries[index][1]),
+      Math.max(...entries[index][1])
+    ]));
+    for (const value of candidates) visitCorners(index + 1, [...values, value]);
+  };
+  visitCorners(0, []);
+
+  for (let left = 0; left < entries.length && samples.length < maxFormulaValidationSamples; left += 1) {
+    for (let right = left + 1; right < entries.length && samples.length < maxFormulaValidationSamples; right += 1) {
+      for (const leftValue of entries[left][1]) {
+        for (const rightValue of entries[right][1]) {
+          add(base.map((value, index) => index === left ? leftValue : index === right ? rightValue : value));
+        }
+      }
+    }
+  }
+  return samples;
 }

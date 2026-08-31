@@ -52,7 +52,8 @@ export interface FullCaseScore {
 
 export function scoreFullCaseSimulation(
   simulation: FullCaseSimulationSpec,
-  submission: FullCaseSubmission
+  submission: FullCaseSubmission,
+  locale?: string
 ): FullCaseScore {
   const structure = scoreCaseStructure(simulation.structure, submission.structure);
   const questioning = simulation.questioning === undefined
@@ -60,7 +61,8 @@ export function scoreFullCaseSimulation(
     : scoreCaseQuestioning(simulation.questioning, requireQuestioningSubmission(submission));
   const calculation = validateAnswer(
     submission.calculationInput,
-    getFullCaseCalculationQuestion(simulation).answer
+    getFullCaseCalculationQuestion(simulation).answer,
+    { locale }
   );
   const brainstorming = scoreBrainstorming(simulation.brainstorming, submission.brainstorming);
   const synthesis = scoreSynthesisResponse(simulation.synthesis, submission.synthesis);

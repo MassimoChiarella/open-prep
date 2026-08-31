@@ -92,6 +92,7 @@ function selectFocusTag(
 
   return Array.from(responsesByTag.entries())
     .map(([tag, tagResponses]) => ({ statistics: createStatistics(tagResponses), tag }))
+    .filter(({ statistics }) => statistics.attemptCount >= minimumRecommendationQuestionCount)
     .sort(
       (first, second) =>
         compareStatistics(first.statistics, second.statistics) || first.tag.localeCompare(second.tag)

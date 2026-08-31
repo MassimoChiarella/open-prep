@@ -24,6 +24,7 @@ export interface CaseStructuringPrompt {
   objective: string;
   hypotheses: readonly CaseStructuringHypothesis[];
   acceptedHypothesisId: string;
+  acceptedHypothesisIds?: readonly string[];
   branchOptions: readonly CaseStructuringBranchOption[];
   maxBranches: number;
   modelStructure: readonly CaseStructuringModelBranch[];
@@ -68,7 +69,8 @@ export function scoreCaseStructure(
   const matchedBranchIds = selectedBranchIds.filter((id) => acceptedBranchSet.has(id));
   const missedBranchIds = acceptedBranchIds.filter((id) => !selectedBranchSet.has(id));
   const extraBranchIds = selectedBranchIds.filter((id) => !acceptedBranchSet.has(id));
-  const hypothesisAccepted = submission.hypothesisId === prompt.acceptedHypothesisId;
+  const acceptedHypothesisIds = prompt.acceptedHypothesisIds ?? [prompt.acceptedHypothesisId];
+  const hypothesisAccepted = acceptedHypothesisIds.includes(submission.hypothesisId);
   const pointsPerBranch = branchMaxPoints / acceptedBranchIds.length;
   const branchPoints = Math.max(
     0,
@@ -97,10 +99,18 @@ function buildFeedback(
   extraBranchIds: readonly string[]
 ): string[] {
   const acceptedHypothesis = prompt.hypotheses.find((hypothesis) => hypothesis.id === prompt.acceptedHypothesisId);
+  const acceptedAlternatives = (prompt.acceptedHypothesisIds ?? [])
+    .filter((id) => id !== prompt.acceptedHypothesisId)
+    .map((id) => prompt.hypotheses.find((hypothesis) => hypothesis.id === id)?.label ?? id);
   const feedback = [
     hypothesisAccepted
       ? "Your hypothesis gives the analysis a focused starting point."
-      : `A stronger starting hypothesis is: ${acceptedHypothesis?.label ?? prompt.acceptedHypothesisId}. ${acceptedHypothesis?.rationale ?? ""}`.trim()
+      : [
+          `A stronger starting hypothesis is: ${acceptedHypothesis?.label ?? prompt.acceptedHypothesisId}. ${acceptedHypothesis?.rationale ?? ""}`.trim(),
+          ...(acceptedAlternatives.length === 0
+            ? []
+            : [`Other accepted alternatives: ${acceptedAlternatives.join("; ")}.`])
+        ].join(" ")
   ];
 
   if (missedBranchIds.length === 0 && extraBranchIds.length === 0) {

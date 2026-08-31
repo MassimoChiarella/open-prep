@@ -28,6 +28,9 @@ describe("BenchmarkSelectionView", () => {
       screen.getByRole("heading", { name: "Benchmark your performance" }),
     ).toBeInTheDocument();
     expect(screen.getByTestId("benchmark-card-beginner")).toHaveClass("border-teal");
+    expect(
+      within(screen.getByTestId("benchmark-card-beginner")).getByText("Difficulty").closest("dl")
+    ).toHaveClass("grid-cols-1", "min-[360px]:grid-cols-2");
 
     for (const benchmark of benchmarkTests) {
       const card = screen.getByTestId(`benchmark-card-${benchmark.id}`);
@@ -37,6 +40,7 @@ describe("BenchmarkSelectionView", () => {
       expect(within(card).getByText("Time")).toBeInTheDocument();
       expect(within(card).getByText("Pace")).toBeInTheDocument();
       expect(within(card).getByText("Focus")).toBeInTheDocument();
+      expect(within(card).getByText("Focus").closest("div")).toHaveClass("min-w-0");
 
       const link = within(card).getByRole("link");
       expect(link).toHaveAttribute("href", buildBenchmarkSelectionHref(benchmark.id));

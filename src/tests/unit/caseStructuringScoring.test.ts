@@ -53,6 +53,43 @@ describe("case structuring scoring", () => {
     expect(result.feedback[0]).toContain("A stronger starting hypothesis is");
   });
 
+  it("awards hypothesis points for every explicitly accepted alternative", () => {
+    const alternate = groceryPrompt.hypotheses.find(
+      (hypothesis) => hypothesis.id !== groceryPrompt.acceptedHypothesisId
+    );
+    if (alternate === undefined) throw new Error("Expected an alternate hypothesis.");
+    const prompt = {
+      ...groceryPrompt,
+      acceptedHypothesisIds: [groceryPrompt.acceptedHypothesisId, alternate.id]
+    };
+    const result = scoreCaseStructure(prompt, {
+      hypothesisId: alternate.id,
+      branchIds: prompt.modelStructure.map((branch) => branch.branchId)
+    });
+
+    expect(result).toMatchObject({
+      totalScore: 100,
+      hypothesisPoints: 35,
+      hypothesisAccepted: true
+    });
+  });
+
+  it("preserves legacy feedback and names alternatives without implying only one is valid", () => {
+    const alternate = groceryPrompt.hypotheses.find(
+      (hypothesis) => hypothesis.id !== groceryPrompt.acceptedHypothesisId
+    );
+    if (alternate === undefined) throw new Error("Expected an alternate hypothesis.");
+    const submission = { hypothesisId: "store_growth_only", branchIds: ["sales_mix"] };
+
+    expect(scoreCaseStructure({ ...groceryPrompt, acceptedHypothesisIds: undefined }, submission)).toEqual(
+      scoreCaseStructure(groceryPrompt, submission)
+    );
+    expect(scoreCaseStructure({
+      ...groceryPrompt,
+      acceptedHypothesisIds: [groceryPrompt.acceptedHypothesisId, alternate.id]
+    }, submission).feedback[0]).toContain(`Other accepted alternatives: ${alternate.label}.`);
+  });
+
   it("deduplicates repeated branches and rejects submissions beyond the prompt limit", () => {
     const repeated = scoreCaseStructure(groceryPrompt, {
       hypothesisId: groceryPrompt.acceptedHypothesisId,

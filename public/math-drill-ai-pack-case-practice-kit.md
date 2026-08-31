@@ -1,8 +1,8 @@
-# Math Drill AI Pack Kit: Case Practice
+# Open Prep AI Pack Kit: Case Practice
 
-Kit revision: **2026-08-18**
+Kit revision: **2026-08-29**
 
-Pair this module with `math-drill-ai-pack-authoring-start.md`. It covers only `kind: "case_practice"` packages, including schema versions 2 and 3.
+This focused component is included inside the complete case-practice bundle. For advanced modular use, pair it with `math-drill-ai-pack-authoring-start.md`, both named schemas, and the complete v2/v3 examples below. It covers only `kind: "case_practice"` packages, including schema versions 2 and 3.
 
 ## Canonical contracts
 
@@ -47,7 +47,14 @@ Arbitrary graded prose is not supported. Use the authored choices and determinis
 
 ### Structuring
 
-Author hypotheses, one resolving `acceptedHypothesisId`, branch options, a valid branch selection limit, and a model structure whose branch IDs resolve to authored branch options. Make branches mutually intelligible and collectively useful for the stated objective; do not award correctness to labels alone when their descriptions overlap.
+Author hypotheses, one resolving primary `acceptedHypothesisId`, branch options, a valid branch selection limit, and a model structure whose branch IDs resolve to authored branch options. When more than one hypothesis is genuinely valid, optional `acceptedHypothesisIds` may list unique existing hypothesis IDs, must include the primary ID, and awards hypothesis credit for any listed selection. Omit it for legacy single-answer behavior. Make branches mutually intelligible and collectively useful for the stated objective; do not award correctness to labels alone when their descriptions overlap.
+
+```json
+{
+  "acceptedHypothesisId": "cost-led",
+  "acceptedHypothesisIds": ["cost-led", "mix-led"]
+}
+```
 
 ### Brainstorming
 
@@ -63,7 +70,7 @@ Use one supported lesson topic, principles, a worked example, and a multiple-cho
 
 ### Behavioral fit
 
-Fit competencies are `conflict`, `failure`, `impact`, and `leadership`. A fit prompt supplies the primary prompt and authored follow-up questions. The runtime provides preparation/completion practice, not AI evaluation of the learner's story. Do not promise automated prose grading, truth verification, or institutional assessment.
+Fit competencies are `conflict`, `failure`, `impact`, and `leadership`. A fit prompt supplies the primary prompt and authored follow-up questions. The learner must bring a real, authorized story with enough situation, action, and result detail to use the prompt; the package cannot invent or verify that experience. The runtime provides preparation and learner self-review, not AI evaluation of the story. Completion records practice only. Do not promise automated prose grading, truth verification, qualitative feedback, or institutional assessment.
 
 ## Version 3 questioning semantics
 
@@ -88,6 +95,8 @@ An intent describes one useful theme. Practical intent pattern:
 
 Concept groups are **AND across groups and OR within a group**. In the example, a learner question needs revenue AND either price OR volume for full concept coverage. Every concept reference resolves within the same prompt. Optional `supportingConceptIds` must come from that intent's required groups. Give each intent 1 to 10 original, naturally different reference questions. Weights must be positive and are normalized; totaling 100 is easiest to audit. At least one intent must have `priority: true`.
 
+Every reference question must itself contain explicit, non-question-word alias language for at least half of its intent's required concept groups. Words such as `when`, `where`, `what`, `who`, and `how` are removed during normalization and cannot be the only alias signal. For a timing concept, write “How does churn vary by timing, cohort, or tenure?” rather than relying on “When did churn rise?” Before output, map every reference question back to its intended concept groups and rewrite any reference that depends only on generic question words.
+
 The deterministic matcher maps each submitted question to at most one best intent. Similarity is composed of required concept-group coverage (70%), token/canonical-concept overlap with references (20%), and character-trigram similarity (10%). A question must recognize a concept, cover at least half the required groups, and normally reach 0.58 similarity. A declared supporting-concept match can qualify at 0.35. Improve missing valid matches with precise aliases/reference wording rather than lowering or attempting to override runtime thresholds.
 
 Scoring is:
@@ -101,7 +110,7 @@ Unranked attempts therefore have an 85-point maximum, not a score out of 100. Ra
 
 ## Full cases and visuals
 
-A version 2 full case requires client, title, situation, calculation question ID, and embedded structure, exhibit, brainstorming, and synthesis stages. A version 3 full case additionally requires embedded `questioning` and uses the same question-writing rules above. Do not add questioning to a v2 full case; change the whole package to version 3.
+A version 2 full case requires client, title, situation, calculation question ID, and embedded structure, exhibit, brainstorming, and synthesis stages. Its fixed runtime order is **Structure → Exhibit and math → Brainstorm → Synthesize**. A version 3 full case additionally requires embedded `questioning` and uses the fixed order **Questioning → Structure → Exhibit and math → Brainstorm → Synthesize**. JSON property order does not change either sequence. Do not add questioning to a v2 full case; change the whole package to version 3.
 
 `calculationQuestionId` must resolve to a numeric question inside the embedded exhibit. The calculation stage renders that exhibit's authored table or chart and labels the response from the referenced question's unit. Author one embedded calculation question unless extra exhibit questions are intentionally reused elsewhere. Recalculate it from stored cells and keep its units/scale consistent.
 
@@ -113,8 +122,12 @@ Version 2 full cases score four sections at 25 points each. Version 3 scores str
 
 - The package uses v3 exactly when questioning content is present; both schema files accompany external v3 validation.
 - Every accepted/correct/priority/model/concept/calculation reference resolves and collection IDs are unique.
+- Every optional `acceptedHypothesisIds` list is unique, resolves, and includes the primary `acceptedHypothesisId`.
 - Questioning aliases are specific and unambiguous; groups encode intended AND/OR logic; question limits are ordered.
-- Behavioral prompts promise preparation, not automated evaluation.
+- Every questioning reference contains explicit aliases that satisfy at least half of its own intent's required concept groups; no reference relies only on normalized-away question words.
+- Behavioral prompts have a usable real-story prerequisite and promise preparation/self-review, not automated evaluation.
 - Full-case stages share one consistent client, situation, figures, hypotheses, recommendation, and scale.
+- Full-case content is authored for the fixed v2 or v3 stage order; prose-scored behavior is never implied.
 - The embedded exhibit is readable without an image or color-only cue, and its calculation answer is independently verified.
+- A human has reviewed every deterministic key, rubric selection, fact, unit, score rule, and right to use the source content.
 - The final response follows the Start Here binding output contract and is ready for app validation.

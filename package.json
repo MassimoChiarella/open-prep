@@ -7,10 +7,15 @@
   "scripts": {
     "authoring:check": "node scripts/sync-question-pack-authoring-kit.mjs --check",
     "authoring:sync": "node scripts/sync-question-pack-authoring-kit.mjs",
+    "identity:check": "node scripts/check-product-identity.mjs",
+    "i18n:check": "node scripts/sync-i18n-locales.mjs --check",
+    "i18n:sync": "node scripts/sync-i18n-locales.mjs",
+    "clean:web": "node scripts/prepare-web-build.mjs clean",
     "dev": "next dev",
-    "build": "next build",
+    "build": "npm run clean:web && npm run i18n:check && next build && node scripts/finalize-web-build.mjs worker && npm run perf:check && node scripts/finalize-web-build.mjs finalize",
+    "perf:check": "node scripts/check-performance-budgets.mjs",
     "preview": "node scripts/serve-web-build.mjs",
-    "check": "npm run authoring:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run e2e",
+    "check": "npm run clean:web && npm run authoring:check && npm run identity:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run e2e",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
@@ -24,6 +29,7 @@
     "recharts": "^3.8.1"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.13.0",
     "@playwright/test": "^1.60.0",
     "@testing-library/jest-dom": "6.6.3",
     "@testing-library/react": "16.1.0",

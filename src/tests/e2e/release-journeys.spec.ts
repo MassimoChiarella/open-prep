@@ -1,9 +1,10 @@
 import { expect, test, type Page } from "@playwright/test";
 
 import { appDatabaseVersion, appStoreNames } from "../../lib/storage/appStorageTypes";
+import { deleteAppDatabase } from "./indexedDb";
 
 test("database upgrade removes the legacy saved-preset store", async ({ page }) => {
-  await clearLocalDatabase(page);
+  await deleteAppDatabase(page);
   await page.evaluate(() => {
     return new Promise<void>((resolve, reject) => {
       const request = indexedDB.open("consulting_math_drill_tool", 6);
@@ -24,8 +25,6 @@ test("database upgrade removes the legacy saved-preset store", async ({ page }) 
 });
 
 test("local practice journey updates dashboard and progress, then reset returns to first-run state", async ({ page }) => {
-  await clearLocalDatabase(page);
-
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Start with a focused drill" })).toBeVisible();
   await expect(page.getByTestId("first-run-quick-starts")).toBeVisible();
@@ -94,7 +93,6 @@ test("local practice journey updates dashboard and progress, then reset returns 
 });
 
 test("a local question pack can be installed and practiced", async ({ page }) => {
-  await clearLocalDatabase(page);
   await page.goto("/settings");
   await page.locator("summary").filter({ hasText: "Content Packs" }).click();
 
@@ -105,6 +103,7 @@ test("a local question pack can be installed and practiced", async ({ page }) =>
   });
 
   await expect(page.getByTestId("question-pack-preview")).toContainText("Company Case Prep");
+  await page.getByRole("checkbox", { name: /I reviewed the answer keys/ }).check();
   await page.getByRole("button", { name: "Install Pack" }).click();
 
   const packCard = page.getByTestId("question-pack-company-case-prep");
@@ -120,19 +119,6 @@ test("a local question pack can be installed and practiced", async ({ page }) =>
   await page.getByRole("button", { name: "View summary" }).click();
   await expect(page.getByText("Session saved on this device.")).toBeVisible();
 });
-
-async function clearLocalDatabase(page: Page): Promise<void> {
-  await page.goto("/formulas");
-  await page.evaluate(() => {
-    return new Promise<void>((resolve, reject) => {
-      const request = indexedDB.deleteDatabase("consulting_math_drill_tool");
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-      request.onblocked = () => reject(new Error("Local database deletion was blocked."));
-    });
-  });
-}
 
 async function readStoreCounts(page: Page): Promise<Record<(typeof appStoreNames)[number], number>> {
   return page.evaluate(({ storeNames, version }) => {

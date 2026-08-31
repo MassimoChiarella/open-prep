@@ -28,4 +28,35 @@ describe("FitPracticeView accessibility", () => {
     expect(title).not.toHaveAttribute("aria-describedby");
     expect(screen.queryByText("Story title is required.")).not.toBeInTheDocument();
   });
+
+  it("contains imported rehearsal prompts and follow-up questions", async () => {
+    const storage = new MemoryAppStorage();
+    const prompt = "P".repeat(2_000);
+    const followUp = "F".repeat(1_000);
+    await storage.put("practice_records", {
+      action: "Action",
+      competency: "leadership",
+      id: "fit-story-containment",
+      kind: "fit_story",
+      reflection: "Reflection",
+      result: "Result",
+      situation: "Situation",
+      task: "Task",
+      title: "Leadership example",
+      updatedAt: "2026-08-30T12:00:00.000Z"
+    });
+
+    render(
+      <FitPracticeView
+        prompts={[{ competency: "leadership", followUps: [followUp], id: "fit-prompt-containment", prompt }]}
+        storageFactory={() => storage}
+      />
+    );
+
+    const promptNodes = await screen.findAllByText(prompt);
+    const rehearsalPrompt = promptNodes.find((node) => node.tagName === "P");
+    expect(rehearsalPrompt).toBeDefined();
+    expect(rehearsalPrompt).toHaveClass("min-w-0", "[overflow-wrap:anywhere]");
+    expect(screen.getByText(followUp)).toHaveClass("min-w-0", "[overflow-wrap:anywhere]");
+  });
 });

@@ -63,6 +63,81 @@ describe("market sizing scoring", () => {
     ]);
   });
 
+  it("awards unit credit only for an explicit compatible final-answer unit", () => {
+    const stepValues = validCoffeeStepValues();
+    const bareEvaluation = evaluateMarketSizingDraft({
+      template: coffeeTemplate,
+      stepValues,
+      finalAnswer: "2.628B"
+    });
+    const explicitEvaluation = evaluateMarketSizingDraft({
+      template: coffeeTemplate,
+      stepValues,
+      finalAnswer: "$2.628B"
+    });
+
+    const bare = scoreMarketSizingAttempt({
+      evaluation: bareEvaluation,
+      interpretationId: "plausible",
+      stepValues,
+      template: coffeeTemplate
+    });
+    const explicit = scoreMarketSizingAttempt({
+      evaluation: explicitEvaluation,
+      interpretationId: "plausible",
+      stepValues,
+      template: coffeeTemplate
+    });
+
+    expect(bareEvaluation.finalAnswer.validation?.unitStatus).toBe("omitted");
+    expect(pointsFor(bare, "math")).toBe(25);
+    expect(pointsFor(bare, "units")).toBe(0);
+    expect(explicitEvaluation.finalAnswer.validation?.unitStatus).toBe("compatible");
+    expect(pointsFor(explicit, "units")).toBe(10);
+  });
+
+  it("keeps numeric credit independent from an incompatible explicit unit", () => {
+    const stepValues = validCoffeeStepValues();
+    const evaluation = evaluateMarketSizingDraft({
+      template: coffeeTemplate,
+      stepValues,
+      finalAnswer: "262800000000%"
+    });
+    const score = scoreMarketSizingAttempt({
+      evaluation,
+      interpretationId: "plausible",
+      stepValues,
+      template: coffeeTemplate
+    });
+
+    expect(evaluation.finalAnswer.validation).toMatchObject({
+      numericMatch: true,
+      unitStatus: "incompatible"
+    });
+    expect(pointsFor(score, "math")).toBe(25);
+    expect(pointsFor(score, "units")).toBe(0);
+    expect(score.errorTypes).toContain("unit_error");
+    expect(score.errorTypes).not.toContain("arithmetic_error");
+  });
+
+  it("does not award interpretation credit to an unknown option ID", () => {
+    const stepValues = validCoffeeStepValues();
+    const evaluation = evaluateMarketSizingDraft({
+      template: coffeeTemplate,
+      stepValues,
+      finalAnswer: "$2.628B"
+    });
+    const score = scoreMarketSizingAttempt({
+      evaluation,
+      interpretationId: "not-a-template-option",
+      stepValues,
+      template: coffeeTemplate
+    });
+
+    expect(pointsFor(score, "interpretation")).toBe(0);
+    expect(score.errorTypes).toContain("interpretation_error");
+  });
+
   it("uses review content when a required sense check has no explicit boolean step", () => {
     const template = templateWithoutExplicitSenseCheck(true);
     const stepValues = validCoffeeAssumptions();

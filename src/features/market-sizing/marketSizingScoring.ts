@@ -103,11 +103,13 @@ function scoreMath(
   dimension: MarketSizingRubricDimension,
   evaluation: MarketSizingEvaluation
 ): MarketSizingScoreDimensionResult {
+  const valueMatches = evaluation.finalAnswer.validation?.numericMatch ?? evaluation.finalAnswer.status === "match";
+
   return {
     ...dimension,
-    awardedPoints: evaluation.finalAnswer.status === "match" ? dimension.maxPoints : 0,
+    awardedPoints: valueMatches ? dimension.maxPoints : 0,
     message:
-      evaluation.finalAnswer.status === "match"
+      valueMatches
         ? "Final answer matches the calculated result."
         : evaluation.finalAnswer.message
   };
@@ -118,8 +120,7 @@ function scoreUnits(
   evaluation: MarketSizingEvaluation
 ): MarketSizingScoreDimensionResult {
   const validation = evaluation.finalAnswer.validation;
-  const hasUnitError = validation?.errorTypes.includes("unit_error") ?? false;
-  const unitAccepted = validation?.normalizedUserValue !== undefined && !hasUnitError;
+  const unitAccepted = validation?.normalizedUserValue !== undefined && validation.unitStatus === "compatible";
 
   return {
     ...dimension,
@@ -145,7 +146,7 @@ function scoreInterpretation(
   dimension: MarketSizingRubricDimension,
   options: ScoreMarketSizingAttemptOptions
 ): MarketSizingScoreDimensionResult {
-  const hasInterpretation = (options.interpretationId ?? "").trim().length > 0;
+  const hasInterpretation = hasRecognizedInterpretation(options);
   const hasSelfReviewNote = (options.note ?? "").trim().length > 0;
 
   return {
@@ -194,8 +195,18 @@ function isSenseCheckComplete(options: ScoreMarketSizingAttemptOptions): boolean
     : options.stepValues[explicitStep.id] === true;
 }
 
-function hasInterpretation(options: Pick<ScoreMarketSizingAttemptOptions, "interpretationId" | "note">): boolean {
-  return (options.interpretationId ?? "").trim().length > 0 || (options.note ?? "").trim().length > 0;
+function hasInterpretation(
+  options: Pick<ScoreMarketSizingAttemptOptions, "interpretationId" | "note" | "template">
+): boolean {
+  return hasRecognizedInterpretation(options) || (options.note ?? "").trim().length > 0;
+}
+
+function hasRecognizedInterpretation(
+  options: Pick<ScoreMarketSizingAttemptOptions, "interpretationId" | "template">
+): boolean {
+  const interpretationId = (options.interpretationId ?? "").trim();
+  return interpretationId.length > 0 &&
+    (options.template.senseCheck.interpretationOptions ?? []).some((option) => option.id === interpretationId);
 }
 
 function isStepComplete(value: boolean | string | undefined): boolean {

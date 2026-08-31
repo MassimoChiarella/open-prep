@@ -229,7 +229,7 @@ function QuestionEditor({
         ) : null}
       </div>
 
-      <Field label="Question ID">
+      <Field label={t("Question ID")}>
         <input
           aria-label={t("Question {number} ID", { number: formatNumber(number) })}
           className={uiInputs.compact}
@@ -241,7 +241,7 @@ function QuestionEditor({
         />
       </Field>
 
-      <Field label="Prompt">
+      <Field label={t("Prompt")}>
         <textarea
           aria-label={t("Question {number} prompt", { number: formatNumber(number) })}
           className={uiInputs.textarea}
@@ -253,7 +253,7 @@ function QuestionEditor({
       </Field>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Field label="Answer value">
+        <Field label={t("Answer value")}>
           <input
             aria-label={t("Question {number} answer value", { number: formatNumber(number) })}
             className={uiInputs.base}
@@ -265,7 +265,7 @@ function QuestionEditor({
             value={question.value}
           />
         </Field>
-        <Field label="Unit">
+        <Field label={t("Unit")}>
           <select
             aria-label={t("Question {number} unit", { number: formatNumber(number) })}
             className={uiInputs.base}
@@ -279,7 +279,7 @@ function QuestionEditor({
             ))}
           </select>
         </Field>
-        <Field label="Difficulty">
+        <Field label={t("Difficulty")}>
           <select
             aria-label={t("Question {number} difficulty", { number: formatNumber(number) })}
             className={uiInputs.base}
@@ -293,7 +293,7 @@ function QuestionEditor({
             ))}
           </select>
         </Field>
-        <Field label="Tolerance">
+        <Field label={t("Tolerance")}>
           <select
             aria-label={t("Question {number} tolerance", { number: formatNumber(number) })}
             className={uiInputs.base}
@@ -312,7 +312,7 @@ function QuestionEditor({
       <ToleranceFields index={number} onChange={onChange} question={question} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Field label="Category">
+        <Field label={t("Category")}>
           <select
             aria-label={t("Question {number} category", { number: formatNumber(number) })}
             className={uiInputs.base}
@@ -326,7 +326,7 @@ function QuestionEditor({
             ))}
           </select>
         </Field>
-        <Field label="Primary tag">
+        <Field label={t("Primary tag")}>
           <select
             aria-label={t("Question {number} primary tag", { number: formatNumber(number) })}
             className={uiInputs.base}
@@ -340,7 +340,7 @@ function QuestionEditor({
             ))}
           </select>
         </Field>
-        <Field label="Expected time (seconds, optional)">
+        <Field label={t("Expected time (seconds, optional)")}>
           <input
             aria-label={t("Question {number} expected time", { number: formatNumber(number) })}
             className={uiInputs.base}
@@ -352,7 +352,7 @@ function QuestionEditor({
             value={question.expectedTimeSeconds}
           />
         </Field>
-        <Field label="Rounding instruction (optional)">
+        <Field label={t("Rounding instruction (optional)")}>
           <select
             aria-label={t("Question {number} rounding instruction", { number: formatNumber(number) })}
             className={uiInputs.base}
@@ -368,7 +368,7 @@ function QuestionEditor({
         </Field>
       </div>
 
-      <Field label="Explanation summary">
+      <Field label={t("Explanation summary")}>
         <input
           aria-label={t("Question {number} explanation summary", { number: formatNumber(number) })}
           className={uiInputs.base}
@@ -378,7 +378,7 @@ function QuestionEditor({
           value={question.summary}
         />
       </Field>
-      <Field label="Explanation steps (one per line)">
+      <Field label={t("Explanation steps (one per line)")}>
         <textarea
           aria-label={t("Question {number} explanation steps", { number: formatNumber(number) })}
           className={uiInputs.textarea}
@@ -401,7 +401,7 @@ function ToleranceFields({
   onChange(update: Partial<QuestionDraft>): void;
   question: QuestionDraft;
 }) {
-  const { t } = useI18n();
+  const { formatNumber, t } = useI18n();
   if (question.toleranceType === "exact") {
     return <p className={uiText.dense}>{t("Only the exact numeric answer will be accepted.")}</p>;
   }
@@ -411,7 +411,7 @@ function ToleranceFields({
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label={t("Accepted minimum")}>
           <input
-            aria-label={`Question ${index} tolerance minimum`}
+            aria-label={t("Question {number} tolerance minimum", { number: formatNumber(index) })}
             className={uiInputs.base}
             onChange={(event) => onChange({ toleranceMin: event.currentTarget.value })}
             required
@@ -422,7 +422,7 @@ function ToleranceFields({
         </Field>
         <Field label={t("Accepted maximum")}>
           <input
-            aria-label={`Question ${index} tolerance maximum`}
+            aria-label={t("Question {number} tolerance maximum", { number: formatNumber(index) })}
             className={uiInputs.base}
             onChange={(event) => onChange({ toleranceMax: event.currentTarget.value })}
             required
@@ -438,7 +438,7 @@ function ToleranceFields({
   return (
     <Field label={t(question.toleranceType === "percentage" ? "Relative tolerance" : "Absolute tolerance")}>
       <input
-        aria-label={`Question ${index} tolerance value`}
+        aria-label={t("Question {number} tolerance value", { number: formatNumber(index) })}
         className={uiInputs.base}
         min="0"
         onChange={(event) => onChange({ toleranceValue: event.currentTarget.value })}

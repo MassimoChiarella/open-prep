@@ -26,7 +26,12 @@ import type {
 } from "@/lib/domain";
 
 export const appDatabaseName = "consulting_math_drill_tool";
-export const appDatabaseVersion = 7;
+export const appDatabaseVersion = 8;
+
+export const appStoreIndexNames = {
+  benchmark_results: "completed_at_id",
+  question_packs: "imported_at_id"
+} as const;
 
 export interface QuestionPackQuestionRecord {
   id: string;
@@ -275,15 +280,44 @@ export type AppStoreKey<TStore extends AppStoreName> = AppStoreValue<TStore> ext
   ? TKey
   : IDBValidKey;
 
+export type AppIndexedStoreName = keyof typeof appStoreIndexNames;
+export type AppStoreIndexName<TStore extends AppIndexedStoreName> =
+  (typeof appStoreIndexNames)[TStore];
+
+export interface AppStoragePage<TValue> {
+  continuationKey?: IDBValidKey;
+  values: TValue[];
+}
+
+export interface AppStoragePageOptions {
+  afterKey?: IDBValidKey;
+  direction?: "next" | "prev";
+  limit: number;
+}
+
+export type AppStorageMutation = {
+  [TStore in AppStoreName]:
+    | { storeName: TStore; type: "clear" }
+    | { key: AppStoreKey<TStore>; storeName: TStore; type: "delete" }
+    | { storeName: TStore; type: "put"; value: AppStoreValue<TStore> };
+}[AppStoreName];
+
 export interface AppStorage {
   get<TStore extends AppStoreName>(
     storeName: TStore,
     key: AppStoreKey<TStore>
   ): Promise<AppStoreValue<TStore> | undefined>;
   getAll<TStore extends AppStoreName>(storeName: TStore): Promise<AppStoreValue<TStore>[]>;
+  count<TStore extends AppStoreName>(storeName: TStore): Promise<number>;
+  getPage<TStore extends AppIndexedStoreName>(
+    storeName: TStore,
+    indexName: AppStoreIndexName<TStore>,
+    options: AppStoragePageOptions
+  ): Promise<AppStoragePage<AppStoreValue<TStore>>>;
   put<TStore extends AppStoreName>(storeName: TStore, value: AppStoreValue<TStore>): Promise<void>;
   delete<TStore extends AppStoreName>(storeName: TStore, key: AppStoreKey<TStore>): Promise<void>;
   clear<TStore extends AppStoreName>(storeName: TStore): Promise<void>;
+  mutate(operations: readonly AppStorageMutation[]): Promise<void>;
   clearAll(): Promise<void>;
   close(): void;
 }

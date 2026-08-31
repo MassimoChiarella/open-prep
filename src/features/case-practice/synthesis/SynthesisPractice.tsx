@@ -128,12 +128,12 @@ export function SynthesisPractice({
   }
 
   return (
-    <section className="grid gap-6" data-testid="synthesis-practice">
+    <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6" data-testid="synthesis-practice">
       <section
-        className="grid gap-5 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
+        className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
         aria-labelledby="synthesis-case-heading"
       >
-        <label className={cx(uiText.controlLabel, "grid max-w-xl gap-2")}>
+        <label className={cx(uiText.controlLabel, "grid min-w-0 max-w-xl gap-2")}>
           {t("Case prompt")}
           <select
             className={uiInputs.compact}
@@ -148,26 +148,26 @@ export function SynthesisPractice({
           </select>
         </label>
 
-        <div className="grid gap-2">
-          <p className={cx(uiText.eyebrow, "text-coral")}>{prompt.client}</p>
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
+          <p className={cx(uiText.eyebrow, "min-w-0 text-coral [overflow-wrap:anywhere]")}>{prompt.client}</p>
           <h2 className={uiText.sectionTitle} id="synthesis-case-heading">
             {prompt.title}
           </h2>
-          <p className={uiText.bodyStrong}>{prompt.situation}</p>
-          <p className="text-base font-semibold text-ink">{prompt.decision}</p>
+          <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{prompt.situation}</p>
+          <p className="min-w-0 text-base font-semibold text-ink [overflow-wrap:anywhere]">{prompt.decision}</p>
         </div>
 
-        <div className="grid gap-2">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
           <h3 className={uiText.subsectionTitle}>{t("Case evidence")}</h3>
           <ul className={cx(uiText.body, "grid list-disc gap-2 pl-5")}>
             {prompt.facts.map((fact) => (
-              <li key={fact}>{fact}</li>
+              <li className="min-w-0 [overflow-wrap:anywhere]" key={fact}>{fact}</li>
             ))}
           </ul>
         </div>
       </section>
 
-      <form className="grid gap-6" onSubmit={(event) => void handleSubmit(event)}>
+      <form className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6" onSubmit={(event) => void handleSubmit(event)}>
         <SynthesisResponseFields onChoose={selectOption} prompt={prompt} response={response} />
 
         <div className="flex flex-wrap items-center gap-3">
@@ -223,7 +223,7 @@ export function SynthesisResponseFields({
             {prompt.options[dimension].map((option) => (
               <label
                 className={cx(
-                  "flex min-h-11 cursor-pointer items-start gap-3 border px-3 py-3 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-teal",
+                  "flex min-h-11 min-w-0 cursor-pointer items-start gap-3 border px-3 py-3 transition-colors focus-within:outline focus-within:outline-2 focus-within:outline-offset-2 focus-within:outline-teal",
                   response[dimension] === option.id
                     ? "border-teal bg-mint/50"
                     : "border-ink/15 bg-white hover:border-teal hover:bg-mint/20"
@@ -239,7 +239,7 @@ export function SynthesisResponseFields({
                   type="radio"
                   value={option.id}
                 />
-                <span className={uiText.bodyStrong}>{option.label}</span>
+                <span className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{option.label}</span>
               </label>
             ))}
           </fieldset>
@@ -253,7 +253,7 @@ function SynthesisReview({ prompt, score }: { prompt: SynthesisPrompt; score: Sy
   const { formatNumber, t } = useI18n();
   return (
     <section
-      className="grid gap-5 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6"
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6"
       aria-labelledby="synthesis-review-heading"
     >
       <div className="flex flex-wrap items-baseline justify-between gap-3">
@@ -278,7 +278,7 @@ function SynthesisReview({ prompt, score }: { prompt: SynthesisPrompt; score: Sy
 
       <div className="grid gap-2 border-t border-teal/20 pt-4">
         <h3 className={uiText.subsectionTitle}>{t("Model close")}</h3>
-        <p className={uiText.bodyStrong}>{prompt.modelClose}</p>
+        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{prompt.modelClose}</p>
       </div>
     </section>
   );

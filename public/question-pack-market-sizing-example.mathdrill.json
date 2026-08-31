@@ -104,7 +104,7 @@
         }
       ],
       "senseCheck": {
-        "prompt": "Which observation best checks whether the estimate is plausible?",
+        "prompt": "Choose one useful lens for checking whether the estimate is plausible.",
         "required": true,
         "interpretationOptions": [
           {
@@ -112,12 +112,12 @@
             "label": "Compare annual spend per buyer with a plausible grocery budget."
           },
           {
-            "id": "ignore-units",
-            "label": "Ignore the currency unit because the formula has three inputs."
+            "id": "test-adoption-range",
+            "label": "Recalculate the estimate at the low and high ends of the adoption range."
           },
           {
-            "id": "double-every-input",
-            "label": "Double every assumption without changing the conclusion."
+            "id": "compare-local-category",
+            "label": "Compare the implied category spend per household with a plausible local annual range."
           }
         ]
       }

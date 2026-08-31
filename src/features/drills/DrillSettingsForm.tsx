@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { starterQuestionTemplates } from "@/data/questionTemplates/starterTemplates";
@@ -27,10 +27,11 @@ import {
   unitPreferenceOptions,
   type DrillOption
 } from "@/features/drills/drillSettingsOptions";
-import { createDrillSettings } from "@/features/drills/drillSettings";
+import { createDrillSettings, hasActiveRemainderDivision } from "@/features/drills/drillSettings";
 import { createQuickFireModeSettings, quickFireModeSourceParam } from "@/features/drills/quickFireMode";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { createDrillSession } from "@/features/drills/sessionFactory";
+import { getQuestionGenerationCapacity } from "@/features/questions/questionGenerator";
 import { loadUserDrillSettings, saveUserDrillSettings } from "@/features/settings/settingsPersistence";
 import type {
   ArithmeticMixedOperator,
@@ -140,10 +141,24 @@ export const quickDrillPresets = [
 
 export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }: { storageFactory?: () => AppStorage } = {}) {
   const { formatNumber: formatLocaleNumber, t } = useI18n();
-  const [settings, setSettings] = useState<DrillSettings>(() => createFormDrillSettings());
+  const [settings, setSettingsState] = useState<DrillSettings>(() => createFormDrillSettings());
   const [savedSettingsSignature, setSavedSettingsSignature] = useState<string>();
   const [persistenceStatus, setPersistenceStatus] = useState<SettingsPersistenceStatus>("loading");
+  const setSettings = useCallback<React.Dispatch<React.SetStateAction<DrillSettings>>>((update) => {
+    setSettingsState((current) => {
+      const next = typeof update === "function" ? update(current) : update;
+      const capacity = getQuestionGenerationCapacity(starterQuestionTemplates, next);
 
+      return capacity > 0 && next.questionCount > capacity
+        ? createDrillSettings({ ...next, questionCount: capacity })
+        : next;
+    });
+  }, []);
+
+  const questionCapacity = useMemo(
+    () => getQuestionGenerationCapacity(starterQuestionTemplates, settings),
+    [settings]
+  );
   const preview = useMemo(() => createPreview(settings), [settings]);
   const startHref = useMemo(() => buildFormSessionHref(settings), [settings]);
   const settingsMatchSavedDefaults = JSON.stringify(settings) === savedSettingsSignature;
@@ -165,6 +180,7 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
   const showMultiplicationControls = selectedTags.size === 0 || selectedTags.has("multiplication");
   const showDivisionControls = selectedTags.size === 0 || selectedTags.has("division");
   const showMixedOperationControls = selectedTags.size === 0 || selectedTags.has("mixed_operations");
+  const remainderDivisionSelected = hasActiveRemainderDivision(settings);
   const previewQuestions = useMemo(
     () => (preview.error === undefined ? preview.questions.slice(0, 1) : []),
     [preview]
@@ -208,7 +224,7 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
     return () => {
       cancelled = true;
     };
-  }, [storageFactory]);
+  }, [setSettings, storageFactory]);
 
   async function handleSaveDefaults() {
     setPersistenceStatus("saving");
@@ -543,8 +559,11 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
               ) : null}
               <label className="flex min-h-11 items-center gap-3 rounded-md border border-ink/10 bg-white px-3 py-2 text-sm font-medium text-ink">
                 <input
+                  aria-label={t("Include negative values")}
+                  aria-describedby={remainderDivisionSelected ? "remainder-negative-values-note" : undefined}
                   checked={settings.arithmeticAllowNegatives === true}
                   className="h-4 w-4 accent-teal"
+                  disabled={remainderDivisionSelected}
                   onChange={(event) => {
                     const arithmeticAllowNegatives = event.currentTarget.checked;
                     setSettings((current) =>
@@ -553,7 +572,14 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
                   }}
                   type="checkbox"
                 />
-                {t("Include negative values")}
+                <span>
+                  {t("Include negative values")}
+                  {remainderDivisionSelected ? (
+                    <span className="mt-0.5 block font-normal text-ink/65" id="remainder-negative-values-note">
+                      {t("Remainder division uses non-negative whole-number operands.")}
+                    </span>
+                  ) : null}
+                </span>
               </label>
             </DisclosureGroup>
           ) : null}
@@ -645,7 +671,7 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
                   className="h-11 rounded-md border border-ink/50 bg-white px-3 text-sm font-medium text-ink"
                   onChange={(event) => {
                     if (event.currentTarget.value !== "custom") {
-                      updateQuestionCount(Number(event.currentTarget.value), setSettings);
+                      updateQuestionCount(Number(event.currentTarget.value), questionCapacity, setSettings);
                     }
                   }}
                   value={
@@ -655,7 +681,7 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
                   }
                 >
                   {questionCountOptions.map((count) => (
-                    <option key={count} value={count}>
+                    <option disabled={count > questionCapacity} key={count} value={count}>
                       {count}
                     </option>
                   ))}
@@ -664,12 +690,19 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
               </label>
               <NumberField
                 label="Custom question count"
-                max={50}
+                disabled={questionCapacity === 0}
+                max={Math.max(1, questionCapacity)}
                 min={1}
-                onChange={(questionCount) => updateQuestionCount(questionCount, setSettings)}
+                onChange={(questionCount) => updateQuestionCount(questionCount, questionCapacity, setSettings)}
                 value={settings.questionCount}
               />
             </div>
+            {questionCapacity < 50 ? (
+              <p className="text-sm leading-6 text-ink/65" role="status">
+                {t("{count} questions", { count: formatLocaleNumber(questionCapacity) })}.{" "}
+                {t("The current filters are too narrow for the requested question count. Lower the count or broaden the categories and skills.")}
+              </p>
+            ) : null}
           </ControlGroup>
 
           <DisclosureGroup
@@ -963,6 +996,7 @@ function SegmentedControl<TValue extends string>({
 }
 
 interface NumberFieldProps {
+  disabled?: boolean;
   label: string;
   max: number;
   min: number;
@@ -970,7 +1004,7 @@ interface NumberFieldProps {
   value: number;
 }
 
-function NumberField({ label, max, min, onChange, value }: NumberFieldProps) {
+function NumberField({ disabled = false, label, max, min, onChange, value }: NumberFieldProps) {
   const { t } = useI18n();
 
   return (
@@ -978,6 +1012,7 @@ function NumberField({ label, max, min, onChange, value }: NumberFieldProps) {
       {t(label)}
       <input
         className="h-11 rounded-md border border-ink/50 bg-white px-3 text-sm text-ink"
+        disabled={disabled}
         max={max}
         min={min}
         onChange={(event) => onChange(Number(event.currentTarget.value))}
@@ -1094,13 +1129,14 @@ function toggleMixedOperator(
 
 function updateQuestionCount(
   questionCount: number,
+  capacity: number,
   setSettings: React.Dispatch<React.SetStateAction<DrillSettings>>
 ) {
   setSettings((current) =>
     createDrillSettings({
       ...current,
       questionCount: Number.isFinite(questionCount)
-        ? Math.min(50, Math.max(1, Math.round(questionCount)))
+        ? Math.min(Math.max(1, capacity), Math.max(1, Math.round(questionCount)))
         : current.questionCount
     })
   );

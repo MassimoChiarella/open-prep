@@ -21,8 +21,10 @@ import { validateExhibitQuestionPackPayload } from "@/features/question-packs/qu
 import { validateMarketSizingQuestionPackPayload } from "@/features/question-packs/questionPackMarketSizing";
 import { validateGeneratedTemplateQuestionPackPayload } from "@/features/question-packs/questionPackTemplate";
 import {
+  createQuestionPackValidationErrors,
   enumValue as readEnumValue,
   finiteNumber as readFiniteNumberValue,
+  finalizeQuestionPackValidationErrors,
   hasOwn,
   objectValue as readObject,
   questionPackMaxFileBytes,
@@ -40,15 +42,17 @@ import {
   type UnknownRecord
 } from "@/features/question-packs/questionPackValidation";
 import { createSeededRandom } from "@/lib/random/seededRandom";
-import type {
-  AppStorage,
-  BenchmarkQuestionPackRecord,
-  CasePracticeQuestionPackRecord,
-  ExhibitQuestionPackRecord,
-  FixedNumericQuestionPackRecord,
-  MarketSizingQuestionPackRecord,
-  QuestionPackQuestionRecord,
-  QuestionPackRecord
+import {
+  appStoreIndexNames,
+  type AppStorage,
+  type AppStoragePage,
+  type BenchmarkQuestionPackRecord,
+  type CasePracticeQuestionPackRecord,
+  type ExhibitQuestionPackRecord,
+  type FixedNumericQuestionPackRecord,
+  type MarketSizingQuestionPackRecord,
+  type QuestionPackQuestionRecord,
+  type QuestionPackRecord
 } from "@/lib/storage/appStorageTypes";
 
 const questionPackFormat = "math-drill-question-pack" as const;
@@ -56,15 +60,42 @@ const questionPackSchemaVersion = 2 as const;
 export const questionPackSourceParam = "question_pack" as const;
 export { questionPackMaxFileBytes };
 export const questionPackMaxQuestions = 500;
+export const questionPackMaxInstalledPacks = 200;
+export const questionPackMaxInstalledBytes = 20 * 1024 * 1024;
+export const questionPackListPageSize = 25;
+const questionPackQuotaScanPageSize = 100;
 const questionPackMaxTags = 10;
 const questionPackMaxExplanationSteps = 10;
 const questionPackMaxPromptLength = 2_000;
 const questionPackMaxExplanationTextLength = 1_000;
 const questionPackMaxExpectedTimeSeconds = 3_600;
+const questionPackWriteLockName = "consulting-math-drill:question-pack-write";
+let localQuestionPackWriteQueue: Promise<void> = Promise.resolve();
 
 type QuestionPackValidationResult =
   | { status: "valid"; pack: QuestionPackRecord }
   | { status: "invalid"; errors: string[] };
+
+export type QuestionPackQuotaReason = "bytes" | "count";
+
+export class QuestionPackQuotaError extends Error {
+  constructor(readonly reason: QuestionPackQuotaReason) {
+    super(`Installed question-pack ${reason} quota exceeded.`);
+    this.name = "QuestionPackQuotaError";
+  }
+}
+
+export interface QuestionPackUsage {
+  existingPackBytes?: number;
+  installedCount: number;
+  totalBytes: number;
+}
+
+export interface ProjectedQuestionPackUsage {
+  installedCount: number;
+  replaced: boolean;
+  totalBytes: number;
+}
 
 interface CreateQuestionPackDrillSessionOptions {
   difficulty: Difficulty;
@@ -168,9 +199,9 @@ export function validateQuestionPackPayload(
     }
   }
 
-  const errors: string[] = [];
+  const errors = createQuestionPackValidationErrors();
   const envelope = readQuestionPackEnvelope(payload, "fixed_numeric", ["questions"], errors);
-  if (envelope === undefined) return { status: "invalid", errors };
+  if (envelope === undefined) return { status: "invalid", errors: finalizeQuestionPackValidationErrors(errors) };
   const { value, id, packVersion, title, description, publisher, license } = envelope;
   const questions = readQuestions(value, errors);
 
@@ -181,7 +212,7 @@ export function validateQuestionPackPayload(
     title === undefined ||
     questions === undefined
   ) {
-    return { status: "invalid", errors };
+    return { status: "invalid", errors: finalizeQuestionPackValidationErrors(errors) };
   }
 
   return {
@@ -490,28 +521,131 @@ function createGeneratedTemplatePackSession(
   };
 }
 
+export async function loadQuestionPackPage(
+  storage: AppStorage,
+  afterKey?: IDBValidKey
+): Promise<AppStoragePage<QuestionPackRecord>> {
+  return storage.getPage("question_packs", appStoreIndexNames.question_packs, {
+    ...(afterKey === undefined ? {} : { afterKey }),
+    direction: "prev",
+    limit: questionPackListPageSize
+  });
+}
+
 export async function loadQuestionPacks(storage: AppStorage): Promise<QuestionPackRecord[]> {
-  const packs = await storage.getAll("question_packs");
+  const packs: QuestionPackRecord[] = [];
+  let afterKey: IDBValidKey | undefined;
 
-  return [...packs].sort(
-    (left, right) =>
-      Date.parse(right.importedAt) - Date.parse(left.importedAt) ||
-      left.title.localeCompare(right.title) ||
-      left.id.localeCompare(right.id)
-  );
+  do {
+    const page = await loadQuestionPackPage(storage, afterKey);
+    packs.push(...page.values);
+    afterKey = page.continuationKey;
+  } while (afterKey !== undefined);
+
+  return packs;
 }
 
-export async function saveQuestionPack(storage: AppStorage, pack: QuestionPackRecord): Promise<void> {
-  await storage.put("question_packs", pack);
+export async function saveQuestionPack(
+  storage: AppStorage,
+  pack: QuestionPackRecord
+): Promise<ProjectedQuestionPackUsage> {
+  return withQuestionPackWriteLock(async () => {
+    const usage = await inspectQuestionPackUsage(storage, pack.id);
+    const projected = projectQuestionPackUsage(usage, getQuestionPackStoredBytes(pack));
+    await storage.put("question_packs", pack);
+    return projected;
+  });
 }
 
-export async function deleteQuestionPack(storage: AppStorage, id: string): Promise<void> {
-  await storage.delete("question_packs", id);
+export async function deleteQuestionPack(storage: AppStorage, id: string): Promise<number> {
+  return withQuestionPackWriteLock(async () => {
+    await storage.delete("question_packs", id);
+    return storage.count("question_packs");
+  });
 }
 
 export function serializeQuestionPack(pack: QuestionPackRecord): string {
   const { importedAt: _importedAt, ...payload } = pack;
   return `${JSON.stringify({ $schema: `./question-pack-v${pack.schemaVersion}.schema.json`, ...payload }, null, 2)}\n`;
+}
+
+export function getQuestionPackStoredBytes(pack: QuestionPackRecord): number {
+  return new TextEncoder().encode(JSON.stringify(pack)).byteLength;
+}
+
+export function projectQuestionPackUsage(
+  usage: QuestionPackUsage,
+  candidateBytes: number
+): ProjectedQuestionPackUsage {
+  if (!Number.isSafeInteger(usage.installedCount) || usage.installedCount < 0) {
+    throw new RangeError("Installed question-pack count must be a non-negative safe integer.");
+  }
+  for (const value of [usage.totalBytes, usage.existingPackBytes, candidateBytes]) {
+    if (value !== undefined && (!Number.isSafeInteger(value) || value < 0)) {
+      throw new RangeError("Question-pack byte counts must be non-negative safe integers.");
+    }
+  }
+
+  const replaced = usage.existingPackBytes !== undefined;
+  const installedCount = usage.installedCount + (replaced ? 0 : 1);
+  const totalBytes = usage.totalBytes - (usage.existingPackBytes ?? 0) + candidateBytes;
+
+  if (!replaced && installedCount > questionPackMaxInstalledPacks) {
+    throw new QuestionPackQuotaError("count");
+  }
+  if (
+    totalBytes > questionPackMaxInstalledBytes &&
+    (!replaced || totalBytes > usage.totalBytes)
+  ) {
+    throw new QuestionPackQuotaError("bytes");
+  }
+
+  return { installedCount, replaced, totalBytes };
+}
+
+async function inspectQuestionPackUsage(storage: AppStorage, packId: string): Promise<QuestionPackUsage> {
+  const expectedCount = await storage.count("question_packs");
+  let afterKey: IDBValidKey | undefined;
+  let existingPackBytes: number | undefined;
+  let installedCount = 0;
+  let totalBytes = 0;
+
+  do {
+    const page = await storage.getPage("question_packs", appStoreIndexNames.question_packs, {
+      ...(afterKey === undefined ? {} : { afterKey }),
+      direction: "prev",
+      limit: questionPackQuotaScanPageSize
+    });
+
+    for (const installedPack of page.values) {
+      const bytes = getQuestionPackStoredBytes(installedPack);
+      installedCount += 1;
+      totalBytes += bytes;
+      if (installedPack.id === packId) existingPackBytes = bytes;
+    }
+    afterKey = page.continuationKey;
+  } while (afterKey !== undefined);
+
+  if (installedCount !== expectedCount) {
+    throw new Error("Installed question-pack index is incomplete; no changes were saved.");
+  }
+
+  return {
+    ...(existingPackBytes === undefined ? {} : { existingPackBytes }),
+    installedCount,
+    totalBytes
+  };
+}
+
+function withQuestionPackWriteLock<TResult>(action: () => Promise<TResult>): Promise<TResult> {
+  const lockManager = typeof navigator === "undefined" ? undefined : navigator.locks;
+  if (lockManager !== undefined) {
+    return lockManager.request(questionPackWriteLockName, action);
+  }
+
+  const result = localQuestionPackWriteQueue.then(action, action);
+  localQuestionPackWriteQueue = result.then(() => undefined, () => undefined);
+  return result;
 }
 
 function readQuestions(value: UnknownRecord, errors: string[]): QuestionPackQuestionRecord[] | undefined {

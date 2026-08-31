@@ -1,8 +1,8 @@
-# Math Drill AI Pack Kit: Exhibits and Charts
+# Open Prep AI Pack Kit: Exhibits and Charts
 
-Kit revision: **2026-08-18**
+Kit revision: **2026-08-29**
 
-Pair this module with `math-drill-ai-pack-authoring-start.md`. It covers only `kind: "exhibit"` packages.
+This focused component is included inside the complete exhibit bundle. For advanced modular use, pair it with `math-drill-ai-pack-authoring-start.md`, the named schema, and the complete examples/cookbook below. It covers only `kind: "exhibit"` packages.
 
 ## Canonical contract
 
@@ -77,6 +77,9 @@ All references must resolve to columns of suitable roles. Plot only metric colum
 ## Visual authoring guidance
 
 - Treat hard schema limits as safety ceilings. Prefer about 8 pie categories, 20 categorical bar/stacked/waterfall rows, 50 line/index points, 200 scatter points, and 4 plotted series. Larger valid data belongs in a table or should be divided into focused datasets.
+- Keep line, index, and waterfall rows in the exact order they should render. The app does not parse or sort text dates. An `index_chart` plots the authored values as-is and never rebases a series automatically.
+- For a percentage pie, author non-negative fractions whose total is between 0.99 and 1.01. A wider total remains structurally possible but is flagged for review because it may not describe a coherent whole.
+- A waterfall starts its running total at zero. Each ordinary row adds its stored signed value. A row listed in `totalRowIds` displays its stored value as an absolute total bar but does not seed, replace, or reset the running total. Therefore, do not mark an opening baseline row as a total; author it as an ordinary positive contribution when later deltas must build from it.
 - Put the unit and scale in column metadata and visible wording. Stored values, labels, answer keys, and explanations must use the same scale.
 - Do not rely on color alone to distinguish a correct answer or series. Name the series/categories in the prompt and ensure labels make the comparison understandable.
 - Use a table when exact reading matters; use a chart only when pattern, comparison, distribution, or contribution is the learning goal.
@@ -99,6 +102,9 @@ General standalone multiple choice is unsupported; it belongs here only when it 
 - Row cell keys exactly equal column IDs, and cell types match column roles.
 - Every chart reference resolves; plotted series are metrics and categories are dimensions.
 - Pie values are non-negative with a positive total; scatterplots have exactly one Y series.
+- Percentage pie values total 99%–101%; authored line/index order is intentional; index values are already rebased if rebasing is desired.
+- Waterfall totals follow the exact zero-start/no-reset behavior, and the opening row is not an absolute total.
 - Questions can be answered from the displayed data, with deterministic keys and consistent units.
 - Labels and question wording do not make color perception necessary.
+- A human has checked every transcribed value, answer key, date/period, source note, and right to use the visual's underlying data.
 - The final response follows the Start Here binding output contract and is ready for app validation.

@@ -106,7 +106,7 @@ export function ActiveDrillSession({
   storageFactory = createIndexedDbAppStorage,
   warnings = []
 }: ActiveDrillSessionProps) {
-  const { formatNumber: formatLocaleNumber, t } = useI18n();
+  const { formatNumber: formatLocaleNumber, locale, t } = useI18n();
   const [session, setSession] = useState<DrillSession>(initialSession);
   const [questionQueue, setQuestionQueue] = useState<Question[]>(() => initialQuestions);
   const [answer, setAnswer] = useState("");
@@ -204,6 +204,7 @@ export function ActiveDrillSession({
         : undefined;
       const submitted = submitAnswer({
         ...(interviewMath === undefined ? {} : { interviewMath }),
+        locale,
         session,
         question,
         rawInput: "",
@@ -237,6 +238,7 @@ export function ActiveDrillSession({
       equationOptionId,
       interpretationOptionId,
       interviewMathMode,
+      locale,
       prepareNextQuestion,
       questionQueue,
       selectedUnit,
@@ -269,6 +271,7 @@ export function ActiveDrillSession({
                 interviewMath,
                 selectedUnit: isCurrentQuestion ? selectedUnit || undefined : undefined
               }),
+          locale,
           session: nextSession,
           question: queuedQuestion,
           rawInput: "",
@@ -284,6 +287,7 @@ export function ActiveDrillSession({
       equationOptionId,
       interpretationOptionId,
       interviewMathMode,
+      locale,
       questionQueue,
       questionStartedAt,
       selectedUnit,
@@ -480,9 +484,10 @@ export function ActiveDrillSession({
       selectedUnit || (interviewMath === undefined ? currentQuestion.answer.unit : undefined);
     const validation =
       interviewMath === undefined
-        ? validateAnswer(answer, currentQuestion.answer, { selectedUnit: submittedUnit })
+        ? validateAnswer(answer, currentQuestion.answer, { locale, selectedUnit: submittedUnit })
         : evaluateInterviewMath({
             ...interviewMath,
+            locale,
             question: currentQuestion,
             rawInput: answer,
             selectedUnit: submittedUnit
@@ -506,6 +511,7 @@ export function ActiveDrillSession({
 
     const submitted = submitAnswer({
       ...(interviewMath === undefined ? {} : { interviewMath }),
+      locale,
       session,
       question: currentQuestion,
       rawInput: answer,
@@ -527,6 +533,7 @@ export function ActiveDrillSession({
       selectedUnit || (interviewMath === undefined ? currentQuestion.answer.unit : undefined);
     const submitted = submitAnswer({
       ...(interviewMath === undefined ? {} : { interviewMath }),
+      locale,
       session,
       question: currentQuestion,
       rawInput: "",
@@ -697,12 +704,12 @@ export function ActiveDrillSession({
             <TimerPanel mode={session.settings.timeMode} timer={timer} timerDescriptionOverride={sessionTimerDescription} />
           </div>
 
-          <section className="border border-ink/15 border-t-2 border-t-teal bg-white p-4 sm:p-6">
-            <div className="grid gap-5">
-              <div className="grid gap-2">
+          <section className="min-w-0 border border-ink/15 border-t-2 border-t-teal bg-white p-4 sm:p-6">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
                 <p className="text-xs font-semibold uppercase tracking-wide text-teal">{t("Current Question")}</p>
                 <p
-                  className="max-w-3xl text-2xl font-semibold leading-9 text-ink sm:text-3xl sm:leading-10"
+                  className="min-w-0 max-w-3xl text-2xl font-semibold leading-9 text-ink [overflow-wrap:anywhere] sm:text-3xl sm:leading-10"
                   data-testid="active-question-prompt"
                   id="active-question-prompt"
                 >
@@ -738,7 +745,7 @@ export function ActiveDrillSession({
                 </dl>
               </div>
               {session.settings.hintsEnabled === true && feedback?.recorded !== true ? (
-                <div className="grid gap-2">
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
                   <button
                     aria-controls="active-question-hint"
                     aria-expanded={showHint}
@@ -750,7 +757,7 @@ export function ActiveDrillSession({
                   </button>
                   {showHint ? (
                     <p
-                      className="rounded-md border border-teal/20 bg-mint/50 px-3 py-2 text-sm leading-6 text-ink"
+                      className="min-w-0 rounded-md border border-teal/20 bg-mint/50 px-3 py-2 text-sm leading-6 text-ink [overflow-wrap:anywhere]"
                       id="active-question-hint"
                     >
                       {displayedQuestion.explanation.short}
@@ -893,14 +900,14 @@ export function ActiveDrillSession({
           className="h-fit min-w-0 border border-ink/15 border-t-2 border-t-coral bg-white p-4 sm:p-5 lg:sticky lg:top-6"
           data-testid="active-session-queue"
         >
-          <div className="grid gap-5">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5">
             <div>
               <p className="text-sm font-semibold uppercase tracking-wide text-coral">{t("Queue")}</p>
               <h2 className="mt-2 text-xl font-semibold text-ink" id="active-session-queue-heading">
                 {t(queueTitle)}
               </h2>
             </div>
-            <ol className="grid max-h-[28rem] gap-2 overflow-y-auto pr-1">
+            <ol className="grid max-h-[28rem] min-w-0 grid-cols-[minmax(0,1fr)] gap-2 overflow-y-auto pr-1">
               {questionQueue.map((question, index) => {
                 const response = session.responses.find((item) => item.questionId === question.id);
                 const active = question.id === displayedQuestion.id;
@@ -908,7 +915,7 @@ export function ActiveDrillSession({
                 return (
                   <li
                     className={[
-                      "border border-s-2 px-3 py-2 text-sm leading-6",
+                      "min-w-0 border border-s-2 px-3 py-2 text-sm leading-6 [overflow-wrap:anywhere]",
                       active ? "border-teal bg-mint text-ink" : "border-ink/10 bg-paper text-ink/75"
                     ].join(" ")}
                     key={question.id}
@@ -1327,13 +1334,13 @@ function FeedbackPanel({
       aria-atomic="true"
       aria-live="polite"
       className={[
-        "border border-s-2 p-4 sm:p-5",
+        "min-w-0 border border-s-2 p-4 sm:p-5",
         isCorrect ? "border-teal/30 bg-mint/70" : isRetry ? "border-saffron/40 bg-saffron/15" : "border-coral/30 bg-coral/10"
       ].join(" ")}
       data-testid="active-feedback-panel"
       role="status"
     >
-      <div className="grid gap-3">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <p className="text-lg font-semibold text-ink">{t(feedbackTitle(feedback))}</p>
           <span
@@ -1376,7 +1383,7 @@ function FeedbackPanel({
           </div>
         )}
         {feedback.recorded ? (
-          <div className="grid gap-2">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 [overflow-wrap:anywhere]">
             {feedback.question.explanation.steps.map((step) => (
               <p className="text-sm leading-6 text-ink/75" key={step}>
                 {step}
@@ -1385,7 +1392,7 @@ function FeedbackPanel({
           </div>
         ) : null}
         {feedback.recorded && feedback.question.explanation.shortcut !== undefined ? (
-          <p className="rounded-md border border-saffron/30 bg-white/80 px-3 py-2 text-sm leading-6 text-ink">
+          <p className="min-w-0 rounded-md border border-saffron/30 bg-white/80 px-3 py-2 text-sm leading-6 text-ink [overflow-wrap:anywhere]">
             <span className="font-semibold">{t("Shortcut:")}</span> {feedback.question.explanation.shortcut}
           </p>
         ) : null}

@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { LoadingState } from "@/components/LoadingState";
@@ -19,6 +19,7 @@ import {
   QuestionPackDrillSessionLoader,
   questionPackSourceParam
 } from "@/features/question-packs/QuestionPackDrillSession";
+import { nextLocalPracticeNonce } from "@/lib/localPracticeNonce";
 
 export default function DrillSessionPage() {
   return (
@@ -33,6 +34,20 @@ function DrillSessionPageContent() {
   const searchParams = useSearchParams();
   const source = searchParams.get("source") ?? undefined;
   const requestedInterviewMathMode = searchParams.get("mode") === "interview";
+  const queryKey = searchParams.toString();
+  const requestedSeed = searchParams.get("seed")?.trim() || undefined;
+  const [sessionSeed, setSessionSeed] = useState<{ key: string; value: string | number }>();
+
+  useEffect(() => {
+    const timeout = window.setTimeout(() => {
+      setSessionSeed({
+        key: queryKey,
+        value: requestedSeed ?? nextLocalPracticeNonce("drill-session")
+      });
+    }, 0);
+
+    return () => window.clearTimeout(timeout);
+  }, [queryKey, requestedSeed]);
 
   if (source === dailyWorkoutSourceParam || source === weaknessModeSourceParam) {
     const adaptiveCount = parseAdaptiveQuestionCount(searchParams.get("count"), source, t);
@@ -84,7 +99,11 @@ function DrillSessionPageContent() {
     );
   }
 
-  const created = createSessionResult(settings, interviewMathMode);
+  if (sessionSeed?.key !== queryKey) {
+    return <DrillSessionLoading />;
+  }
+
+  const created = createSessionResult(settings, interviewMathMode, sessionSeed.value);
   const sessionCopy = getSessionCopy(namedMode, interviewMathMode);
 
   if (created.status === "ready") {
@@ -183,11 +202,12 @@ function DrillSessionLoading() {
 
 function createSessionResult(
   settings: ReturnType<typeof parseDrillSettingsQuery>["settings"],
-  interviewMathMode: boolean
+  interviewMathMode: boolean,
+  seedNonce: string | number
 ) {
   try {
     const created = createDrillSession({
-      seed: buildDrillSessionSeed(settings),
+      seed: buildDrillSessionSeed(settings, seedNonce),
       settings
     });
 

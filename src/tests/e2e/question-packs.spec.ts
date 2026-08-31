@@ -94,27 +94,15 @@ test("an installed version-three pack opens questioning practice", async ({ page
 });
 
 async function installExample(page: Page, fileName: string, packId: string, title: string) {
-  await clearLocalDatabase(page);
   await page.goto("/settings");
   await page.locator("summary").filter({ hasText: "Content Packs" }).click();
   await page
     .getByLabel("Choose a question pack")
     .setInputFiles(resolve(process.cwd(), "public", fileName));
   await expect(page.getByTestId("question-pack-preview")).toContainText(title);
+  await page.getByRole("checkbox", { name: /I reviewed the answer keys/ }).check();
   await page.getByRole("button", { name: "Install Pack" }).click();
   const card = page.getByTestId(`question-pack-${packId}`);
   await expect(card).toBeVisible();
   return card;
-}
-
-async function clearLocalDatabase(page: Page): Promise<void> {
-  await page.goto("/");
-  await page.evaluate(() => {
-    return new Promise<void>((resolveDelete, reject) => {
-      const request = indexedDB.deleteDatabase("consulting_math_drill_tool");
-      request.onsuccess = () => resolveDelete();
-      request.onerror = () => reject(request.error);
-      request.onblocked = () => resolveDelete();
-    });
-  });
 }

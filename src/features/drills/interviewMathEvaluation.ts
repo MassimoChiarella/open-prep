@@ -23,6 +23,7 @@ export interface InterviewMathSubmission {
 }
 
 export interface EvaluateInterviewMathInput extends InterviewMathSubmission {
+  locale?: string;
   question: Question;
   rawInput: string;
   selectedUnit?: UnitType;
@@ -42,6 +43,8 @@ export function evaluateInterviewMath(input: EvaluateInterviewMathInput): Interv
   }
 
   const numericValidation = validateAnswer(input.rawInput, input.question.answer, {
+    locale: input.locale,
+    selectedUnit: input.selectedUnit,
     timedOut: input.timedOut
   });
 
@@ -58,7 +61,9 @@ export function evaluateInterviewMath(input: EvaluateInterviewMathInput): Interv
     (option) => option.id === input.interpretationOptionId
   );
   const unitAndMagnitudeCorrect =
-    input.selectedUnit === spec.expectedUnit && !numericValidation.errorTypes.includes("magnitude_error");
+    input.selectedUnit === spec.expectedUnit &&
+    numericValidation.unitStatus === "compatible" &&
+    !numericValidation.errorTypes.includes("magnitude_error");
   const score: InterviewMathScore = {
     formulaSelection: equation?.formulaCorrect === true ? interviewMathScoreWeights.formulaSelection : 0,
     equationSetup: equation?.setupCorrect === true ? interviewMathScoreWeights.equationSetup : 0,
@@ -80,9 +85,14 @@ export function evaluateInterviewMath(input: EvaluateInterviewMathInput): Interv
     errorTypes.push("setup_error");
   }
 
-  errorTypes.push(...numericValidation.errorTypes.filter((errorType) => errorType !== "none"));
+  const numericUnitError = numericValidation.errorTypes.includes("unit_error");
+  errorTypes.push(
+    ...numericValidation.errorTypes.filter(
+      (errorType) => errorType !== "none" && errorType !== "unit_error"
+    )
+  );
 
-  if (input.selectedUnit !== spec.expectedUnit) {
+  if (input.selectedUnit !== spec.expectedUnit || numericUnitError) {
     errorTypes.push("unit_error");
   }
 

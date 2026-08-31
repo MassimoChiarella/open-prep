@@ -9,6 +9,8 @@
   --color-chart-4: 63 95 138;
   --color-chart-5: 95 107 50;
   --color-chart-6: 107 77 135;
+  --color-chart-7: 66 107 111;
+  --color-chart-8: 138 63 98;
   --color-chart-grid: 216 225 221;
   --color-chart-tick: 71 81 92;
   --color-coral: 116 71 50;
@@ -29,6 +31,8 @@
   --color-chart-4: 143 184 239;
   --color-chart-5: 180 205 124;
   --color-chart-6: 199 160 227;
+  --color-chart-7: 116 199 207;
+  --color-chart-8: 225 138 179;
   --color-chart-grid: 77 85 79;
   --color-chart-tick: 203 209 202;
   --color-coral: 228 166 134;
@@ -50,6 +54,8 @@
     --color-chart-4: 143 184 239;
     --color-chart-5: 180 205 124;
     --color-chart-6: 199 160 227;
+    --color-chart-7: 116 199 207;
+    --color-chart-8: 225 138 179;
     --color-chart-grid: 77 85 79;
     --color-chart-tick: 203 209 202;
     --color-coral: 228 166 134;
@@ -74,6 +80,12 @@ body {
   color: rgb(var(--color-ink));
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
+}
+
+.text-ink\/45,
+.text-ink\/55,
+.text-ink\/65 {
+  color: rgb(var(--color-ink) / 0.72);
 }
 
 :where(h1, h2, h3) {

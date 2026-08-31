@@ -16,8 +16,10 @@ import type {
   QuestionPackQuestionRecord
 } from "@/lib/storage/appStorageTypes";
 import {
+  createQuestionPackValidationErrors,
   enumValue as readEnumValue,
   finiteNumber as readFiniteNumberValue,
+  finalizeQuestionPackValidationErrors,
   hasOwn,
   integer as readIntegerValue,
   objectValue as readObject,
@@ -116,9 +118,9 @@ export function validateBenchmarkQuestionPackPayload(
   payload: unknown,
   importedAt = new Date().toISOString()
 ): BenchmarkQuestionPackValidationResult {
-  const errors: string[] = [];
+  const errors = createQuestionPackValidationErrors();
   const envelope = readQuestionPackEnvelope(payload, "benchmark", ["benchmarks"], errors);
-  if (envelope === undefined) return { status: "invalid", errors };
+  if (envelope === undefined) return { status: "invalid", errors: finalizeQuestionPackValidationErrors(errors) };
   const { value, id, packVersion, title, description, publisher, license } = envelope;
   const benchmarks = readBenchmarks(value, errors);
 
@@ -129,7 +131,7 @@ export function validateBenchmarkQuestionPackPayload(
     title === undefined ||
     benchmarks === undefined
   ) {
-    return { status: "invalid", errors };
+    return { status: "invalid", errors: finalizeQuestionPackValidationErrors(errors) };
   }
 
   return {

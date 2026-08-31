@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Math Drill Case-Practice Question Pack v3",
+  "title": "Open Prep Case-Practice Question Pack v3",
   "description": "Schema version 3 adds deterministic questioning prompts and five-stage full cases.",
   "type": "object",
   "additionalProperties": false,

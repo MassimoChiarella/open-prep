@@ -9,9 +9,32 @@ import {
   type AppStoreName
 } from "../../lib/storage/appStorageTypes";
 
-test("routes expose their primary workflow action", async ({ page }) => {
-  await clearLocalDatabase(page);
+test("core routes expose distinct document titles", async ({ page }) => {
+  const routes = [
+    ["/", "Dashboard"],
+    ["/drills", "Drills"],
+    ["/formulas", "Formula Library"],
+    ["/progress", "Progress"],
+    ["/benchmark", "Benchmark"],
+    ["/market-sizing", "Market Sizing"],
+    ["/exhibits", "Exhibit Practice"],
+    ["/case-practice", "Case Practice"],
+    ["/settings", "Settings"],
+    ["/content-packs/downloads", "Content Pack Downloads"],
+    ["/missing-release-route", "Page Not Found"]
+  ] as const;
+  const titles: string[] = [];
 
+  for (const [path, title] of routes) {
+    await page.goto(path);
+    await expect(page).toHaveTitle(`${title} | Open Prep`);
+    titles.push(await page.title());
+  }
+
+  expect(new Set(titles).size).toBe(routes.length);
+});
+
+test("routes expose their primary workflow action", { tag: "@browser-smoke" }, async ({ page }) => {
   const routes = [
     { action: "Start Practice", heading: "Dashboard", path: "/", role: "link" },
     { action: "Start Drill", heading: "Drill Selection", path: "/drills", role: "link" },
@@ -82,7 +105,14 @@ test("routes expose their primary workflow action", async ({ page }) => {
       path: "/case-practice/simulation",
       role: "button"
     },
-    { action: "Open Drill Setup", heading: "Local App Settings", path: "/settings", role: "link" }
+    { action: "Open Drill Setup", heading: "Local App Settings", path: "/settings", role: "link" },
+    {
+      action: "Back to Settings",
+      heading: "Download authoring resources",
+      path: "/content-packs/downloads",
+      role: "link"
+    },
+    { action: "Back to Dashboard", heading: "Page not found", path: "/missing-smoke-route", role: "link" }
   ] as const;
 
   for (const route of routes) {
@@ -90,6 +120,13 @@ test("routes expose their primary workflow action", async ({ page }) => {
     await expect(page.locator("main"), route.path).toHaveCount(1);
     await expect(page.getByRole("heading", { level: 1, name: route.heading }), route.path).toBeVisible();
     await expect(page.getByRole("navigation", { name: "Primary navigation" }), route.path).toBeVisible();
+    expect(
+      await page.locator("[id]").evaluateAll((elements) => {
+        const ids = elements.map((element) => element.id);
+        return ids.filter((id, index) => ids.indexOf(id) !== index);
+      }),
+      route.path
+    ).toEqual([]);
 
     const action = route.role === "button"
       ? page.getByRole("button", { name: route.action })
@@ -130,6 +167,16 @@ test("bordered exercise group titles stay inside their cards", async ({ page }) 
   }
 });
 
+test("German benchmark cards stay inside a 320px viewport", async ({ page }) => {
+  await page.setViewportSize({ height: 900, width: 320 });
+  await page.goto("/benchmark");
+  await page.getByRole("combobox", { name: "Language" }).selectOption("de");
+  await expect(page.getByRole("heading", { name: "Leistung vergleichen" })).toBeVisible();
+
+  const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(0);
+});
+
 test("active tasks replace destination navigation with a confirmed exit", async ({ page }) => {
   await page.goto("/drills/session?categories=arithmetic&tags=addition&count=1");
 
@@ -163,7 +210,7 @@ test("mobile shell keeps content and task exits near the first viewport", async 
   await expect(page.getByRole("link", { name: "Exit to Drills" })).toBeVisible();
 });
 
-test("keyboard entry exposes the skip link and moves focus to main content", async ({ page }) => {
+test("keyboard entry exposes the skip link and moves focus to main content", { tag: "@browser-smoke" }, async ({ page }) => {
   await page.goto("/");
   await page.keyboard.press("Tab");
 
@@ -228,9 +275,20 @@ test("formula library filters and opens a related drill", async ({ page }) => {
   await expect(page.getByText("Question 1 of 5")).toBeVisible();
 });
 
-test("exhibit drills render local data and persist an answer", async ({ page }) => {
-  await clearLocalDatabase(page);
+test("exhibit drills render local data and persist an answer", { tag: "@browser-smoke" }, async ({ page }) => {
+  await page.setViewportSize({ height: 844, width: 390 });
   await page.goto("/exhibits");
+
+  const tableRegion = page.getByRole("region", { name: /Scrollable exhibit table/ });
+  const table = tableRegion.getByRole("table");
+  const rowCount = await table.locator("tbody tr").count();
+  expect(rowCount).toBeGreaterThan(0);
+  await expect(table.locator("thead th:not([scope='col'])")).toHaveCount(0);
+  await expect(table.locator("tbody tr > th[scope='row']")).toHaveCount(rowCount);
+  await tableRegion.focus();
+  await expect(tableRegion).toBeFocused();
+  await page.keyboard.press("ArrowRight");
+  await expect.poll(() => tableRegion.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
 
   await expect(page.getByTestId("exhibit-table-cell-downtown_flagship-average_revenue")).toHaveText("$12.5M");
   await page.getByLabel("Answer", { exact: true }).fill("$48.4M");
@@ -252,7 +310,6 @@ test("exhibit drills render local data and persist an answer", async ({ page }) 
 });
 
 test("market sizing scores and persists a complete draft", async ({ page }) => {
-  await clearLocalDatabase(page);
   await page.goto("/market-sizing");
   await fillCompleteMarketSizingDraft(page);
 
@@ -270,7 +327,6 @@ test("market sizing scores and persists a complete draft", async ({ page }) => {
 });
 
 test("full case composes every case skill and saves one integrated result", async ({ page }) => {
-  await clearLocalDatabase(page);
   await page.goto("/case-practice/simulation");
 
   const questioning = brightCartFullCase.questioning;
@@ -339,7 +395,6 @@ test("full case composes every case skill and saves one integrated result", asyn
 });
 
 test("beginner benchmark completes and appears in local history", async ({ page }) => {
-  await clearLocalDatabase(page);
   const benchmark = benchmarkTests.find((item) => item.id === "beginner");
 
   if (benchmark === undefined) {
@@ -366,8 +421,7 @@ test("beginner benchmark completes and appears in local history", async ({ page 
   await expect(page.getByTestId("benchmark-history")).toContainText("1 saved");
 });
 
-test("a warmed drill loads and saves while offline", async ({ page }) => {
-  await clearLocalDatabase(page);
+test("a warmed drill loads and saves while offline", { tag: "@browser-smoke" }, async ({ page }) => {
   await page.goto("/");
 
   await expect.poll(
@@ -388,12 +442,35 @@ test("a warmed drill loads and saves while offline", async ({ page }) => {
 
   try {
     await page.reload();
-    await expect(page.getByTestId("offline-status-indicator")).toHaveText("Offline");
+    await expect(page.getByTestId("offline-status-indicator")).toHaveText("Offline ready");
     await page.getByLabel("Answer", { exact: true }).fill(String(answer));
     await page.getByRole("button", { name: "Submit" }).click();
     await page.getByRole("button", { name: "View summary" }).click();
     await expect(page.getByText("Session saved on this device.")).toBeVisible();
     await expect(readStore(page, "drill_sessions")).resolves.toHaveLength(1);
+  } finally {
+    await page.context().setOffline(false);
+  }
+});
+
+test("a selected locale remains available after an offline reload", { tag: "@browser-smoke" }, async ({ page }) => {
+  await page.goto("/");
+  await expect.poll(
+    () => page.evaluate(async () => (await navigator.serviceWorker.getRegistration("/")) !== undefined),
+    { timeout: 10_000 }
+  ).toBe(true);
+  await page.evaluate(async () => navigator.serviceWorker.ready.then(() => undefined));
+
+  await page.getByRole("combobox", { name: "Language" }).selectOption("es");
+  await expect(page.getByRole("combobox", { name: "Idioma" })).toHaveValue("es");
+  await page.reload();
+  await expect(page.getByRole("combobox", { name: "Idioma" })).toHaveValue("es");
+
+  await page.context().setOffline(true);
+  try {
+    await page.reload();
+    await expect(page.getByRole("combobox", { name: "Idioma" })).toHaveValue("es");
+    await expect(page.getByTestId("offline-status-indicator")).toHaveText("Listo sin conexión");
   } finally {
     await page.context().setOffline(false);
   }
@@ -407,19 +484,6 @@ function solveAdditionPrompt(prompt: string): number {
   }
 
   return Number(match.groups.left) + Number(match.groups.right);
-}
-
-async function clearLocalDatabase(page: Page): Promise<void> {
-  await page.goto("/");
-  await page.evaluate(() => {
-    return new Promise<void>((resolve, reject) => {
-      const request = indexedDB.deleteDatabase("consulting_math_drill_tool");
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-      request.onblocked = () => resolve();
-    });
-  });
 }
 
 async function fillCompleteMarketSizingDraft(page: Page): Promise<void> {

@@ -167,7 +167,7 @@ export function parseDrillSettingsQuery(searchParams: DrillSessionSearchParams =
   };
 }
 
-export function buildDrillSessionSeed(settings: DrillSettings): string {
+export function buildDrillSessionSeed(settings: DrillSettings, nonce?: string | number): string {
   const seedParts: Array<string | number> = [
     "session",
     settings.categories.join("-"),
@@ -201,6 +201,10 @@ export function buildDrillSessionSeed(settings: DrillSettings): string {
       `case-equation-${settings.caseRequireEquationSetup === false ? "optional" : "required"}`,
       `case-interpretation-${settings.caseRequireInterpretation === true ? "required" : "optional"}`
     );
+  }
+
+  if (nonce !== undefined) {
+    seedParts.push(`nonce-${nonce}`);
   }
 
   return seedParts.join(":");

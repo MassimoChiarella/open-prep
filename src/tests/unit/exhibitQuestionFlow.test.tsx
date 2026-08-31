@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { exhibitDatasets } from "@/data/exhibits/exhibitDatasets";
@@ -10,11 +10,18 @@ describe("ExhibitQuestionFlow", () => {
     const storage = new MemoryAppStorage();
 
     render(<ExhibitQuestionFlow datasets={exhibitDatasets} storageFactory={() => storage} />);
+    const datasetContext = screen.getByTestId("exhibit-dataset-context");
+    const datasetTitle = within(datasetContext).getByText(exhibitDatasets[0].title);
+
+    expect(datasetContext).not.toHaveClass("overflow-hidden");
+    expect(datasetTitle).toHaveClass("min-w-0", "[overflow-wrap:anywhere]");
+    expect(datasetTitle).not.toHaveClass("truncate");
+
     fireEvent.change(screen.getByLabelText("Answer"), { target: { value: "$48.4M" } });
     fireEvent.click(screen.getByRole("button", { name: "Submit Answer" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("Correct. Attempt saved on this device.");
-    expect(screen.getByTestId("exhibit-solution-panel")).toHaveTextContent("Correct answer: $48.4M");
+    expect(screen.getByTestId("exhibit-solution-panel")).toHaveTextContent("Correct answer: $48.38M");
     expect(storage.peekAll("exhibit_attempts")).toEqual([
       expect.objectContaining({
         exhibitId: "exhibit_retail_formats_001",

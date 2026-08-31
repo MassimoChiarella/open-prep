@@ -15,13 +15,14 @@ import {
   XAxis,
   YAxis
 } from "recharts";
+import { memo } from "react";
 
 import {
   exhibitChartColors,
   getExhibitChartData,
   getExhibitChartSeries
 } from "@/features/exhibits/exhibitChartData";
-import { formatExhibitCellValue } from "@/features/exhibits/exhibitFormatting";
+import { formatExhibitAxisValue, formatExhibitCellValue } from "@/features/exhibits/exhibitFormatting";
 import type { ExhibitChartDatum, ExhibitChartSeries } from "@/features/exhibits/exhibitChartData";
 import type { ExhibitDataset, ExhibitVisualizationType } from "@/features/exhibits/exhibitTypes";
 import { useI18n } from "@/features/i18n/I18nProvider";
@@ -33,7 +34,7 @@ interface ExhibitChartRendererProps {
 const chartWidth = 720;
 const chartHeight = 320;
 
-export function ExhibitChartRenderer({ dataset }: ExhibitChartRendererProps) {
+export const ExhibitChartRenderer = memo(function ExhibitChartRenderer({ dataset }: ExhibitChartRendererProps) {
   const { formatNumber, t } = useI18n();
   const chartData = getExhibitChartData(dataset);
   const series = getExhibitChartSeries(dataset);
@@ -46,16 +47,16 @@ export function ExhibitChartRenderer({ dataset }: ExhibitChartRendererProps) {
   return (
     <section
       aria-labelledby={`${dataset.id}-chart-heading`}
-      className="grid min-w-0 gap-4 border border-ink/15 border-t-2 border-t-teal bg-white p-4 sm:p-6"
+      className="grid min-w-0 gap-4 break-words border border-ink/15 border-t-2 border-t-teal bg-white p-4 sm:p-6"
       data-testid={`exhibit-chart-${dataset.id}`}
     >
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="grid min-w-0 gap-2">
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)] gap-2">
           <p className="text-sm font-semibold uppercase tracking-wide text-coral">{chartTypeLabel}</p>
-          <h2 className="break-words text-2xl font-semibold text-ink" id={`${dataset.id}-chart-heading`}>
+          <h2 className="min-w-0 text-2xl font-semibold text-ink [overflow-wrap:anywhere]" id={`${dataset.id}-chart-heading`}>
             {dataset.title}
           </h2>
-          <p className="max-w-3xl text-sm leading-6 text-ink/70">{dataset.description}</p>
+          <p className="min-w-0 max-w-3xl text-sm leading-6 text-ink/70 [overflow-wrap:anywhere]">{dataset.description}</p>
         </div>
         <dl className="grid grid-cols-2 gap-2 text-sm">
           <ChartStat label={t("Rows")} value={formatNumber(dataset.rows.length)} />
@@ -80,11 +81,11 @@ export function ExhibitChartRenderer({ dataset }: ExhibitChartRendererProps) {
       <ChartLegend chartData={chartData} dataset={dataset} series={series} />
       <ChartValueList chartData={chartData} series={series} />
       {dataset.sourceNote !== undefined ? (
-        <p className="text-xs leading-5 text-ink/65">{dataset.sourceNote}</p>
+        <p className="min-w-0 text-xs leading-5 text-ink/65 [overflow-wrap:anywhere]">{dataset.sourceNote}</p>
       ) : null}
     </section>
   );
-}
+});
 
 function renderChart(
   dataset: ExhibitDataset,
@@ -111,7 +112,7 @@ function renderChart(
         />
         <Tooltip
           {...chartTooltipProps}
-          formatter={(value, name) => formatTooltipValue(value, name, series)}
+          formatter={(value, name, item) => formatTooltipValue(value, name, series, item.dataKey)}
           labelFormatter={(label) => t("Category: {label}", { label: String(label) })}
         />
         {series.map((item) => (
@@ -139,7 +140,7 @@ function renderChart(
         />
         <Tooltip
           {...chartTooltipProps}
-          formatter={(value, name) => formatTooltipValue(value, name, series)}
+          formatter={(value, name, item) => formatTooltipValue(value, name, series, item.dataKey)}
           labelFormatter={(label) => t("Category: {label}", { label: String(label) })}
         />
         {series.map((item) => (
@@ -193,6 +194,11 @@ function renderChart(
         <Tooltip
           {...chartTooltipProps}
           cursor={{ fill: "transparent", stroke: chartGridColor, strokeDasharray: "4 4" }}
+          formatter={(value, name, item) => {
+            const dataKey = String(item.dataKey ?? name);
+            const chartSeries = dataKey === "x" ? xSeries : dataKey === "y" ? ySeries : undefined;
+            return formatTooltipValue(value, name, series, chartSeries?.column.id);
+          }}
         />
         <Scatter data={scatterData} fill={ySeries.color} isAnimationActive={false} name={ySeries.column.label} />
       </ScatterChart>
@@ -214,6 +220,7 @@ function renderChart(
       }
 
       return {
+        authoredValue: value,
         fill: isTotal ? exhibitChartColors[3] : value >= 0 ? exhibitChartColors[0] : exhibitChartColors[1],
         label: datum.label,
         range: [Math.min(start, end), Math.max(start, end)]
@@ -228,6 +235,14 @@ function renderChart(
           tick={chartTick}
           tickFormatter={(value) => formatAxisTick(value, valueSeries)}
           width={72}
+        />
+        <Tooltip
+          {...chartTooltipProps}
+          formatter={(_value, name, item) => {
+            const authoredValue = (item.payload as { authoredValue?: unknown } | undefined)?.authoredValue;
+            return formatTooltipValue(authoredValue, name, series, valueSeries.column.id);
+          }}
+          labelFormatter={(label) => t("Category: {label}", { label: String(label) })}
         />
         <Bar dataKey="range" isAnimationActive={false}>
           {waterfallData.map((datum) => (
@@ -248,7 +263,13 @@ function renderChart(
     <PieChart height={chartHeight} margin={chartMargins} width={chartWidth}>
       <Tooltip
         {...chartTooltipProps}
-        formatter={(value, name) => formatTooltipValue(value, name, series)}
+        formatter={(value, name) => {
+          const numericValue = typeof value === "number" ? value : Number(value);
+          return [
+            Number.isFinite(numericValue) ? formatExhibitCellValue(numericValue, pieSeries.column) : String(value),
+            String(name)
+          ];
+        }}
         labelFormatter={(label) => t("Category: {label}", { label: String(label) })}
       />
       <Pie
@@ -304,11 +325,11 @@ function ChartLegend({
                 : t("Colors show plotted series.")}
         </p>
       </div>
-      <ul className="flex flex-wrap gap-2">
+      <ul className="flex min-w-0 flex-wrap gap-2">
         {legendItems.map((item) => (
-          <li className="inline-flex items-center gap-2 border border-ink/10 bg-white px-2 py-1 text-xs font-semibold text-ink" key={item.label}>
-            <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: item.color }} />
-            {item.label}
+          <li className="inline-flex min-w-0 max-w-full items-center gap-2 border border-ink/10 bg-white px-2 py-1 text-xs font-semibold text-ink" key={item.label}>
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ backgroundColor: item.color }} />
+            <span className="min-w-0 [overflow-wrap:anywhere]">{item.label}</span>
           </li>
         ))}
       </ul>
@@ -323,13 +344,21 @@ function ChartValueList({
   chartData: readonly ExhibitChartDatum[];
   series: readonly ExhibitChartSeries[];
 }) {
+  const { t } = useI18n();
+
   return (
-    <dl className="grid auto-rows-fr gap-2 sm:grid-cols-2" data-testid="exhibit-chart-values">
+    <dl
+      aria-label={t("Chart values")}
+      className="grid max-h-[32rem] auto-rows-fr gap-2 overflow-auto overscroll-contain sm:grid-cols-2"
+      data-testid="exhibit-chart-values"
+      role="region"
+      tabIndex={0}
+    >
       {chartData.map((datum) => (
-        <div className="border-s-2 border-ink/15 bg-paper px-3 py-2" key={datum.label}>
-          <dt className="text-sm font-semibold text-ink">{datum.label}</dt>
+        <div className="min-w-0 border-s-2 border-ink/15 bg-paper px-3 py-2" key={datum.label}>
+          <dt className="min-w-0 text-sm font-semibold text-ink [overflow-wrap:anywhere]">{datum.label}</dt>
           {series.map((item) => (
-            <dd className="mt-1 text-sm text-ink/70" key={item.column.id}>
+            <dd className="mt-1 min-w-0 text-sm text-ink/70 [overflow-wrap:anywhere]" key={item.column.id}>
               {item.column.label}: {formatExhibitCellValue(datum.values[item.column.id] ?? 0, item.column)}
             </dd>
           ))}
@@ -355,15 +384,16 @@ function formatAxisTick(value: string | number, series: ExhibitChartSeries | und
     return String(value);
   }
 
-  return formatExhibitCellValue(numericValue, series.column);
+  return formatExhibitAxisValue(numericValue, series.column);
 }
 
 function formatTooltipValue(
   value: unknown,
   name: unknown,
-  series: readonly ExhibitChartSeries[]
+  series: readonly ExhibitChartSeries[],
+  dataKey?: unknown
 ): [string, string] {
-  const columnId = String(name);
+  const columnId = String(dataKey ?? name);
   const column = series.find((item) => item.column.id === columnId)?.column;
   const numericValue = typeof value === "number" ? value : Number(value);
 

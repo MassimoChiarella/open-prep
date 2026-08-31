@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { caseStyleQuestionTemplates } from "@/data/questionTemplates/caseStyleTemplates";
 import { evaluateInterviewMath } from "@/features/drills/interviewMathEvaluation";
 import { generateQuestionFromTemplate } from "@/features/questions/questionGenerator";
+import type { Question } from "@/lib/domain";
 import { createSeededRandom } from "@/lib/random/seededRandom";
 
 describe("evaluateInterviewMath", () => {
@@ -127,6 +128,34 @@ describe("evaluateInterviewMath", () => {
 
     expect(result.validation.errorTypes).toEqual(["timeout"]);
     expect(result.interviewMath.score.total).toBe(0);
+  });
+
+  it("uses the selected unit when normalizing a canonical percentage answer", () => {
+    const source = caseQuestion();
+    const question: Question = {
+      ...source,
+      answer: { value: 0.2, unit: "percentage" },
+      metadata: {
+        ...source.metadata,
+        caseStyle: {
+          ...source.metadata!.caseStyle!,
+          interviewMath: {
+            ...source.metadata!.caseStyle!.interviewMath,
+            expectedUnit: "percentage"
+          }
+        },
+        sourceType: source.metadata!.sourceType
+      }
+    };
+    const result = evaluateInterviewMath({
+      equationOptionId: "equation-correct",
+      question,
+      rawInput: "20",
+      selectedUnit: "percentage"
+    });
+
+    expect(result.validation).toMatchObject({ isCorrect: true, normalizedUserValue: 0.2 });
+    expect(result.interviewMath.score).toMatchObject({ calculationAccuracy: 30, unitsMagnitude: 15 });
   });
 });
 

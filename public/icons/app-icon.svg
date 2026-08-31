@@ -1,17 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
-  <title id="title">Consulting mental math practice icon</title>
-  <desc id="desc">A charcoal calculator grid with warm neutral accents.</desc>
+  <title id="title">Open Prep app icon</title>
+  <desc id="desc">An open book with a structured upward path representing preparation and progress.</desc>
   <rect width="512" height="512" fill="#20211f"/>
-  <rect x="104" y="88" width="304" height="336" fill="#f2f2ee"/>
-  <rect x="136" y="124" width="240" height="72" fill="#e7e2d8"/>
-  <path d="M152 160h136" stroke="#20211f" stroke-width="20"/>
-  <rect x="322" y="146" width="28" height="28" fill="#744732"/>
+  <path d="M76 118h126c28 0 50 22 50 50v226c-15-18-37-27-66-27H76z" fill="#f2f2ee"/>
+  <path d="M436 118H310c-28 0-50 22-50 50v226c15-18 37-27 66-27h110z" fill="#f2f2ee"/>
   <g fill="#20211f">
-    <rect x="136" y="232" width="54" height="54"/>
-    <rect x="229" y="232" width="54" height="54"/>
-    <rect x="322" y="232" width="54" height="54"/>
-    <rect x="136" y="322" width="54" height="54"/>
-    <rect x="229" y="322" width="54" height="54"/>
+    <path d="M112 180h104v18H112z"/>
+    <path d="M112 230h88v18h-88z"/>
+    <path d="M112 280h104v18H112z"/>
   </g>
-  <path d="M320 346l24 24 58-72" fill="none" stroke="#b38b6d" stroke-width="24"/>
+  <path d="m300 306 38-50 34 18 34-82" fill="none" stroke="#b38b6d" stroke-linejoin="miter" stroke-width="18"/>
+  <g fill="#b38b6d">
+    <circle cx="300" cy="306" r="13"/>
+    <circle cx="338" cy="256" r="13"/>
+    <circle cx="372" cy="274" r="13"/>
+    <circle cx="406" cy="192" r="13"/>
+  </g>
 </svg>

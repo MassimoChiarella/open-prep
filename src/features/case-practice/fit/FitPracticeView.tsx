@@ -278,7 +278,7 @@ export function FitPracticeView({
   }
 
   return (
-    <div className="grid gap-8 xl:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)] xl:items-start">
+    <div className="grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)] xl:items-start">
       <section
         className="grid gap-6 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
         aria-labelledby="story-bank-heading"
@@ -339,7 +339,7 @@ export function FitPracticeView({
       </section>
 
       <section
-        className="grid gap-5 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6 xl:sticky xl:top-6"
+        className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6 xl:sticky xl:top-6"
         aria-labelledby="fit-rehearsal-heading"
         id="fit-rehearsal"
       >
@@ -350,7 +350,7 @@ export function FitPracticeView({
           </h2>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-1">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-1">
           <Field label={t("Story")}>
             <select
               className={uiInputs.base}
@@ -383,11 +383,11 @@ export function FitPracticeView({
         </div>
 
         {selectedPrompt !== undefined ? (
-          <div className="grid gap-3 border-l-4 border-teal bg-white/70 px-4 py-3">
-            <p className="text-lg font-semibold leading-7 text-ink">{selectedPrompt.prompt}</p>
-            <ul className="grid list-disc gap-1 pl-5 text-sm leading-6 text-ink/70">
+          <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border-l-4 border-teal bg-white/70 px-4 py-3">
+            <p className="min-w-0 text-lg font-semibold leading-7 text-ink [overflow-wrap:anywhere]">{selectedPrompt.prompt}</p>
+            <ul className="grid min-w-0 list-disc gap-1 pl-5 text-sm leading-6 text-ink/70">
               {selectedPrompt.followUps.map((followUp) => (
-                <li key={followUp}>{followUp}</li>
+                <li className="min-w-0 [overflow-wrap:anywhere]" key={followUp}>{followUp}</li>
               ))}
             </ul>
           </div>

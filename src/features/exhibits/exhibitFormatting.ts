@@ -1,13 +1,25 @@
 import type { ExhibitCellValue, ExhibitColumn } from "@/features/exhibits/exhibitTypes";
 import type { UnitType } from "@/lib/domain";
 
-const compactCurrency = new Intl.NumberFormat("en-US", {
+const compactAxisCurrency = new Intl.NumberFormat("en-US", {
   currency: "USD",
   maximumFractionDigits: 1,
   minimumFractionDigits: 0,
   notation: "compact",
   style: "currency"
 });
+
+const practicalCurrency = new Intl.NumberFormat("en-US", {
+  currency: "USD",
+  maximumFractionDigits: 2,
+  minimumFractionDigits: 0,
+  notation: "compact",
+  style: "currency"
+});
+
+const integerNumber = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
+const oneDecimalNumber = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
+const twoDecimalNumber = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
 
 export const exhibitUnitLabels: Record<UnitType, string> = {
   b: "B",
@@ -46,6 +58,10 @@ export function formatExhibitCellValue(value: ExhibitCellValue, column: ExhibitC
   return formatNumber(value);
 }
 
+export function formatExhibitAxisValue(value: number, column: ExhibitColumn): string {
+  return column.valueType === "currency" ? compactAxisCurrency.format(value) : formatExhibitCellValue(value, column);
+}
+
 export function formatExhibitAnswerValue(value: number, unit: UnitType = "none"): string {
   if (unit === "currency") {
     return formatCurrency(value);
@@ -75,13 +91,11 @@ export function unitLabelForExhibitColumn(column: ExhibitColumn): string | undef
 }
 
 function formatCurrency(value: number): string {
-  return compactCurrency.format(value);
+  return practicalCurrency.format(value);
 }
 
 function formatNumber(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: Number.isInteger(value) ? 0 : 2
-  }).format(value);
+  return (Number.isInteger(value) ? integerNumber : twoDecimalNumber).format(value);
 }
 
 function formatPercentage(value: number): string {
@@ -89,8 +103,5 @@ function formatPercentage(value: number): string {
 }
 
 function formatCompactNumber(value: number): string {
-  return new Intl.NumberFormat("en-US", {
-    maximumFractionDigits: Number.isInteger(value) ? 0 : 1,
-    minimumFractionDigits: 0
-  }).format(value);
+  return (Number.isInteger(value) ? integerNumber : oneDecimalNumber).format(value);
 }

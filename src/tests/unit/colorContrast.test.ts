@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { describe, expect, it } from "vitest";
 
 import {
@@ -10,6 +13,17 @@ type Rgb = [number, number, number];
 type AppPalette = Record<keyof typeof lightPalette, string>;
 
 describe("color contrast", () => {
+  it("defines eight unique chart colors in both themes", () => {
+    expect(lightExhibitChartColors).toHaveLength(8);
+    expect(darkExhibitChartColors).toHaveLength(8);
+    expect(new Set(lightExhibitChartColors).size).toBe(8);
+    expect(new Set(darkExhibitChartColors).size).toBe(8);
+
+    const globalStyles = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
+    expect(globalStyles.match(/--color-chart-7:/g)).toHaveLength(3);
+    expect(globalStyles.match(/--color-chart-8:/g)).toHaveLength(3);
+  });
+
   it.each([
     ["light", lightPalette],
     ["dark", darkPalette]

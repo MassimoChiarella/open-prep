@@ -1,15 +1,17 @@
 import type { ErrorType, SkillCategory, SkillTag } from "@/lib/domain";
-import type {
-  AppStorage,
-  BenchmarkResultRecord,
-  ExhibitAttemptRecord,
-  MarketSizingAttemptRecord,
-  MistakeNotebookRecord,
-  RetryScheduleRecord,
-  StoredDrillSession,
-  StoredUserResponse,
+import {
+  appStoreIndexNames,
+  type AppStorage,
+  type BenchmarkResultRecord,
+  type ExhibitAttemptRecord,
+  type MarketSizingAttemptRecord,
+  type MistakeNotebookRecord,
+  type RetryScheduleRecord,
+  type StoredDrillSession,
+  type StoredUserResponse
 } from "@/lib/storage/appStorageTypes";
 
+import { localDateKey, shiftLocalDateKey } from "@/features/progress/localCalendar";
 import { createPersonalBestRecords, type PersonalBestRecord } from "@/features/progress/personalBests";
 
 export interface CreateProgressSummaryOptions {
@@ -22,6 +24,7 @@ export interface CreateProgressSummaryOptions {
   responses?: readonly StoredUserResponse[];
   retrySchedules?: readonly RetryScheduleRecord[];
   sessions: readonly StoredDrillSession[];
+  timeZone?: string;
 }
 
 export interface ProgressDashboardSummary {
@@ -102,6 +105,7 @@ export interface ProgressSummary {
 }
 
 const defaultRecentSessionLimit = 5;
+const benchmarkScanPageSize = 500;
 
 export async function loadProgressSummary(
   storage: AppStorage,
@@ -116,10 +120,12 @@ export async function loadProgressSummary(
     exhibitAttempts,
     marketSizingAttempts
   ] = await Promise.all([
+    // ponytail: exact lifetime metrics still require full reads for these unindexed stores;
+    // add a generic storage cursor/fold API if the 20k-record budget is exceeded.
     storage.getAll("drill_sessions"),
     storage.getAll("responses"),
     storage.getAll("mistake_notebook"),
-    storage.getAll("benchmark_results"),
+    loadBenchmarkPersonalBestResults(storage),
     storage.getAll("retry_schedules"),
     storage.getAll("exhibit_attempts"),
     storage.getAll("market_sizing_attempts")
@@ -137,11 +143,59 @@ export async function loadProgressSummary(
   });
 }
 
+async function loadBenchmarkPersonalBestResults(storage: AppStorage): Promise<BenchmarkResultRecord[]> {
+  const bestByBenchmark = new Map<string, BenchmarkResultRecord>();
+  let afterKey: IDBValidKey | undefined;
+
+  do {
+    const page = await storage.getPage(
+      "benchmark_results",
+      appStoreIndexNames.benchmark_results,
+      {
+        ...(afterKey === undefined ? {} : { afterKey }),
+        direction: "prev",
+        limit: benchmarkScanPageSize
+      }
+    );
+
+    for (const result of page.values) {
+      const current = bestByBenchmark.get(result.benchmarkId);
+
+      if (current === undefined || isBetterBenchmarkScore(result, current)) {
+        bestByBenchmark.set(result.benchmarkId, result);
+      }
+    }
+
+    afterKey = page.continuationKey;
+  } while (afterKey !== undefined);
+
+  return Array.from(bestByBenchmark.values());
+}
+
+function isBetterBenchmarkScore(
+  candidate: BenchmarkResultRecord,
+  current: BenchmarkResultRecord
+): boolean {
+  return (
+    candidate.score.totalScore > current.score.totalScore ||
+    (candidate.score.totalScore === current.score.totalScore &&
+      (candidate.completedAt > current.completedAt ||
+        (candidate.completedAt === current.completedAt && candidate.id < current.id)))
+  );
+}
+
 export function createProgressSummary(options: CreateProgressSummaryOptions): ProgressSummary {
   const sessions = options.sessions.filter((session) => session.score !== undefined);
   const responses = collectStoredResponses(sessions, options.responses ?? []);
   const totalQuestionsAnswered = responses.length;
-  const totalCorrect = responses.filter((response) => response.isCorrect).length;
+  let totalCorrect = 0;
+  let totalTimeSeconds = 0;
+
+  for (const response of responses) {
+    totalCorrect += response.isCorrect ? 1 : 0;
+    totalTimeSeconds += response.timeTakenSeconds;
+  }
+
   const totalIncorrect = totalQuestionsAnswered - totalCorrect;
   const recentSessions = createRecentSessionSummaries(sessions, options.recentSessionLimit ?? defaultRecentSessionLimit);
   const errorBreakdown = createErrorBreakdown(responses);
@@ -162,8 +216,12 @@ export function createProgressSummary(options: CreateProgressSummaryOptions): Pr
     additionalPractice,
     categoryPerformance: createCategoryPerformance(responses),
     dashboard: {
-      averageTimeSeconds: totalQuestionsAnswered === 0 ? 0 : sum(responses.map((response) => response.timeTakenSeconds)) / totalQuestionsAnswered,
-      currentStreakDays: calculateCurrentStreakDays(sessions, options.now ?? new Date().toISOString()),
+      averageTimeSeconds: totalQuestionsAnswered === 0 ? 0 : totalTimeSeconds / totalQuestionsAnswered,
+      currentStreakDays: calculateCurrentStreakDays(
+        sessions,
+        options.now ?? new Date().toISOString(),
+        options.timeZone
+      ),
       lastSession: recentSessions[0],
       overallAccuracy: totalQuestionsAnswered === 0 ? 0 : totalCorrect / totalQuestionsAnswered,
       totalCorrect,
@@ -183,7 +241,8 @@ export function createProgressSummary(options: CreateProgressSummaryOptions): Pr
     personalBests: createPersonalBestRecords({
       benchmarkResults: options.benchmarkResults,
       responses,
-      sessions
+      sessions,
+      timeZone: options.timeZone
     }),
     recentSessions,
     reviewQueue,
@@ -319,10 +378,14 @@ function createRecentSessionSummaries(
     }));
 }
 
-function calculateCurrentStreakDays(sessions: readonly StoredDrillSession[], now: string): number {
+function calculateCurrentStreakDays(
+  sessions: readonly StoredDrillSession[],
+  now: string,
+  timeZone: string | undefined
+): number {
   const activityDates = new Set(
     sessions
-      .map((session) => dateKey(session.endedAt ?? session.updatedAt ?? session.startedAt))
+      .map((session) => localDateKey(session.endedAt ?? session.updatedAt ?? session.startedAt, timeZone))
       .filter((date): date is string => date !== undefined)
   );
 
@@ -330,22 +393,28 @@ function calculateCurrentStreakDays(sessions: readonly StoredDrillSession[], now
     return 0;
   }
 
-  const today = parseDateKey(dateKey(now));
+  const today = localDateKey(now, timeZone);
   if (today === undefined) {
     return 0;
   }
 
-  let cursor = activityDates.has(formatDateKey(today)) ? today : shiftDate(today, -1);
+  let cursor = activityDates.has(today) ? today : shiftLocalDateKey(today, -1);
 
-  if (!activityDates.has(formatDateKey(cursor))) {
+  if (cursor === undefined || !activityDates.has(cursor)) {
     return 0;
   }
 
   let streak = 0;
 
-  while (activityDates.has(formatDateKey(cursor))) {
+  while (activityDates.has(cursor)) {
     streak += 1;
-    cursor = shiftDate(cursor, -1);
+    const previous = shiftLocalDateKey(cursor, -1);
+
+    if (previous === undefined) {
+      break;
+    }
+
+    cursor = previous;
   }
 
   return streak;
@@ -414,45 +483,6 @@ function sortMistakes(first: MistakeNotebookRecord, second: MistakeNotebookRecor
   }
 
   return second.missedAt.localeCompare(first.missedAt) || first.id.localeCompare(second.id);
-}
-
-function dateKey(value: string | undefined): string | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-
-  return formatDateKey(date);
-}
-
-function parseDateKey(value: string | undefined): Date | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  const date = new Date(`${value}T00:00:00.000Z`);
-
-  return Number.isNaN(date.getTime()) ? undefined : date;
-}
-
-function shiftDate(date: Date, days: number): Date {
-  const shifted = new Date(date);
-  shifted.setUTCDate(shifted.getUTCDate() + days);
-
-  return shifted;
-}
-
-function formatDateKey(date: Date): string {
-  return [
-    date.getUTCFullYear(),
-    String(date.getUTCMonth() + 1).padStart(2, "0"),
-    String(date.getUTCDate()).padStart(2, "0")
-  ].join("-");
 }
 
 function sum(values: readonly number[]): number {

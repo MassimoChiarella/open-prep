@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Math Drill Question Pack v2",
+  "title": "Open Prep Question Pack v2",
   "description": "Strict author-facing schema for fixed-numeric, generated-template, exhibit, market-sizing, benchmark, and case-practice packs.",
   "type": "object",
   "unevaluatedProperties": false,
@@ -255,6 +255,7 @@
       "enum": ["beginner", "intermediate", "advanced", "expert"]
     },
     "unit": {
+      "description": "percentage values are fractions; percentage_points values are point counts; k, m, and b values are stored in the displayed scaled unit rather than base units.",
       "enum": [
         "none",
         "currency",
@@ -380,6 +381,35 @@
         "answerUnit": {
           "$ref": "#/$defs/unit",
           "description": "When caseStyle is present, this must equal interviewMath.expectedUnit; omission is equivalent to none."
+        },
+        "tolerance": {
+          "description": "Optional comparison policy. When omitted, generated answers accept rounding to two displayed decimal places: absolute tolerance 0.005 for ordinary display values and 0.00005 for canonical percentage fractions (0.005 percentage point).",
+          "allOf": [
+            {
+              "$ref": "#/$defs/tolerance"
+            },
+            {
+              "if": {
+                "properties": {
+                  "type": {
+                    "const": "absolute"
+                  }
+                },
+                "required": ["type"]
+              },
+              "then": {
+                "properties": {
+                  "value": {
+                    "maximum": 1000000000
+                  }
+                }
+              }
+            }
+          ]
+        },
+        "roundingRule": {
+          "$ref": "#/$defs/roundingRule",
+          "description": "Optional learner-facing rounding instruction. Grading is controlled by tolerance."
         },
         "explanationTemplate": {
           "$ref": "#/$defs/explanationTemplate"
@@ -663,7 +693,8 @@
             },
             "value": {
               "type": "number",
-              "minimum": 0
+              "minimum": 0,
+              "maximum": 1000000000
             }
           }
         },
@@ -1338,7 +1369,33 @@
         "assumptionRange": {
           "$ref": "#/$defs/marketSizingAssumptionRange"
         }
-      }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "inputKind": {
+                "const": "integer"
+              }
+            },
+            "required": ["inputKind"]
+          },
+          "then": {
+            "properties": {
+              "assumptionRange": {
+                "properties": {
+                  "min": {
+                    "type": "integer"
+                  },
+                  "max": {
+                    "type": "integer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "marketSizingChoiceInputStep": {
       "type": "object",
@@ -1773,6 +1830,15 @@
         },
         "acceptedHypothesisId": {
           "$ref": "#/$defs/id"
+        },
+        "acceptedHypothesisIds": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 10,
+          "uniqueItems": true,
+          "items": {
+            "$ref": "#/$defs/id"
+          }
         },
         "branchOptions": {
           "type": "array",

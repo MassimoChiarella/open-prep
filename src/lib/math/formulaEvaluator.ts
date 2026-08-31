@@ -38,15 +38,24 @@ const operatorPrecedence: Record<Operator, number> = {
 const rightAssociativeOperators = new Set<Operator>(["^", "u+", "u-"]);
 
 export function evaluateFormulaExpression(expression: string, variables: FormulaVariables): number {
+  return compileFormulaExpression(expression)(variables);
+}
+
+export function compileFormulaExpression(
+  expression: string
+): (variables: FormulaVariables) => number {
   const tokens = tokenizeFormula(expression);
   const rpnTokens = toReversePolishNotation(tokens);
-  const value = evaluateReversePolishNotation(rpnTokens, variables);
 
-  if (!Number.isFinite(value)) {
-    throw new Error("Formula result must be a finite number.");
-  }
+  return (variables) => {
+    const value = evaluateReversePolishNotation(rpnTokens, variables);
 
-  return value;
+    if (!Number.isFinite(value)) {
+      throw new Error("Formula result must be a finite number.");
+    }
+
+    return value;
+  };
 }
 
 function tokenizeFormula(expression: string): Token[] {

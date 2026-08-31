@@ -50,12 +50,13 @@ export interface MarketSizingEvaluation {
 
 export interface EvaluateMarketSizingDraftOptions {
   finalAnswer?: string;
+  locale?: string;
   stepValues: MarketSizingStepValueMap;
   template: MarketSizingTemplate;
 }
 
 export function evaluateMarketSizingDraft(options: EvaluateMarketSizingDraftOptions): MarketSizingEvaluation {
-  const assumptionEvaluations = evaluateMarketSizingAssumptions(options.template, options.stepValues);
+  const assumptionEvaluations = evaluateMarketSizingAssumptions(options.template, options.stepValues, options.locale);
   const variables = buildFormulaVariables(assumptionEvaluations);
   let calculatedValue: number | undefined;
   let calculationError: string | undefined;
@@ -72,7 +73,7 @@ export function evaluateMarketSizingDraft(options: EvaluateMarketSizingDraftOpti
     calculatedValue,
     finalAnswer:
       calculationError === undefined
-        ? evaluateMarketSizingFinalAnswer(options.template, calculatedValue, options.finalAnswer)
+        ? evaluateMarketSizingFinalAnswer(options.template, calculatedValue, options.finalAnswer, options.locale)
         : { message: calculationError, status: "not_ready" },
     rangeSummary: summarizeRanges(assumptionEvaluations),
     templateId: options.template.id,
@@ -82,15 +83,17 @@ export function evaluateMarketSizingDraft(options: EvaluateMarketSizingDraftOpti
 
 export function evaluateMarketSizingAssumptions(
   template: MarketSizingTemplate,
-  stepValues: MarketSizingStepValueMap
+  stepValues: MarketSizingStepValueMap,
+  locale?: string
 ): MarketSizingAssumptionEvaluation[] {
-  return template.inputSteps.map((step) => evaluateMarketSizingStep(step, stepValues[step.id]));
+  return template.inputSteps.map((step) => evaluateMarketSizingStep(step, stepValues[step.id], locale));
 }
 
 export function evaluateMarketSizingFinalAnswer(
   template: MarketSizingTemplate,
   calculatedValue: number | undefined,
-  rawInput = ""
+  rawInput = "",
+  locale?: string
 ): MarketSizingFinalAnswerEvaluation {
   if (calculatedValue === undefined) {
     return {
@@ -111,7 +114,7 @@ export function evaluateMarketSizingFinalAnswer(
     unit: template.outputUnit,
     tolerance: template.finalFormula.tolerance,
     roundingRule: template.finalFormula.roundingRule
-  });
+  }, { locale });
 
   if (validation.normalizedUserValue === undefined) {
     return {
@@ -131,7 +134,8 @@ export function evaluateMarketSizingFinalAnswer(
 
 function evaluateMarketSizingStep(
   step: MarketSizingInputStep,
-  rawValue: MarketSizingStepRawValue
+  rawValue: MarketSizingStepRawValue,
+  locale?: string
 ): MarketSizingAssumptionEvaluation {
   const numericInput =
     step.inputKind === "currency" ||
@@ -160,12 +164,25 @@ function evaluateMarketSizingStep(
     };
   }
 
-  const parsed = parseAnswer(rawValue);
+  const parsed = parseAnswer(rawValue, {
+    locale: step.inputKind === "integer" || step.inputKind === "number" ? "en-US" : locale
+  });
 
   if (parsed.parseError !== undefined || parsed.value === null) {
     return {
       hasAssumptionRange: step.assumptionRange !== undefined,
       message: parsed.parseError ?? "Enter a valid number.",
+      rawValue,
+      status: "invalid",
+      stepId: step.id,
+      variableName: step.variableName
+    };
+  }
+
+  if (step.inputKind === "integer" && !Number.isInteger(parsed.value)) {
+    return {
+      hasAssumptionRange: step.assumptionRange !== undefined,
+      message: "Enter a whole number.",
       rawValue,
       status: "invalid",
       stepId: step.id,

@@ -1,8 +1,8 @@
-# Math Drill AI Pack Kit: Generated Templates
+# Open Prep AI Pack Kit: Generated Templates
 
-Kit revision: **2026-08-18**
+Kit revision: **2026-08-29**
 
-Pair this module with `math-drill-ai-pack-authoring-start.md`. It covers only `kind: "generated_template"` packages.
+This focused component is included inside the complete generated-template bundle. For advanced modular use, pair it with `math-drill-ai-pack-authoring-start.md`, the named schema, and both complete examples below. It covers only `kind: "generated_template"` packages.
 
 ## Canonical contract
 
@@ -56,13 +56,15 @@ Formula expressions allow only numeric literals, declared variables, parentheses
 
 Import checks up to 256 deterministic representative combinations, including boundaries and values near zero. This is bounded validation, not an exhaustive proof of a large Cartesian product. Test all risky denominators and sign boundaries yourself. The runtime surfaces an actionable package error if an unprobed combination fails.
 
+Variables always combine as an independent Cartesian product. For example, `volume: [100, 200]` and `price: [10, 20]` create four combinations, not the two same-position pairs. If volume 100 must use price 10 and volume 200 must use price 20, create two templates (or otherwise encode one independent driver) instead of parallel arrays. Never rely on array position to pair dependent values.
+
 ## Placeholders and answers
 
 Placeholders are exact, case-sensitive `{identifier}` tokens. Prompts, explanations, and Interview Math labels may reference declared variables. Explanations may also reference `{answer}` or `formula.outputVariable`. Do not put either answer token in a prompt.
 
-Placeholders render raw stored values without commas, currency conversion, percent conversion, or scale formatting. Put visible signs or scale words around the token. The formula result becomes the answer directly. A percentage answer must return a fraction such as `0.25`; percentage points return a point count such as `5`.
+Placeholders render raw stored values without commas, currency conversion, percent conversion, or scale formatting. Put visible signs or scale words around the token. The formula result becomes the answer directly. A percentage answer must return a fraction such as `0.25`; percentage points return a point count such as `5`. For `answerUnit: "k"`, `"m"`, or `"b"`, return the number in that displayed scale: an answer of 12 million is value `12` with unit `m`. The learner may type `12`, select M, or type `12M`; a contradictory suffix is rejected.
 
-Generated answers are exact apart from a tiny floating-point epsilon. This kind cannot define tolerance or rounding. Choose values that produce practical exact inputs; use `fixed_numeric` when an estimated or rounded answer must be accepted.
+Generated answers default to a tolerance that accepts a correctly calculated value rounded to two displayed decimal places: absolute `0.005` for ordinary display values and `0.00005` for canonical percentage fractions (half of `0.01` percentage point). A template can override this with `tolerance` using the same `absolute`, relative `percentage`, or inclusive `range` shapes as fixed numeric answers. Absolute tolerance must be between `0` and `1000000000`; relative percentage tolerance must be between `0` and `1`; range endpoints must be finite and ordered. Optional `roundingRule` is learner-facing guidance and does not alter grading by itself. Omit both fields for the safe two-decimal default, set `tolerance` explicitly for a different comparison policy, and use `fixed_numeric` when each authored question needs a different answer rule.
 
 ## Optional Interview Math
 
@@ -83,6 +85,8 @@ Other equation choices may recognize the formula while applying an incorrect set
 - There are enough distinct combinations for the largest likely drill, and duplicate variants are not the intended content.
 - All prompt and explanation placeholders resolve exactly.
 - Boundary, zero, negative, and exponent cases are safe and finite.
+- Every Cartesian-product combination is semantically valid; dependent value pairs were split into separate templates.
 - The output unit matches the raw formula result.
 - Interview Math is consistently enabled or absent across the entire pack.
+- A human has independently checked every formula, answer unit, setup flag, interpretation flag, and source fact.
 - The final response follows the Start Here binding output contract and is ready for app validation.

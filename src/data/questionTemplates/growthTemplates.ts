@@ -100,7 +100,7 @@ export const growthQuestionTemplates: QuestionTemplate[] = [
     tags: ["cagr"],
     difficulty: ["beginner"],
     promptTemplate:
-      "A customer base grows from {startingValue} to {endingValue} over {years} years. What is the CAGR? Enter the percentage value.",
+      "A customer base grows from {startingValue} to {endingValue} over {years} years. What is the CAGR? Enter the percentage as a number or with %.",
     variables: {
       startingValue: { type: "integer", values: [256] },
       endingValue: {
@@ -126,7 +126,7 @@ export const growthQuestionTemplates: QuestionTemplate[] = [
     tags: ["cagr"],
     difficulty: ["intermediate"],
     promptTemplate:
-      "Annual orders increase from {startingValue} to {endingValue} over {years} years. What is the CAGR? Enter the percentage value.",
+      "Annual orders increase from {startingValue} to {endingValue} over {years} years. What is the CAGR? Enter the percentage as a number or with %.",
     variables: {
       startingValue: { type: "integer", values: [4_096] },
       endingValue: {
@@ -152,7 +152,7 @@ export const growthQuestionTemplates: QuestionTemplate[] = [
     tags: ["cagr"],
     difficulty: ["advanced"],
     promptTemplate:
-      "An indexed sales measure rises from {startingValue} to {endingValue} over {years} years. What is the CAGR? Enter the percentage value.",
+      "An indexed sales measure rises from {startingValue} to {endingValue} over {years} years. What is the CAGR? Enter the percentage as a number or with %.",
     variables: {
       startingValue: { type: "integer", values: [65_536] },
       endingValue: {
@@ -178,7 +178,7 @@ export const growthQuestionTemplates: QuestionTemplate[] = [
     tags: ["cagr"],
     difficulty: ["expert"],
     promptTemplate:
-      "Platform transactions grow from {startingValue} to {endingValue} over {years} years. What is the CAGR? Enter the percentage value.",
+      "Platform transactions grow from {startingValue} to {endingValue} over {years} years. What is the CAGR? Enter the percentage as a number or with %.",
     variables: {
       startingValue: { type: "integer", values: [1_048_576] },
       endingValue: {
@@ -238,7 +238,7 @@ export const growthQuestionTemplates: QuestionTemplate[] = [
     tags: ["rule_of_72"],
     difficulty: ["intermediate"],
     promptTemplate:
-      "Using the Rule of 72, what annual growth rate is needed to double in approximately {targetYears} years? Enter the percentage value.",
+      "Using the Rule of 72, what annual growth rate is needed to double in approximately {targetYears} years? Enter the percentage as a number or with %.",
     variables: {
       targetYears: { type: "integer", values: [3, 4, 6, 8, 9, 12, 16, 18, 24, 36, 48, 72] }
     },
@@ -302,7 +302,7 @@ export const growthQuestionTemplates: QuestionTemplate[] = [
     tags: ["rule_of_72"],
     difficulty: ["expert"],
     promptTemplate:
-      "Using the Rule of 72, what annual growth rate is needed to quadruple in approximately {targetYears} years? Enter the percentage value.",
+      "Using the Rule of 72, what annual growth rate is needed to quadruple in approximately {targetYears} years? Enter the percentage as a number or with %.",
     variables: {
       targetYears: { type: "integer", values: [3, 4, 6, 8, 9, 12, 16, 18, 24, 36, 48, 72] }
     },

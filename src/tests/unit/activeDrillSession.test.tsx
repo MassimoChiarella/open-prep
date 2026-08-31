@@ -9,7 +9,7 @@ import {
 } from "@/features/drills/drillPersistence";
 import { createDrillSession } from "@/features/drills/sessionFactory";
 import { unitPreferenceOptions } from "@/features/drills/drillSettingsOptions";
-import type { AppStoreName, AppStoreValue } from "@/lib/storage/appStorageTypes";
+import type { AppStorageMutation } from "@/lib/storage/appStorageTypes";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("ActiveDrillSession", () => {
@@ -148,6 +148,7 @@ describe("ActiveDrillSession", () => {
     render(<ActiveDrillSession initialSession={created.session} questions={created.questions} />);
 
     const queue = screen.getByTestId("active-session-queue");
+    expect(within(queue).getAllByRole("listitem")[0]).toHaveClass("min-w-0", "[overflow-wrap:anywhere]");
     expect(within(queue).queryByText(created.questions[1].prompt)).not.toBeInTheDocument();
     expect(within(queue).getByText("Upcoming question")).toBeInTheDocument();
 
@@ -362,32 +363,33 @@ describe("ActiveDrillSession", () => {
 class FailOnceStorage extends MemoryAppStorage {
   failNextCompletedSessionPut = false;
 
-  override async put<TStore extends AppStoreName>(
-    storeName: TStore,
-    value: AppStoreValue<TStore>
-  ): Promise<void> {
+  override async mutate(operations: readonly AppStorageMutation[]): Promise<void> {
     if (
       this.failNextCompletedSessionPut &&
-      storeName === "drill_sessions" &&
-      (value as { score?: unknown }).score !== undefined
+      operations.some(
+        (operation) => operation.type === "put" &&
+          operation.storeName === "drill_sessions" && operation.value.score !== undefined
+      )
     ) {
       this.failNextCompletedSessionPut = false;
       throw new Error("Injected one-time save failure.");
     }
 
-    await super.put(storeName, value);
+    await super.mutate(operations);
   }
 }
 
 class PendingCompletedSaveStorage extends MemoryAppStorage {
-  override async put<TStore extends AppStoreName>(
-    storeName: TStore,
-    value: AppStoreValue<TStore>
-  ): Promise<void> {
-    if (storeName === "drill_sessions" && (value as { score?: unknown }).score !== undefined) {
+  override async mutate(operations: readonly AppStorageMutation[]): Promise<void> {
+    if (
+      operations.some(
+        (operation) => operation.type === "put" &&
+          operation.storeName === "drill_sessions" && operation.value.score !== undefined
+      )
+    ) {
       return new Promise<void>(() => undefined);
     }
 
-    await super.put(storeName, value);
+    await super.mutate(operations);
   }
 }

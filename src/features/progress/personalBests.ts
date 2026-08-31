@@ -3,6 +3,8 @@ import type { Difficulty, DrillSettings, SkillCategory, SkillTag } from "@/lib/d
 import { formatLabel } from "@/lib/format";
 import type { BenchmarkResultRecord, StoredDrillSession, StoredUserResponse } from "@/lib/storage/appStorageTypes";
 
+import { localDateKey, shiftLocalDateKey } from "@/features/progress/localCalendar";
+
 export type PersonalBestMetric = "accuracy" | "average_time" | "score" | "streak";
 export type PersonalBestTimeMode = DrillSettings["timeMode"];
 
@@ -45,6 +47,7 @@ export interface CreatePersonalBestRecordsOptions {
   benchmarkResults?: readonly BenchmarkResultRecord[];
   responses?: readonly StoredUserResponse[];
   sessions: readonly StoredDrillSession[];
+  timeZone?: string;
 }
 
 export function createPersonalBestRecords(options: CreatePersonalBestRecordsOptions): PersonalBestRecord[] {
@@ -56,7 +59,7 @@ export function createPersonalBestRecords(options: CreatePersonalBestRecordsOpti
     addDrillBests(bests, session, collectSessionResponses(session, responsesById));
   }
 
-  for (const best of createStreakBests(completedSessions)) {
+  for (const best of createStreakBests(completedSessions, options.timeZone)) {
     addBest(bests, best);
   }
 
@@ -160,16 +163,21 @@ function addPerformanceBests(
   }
 }
 
-function createStreakBests(sessions: readonly StoredDrillSession[]): PersonalBestRecord[] {
+function createStreakBests(
+  sessions: readonly StoredDrillSession[],
+  timeZone: string | undefined
+): PersonalBestRecord[] {
   const sessionsByScope = new Map<string, StoredDrillSession[]>();
 
   for (const session of sessions) {
     const key = `${session.settings.difficulty}:${session.settings.timeMode}`;
-    sessionsByScope.set(key, [...(sessionsByScope.get(key) ?? []), session]);
+    const scopeSessions = sessionsByScope.get(key) ?? [];
+    scopeSessions.push(session);
+    sessionsByScope.set(key, scopeSessions);
   }
 
   return Array.from(sessionsByScope.values()).flatMap((scopeSessions) => {
-    const best = longestStreak(scopeSessions);
+    const best = longestStreak(scopeSessions, timeZone);
 
     if (best === undefined) {
       return [];
@@ -239,11 +247,14 @@ function isBetterBest(candidate: PersonalBestRecord, current: PersonalBestRecord
   );
 }
 
-function longestStreak(sessions: readonly StoredDrillSession[]): { days: number; session: StoredDrillSession } | undefined {
+function longestStreak(
+  sessions: readonly StoredDrillSession[],
+  timeZone: string | undefined
+): { days: number; session: StoredDrillSession } | undefined {
   const latestSessionByDate = new Map<string, StoredDrillSession>();
 
   for (const session of sessions) {
-    const key = dateKey(completedAt(session));
+    const key = localDateKey(completedAt(session), timeZone);
     const current = key === undefined ? undefined : latestSessionByDate.get(key);
 
     if (key !== undefined && (current === undefined || isLaterSessionTieBreaker(session, current))) {
@@ -256,10 +267,10 @@ function longestStreak(sessions: readonly StoredDrillSession[]): { days: number;
   let currentDays = 0;
 
   for (let index = 0; index < dates.length; index += 1) {
-    const previous = parseDateKey(dates[index - 1]);
-    const current = parseDateKey(dates[index]);
+    const previous = dates[index - 1];
+    const current = dates[index];
 
-    currentDays = current !== undefined && previous !== undefined && daysBetween(previous, current) === 1 ? currentDays + 1 : 1;
+    currentDays = previous !== undefined && shiftLocalDateKey(previous, 1) === current ? currentDays + 1 : 1;
 
     const session = latestSessionByDate.get(dates[index]);
 
@@ -282,34 +293,6 @@ function isLaterSessionTieBreaker(candidate: StoredDrillSession, current: Stored
 
 function completedAt(session: StoredDrillSession): string {
   return session.endedAt ?? session.updatedAt ?? session.startedAt;
-}
-
-function dateKey(value: string): string | undefined {
-  const date = new Date(value);
-
-  if (Number.isNaN(date.getTime())) {
-    return undefined;
-  }
-
-  return [
-    date.getUTCFullYear(),
-    String(date.getUTCMonth() + 1).padStart(2, "0"),
-    String(date.getUTCDate()).padStart(2, "0")
-  ].join("-");
-}
-
-function parseDateKey(value: string | undefined): Date | undefined {
-  if (value === undefined) {
-    return undefined;
-  }
-
-  const date = new Date(`${value}T00:00:00.000Z`);
-
-  return Number.isNaN(date.getTime()) ? undefined : date;
-}
-
-function daysBetween(first: Date, second: Date): number {
-  return Math.round((second.getTime() - first.getTime()) / 86_400_000);
 }
 
 function average(values: readonly number[]): number {

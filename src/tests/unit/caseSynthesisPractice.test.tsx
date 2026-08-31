@@ -12,6 +12,13 @@ describe("SynthesisPractice", () => {
     const prompt = synthesisPrompts[0];
     render(<SynthesisPractice prompts={[prompt]} storageFactory={() => storage} />);
 
+    expect(screen.getByText(prompt.situation)).toHaveClass("min-w-0", "[overflow-wrap:anywhere]");
+    expect(screen.getByText(prompt.facts[0])).toHaveClass("min-w-0", "[overflow-wrap:anywhere]");
+    expect(screen.getByText(prompt.options.recommendation[0].label)).toHaveClass(
+      "min-w-0",
+      "[overflow-wrap:anywhere]"
+    );
+
     for (const dimension of SYNTHESIS_DIMENSIONS) {
       const correctOption = prompt.options[dimension].find(
         ({ id }) => id === prompt.correctResponse[dimension]
@@ -23,7 +30,7 @@ describe("SynthesisPractice", () => {
 
     expect(await screen.findByText("Score 4/4 saved on this device.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Model close" })).toBeInTheDocument();
-    expect(screen.getByText(prompt.modelClose)).toBeInTheDocument();
+    expect(screen.getByText(prompt.modelClose)).toHaveClass("min-w-0", "[overflow-wrap:anywhere]");
     expect(storage.peekAll("practice_records")).toEqual([
       expect.objectContaining({
         itemId: prompt.id,

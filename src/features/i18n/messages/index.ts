@@ -4,6 +4,7 @@ import { casePracticeMessages } from "@/features/i18n/messages/casePractice";
 import { coreMessages } from "@/features/i18n/messages/core";
 import { drillMessages } from "@/features/i18n/messages/drills";
 import { exhibitMessages } from "@/features/i18n/messages/exhibits";
+import { experienceQualityMessages } from "@/features/i18n/messages/experienceQuality";
 import { formulaMessages } from "@/features/i18n/messages/formulas";
 import { marketSizingMessages } from "@/features/i18n/messages/marketSizing";
 import { progressMessages } from "@/features/i18n/messages/progress";
@@ -25,6 +26,7 @@ export const appMessages = mergeCatalogs(
   settingsMessages,
   questionPackMessages,
   questioningMessages,
+  experienceQualityMessages,
   releaseGateGlobalMessages,
   releaseGateLatinMessages
 );

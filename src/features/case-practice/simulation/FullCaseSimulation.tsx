@@ -64,7 +64,7 @@ export function FullCaseSimulation({
   simulation = brightCartFullCase,
   storageFactory = createIndexedDbAppStorage
 }: FullCaseSimulationProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
   const stages = simulation.questioning === undefined ? fullCaseStages.slice(1) : fullCaseStages;
   const [stage, setStage] = useState(0);
   const [questions, setQuestions] = useState<CaseQuestioningQuestion[]>(() => initialQuestions(simulation));
@@ -195,7 +195,7 @@ export function FullCaseSimulation({
             }
           }),
       synthesis
-    });
+    }, locale);
     setResult(score);
     setSaveState("saving");
 
@@ -253,7 +253,7 @@ export function FullCaseSimulation({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
       <PageHeader
         action={{ href: backHref, label: t("Back to Case Practice") }}
         description={t("Work from an opening hypothesis through quantitative evidence to a final recommendation. Feedback is held until the case is complete.")}
@@ -263,13 +263,13 @@ export function FullCaseSimulation({
 
       <section
         aria-labelledby="full-case-heading"
-        className="grid gap-3 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
+        className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
       >
-        <p className={cx(uiText.eyebrow, "text-teal")}>{simulation.client}</p>
+        <p className={cx(uiText.eyebrow, "min-w-0 text-teal [overflow-wrap:anywhere]")}>{simulation.client}</p>
         <h2 className={uiText.sectionTitle} id="full-case-heading">
           {simulation.title}
         </h2>
-        <p className={uiText.bodyStrong}>{simulation.situation}</p>
+        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{simulation.situation}</p>
       </section>
 
       {result === undefined ? (
@@ -421,12 +421,12 @@ function QuestioningStage({
   const { t } = useI18n();
 
   return (
-    <section aria-labelledby="questioning-stage-heading" className="grid gap-7">
-      <div className="grid gap-2">
+    <section aria-labelledby="questioning-stage-heading" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-7">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
         <h2 className={uiText.sectionTitle} id="questioning-stage-heading" tabIndex={-1}>
           {t("Clarify and diagnose")}
         </h2>
-        <p className={uiText.bodyStrong}>{prompt.objective}</p>
+        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{prompt.objective}</p>
       </div>
       <QuestioningResponseFields
         includeRanking={includeRanking}
@@ -459,12 +459,12 @@ function StructureStage({
   const prompt = simulation.structure;
 
   return (
-    <section aria-labelledby="structure-stage-heading" className="grid gap-7">
-      <div className="grid gap-2">
+    <section aria-labelledby="structure-stage-heading" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-7">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
         <h2 className={uiText.sectionTitle} id="structure-stage-heading" tabIndex={-1}>
           {t("Open the case")}
         </h2>
-        <p className={uiText.bodyStrong}>{prompt.objective}</p>
+        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{prompt.objective}</p>
       </div>
       <StructuringResponseFields
         branchIds={branchIds}
@@ -490,8 +490,8 @@ function CalculationStage({
   const question = getFullCaseCalculationQuestion(simulation);
 
   return (
-    <section aria-labelledby="calculation-stage-heading" className="grid gap-6">
-      <div className="grid gap-2">
+    <section aria-labelledby="calculation-stage-heading" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
         <h2 className={uiText.sectionTitle} id="calculation-stage-heading" tabIndex={-1}>
           {t("Read the exhibit and calculate")}
         </h2>
@@ -501,8 +501,8 @@ function CalculationStage({
       ) : (
         <ExhibitTableRenderer dataset={simulation.exhibit} />
       )}
-      <div className="grid gap-4 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6">
-        <p className={uiText.bodyStrong}>{question.prompt}</p>
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6">
+        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{question.prompt}</p>
         <label className={cx(uiText.controlLabel, "grid max-w-md gap-2")} htmlFor="full-case-calculation">
           {t("Your answer")}
           {question.answer.unit === undefined || question.answer.unit === "none"
@@ -540,7 +540,7 @@ function BrainstormStage({
   const prompt = simulation.brainstorming;
 
   return (
-    <section aria-labelledby="brainstorm-stage-heading" className="grid gap-6">
+    <section aria-labelledby="brainstorm-stage-heading" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
       <h2 className="sr-only" id="brainstorm-stage-heading" tabIndex={-1}>{t("Brainstorming stage")}</h2>
       <BrainstormingResponseFields
         description={prompt.question}
@@ -568,16 +568,16 @@ function SynthesisStage({
   const prompt = simulation.synthesis;
 
   return (
-    <section aria-labelledby="synthesis-stage-heading" className="grid gap-6">
-      <div className="grid gap-2">
+    <section aria-labelledby="synthesis-stage-heading" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
+      <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
         <h2 className={uiText.sectionTitle} id="synthesis-stage-heading" tabIndex={-1}>
           {t("Close the case")}
         </h2>
-        <p className={uiText.bodyStrong}>{prompt.decision}</p>
+        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{prompt.decision}</p>
       </div>
 
       <section
-        className="grid gap-3 border-y border-ink/20 py-5"
+        className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border-y border-ink/20 py-5"
         aria-labelledby="case-evidence-heading"
       >
         <h3 className={uiText.subsectionTitle} id="case-evidence-heading">
@@ -585,7 +585,7 @@ function SynthesisStage({
         </h3>
         <ul className={cx(uiText.body, "grid list-disc gap-2 pl-5")}>
           {prompt.facts.map((fact) => (
-            <li key={fact}>{fact}</li>
+            <li className="min-w-0 [overflow-wrap:anywhere]" key={fact}>{fact}</li>
           ))}
         </ul>
       </section>
@@ -611,7 +611,7 @@ function FullCaseReview({
   const { formatNumber, t } = useI18n();
 
   return (
-    <section aria-labelledby="full-case-result-heading" className="grid gap-6">
+    <section aria-labelledby="full-case-result-heading" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
       <div className="grid gap-5 border-y border-teal/20 bg-mint/40 px-4 py-6 sm:px-6">
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -650,9 +650,9 @@ function FullCaseReview({
         />
       ) : null}
 
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid min-w-0 gap-4 lg:grid-cols-2">
         {result.questioning === undefined ? null : (
-          <article className="grid content-start gap-3 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6">
+          <article className="grid min-w-0 content-start gap-3 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6">
             <h3 className={uiText.sectionTitle}>{t("Questioning feedback")}</h3>
             <dl className="grid grid-cols-3 gap-3 text-sm">
               <ScoreStat label={t("Coverage")} max={result.questioning.coverage.maxScore} score={result.questioning.coverage.score} />
@@ -661,18 +661,18 @@ function FullCaseReview({
             </dl>
           </article>
         )}
-        <article className="grid content-start gap-3 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6">
+        <article className="grid min-w-0 content-start gap-3 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6">
           <h3 className={uiText.sectionTitle}>{t("Structure feedback")}</h3>
           <ul className={cx(uiText.body, "grid list-disc gap-2 pl-5")}>
             {result.structure.feedback.map((item) => (
-              <li key={item}>{t(item)}</li>
+              <li className="min-w-0 [overflow-wrap:anywhere]" key={item}>{t(item)}</li>
             ))}
           </ul>
         </article>
 
         <article
           className={cx(
-            "grid content-start gap-3 border border-ink/15 border-t-2 bg-white p-5 sm:p-6",
+            "grid min-w-0 content-start gap-3 border border-ink/15 border-t-2 bg-white p-5 sm:p-6",
             result.calculation.isCorrect ? "border-t-teal" : "border-t-coral"
           )}
         >
@@ -680,12 +680,12 @@ function FullCaseReview({
           <p className={uiText.bodyStrong}>{t(result.calculation.feedbackMessage)}</p>
           <ol className={cx(uiText.body, "grid list-decimal gap-2 pl-5")}>
             {calculationQuestion.explanation.steps.map((step) => (
-              <li key={step}>{step}</li>
+              <li className="min-w-0 [overflow-wrap:anywhere]" key={step}>{step}</li>
             ))}
           </ol>
         </article>
 
-        <article className="grid content-start gap-3 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6">
+        <article className="grid min-w-0 content-start gap-3 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6">
           <h3 className={uiText.sectionTitle}>{t("Brainstorming feedback")}</h3>
           <dl className="grid grid-cols-3 gap-3 text-sm">
             <ScoreStat label={t("Coverage")} max={result.brainstorming.coverage.maxScore} score={result.brainstorming.coverage.score} />
@@ -698,9 +698,9 @@ function FullCaseReview({
           </dl>
         </article>
 
-        <article className="grid content-start gap-3 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6">
+        <article className="grid min-w-0 content-start gap-3 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6">
           <h3 className={uiText.sectionTitle}>{t("Model close")}</h3>
-          <p className={uiText.bodyStrong}>{simulation.synthesis.modelClose}</p>
+          <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{simulation.synthesis.modelClose}</p>
         </article>
       </div>
 

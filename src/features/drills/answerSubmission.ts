@@ -6,6 +6,7 @@ import {
 import { validateAnswer, type ValidationResult } from "@/lib/validation/validateAnswer";
 
 export interface SubmitAnswerInput {
+  locale?: string;
   session: DrillSession;
   question: Question;
   rawInput: string;
@@ -32,12 +33,14 @@ export function submitAnswer(input: SubmitAnswerInput): SubmitAnswerResult {
           ...input.interviewMath,
           question: input.question,
           rawInput: input.rawInput,
+          locale: input.locale,
           selectedUnit: input.selectedUnit,
           timedOut: input.timedOut
         });
   const validation =
     interviewEvaluation?.validation ??
     validateAnswer(input.rawInput, input.question.answer, {
+      locale: input.locale,
       selectedUnit: input.selectedUnit,
       timedOut: input.timedOut
     });

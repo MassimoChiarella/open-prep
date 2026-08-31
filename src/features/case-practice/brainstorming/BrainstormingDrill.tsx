@@ -110,7 +110,7 @@ export function BrainstormingDrill({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
       <PageHeader
         action={{ href: backHref, label: t("Back to Case Practice") }}
         description={t("Build a broad answer across distinct themes, then identify the ideas that deserve attention first.")}
@@ -119,10 +119,10 @@ export function BrainstormingDrill({
       />
 
       <section
-        className="grid gap-4 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
+        className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
         aria-labelledby="brainstorming-prompt-heading"
       >
-        <label className={cx(uiText.controlLabel, "grid max-w-xl gap-2")}>
+        <label className={cx(uiText.controlLabel, "grid min-w-0 max-w-xl gap-2")}>
           {t("Prompt")}
           <select
             className={uiInputs.compact}
@@ -136,17 +136,17 @@ export function BrainstormingDrill({
             ))}
           </select>
         </label>
-        <div className="grid gap-2 border-t border-ink/10 pt-4">
-          <h2 className="text-xl font-semibold text-ink" id="brainstorming-prompt-heading">
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 border-t border-ink/10 pt-4">
+          <h2 className="min-w-0 text-xl font-semibold text-ink [overflow-wrap:anywhere]" id="brainstorming-prompt-heading">
             {prompt.title}
           </h2>
-          <p className={uiText.body}>{prompt.context}</p>
-          <p className={uiText.bodyStrong}>{prompt.question}</p>
+          <p className={cx(uiText.body, "min-w-0 [overflow-wrap:anywhere]")}>{prompt.context}</p>
+          <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{prompt.question}</p>
         </div>
       </section>
 
       <form
-        className="grid gap-6"
+        className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6"
         onSubmit={(event) => {
           event.preventDefault();
           void handleSubmit();
@@ -231,11 +231,11 @@ export function BrainstormingResponseFields({
   const prioritiesComplete = priorityIdeaIds.length === prompt.priorityLimit;
 
   return (
-    <div className="grid gap-6">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="grid gap-1">
           <h2 className="text-2xl font-semibold text-ink">{heading}</h2>
-          <p className={uiText.body} id={`${prompt.id}-brainstorming-progress`}>
+          <p className={cx(uiText.body, "min-w-0 [overflow-wrap:anywhere]")} id={`${prompt.id}-brainstorming-progress`}>
             {description}
           </p>
         </div>
@@ -259,7 +259,7 @@ export function BrainstormingResponseFields({
         {prompt.themes.map((theme) => (
           <div className="min-w-0 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6" key={theme.id}>
             <fieldset className="min-w-0">
-              <legend className="w-full max-w-full break-words text-base font-semibold text-ink">{theme.label}</legend>
+              <legend className="w-full max-w-full break-words text-base font-semibold text-ink [overflow-wrap:anywhere]">{theme.label}</legend>
               <div className="mt-2 divide-y divide-ink/10">
                 {theme.ideas.map((idea) => (
                   <IdeaChoice
@@ -304,8 +304,8 @@ function IdeaChoice({
 }) {
   const { t } = useI18n();
   return (
-    <div className="grid gap-3 py-4 first:pt-2 last:pb-1">
-      <label className="flex min-h-11 items-start gap-3 text-sm leading-6 text-ink">
+    <div className="grid min-w-0 gap-3 py-4 first:pt-2 last:pb-1">
+      <label className="flex min-h-11 min-w-0 items-start gap-3 text-sm leading-6 text-ink">
         <input
           aria-label={t("Include {idea}", { idea: idea.label })}
           checked={selected}
@@ -314,7 +314,7 @@ function IdeaChoice({
           onChange={(event) => onIdeaChange(event.currentTarget.checked)}
           type="checkbox"
         />
-        <span>{idea.label}</span>
+        <span className="min-w-0 [overflow-wrap:anywhere]">{idea.label}</span>
       </label>
       <label className={cx("ml-7 flex min-h-8 items-center gap-2 text-xs font-semibold", priorityDisabled ? "text-ink/45" : "text-teal")}>
         <input
@@ -344,7 +344,7 @@ function ScorePanel({ prompt, score }: { prompt: BrainstormingPrompt; score: Bra
     <section
       aria-labelledby="brainstorming-score-heading"
       aria-live="polite"
-      className="grid gap-5 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6"
+      className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="grid gap-1">
@@ -413,14 +413,14 @@ function FeedbackList({
   labels: readonly string[];
 }) {
   return (
-    <div className="grid content-start gap-2">
+    <div className="grid min-w-0 content-start gap-2">
       <h3 className={uiText.subsectionTitle}>{heading}</h3>
       {labels.length === 0 ? (
         <p className={uiText.dense}>{emptyLabel}</p>
       ) : (
-        <ul className="grid list-disc gap-1 pl-5 text-xs leading-5 text-ink/70">
+        <ul className="grid min-w-0 list-disc gap-1 pl-5 text-xs leading-5 text-ink/70">
           {labels.map((label) => (
-            <li key={label}>{label}</li>
+            <li className="min-w-0 [overflow-wrap:anywhere]" key={label}>{label}</li>
           ))}
         </ul>
       )}

@@ -210,19 +210,19 @@ export function ConceptLessonsView({
       <div className="grid min-w-0 gap-6 lg:grid-cols-[18rem_minmax(0,1fr)]">
         <nav
           aria-label={t("Lesson progression")}
-          className="h-fit border border-ink/15 border-t-2 border-t-coral bg-white p-2"
+          className="h-fit min-w-0 max-w-full border border-ink/15 border-t-2 border-t-coral bg-white p-2"
         >
-          <ol className="divide-y divide-ink/10">
+          <ol className="min-w-0 divide-y divide-ink/10">
             {lessons.map((lesson, index) => {
               const active = lesson.id === activeLesson.id;
               const mastered = masteredLessonIds.has(lesson.id);
 
               return (
-                <li key={lesson.id}>
+                <li className="min-w-0" key={lesson.id}>
                   <button
                     aria-current={active ? "step" : undefined}
                     className={cx(
-                      "grid min-h-16 w-full gap-1 px-3 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal",
+                      "grid min-h-16 w-full min-w-0 grid-cols-[minmax(0,1fr)] gap-1 px-3 py-3 text-left transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal",
                       active ? "bg-mint text-ink" : "text-ink hover:bg-paper"
                     )}
                     onClick={() => openLesson(lesson.id)}
@@ -234,7 +234,7 @@ export function ConceptLessonsView({
                         {mastered ? t("Mastered") : t("Open")}
                       </span>
                     </span>
-                    <span className="text-sm font-semibold leading-5">{lesson.title}</span>
+                    <span className="min-w-0 text-sm font-semibold leading-5 [overflow-wrap:anywhere]">{lesson.title}</span>
                   </button>
                 </li>
               );
@@ -242,8 +242,8 @@ export function ConceptLessonsView({
           </ol>
         </nav>
 
-        <article className="min-w-0 grid gap-7 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6">
-          <header className="grid gap-3">
+        <article className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-7 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6">
+          <header className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <span className={badgeClass("neutral")}>{t(topicLabels[activeLesson.topic])}</span>
               <span className={uiText.dense}>
@@ -253,64 +253,64 @@ export function ConceptLessonsView({
                 })}
               </span>
             </div>
-            <h2 className="text-2xl font-semibold text-ink">{activeLesson.title}</h2>
-            <p className={uiText.pageDescription}>{activeLesson.objective}</p>
+            <h2 className="min-w-0 text-2xl font-semibold text-ink [overflow-wrap:anywhere]">{activeLesson.title}</h2>
+            <p className={cx(uiText.pageDescription, "min-w-0 [overflow-wrap:anywhere]")}>{activeLesson.objective}</p>
           </header>
 
           <section aria-labelledby="lesson-principles-heading" className="grid gap-3 border-t border-ink/10 pt-6">
             <h3 className={uiText.subsectionTitle} id="lesson-principles-heading">
               {t("Core Principle")}
             </h3>
-            <ul className="grid gap-2 text-sm leading-6 text-ink/70">
+            <ul className="grid min-w-0 gap-2 text-sm leading-6 text-ink/70">
               {activeLesson.principles.map((principle) => (
-                <li className="flex gap-3" key={principle}>
+                <li className="flex min-w-0 gap-3" key={principle}>
                   <span aria-hidden="true" className="mt-2 h-2 w-2 shrink-0 rounded-full bg-saffron" />
-                  <span>{principle}</span>
+                  <span className="min-w-0 [overflow-wrap:anywhere]">{principle}</span>
                 </li>
               ))}
             </ul>
           </section>
 
-          <section aria-labelledby="worked-example-heading" className="grid gap-4 border-y border-ink/15 bg-paper px-4 py-5 sm:px-5">
-            <div className="grid gap-2">
+          <section aria-labelledby="worked-example-heading" className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 border-y border-ink/15 bg-paper px-4 py-5 sm:px-5">
+            <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
               <p className={cx(uiText.eyebrow, "text-coral")}>{t("Worked Example")}</p>
               <h3 className={uiText.subsectionTitle} id="worked-example-heading">
                 {activeLesson.workedExample.prompt}
               </h3>
             </div>
-            <ol className="grid gap-3 text-sm leading-6 text-ink/70">
+            <ol className="grid min-w-0 gap-3 text-sm leading-6 text-ink/70">
               {activeLesson.workedExample.steps.map((step, index) => (
-                <li className="grid grid-cols-[1.75rem_minmax(0,1fr)] gap-2" key={step}>
+                <li className="grid min-w-0 grid-cols-[1.75rem_minmax(0,1fr)] gap-2" key={step}>
                   <span
                     aria-hidden="true"
                     className="flex h-7 w-7 items-center justify-center border border-ink/15 bg-white text-xs font-semibold text-teal"
                   >
                     {formatNumber(index + 1)}
                   </span>
-                  <span>{step}</span>
+                  <span className="min-w-0 [overflow-wrap:anywhere]">{step}</span>
                 </li>
               ))}
             </ol>
-            <p className="border-l-4 border-teal pl-3 text-sm font-semibold leading-6 text-ink">
+            <p className="min-w-0 border-l-4 border-teal pl-3 text-sm font-semibold leading-6 text-ink [overflow-wrap:anywhere]">
               {activeLesson.workedExample.answer}
             </p>
           </section>
 
           <form
-            className="grid gap-5 border-t border-ink/10 pt-6"
+            className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5 border-t border-ink/10 pt-6"
             onSubmit={(event) => {
               event.preventDefault();
               void submitCheck();
             }}
           >
-            <fieldset className="grid gap-4">
+            <fieldset className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4">
               <legend className={uiText.sectionTitle}>{t("Knowledge Check")}</legend>
-              <p className={uiText.bodyStrong}>{activeLesson.knowledgeCheck.prompt}</p>
-              <div className="grid gap-2">
+              <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{activeLesson.knowledgeCheck.prompt}</p>
+              <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
                 {activeLesson.knowledgeCheck.options.map((option) => (
                   <label
                     className={cx(
-                      "flex min-h-12 cursor-pointer items-center gap-3 border px-3 py-2 text-sm font-medium transition",
+                      "flex min-h-12 min-w-0 cursor-pointer items-center gap-3 border px-3 py-2 text-sm font-medium transition",
                       answerId === option.id
                         ? "border-teal bg-mint text-ink"
                         : "border-ink/10 bg-white text-ink/80 hover:border-teal"
@@ -330,7 +330,7 @@ export function ConceptLessonsView({
                       type="radio"
                       value={option.id}
                     />
-                    <span>{option.label}</span>
+                    <span className="min-w-0 [overflow-wrap:anywhere]">{option.label}</span>
                   </label>
                 ))}
               </div>
@@ -351,7 +351,7 @@ export function ConceptLessonsView({
                 className={statusMessageClass(result.isCorrect ? "success" : "warning")}
                 role="status"
               >
-                <p className={uiText.bodyStrong}>{t(result.feedback)}</p>
+                <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{t(result.feedback)}</p>
               </div>
             ) : null}
 
