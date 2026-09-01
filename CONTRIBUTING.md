@@ -4,8 +4,8 @@ Thank you for helping improve Open Prep.
 
 ## Before You Start
 
-- Read the [README](README.md), especially its runtime guarantees.
-- For content-pack changes, follow [format v2](QUESTION_PACK_FORMAT_V2.md), [format v3](QUESTION_PACK_FORMAT_V3.md), and the [author guide](public/question-pack-author-guide.md) as applicable.
+- Read the [README](README.md) and [Code of Conduct](CODE_OF_CONDUCT.md).
+- For content-pack changes, follow the [content policy](CONTENT_POLICY.md), [community-pack lifecycle](COMMUNITY_PACK_LIFECYCLE.md), [format v2](QUESTION_PACK_FORMAT_V2.md), [format v3](QUESTION_PACK_FORMAT_V3.md), and the [author guide](public/question-pack-author-guide.md) as applicable.
 - Open an issue before beginning a large feature or architectural change.
 - Keep changes focused and preserve the deterministic, local-first design.
 
@@ -13,8 +13,8 @@ Thank you for helping improve Open Prep.
 
 Requirements:
 
-- Node.js 20.19.0 or later
-- npm
+- Node.js 24.19.0 (see `.node-version`)
+- npm 11.17.0 (see `packageManager` in `package.json`)
 
 ```bash
 npm ci
@@ -27,7 +27,7 @@ npm run dev
 - Keep user progress and imported content in browser-local storage.
 - Use strict TypeScript and pure functions for parsing, generation, validation, scoring, and recommendations where practical.
 - Add focused tests when changing shared logic or user-facing workflows.
-- Submit only consulting-relevant practice content that you created or have permission to distribute under the MIT License. Do not copy proprietary prep material.
+- Submit only consulting-relevant practice content that you created or may distribute under one approved content license. The MIT software license does not grant practice-content rights.
 - Verify contributed questions, units, formulas, answers, explanations, and cross-references.
 - Do not submit hateful, harassing, discriminatory, dehumanizing, threatening, or unrelated content.
 - Use inclusive language and avoid real personal data unless it is clearly fictionalized and necessary to the exercise.
@@ -45,6 +45,6 @@ This runs linting, type checking, unit tests, the static production build, and P
 
 ## Pull Requests
 
-Describe the user-facing behavior, explain how the change improves consulting preparation while preserving the runtime guarantees, identify any storage or content-format changes, and list the checks you ran. Keep unrelated refactors out of the same pull request.
+Choose the focused [code](.github/PULL_REQUEST_TEMPLATE/code.md), [translation](.github/PULL_REQUEST_TEMPLATE/translation.md), or [community-pack](.github/PULL_REQUEST_TEMPLATE/content-pack.md) template. Describe the user-facing behavior, explain how the change improves consulting preparation while preserving the runtime guarantees, identify any storage or content-format changes, and list the checks you ran. Keep unrelated refactors out of the same pull request.
 
-By submitting a contribution, you agree that it may be distributed under the MIT License.
+Software and applicable project-documentation contributions are submitted under the repository's MIT License. Practice-content contributions require a separate approved license and the rights, provenance, review, accessibility, and conflict declarations in the content-pack template and [content policy](CONTENT_POLICY.md).

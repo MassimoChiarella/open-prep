@@ -1,0 +1,57 @@
+# Deployment Security Contract
+
+Open Prep is an origin-root static PWA. Official releases must be served over
+HTTPS from `/` and must preserve the generated `_headers` file or configure the
+same response headers through the hosting provider.
+
+## Required Headers
+
+The verified build generates these provider-neutral protections for all paths:
+
+- `Content-Security-Policy` limits runtime resources to the same origin, blocks
+  objects and framing, and contains SHA-256 allowances for the exact inline
+  scripts emitted by that build. It never permits `unsafe-eval`.
+- `X-Content-Type-Options: nosniff` prevents MIME sniffing.
+- `Referrer-Policy: no-referrer` avoids sending route details as referrers.
+- `Permissions-Policy` disables unused device capabilities.
+- `X-Frame-Options: DENY` provides framing protection for older clients in
+  addition to CSP `frame-ancestors 'none'`.
+
+The generated CSP uses `style-src 'self' 'unsafe-inline'` because application
+components and charts use inline presentation attributes. Script allowances are
+hash-based and generated from the exact HTML bytes; do not hand-edit or reuse a
+`_headers` file from another build.
+
+The deployed-origin checker parses this policy and requires the generated
+directive/source contract exactly, except that `script-src` contains the
+build-specific SHA-256 values. Added wildcards, network schemes, external
+hosts, duplicate directives, or broad script allowances fail the check.
+
+## Host Configuration
+
+- Publish the verified archive's single top-level directory at the origin root.
+- If the host supports `_headers`, deploy the generated file unchanged. On other
+  hosts, configure the same names and values from that file.
+- Keep `sw.js` revalidated rather than immutable. Hashed `_next/static/` assets
+  may use long-lived immutable caching.
+- Serve correct MIME types and enable Brotli or gzip for compressible files.
+- Add HSTS only after the production domain and every required subdomain are
+  confirmed to work exclusively over HTTPS.
+- Run the post-deployment smoke command against the final HTTPS origin and record
+  the result in `RELEASE_CHECKLIST.md`.
+
+```bash
+npm run postdeploy:check -- https://practice.example.com/
+```
+
+The origin must be an explicit credential-free HTTPS origin root. The command
+uses a fresh Playwright context and synthetic local data; it does not inspect
+or transmit learner records. It blocks cross-origin HTTP(S) requests and every
+non-GET/HEAD request during the exercised routes. Historical release upgrades,
+failed worker installation, IndexedDB retention, and broader private-data
+workflows remain separate release-checklist evidence. A host-specific failure
+must be resolved and the command rerun before hosted release evidence is marked
+complete.
+
+These headers do not add a server runtime, analytics, telemetry, or an external
+network dependency.
