@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { LocalSaveNotice } from "@/components/LocalSaveNotice";
 import { badgeClass, buttonClass } from "@/components/uiStyles";
@@ -26,14 +26,27 @@ import {
   serializeQuestionPack,
   validateQuestionPackPayload
 } from "@/features/question-packs/questionPack";
+import { removeQuestionPackFromPoolPreference } from "@/features/question-packs/questionPackPoolPreference";
 import type { AnswerSpec, Difficulty, ExplanationSpec, QuestionTemplate, UnitType } from "@/lib/domain";
 import { formatLabel, formatNumber } from "@/lib/format";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
-import type { AppStorage, QuestionPackRecord } from "@/lib/storage/appStorageTypes";
+import type {
+  AppStorage,
+  CommunityPackCatalogProvenance,
+  QuestionPackRecord
+} from "@/lib/storage/appStorageTypes";
 
 type ImportStatus = "error" | "idle" | "installed" | "invalid" | "ready" | "saving";
 type ListStatus = "error" | "loading" | "ready";
 type MoreStatus = "error" | "idle" | "loading";
+
+export type QuestionPackManagerView = "all" | "create" | "import" | "installed";
+
+export interface QuestionPackImportCandidate {
+  key: string;
+  payload: unknown;
+  provenance: CommunityPackCatalogProvenance;
+}
 
 const difficultyOrder: Difficulty[] = ["beginner", "intermediate", "advanced", "expert"];
 
@@ -47,9 +60,13 @@ const packKindInfo = {
 } as const satisfies Record<QuestionPackRecord["kind"], { label: string; route?: string }>;
 
 export function QuestionPackManager({
-  storageFactory = createIndexedDbAppStorage
+  catalogCandidate,
+  storageFactory = createIndexedDbAppStorage,
+  view = "all"
 }: {
+  catalogCandidate?: QuestionPackImportCandidate;
   storageFactory?: () => AppStorage;
+  view?: QuestionPackManagerView;
 } = {}) {
   const { formatNumber: formatLocaleNumber, t } = useI18n();
   const [deleteId, setDeleteId] = useState<string>();
@@ -61,17 +78,25 @@ export function QuestionPackManager({
   const [moreStatus, setMoreStatus] = useState<MoreStatus>("idle");
   const [nextPageKey, setNextPageKey] = useState<IDBValidKey>();
   const [packs, setPacks] = useState<QuestionPackRecord[]>([]);
-  const [pendingIsInstalled, setPendingIsInstalled] = useState(false);
+  const [pendingInstalledPack, setPendingInstalledPack] = useState<QuestionPackRecord>();
   const [pendingPack, setPendingPack] = useState<QuestionPackRecord>();
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [saveError, setSaveError] = useState<string>();
+  const catalogCandidateKey = useRef<string>();
   const deleteInFlight = useRef(false);
   const fileReadRequest = useRef(0);
+  const showCreate = view === "all" || view === "create";
+  const showImport = view === "all" || view === "import";
+  const showInstalled = view === "all" || view === "installed";
+  const showPreview = showCreate || showImport;
 
-  const replacing = useMemo(
-    () => pendingPack !== undefined && (pendingIsInstalled || packs.some((pack) => pack.id === pendingPack.id)),
-    [packs, pendingIsInstalled, pendingPack]
+  const replacedPack = useMemo(
+    () => pendingPack === undefined
+      ? undefined
+      : pendingInstalledPack ?? packs.find((pack) => pack.id === pendingPack.id),
+    [packs, pendingInstalledPack, pendingPack]
   );
+  const replacing = replacedPack !== undefined;
   const pendingPresentation = useMemo(
     () => pendingPack === undefined ? undefined : getPackPresentation(pendingPack, formatLocaleNumber, t),
     [formatLocaleNumber, pendingPack, t]
@@ -80,6 +105,41 @@ export function QuestionPackManager({
     () => pendingPack === undefined ? undefined : reviewQuestionPack(pendingPack),
     [pendingPack]
   );
+  const applyPreviewPayload = useCallback((
+    payload: unknown,
+    provenance?: CommunityPackCatalogProvenance
+  ) => {
+    setErrors([]);
+    setPendingInstalledPack(undefined);
+    setPendingPack(undefined);
+    setReviewConfirmed(false);
+    setSaveError(undefined);
+
+    const validation = validateQuestionPackPayload(payload);
+
+    if (validation.status === "invalid") {
+      setErrors(validation.errors);
+      setImportStatus("invalid");
+    } else if (
+      provenance !== undefined &&
+      (validation.pack.id !== provenance.id || validation.pack.packVersion !== provenance.version)
+    ) {
+      setErrors(["Catalog provenance does not match the validated pack ID and version."]);
+      setImportStatus("invalid");
+    } else {
+      setPendingPack(provenance === undefined
+        ? validation.pack
+        : { ...validation.pack, catalogProvenance: provenance });
+      setImportStatus("ready");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (catalogCandidate === undefined || catalogCandidateKey.current === catalogCandidate.key) return;
+    catalogCandidateKey.current = catalogCandidate.key;
+    fileReadRequest.current += 1;
+    applyPreviewPayload(catalogCandidate.payload, catalogCandidate.provenance);
+  }, [applyPreviewPayload, catalogCandidate]);
 
   useEffect(() => {
     let cancelled = false;
@@ -126,7 +186,7 @@ export function QuestionPackManager({
       storage = storageFactory();
       void storage.get("question_packs", pendingPack.id)
         .then((installed) => {
-          if (!cancelled) setPendingIsInstalled(installed !== undefined);
+          if (!cancelled) setPendingInstalledPack(installed);
         })
         .catch(() => undefined)
         .finally(() => storage?.close());
@@ -194,24 +254,6 @@ export function QuestionPackManager({
     applyPreviewPayload(payload);
   }
 
-  function applyPreviewPayload(payload: unknown) {
-    setErrors([]);
-    setPendingIsInstalled(false);
-    setPendingPack(undefined);
-    setReviewConfirmed(false);
-    setSaveError(undefined);
-
-    const validation = validateQuestionPackPayload(payload);
-
-    if (validation.status === "invalid") {
-      setErrors(validation.errors);
-      setImportStatus("invalid");
-    } else {
-      setPendingPack(validation.pack);
-      setImportStatus("ready");
-    }
-  }
-
   async function handleInstall() {
     if (pendingPack === undefined || !reviewConfirmed) {
       return;
@@ -254,6 +296,11 @@ export function QuestionPackManager({
     try {
       storage = storageFactory();
       const count = await deleteQuestionPack(storage, packId);
+      try {
+        removeQuestionPackFromPoolPreference(packId);
+      } catch {
+        // The pack is already deleted; runtime filtering handles a stale local preference.
+      }
       setPacks((current) => current.filter((pack) => pack.id !== packId));
       setInstalledCount(count);
       setDeleteId(undefined);
@@ -293,45 +340,53 @@ export function QuestionPackManager({
 
   return (
     <section className="grid gap-6" data-testid="settings-question-packs">
-      <div className="grid gap-2 border-b border-ink/15 pb-4">
-        <p className="text-sm font-semibold uppercase tracking-wide text-coral">{t("Custom Content")}</p>
-        <h2 className="text-xl font-semibold text-ink">{t("Custom Content Packs")}</h2>
-        <p className="text-sm leading-6 text-ink/65">
-          {t("Build fixed numeric or case-questioning exercises here, or import a versioned pack for any supported practice area. Content stays in this browser and uses the app's deterministic local practice and progress engines.")}
-        </p>
-      </div>
+      {view === "all" ? (
+        <div className="grid gap-2 border-b border-ink/15 pb-4">
+          <p className="text-sm font-semibold uppercase tracking-wide text-coral">{t("Custom Content")}</p>
+          <h2 className="text-xl font-semibold text-ink">{t("Custom Content Packs")}</h2>
+          <p className="text-sm leading-6 text-ink/65">
+            {t("Build fixed numeric or case-questioning exercises here, or import a versioned pack for any supported practice area. Content stays in this browser and uses the app's deterministic local practice and progress engines.")}
+          </p>
+        </div>
+      ) : null}
 
-      <QuestionPackBuilder onPreview={previewPayload} />
-      <QuestioningPackBuilder onPreview={previewPayload} />
+      {showCreate ? (
+        <>
+          <QuestionPackBuilder onPreview={previewPayload} />
+          <QuestioningPackBuilder onPreview={previewPayload} />
+        </>
+      ) : null}
 
-      <div className="grid gap-3 border border-ink/15 border-t-2 border-t-teal bg-paper p-4">
-        <label className="grid gap-2 text-sm font-semibold text-ink/75">
-          {t("Choose a question pack")}
-          <input
-            accept="application/json,.json,.mathdrill.json"
-            className="block min-h-11 w-full text-sm text-ink file:mr-3 file:min-h-11 file:rounded-md file:border-0 file:bg-white file:px-3 file:text-sm file:font-semibold file:text-ink"
-            disabled={importStatus === "saving"}
-            onChange={(event) => void handleFile(event)}
-            type="file"
-          />
-        </label>
-        <p className="text-xs leading-5 text-ink/65">
-          {t("Maximum {size}. Import only original material or content you have permission to use.", {
-            size: formatBytes(questionPackMaxFileBytes)
-          })}
-        </p>
-        <p className="text-xs leading-5 text-ink/65">
-          {t("Keep up to {count} installed packs using {size} of local pack data. Replace or remove packs to make room.", {
-            count: formatLocaleNumber(questionPackMaxInstalledPacks),
-            size: formatBytes(questionPackMaxInstalledBytes)
-          })}
-        </p>
-        <Link className={buttonClass("primary")} href="/content-packs/downloads">
-          {t("Browse downloads and authoring resources")}
-        </Link>
-      </div>
+      {showImport ? (
+        <div className="grid gap-3 border border-ink/15 border-t-2 border-t-teal bg-paper p-4">
+          <label className="grid gap-2 text-sm font-semibold text-ink/75">
+            {t("Choose a question pack")}
+            <input
+              accept="application/json,.json,.mathdrill.json"
+              className="block min-h-11 w-full text-sm text-ink file:mr-3 file:min-h-11 file:rounded-md file:border-0 file:bg-white file:px-3 file:text-sm file:font-semibold file:text-ink"
+              disabled={importStatus === "saving"}
+              onChange={(event) => void handleFile(event)}
+              type="file"
+            />
+          </label>
+          <p className="text-xs leading-5 text-ink/65">
+            {t("Maximum {size}. Import only original material or content you have permission to use.", {
+              size: formatBytes(questionPackMaxFileBytes)
+            })}
+          </p>
+          <p className="text-xs leading-5 text-ink/65">
+            {t("Keep up to {count} installed packs using {size} of local pack data. Replace or remove packs to make room.", {
+              count: formatLocaleNumber(questionPackMaxInstalledPacks),
+              size: formatBytes(questionPackMaxInstalledBytes)
+            })}
+          </p>
+          <Link className={buttonClass("primary")} href="/content-packs/downloads">
+            {t("Browse downloads and authoring resources")}
+          </Link>
+        </div>
+      ) : null}
 
-      {pendingPack !== undefined && pendingPresentation !== undefined && pendingReview !== undefined ? (
+      {showPreview && pendingPack !== undefined && pendingPresentation !== undefined && pendingReview !== undefined ? (
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border border-teal/30 border-t-2 border-t-teal bg-mint/50 p-4" data-testid="question-pack-preview">
           <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1">
             <p className="min-w-0 text-sm font-semibold text-ink [overflow-wrap:anywhere]">
@@ -352,6 +407,33 @@ export function QuestionPackManager({
             <PackPreviewStat label={t("License")} value={pendingPack.license ?? t("Not provided")} />
             <PackPreviewStat label={t(pendingPresentation.coverageLabel)} value={pendingPresentation.coverageValue} />
           </dl>
+          {pendingPack.catalogProvenance?.source === "repository_catalog" ? (
+            <p className="flex flex-wrap items-center gap-2 text-sm leading-6 text-ink/70">
+              <span className={badgeClass("success")}>{t("Repository reviewed")}</span>
+              {t("The catalog checksum, pack identity, and repository review record were verified before preview.")}
+            </p>
+          ) : null}
+          {replacedPack?.catalogProvenance?.source === "repository_catalog" && pendingPack.catalogProvenance === undefined ? (
+            <LocalSaveNotice
+              detail={t("This local replacement has not been repository reviewed. Replacing the installed pack removes its reviewed status.")}
+              label={t("Reviewed status will be removed")}
+              tone="neutral"
+            />
+          ) : null}
+          {replacedPack !== undefined && replacedPack.catalogProvenance === undefined && pendingPack.catalogProvenance?.source === "repository_catalog" ? (
+            <LocalSaveNotice
+              detail={t("A local pack already uses this ID. Replacing it installs the checksum-verified catalog version and its repository review record.")}
+              label={t("Local pack ID conflict")}
+              tone="neutral"
+            />
+          ) : null}
+          {replacedPack?.catalogProvenance?.source === "repository_catalog" && pendingPack.catalogProvenance?.source === "repository_catalog" && replacedPack.catalogProvenance.sha256 !== pendingPack.catalogProvenance.sha256 ? (
+            <LocalSaveNotice
+              detail={t("This checksum-verified catalog version will replace the previously installed reviewed version after confirmation.")}
+              label={t("Reviewed pack update")}
+              tone="neutral"
+            />
+          ) : null}
           <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2">
             <p className="text-xs font-semibold uppercase tracking-wide text-ink/65">{t("Content preview")}</p>
             <PackItemPreview key={`${pendingPack.id}:${pendingPack.packVersion}:${pendingPack.importedAt}`} pack={pendingPack} />
@@ -403,72 +485,74 @@ export function QuestionPackManager({
         </div>
       ) : null}
 
-      <QuestionPackImportNotice errors={errors} saveError={saveError} status={importStatus} />
+      {showPreview ? <QuestionPackImportNotice errors={errors} saveError={saveError} status={importStatus} /> : null}
 
-      <div className="grid gap-3">
-        <div>
-          <h3 className="text-base font-semibold text-ink">{t("Installed Packs")}</h3>
-          <p className="text-sm leading-6 text-ink/65">
-            {t("Open specialized packs in their matching practice area. Numeric and generated packs start up to five unique questions; shorter packs and low-variation templates use every available question.")}
-          </p>
-        </div>
-        {listStatus === "loading" ? <p className="rounded-md bg-paper px-3 py-2 text-sm">{t("Loading packs...")}</p> : null}
-        {listStatus === "error" ? (
-          <LocalSaveNotice detail={t("Installed question packs are unavailable.")} label={t("Question packs")} tone="error" />
-        ) : null}
-        {listStatus === "ready" && packs.length === 0 ? (
-          <p className="border-s-2 border-ink/15 bg-paper px-3 py-2 text-sm leading-6 text-ink/65">{t("No question packs installed.")}</p>
-        ) : null}
-        {listStatus === "ready" && installedCount > 0 ? (
-          <p className="text-xs leading-5 text-ink/65">
-            {t("Showing {visible} of {total} installed packs.", {
-              total: formatLocaleNumber(installedCount),
-              visible: formatLocaleNumber(packs.length)
-            })}
-          </p>
-        ) : null}
-        {installedCount > questionPackMaxInstalledPacks ? (
-          <LocalSaveNotice
-            detail={t("Existing packs remain available. Remove packs before adding another; this browser is above the {count}-pack limit.", {
-              count: formatLocaleNumber(questionPackMaxInstalledPacks)
-            })}
-            label={t("Installed pack limit")}
-            tone="neutral"
-          />
-        ) : null}
-        {packs.map((pack) => (
-          <QuestionPackCard
-            deleting={deleteId === pack.id}
-            key={pack.id}
-            onCancelDelete={() => setDeleteId(undefined)}
-            onConfirmDelete={() => void handleDelete(pack.id)}
-            onRequestDelete={() => setDeleteId(pack.id)}
-            pack={pack}
-            savingDelete={deleteSavingId === pack.id}
-          />
-        ))}
-        {nextPageKey !== undefined ? (
-          <div className="grid justify-items-start gap-2">
-            <button
-              className={buttonClass("secondary")}
-              disabled={moreStatus === "loading"}
-              onClick={() => void handleLoadMore()}
-              type="button"
-            >
-              {t(moreStatus === "loading"
-                ? "Loading more packs..."
-                : moreStatus === "error"
-                  ? "Try loading more packs"
-                  : "Show more packs")}
-            </button>
-            {moreStatus === "error" ? (
-              <p className="text-sm text-coral" role="alert">
-                {t("More installed packs could not be loaded. Try again.")}
-              </p>
-            ) : null}
+      {showInstalled ? (
+        <div className="grid gap-3">
+          <div>
+            <h3 className="text-base font-semibold text-ink">{t("Installed Packs")}</h3>
+            <p className="text-sm leading-6 text-ink/65">
+              {t("Open specialized packs in their matching practice area. Numeric and generated packs start up to five unique questions; shorter packs and low-variation templates use every available question.")}
+            </p>
           </div>
-        ) : null}
-      </div>
+          {listStatus === "loading" ? <p className="rounded-md bg-paper px-3 py-2 text-sm">{t("Loading packs...")}</p> : null}
+          {listStatus === "error" ? (
+            <LocalSaveNotice detail={t("Installed question packs are unavailable.")} label={t("Question packs")} tone="error" />
+          ) : null}
+          {listStatus === "ready" && packs.length === 0 ? (
+            <p className="border-s-2 border-ink/15 bg-paper px-3 py-2 text-sm leading-6 text-ink/65">{t("No question packs installed.")}</p>
+          ) : null}
+          {listStatus === "ready" && installedCount > 0 ? (
+            <p className="text-xs leading-5 text-ink/65">
+              {t("Showing {visible} of {total} installed packs.", {
+                total: formatLocaleNumber(installedCount),
+                visible: formatLocaleNumber(packs.length)
+              })}
+            </p>
+          ) : null}
+          {installedCount > questionPackMaxInstalledPacks ? (
+            <LocalSaveNotice
+              detail={t("Existing packs remain available. Remove packs before adding another; this browser is above the {count}-pack limit.", {
+                count: formatLocaleNumber(questionPackMaxInstalledPacks)
+              })}
+              label={t("Installed pack limit")}
+              tone="neutral"
+            />
+          ) : null}
+          {packs.map((pack) => (
+            <QuestionPackCard
+              deleting={deleteId === pack.id}
+              key={pack.id}
+              onCancelDelete={() => setDeleteId(undefined)}
+              onConfirmDelete={() => void handleDelete(pack.id)}
+              onRequestDelete={() => setDeleteId(pack.id)}
+              pack={pack}
+              savingDelete={deleteSavingId === pack.id}
+            />
+          ))}
+          {nextPageKey !== undefined ? (
+            <div className="grid justify-items-start gap-2">
+              <button
+                className={buttonClass("secondary")}
+                disabled={moreStatus === "loading"}
+                onClick={() => void handleLoadMore()}
+                type="button"
+              >
+                {t(moreStatus === "loading"
+                  ? "Loading more packs..."
+                  : moreStatus === "error"
+                    ? "Try loading more packs"
+                    : "Show more packs")}
+              </button>
+              {moreStatus === "error" ? (
+                <p className="text-sm text-coral" role="alert">
+                  {t("More installed packs could not be loaded. Try again.")}
+                </p>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -513,6 +597,9 @@ function QuestionPackCard({
           <span className={badgeClass("neutral")}>
             {t(info.label)}
           </span>
+          {pack.catalogProvenance?.source === "repository_catalog" ? (
+            <span className={badgeClass("success")}>{t("Repository reviewed")}</span>
+          ) : null}
         </div>
       </div>
       <div className="flex flex-wrap gap-2">
@@ -596,22 +683,23 @@ function QuestionPackImportNotice({
   const { formatNumber: formatLocaleNumber, t } = useI18n();
   const [copyResult, setCopyResult] = useState<{
     errors: string[];
+    kind: "errors" | "repair";
     status: "copied" | "failed" | "unavailable";
   }>();
   const copyStatus = copyResult?.errors === errors ? copyResult.status : undefined;
+  const copyKind = copyResult?.errors === errors ? copyResult.kind : undefined;
 
-  async function handleCopyErrors() {
+  async function handleCopy(value: string, kind: "errors" | "repair") {
     if (typeof navigator.clipboard?.writeText !== "function") {
-      setCopyResult({ errors, status: "unavailable" });
+      setCopyResult({ errors, kind, status: "unavailable" });
       return;
     }
 
     try {
-      const handoff = buildQuestionPackRepairHandoff(errors);
-      await navigator.clipboard.writeText(handoff);
-      setCopyResult({ errors, status: "copied" });
+      await navigator.clipboard.writeText(value);
+      setCopyResult({ errors, kind, status: "copied" });
     } catch {
-      setCopyResult({ errors, status: "failed" });
+      setCopyResult({ errors, kind, status: "failed" });
     }
   }
 
@@ -642,20 +730,52 @@ function QuestionPackImportNotice({
           <p className="text-xs text-ink/65">{t("Showing the first {count} problems.", { count: formatLocaleNumber(visibleErrors.length) })}</p>
         ) : null}
         <div className="grid justify-items-start gap-2">
-          <button className={buttonClass("secondary")} onClick={() => void handleCopyErrors()} type="button">
-            {t("Copy all validation errors")}
+          <button
+            className={buttonClass("secondary")}
+            onClick={() => void handleCopy(buildQuestionPackValidationErrorText(errors), "errors")}
+            type="button"
+          >
+            {t("Copy validation errors")}
           </button>
-          {copyStatus !== undefined ? (
+          {copyStatus !== undefined && copyKind === "errors" ? (
             <p aria-live="polite" className="text-xs leading-5 text-ink/75" role="status">
               {t(
                 copyStatus === "copied"
-                  ? "Copied. Attach the original package and paste this repair handoff into your AI chat."
+                  ? "Validation errors copied."
                   : copyStatus === "unavailable"
                     ? "Clipboard access is unavailable in this browser."
                     : "Could not copy validation errors. Check clipboard permission and try again."
               )}
             </p>
           ) : null}
+          <details className="group w-full border-t border-ink/15 pt-2">
+            <summary className="min-h-11 cursor-pointer py-2 text-sm font-semibold text-teal">
+              {t("Optional external repair handoff")}
+            </summary>
+            <div className="grid justify-items-start gap-3 pb-1 pt-2">
+              <p className="max-w-3xl text-xs leading-5 text-ink/70">
+                {t("External tools are outside Open Prep. Shared material leaves this local app. Share only content you have the rights to use, remove confidential or personal data, and verify the result with this importer.")}
+              </p>
+              <button
+                className={buttonClass("secondary")}
+                onClick={() => void handleCopy(buildQuestionPackRepairHandoff(errors), "repair")}
+                type="button"
+              >
+                {t("Copy repair handoff")}
+              </button>
+              {copyStatus !== undefined && copyKind === "repair" ? (
+                <p aria-live="polite" className="text-xs leading-5 text-ink/75" role="status">
+                  {t(
+                    copyStatus === "copied"
+                      ? "Repair handoff copied. Review the original pack and every proposed change."
+                      : copyStatus === "unavailable"
+                        ? "Clipboard access is unavailable in this browser."
+                        : "Could not copy the repair handoff. Check clipboard permission and try again."
+                  )}
+                </p>
+              ) : null}
+            </div>
+          </details>
         </div>
       </section>
     );
@@ -1106,6 +1226,14 @@ function buildQuestionPackRepairHandoff(errors: readonly string[]): string {
     "Do not omit or paraphrase any error.",
     "",
     `Exact validation errors (${errors.length}):`,
+    ...errors.map((error, index) => `${index + 1}. ${error}`)
+  ].join("\n");
+}
+
+function buildQuestionPackValidationErrorText(errors: readonly string[]): string {
+  return [
+    `Open Prep question pack validation errors (${errors.length})`,
+    "",
     ...errors.map((error, index) => `${index + 1}. ${error}`)
   ].join("\n");
 }

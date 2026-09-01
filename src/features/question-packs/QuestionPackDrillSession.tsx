@@ -11,6 +11,7 @@ import {
   type CreatedQuestionPackDrillSession
 } from "@/features/question-packs/questionPack";
 import type { Difficulty } from "@/lib/domain";
+import type { AppStorage, QuestionPackRecord } from "@/lib/storage/appStorageTypes";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 
 export { questionPackSourceParam } from "@/features/question-packs/questionPack";
@@ -19,18 +20,20 @@ interface QuestionPackDrillSessionLoaderProps {
   difficulty: Difficulty;
   packId?: string;
   questionCount: number;
+  storageFactory?: () => AppStorage;
   warnings?: string[];
 }
 
 type LoaderState =
   | { message: string; status: "error" }
-  | { created: CreatedQuestionPackDrillSession; status: "ready"; title: string }
+  | { created: CreatedQuestionPackDrillSession; pack: QuestionPackRecord; status: "ready" }
   | { status: "loading" };
 
 export function QuestionPackDrillSessionLoader({
   difficulty,
   packId,
   questionCount,
+  storageFactory = createIndexedDbAppStorage,
   warnings = []
 }: QuestionPackDrillSessionLoaderProps) {
   const { t } = useI18n();
@@ -42,7 +45,7 @@ export function QuestionPackDrillSessionLoader({
     if (packId === undefined || packId.trim() === "") {
       void Promise.resolve().then(() => {
         if (!cancelled) {
-          setState({ message: "Choose an installed question pack from Settings.", status: "error" });
+          setState({ message: "Choose an installed question pack from Content Packs.", status: "error" });
         }
       });
 
@@ -52,7 +55,7 @@ export function QuestionPackDrillSessionLoader({
     }
 
     try {
-      const storage = createIndexedDbAppStorage();
+      const storage = storageFactory();
 
       void storage
         .get("question_packs", packId)
@@ -63,12 +66,12 @@ export function QuestionPackDrillSessionLoader({
 
           return {
             created: createQuestionPackDrillSession(pack, { difficulty, questionCount }),
-            title: pack.title
+            pack
           };
         })
-        .then(({ created, title }) => {
+        .then(({ created, pack }) => {
           if (!cancelled) {
-            setState({ created, status: "ready", title });
+            setState({ created, pack, status: "ready" });
           }
         })
         .catch((error) => {
@@ -91,21 +94,24 @@ export function QuestionPackDrillSessionLoader({
     return () => {
       cancelled = true;
     };
-  }, [difficulty, packId, questionCount]);
+  }, [difficulty, packId, questionCount, storageFactory]);
 
   if (state.status === "ready") {
     const interviewMathMode = state.created.interviewMathMode;
 
     return (
-      <ActiveDrillSession
-        initialSession={state.created.session}
-        interviewMathMode={interviewMathMode}
-        questions={state.created.questions}
-        queueTitle={interviewMathMode ? t("Interview Math Questions") : state.title}
-        sessionEyebrow={t(interviewMathMode ? "Custom Interview Math" : "Custom Content")}
-        sessionTitle={t("{title} {mode}", { title: state.title, mode: t(interviewMathMode ? "Interview Math" : "Drill") })}
-        warnings={warnings}
-      />
+      <div className="contents" dir="auto" lang={state.pack.catalogProvenance?.language}>
+        <ActiveDrillSession
+          initialSession={state.created.session}
+          interviewMathMode={interviewMathMode}
+          questions={state.created.questions}
+          queueTitle={interviewMathMode ? t("Interview Math Questions") : state.pack.title}
+          sessionEyebrow={t(interviewMathMode ? "Custom Interview Math" : "Custom Content")}
+          sessionTitle={t("{title} {mode}", { title: state.pack.title, mode: t(interviewMathMode ? "Interview Math" : "Drill") })}
+          storageFactory={storageFactory}
+          warnings={warnings}
+        />
+      </div>
     );
   }
 

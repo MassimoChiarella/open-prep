@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { LoadingState } from "@/components/LoadingState";
 import { PageHeader } from "@/components/PageHeader";
@@ -16,24 +16,49 @@ import { MarketSizingGuidedForm } from "@/features/market-sizing/MarketSizingGui
 import type { MarketSizingTemplate } from "@/features/market-sizing/marketSizingTypes";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import {
+  getEffectiveDurationSeconds,
+  type TimingAccommodation
+} from "@/features/timing/timingAccommodation";
+import {
   toQuestionPackBenchmarkTests,
   toQuestionPackExhibitDatasets,
   toQuestionPackMarketSizingTemplates
 } from "@/features/question-packs/questionPack";
+import { readQuestionPackPoolPreference } from "@/features/question-packs/questionPackPoolPreference";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 import type { AppStorage, QuestionPackRecord } from "@/lib/storage/appStorageTypes";
 
 export type InstalledPackKind = "benchmark" | "case_practice" | "exhibit" | "market_sizing";
 type PackForKind<TKind extends InstalledPackKind> = Extract<QuestionPackRecord, { kind: TKind }>;
 export type PackLoadState<TKind extends InstalledPackKind> =
-  | { status: "built_in" }
-  | { message: string; status: "error" }
+  | { message: string; recoveryHref?: string; recoveryLabel?: string; status: "error" }
   | { status: "loading" }
-  | { pack: PackForKind<TKind>; status: "ready" };
+  | {
+      includeBuiltIns: boolean;
+      packs: PackForKind<TKind>[];
+      source: "direct" | "preference";
+      status: "ready";
+    };
 
 interface LocalPackProps {
   packId?: string;
   storageFactory?: () => AppStorage;
+}
+
+export function QuestionPackContentBoundary({
+  children,
+  pack
+}: {
+  children: ReactNode;
+  pack?: QuestionPackRecord;
+}) {
+  if (pack === undefined) return <>{children}</>;
+
+  return (
+    <div className="contents" dir="auto" lang={pack.catalogProvenance?.language}>
+      {children}
+    </div>
+  );
 }
 
 export function QuestionPackExhibitContent({
@@ -48,31 +73,42 @@ export function QuestionPackExhibitContent({
     return <SpecializedPackState kindLabel="exhibit" packId={packId} state={state} />;
   }
 
-  const datasets = state.status === "ready" ? toQuestionPackExhibitDatasets(state.pack) : builtInDatasets;
-  const customTitle = state.status === "ready" ? state.pack.title : undefined;
-  const sprintHref = state.status === "ready"
-    ? `/exhibits/sprint?pack=${encodeURIComponent(state.pack.id)}`
+  const datasets = [
+    ...(state.includeBuiltIns ? builtInDatasets : []),
+    ...state.packs.flatMap(toQuestionPackExhibitDatasets)
+  ];
+  const singleSourcePack = getSingleSourcePack(state);
+  const customTitle = singleSourcePack?.title;
+  const hasSelectedPacks = state.packs.length > 0;
+  const sprintHref = state.source === "direct" && singleSourcePack !== undefined
+    ? `/exhibits/sprint?pack=${encodeURIComponent(singleSourcePack.id)}`
     : "/exhibits/sprint";
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
-      <PageHeader
-        action={{ href: sprintHref, label: t("Start Exhibit Sprint") }}
-        description={
-          customTitle === undefined
-            ? t("Read built-in consulting-style tables and charts, then answer the exhibit question.")
-            : t("Practice the locally installed “{title}” exhibit pack.", { title: customTitle })
-        }
-        eyebrow={t(customTitle === undefined ? "Advanced Practice" : "Custom Content")}
-        title={customTitle === undefined ? t("Exhibit Drills") : customTitle}
-      />
-      {state.status === "ready" ? (
-        <Link className="w-fit text-sm font-semibold text-teal underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal" href="/settings">
-          {t("Manage Content Packs")}
-        </Link>
-      ) : null}
-      <ExhibitQuestionFlow datasets={datasets} />
-    </main>
+    <QuestionPackContentBoundary pack={singleSourcePack}>
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+        <PageHeader
+          action={{ href: sprintHref, label: t("Start Exhibit Sprint") }}
+          description={
+            customTitle !== undefined
+              ? t("Practice the locally installed “{title}” exhibit pack.", { title: customTitle })
+              : state.includeBuiltIns && hasSelectedPacks
+                ? t("Practice built-in and selected locally installed exhibit packs together.")
+                : hasSelectedPacks
+                  ? t("Practice only the selected locally installed exhibit packs.")
+                  : t("Read built-in consulting-style tables and charts, then answer the exhibit question.")
+          }
+          eyebrow={t(hasSelectedPacks ? "Custom Content" : "Advanced Practice")}
+          title={customTitle === undefined ? t("Exhibit Drills") : customTitle}
+        />
+        {state.packs.length > 0 ? (
+          <Link className="w-fit text-sm font-semibold text-teal underline underline-offset-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal" href="/content-packs/?view=installed">
+            {t("Manage Content Packs")}
+          </Link>
+        ) : null}
+        <ExhibitQuestionFlow datasets={datasets} />
+      </main>
+    </QuestionPackContentBoundary>
   );
 }
 
@@ -88,21 +124,27 @@ export function QuestionPackExhibitSprintContent({
     return <SpecializedPackState kindLabel="exhibit" packId={packId} state={state} />;
   }
 
-  const datasets = state.status === "ready" ? toQuestionPackExhibitDatasets(state.pack) : builtInDatasets;
-  const backHref = state.status === "ready"
-    ? `/exhibits?pack=${encodeURIComponent(state.pack.id)}`
+  const datasets = [
+    ...(state.includeBuiltIns ? builtInDatasets : []),
+    ...state.packs.flatMap(toQuestionPackExhibitDatasets)
+  ];
+  const singleSourcePack = getSingleSourcePack(state);
+  const backHref = state.source === "direct" && singleSourcePack !== undefined
+    ? `/exhibits?pack=${encodeURIComponent(singleSourcePack.id)}`
     : "/exhibits";
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
-      <PageHeader
-        action={{ href: backHref, label: t("Practice Individual Exhibits") }}
-        description={t("Complete three to five exhibit questions against a per-question countdown.")}
-        eyebrow={t("Timed Practice")}
-        title={t("Exhibit Sprint")}
-      />
-      <ExhibitSprint backHref={backHref} datasets={datasets} storageFactory={storageFactory} />
-    </main>
+    <QuestionPackContentBoundary pack={singleSourcePack}>
+      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+        <PageHeader
+          action={{ href: backHref, label: t("Practice Individual Exhibits") }}
+          description={t("Complete three to five exhibit questions with a timing choice for each sprint.")}
+          eyebrow={t("Timed Practice")}
+          title={t("Exhibit Sprint")}
+        />
+        <ExhibitSprint backHref={backHref} datasets={datasets} storageFactory={storageFactory} />
+      </main>
+    </QuestionPackContentBoundary>
   );
 }
 
@@ -117,8 +159,15 @@ export function QuestionPackMarketSizingContent({
     return <SpecializedPackState kindLabel="market-sizing" packId={packId} state={state} />;
   }
 
-  const templates = state.status === "ready" ? toQuestionPackMarketSizingTemplates(state.pack) : builtInTemplates;
-  return <MarketSizingGuidedForm templates={templates} />;
+  const templates = [
+    ...(state.includeBuiltIns ? builtInTemplates : []),
+    ...state.packs.flatMap(toQuestionPackMarketSizingTemplates)
+  ];
+  return (
+    <QuestionPackContentBoundary pack={getSingleSourcePack(state)}>
+      <MarketSizingGuidedForm templates={templates} />
+    </QuestionPackContentBoundary>
+  );
 }
 
 export function QuestionPackBenchmarkSelection({
@@ -138,14 +187,20 @@ export function QuestionPackBenchmarkSelection({
     return <SpecializedPackState kindLabel="benchmark" packId={packId} state={state} />;
   }
 
-  const benchmarks = state.status === "ready" ? toQuestionPackBenchmarkTests(state.pack) : builtInBenchmarks;
+  const benchmarks = [
+    ...(state.includeBuiltIns ? builtInBenchmarks : []),
+    ...state.packs.flatMap(toQuestionPackBenchmarkTests)
+  ];
+  const directPack = state.source === "direct" ? state.packs[0] : undefined;
   return (
-    <BenchmarkSelectionView
-      benchmarks={benchmarks}
-      confirmBenchmarkId={confirmBenchmarkId}
-      questionPackId={state.status === "ready" ? state.pack.id : undefined}
-      selectedBenchmarkId={selectedBenchmarkId}
-    />
+    <QuestionPackContentBoundary pack={getSingleSourcePack(state)}>
+      <BenchmarkSelectionView
+        benchmarks={benchmarks}
+        confirmBenchmarkId={confirmBenchmarkId}
+        questionPackId={directPack?.id}
+        selectedBenchmarkId={selectedBenchmarkId}
+      />
+    </QuestionPackContentBoundary>
   );
 }
 
@@ -153,8 +208,13 @@ export function QuestionPackBenchmarkSession({
   benchmarkId,
   builtInBenchmarks,
   packId,
-  storageFactory = createIndexedDbAppStorage
-}: LocalPackProps & { benchmarkId?: string; builtInBenchmarks: readonly BenchmarkTest[] }) {
+  storageFactory = createIndexedDbAppStorage,
+  timingAccommodation = "standard"
+}: LocalPackProps & {
+  benchmarkId?: string;
+  builtInBenchmarks: readonly BenchmarkTest[];
+  timingAccommodation?: TimingAccommodation;
+}) {
   const { formatDuration: formatLocaleDuration, formatNumber, t } = useI18n();
   const state = useInstalledPack(packId, "benchmark", storageFactory);
 
@@ -162,60 +222,110 @@ export function QuestionPackBenchmarkSession({
     return <SpecializedPackState kindLabel="benchmark" packId={packId} state={state} />;
   }
 
-  const benchmarks = state.status === "ready" ? toQuestionPackBenchmarkTests(state.pack) : builtInBenchmarks;
+  const benchmarks = [
+    ...(state.includeBuiltIns ? builtInBenchmarks : []),
+    ...state.packs.flatMap(toQuestionPackBenchmarkTests)
+  ];
   const benchmark = findBenchmarkTest(benchmarks, benchmarkId);
-  const backHref = state.status === "ready" ? `/benchmark?pack=${encodeURIComponent(state.pack.id)}` : "/benchmark";
+  const directPack = state.source === "direct" ? state.packs[0] : undefined;
+  const backHref = directPack === undefined ? "/benchmark" : `/benchmark?pack=${encodeURIComponent(directPack.id)}`;
+  const boundaryPack = getSingleSourcePack(state);
 
   if (benchmark === undefined) {
     return (
-      <BenchmarkSessionError
-        backHref={backHref}
-        message={
-          benchmarkId === undefined
-            ? t("Choose a benchmark before starting a locked session.")
-            : t("Benchmark “{id}” is not available.", { id: benchmarkId })
-        }
-      />
+      <QuestionPackContentBoundary pack={boundaryPack}>
+        <BenchmarkSessionError
+          backHref={backHref}
+          message={
+            benchmarkId === undefined
+              ? t("Choose a benchmark before starting a locked session.")
+              : t("Benchmark “{id}” is not available.", { id: benchmarkId })
+          }
+        />
+      </QuestionPackContentBoundary>
     );
   }
 
-  const created = createBenchmarkSessionResult(benchmark);
+  const created = createBenchmarkSessionResult(benchmark, timingAccommodation);
   if (created.status === "error") {
     return (
-      <BenchmarkSessionError
-        backHref={backHref}
-        message={created.message}
-      />
+      <QuestionPackContentBoundary pack={boundaryPack}>
+        <BenchmarkSessionError
+          backHref={backHref}
+          message={created.message}
+        />
+      </QuestionPackContentBoundary>
     );
   }
 
+  const standardDurationSeconds = benchmark.settings.totalSessionSeconds ?? 0;
+  const effectiveDurationSeconds = getEffectiveDurationSeconds(
+    standardDurationSeconds,
+    created.session.settings.timingAccommodation
+  );
+  const timingLabel = t(timingAccommodationLabels[timingAccommodation]);
+  const activeLimit = effectiveDurationSeconds === null
+    ? t("No automatic expiry")
+    : formatLocaleDuration(effectiveDurationSeconds);
+  const accommodatedWarning = timingAccommodation === "standard"
+    ? []
+    : [t("This accommodated practice result is saved but excluded from Standard comparisons and personal bests.")];
+
   return (
-    <ActiveDrillSession
-      benchmarkId={benchmark.id}
-      initialSession={created.session}
-      lockedModeSummary={[
-        {
-          label: t("Timer"),
-          value: t("{duration} session clock", { duration: formatLocaleDuration(benchmark.settings.totalSessionSeconds ?? 0) })
-        },
-        { label: t("Feedback"), value: t("After final question") }
-      ]}
-      queueTitle={t("Fixed Benchmark Questions")}
-      questions={created.questions}
-      sessionEyebrow={t(state.status === "ready" ? "Custom Benchmark" : "Benchmark")}
-      sessionTimerDescription={t("Benchmark clock: {duration} for {count} questions. It keeps running until the test ends.", {
-        count: formatNumber(benchmark.settings.questionCount),
-        duration: formatLocaleDuration(benchmark.settings.totalSessionSeconds ?? 0)
-      })}
-      sessionTitle={benchmark.title}
-      warnings={[t("Benchmark mode is locked: timed session with end-of-session feedback.")]}
-    />
+    <QuestionPackContentBoundary pack={boundaryPack}>
+      <ActiveDrillSession
+        benchmarkId={benchmark.id}
+        initialSession={created.session}
+        lockedModeSummary={[
+          {
+            label: t("Standard limit"),
+            value: formatLocaleDuration(standardDurationSeconds)
+          },
+          {
+            label: t("Active timing"),
+            value: t("{timing}: {duration}", { duration: activeLimit, timing: timingLabel })
+          },
+          { label: t("Feedback"), value: t("After final question") }
+        ]}
+        queueTitle={t("Fixed Benchmark Questions")}
+        questions={created.questions}
+        sessionEyebrow={t(benchmark.settings.questionPackId === undefined ? "Benchmark" : "Custom Benchmark")}
+        sessionTimerDescription={effectiveDurationSeconds === null
+          ? t("Standard benchmark limit: {standard} for {count} questions. Untimed practice does not expire automatically.", {
+              count: formatNumber(benchmark.settings.questionCount),
+              standard: formatLocaleDuration(standardDurationSeconds)
+            })
+          : t("Standard benchmark limit: {standard}. Active limit: {active} for {count} questions.", {
+              active: formatLocaleDuration(effectiveDurationSeconds),
+              count: formatNumber(benchmark.settings.questionCount),
+              standard: formatLocaleDuration(standardDurationSeconds)
+            })}
+        sessionTitle={benchmark.title}
+        warnings={[
+          t("Benchmark mode is locked with end-of-session feedback."),
+          ...accommodatedWarning
+        ]}
+      />
+    </QuestionPackContentBoundary>
   );
 }
 
-function createBenchmarkSessionResult(benchmark: BenchmarkTest) {
+const timingAccommodationLabels: Record<TimingAccommodation, string> = {
+  double_time: "Double time",
+  standard: "Standard time",
+  time_and_a_half: "Time and a half",
+  untimed: "Untimed practice"
+};
+
+function createBenchmarkSessionResult(
+  benchmark: BenchmarkTest,
+  timingAccommodation: TimingAccommodation
+) {
   try {
-    return { status: "ready" as const, ...createBenchmarkSession(benchmark) };
+    return {
+      status: "ready" as const,
+      ...createBenchmarkSession(benchmark, { timingAccommodation })
+    };
   } catch (error) {
     return {
       status: "error" as const,
@@ -229,40 +339,89 @@ export function useInstalledPack<TKind extends InstalledPackKind>(
   kind: TKind,
   storageFactory: () => AppStorage
 ): PackLoadState<TKind> {
-  const [state, setState] = useState<PackLoadState<TKind>>(
-    packId === undefined ? { status: "built_in" } : { status: "loading" }
-  );
+  const [state, setState] = useState<PackLoadState<TKind>>({ status: "loading" });
 
   useEffect(() => {
     let cancelled = false;
     let storage: AppStorage | undefined;
-
-    if (packId === undefined || packId.trim() === "") {
-      void Promise.resolve().then(() => {
-        if (!cancelled) setState({ status: "built_in" });
-      });
-      return () => {
-        cancelled = true;
-      };
-    }
+    const requestedPackId = packId?.trim();
 
     void Promise.resolve().then(() => {
       if (!cancelled) setState({ status: "loading" });
     });
 
+    if (requestedPackId === undefined || requestedPackId === "") {
+      const preference = readQuestionPackPoolPreference();
+      const includeBuiltIns = preference.mode !== "selected_only";
+
+      if (preference.mode === "built_in_only") {
+        void Promise.resolve().then(() => {
+          if (!cancelled) {
+            setState({ includeBuiltIns: true, packs: [], source: "preference", status: "ready" });
+          }
+        });
+        return () => {
+          cancelled = true;
+        };
+      }
+
+      if (preference.selectedPackIds.length === 0) {
+        void Promise.resolve().then(() => {
+          if (cancelled) return;
+          setState(includeBuiltIns
+            ? { includeBuiltIns, packs: [], source: "preference", status: "ready" }
+            : noCompatibleSelectedPacksState());
+        });
+        return () => {
+          cancelled = true;
+        };
+      }
+
+      try {
+        storage = storageFactory();
+        const selectedStorage = storage;
+        void Promise.all(
+          preference.selectedPackIds.map((selectedPackId) => selectedStorage.get("question_packs", selectedPackId))
+        )
+          .then((packs) => packs.filter(
+            (pack): pack is PackForKind<TKind> => pack !== undefined && isPackForKind(pack, kind)
+          ))
+          .then((packs) => {
+            if (cancelled) return;
+            setState(!includeBuiltIns && packs.length === 0
+              ? noCompatibleSelectedPacksState()
+              : { includeBuiltIns, packs, source: "preference", status: "ready" });
+          })
+          .catch(() => {
+            if (!cancelled) {
+              setState({ message: "Installed content packs are unavailable.", status: "error" });
+            }
+          })
+          .finally(() => storage?.close());
+      } catch {
+        void Promise.resolve().then(() => {
+          if (!cancelled) setState({ message: "Installed content packs are unavailable.", status: "error" });
+        });
+      }
+
+      return () => {
+        cancelled = true;
+        storage?.close();
+      };
+    }
+
     try {
       storage = storageFactory();
       void storage
-        .get("question_packs", packId)
+        .get("question_packs", requestedPackId)
         .then((pack) => {
           if (pack === undefined) throw new Error("This content pack is not installed on this device.");
-          if (
-            pack.kind !== kind ||
-            (pack.schemaVersion !== 2 && !(kind === "case_practice" && pack.schemaVersion === 3))
-          ) {
+          if (!isPackForKind(pack, kind)) {
             throw new Error(`This pack does not contain ${kind.replace("_", "-")} content.`);
           }
-          if (!cancelled) setState({ pack: pack as PackForKind<TKind>, status: "ready" });
+          if (!cancelled) {
+            setState({ includeBuiltIns: false, packs: [pack], source: "direct", status: "ready" });
+          }
         })
         .catch((error) => {
           if (!cancelled) {
@@ -288,6 +447,28 @@ export function useInstalledPack<TKind extends InstalledPackKind>(
   return state;
 }
 
+function isPackForKind<TKind extends InstalledPackKind>(
+  pack: QuestionPackRecord,
+  kind: TKind
+): pack is PackForKind<TKind> {
+  return pack.kind === kind && (pack.schemaVersion === 2 || (kind === "case_practice" && pack.schemaVersion === 3));
+}
+
+function noCompatibleSelectedPacksState(): Extract<PackLoadState<InstalledPackKind>, { status: "error" }> {
+  return {
+    message: "No compatible selected content packs are installed. Choose at least one pack for this practice area.",
+    recoveryHref: "/settings#question-pool-settings",
+    recoveryLabel: "Review Question Pool",
+    status: "error"
+  };
+}
+
+function getSingleSourcePack<TKind extends InstalledPackKind>(
+  state: Extract<PackLoadState<TKind>, { status: "ready" }>
+): PackForKind<TKind> | undefined {
+  return !state.includeBuiltIns && state.packs.length === 1 ? state.packs[0] : undefined;
+}
+
 export function SpecializedPackState({
   kindLabel,
   packId,
@@ -295,13 +476,17 @@ export function SpecializedPackState({
 }: {
   kindLabel: string;
   packId?: string;
-  state: { message: string; status: "error" } | { status: "loading" };
+  state:
+    | { message: string; recoveryHref?: string; recoveryLabel?: string; status: "error" }
+    | { status: "loading" };
 }) {
   const { t } = useI18n();
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
       <PageHeader
-        action={{ href: "/settings", label: t("Manage Content Packs") }}
+        action={state.status === "error" && state.recoveryHref !== undefined
+          ? { href: state.recoveryHref, label: t(state.recoveryLabel ?? "Review Question Pool") }
+          : { href: "/content-packs/?view=installed", label: t("Manage Content Packs") }}
         description={t("Load a locally installed {kind} pack.", { kind: t(kindLabel) })}
         eyebrow={t("Custom Content")}
         title={t("Content Pack")}

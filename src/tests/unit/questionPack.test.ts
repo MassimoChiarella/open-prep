@@ -506,9 +506,21 @@ describe("question-pack runtime", () => {
   });
 
   it("serializes a validated pack without local storage metadata", () => {
-    const serialized = JSON.parse(serializeQuestionPack(validatedPack())) as Record<string, unknown>;
+    const serialized = JSON.parse(serializeQuestionPack({
+      ...validatedPack(),
+      catalogProvenance: {
+        file: "public/community-packs/company-case-prep/1.0.0/pack.mathdrill.json",
+        id: "company-case-prep",
+        publisherId: "open-prep",
+        reviewDate: "2026-08-31",
+        sha256: "a".repeat(64),
+        source: "repository_catalog",
+        version: "1.0.0"
+      }
+    })) as Record<string, unknown>;
 
     expect(serialized.$schema).toBe("./question-pack-v2.schema.json");
+    expect(serialized).not.toHaveProperty("catalogProvenance");
     expect(serialized).not.toHaveProperty("importedAt");
     expect(serialized).toMatchObject({ id: "company-case-prep", kind: "fixed_numeric", schemaVersion: 2 });
   });

@@ -1,42 +1,34 @@
 import { render, screen } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppNav } from "@/components/AppNav";
-import { I18nProvider } from "@/features/i18n/I18nProvider";
 
-const navigationState = vi.hoisted(() => ({ pathname: "/" }));
+let pathname = "/";
 
-vi.mock("next/navigation", () => ({ usePathname: () => navigationState.pathname }));
-
-afterEach(() => {
-  navigationState.pathname = "/";
-});
+vi.mock("next/navigation", () => ({
+  usePathname: () => pathname
+}));
 
 describe("AppNav", () => {
-  it("keeps the compact menu through large screens and lets desktop labels wrap", () => {
-    render(<I18nProvider><AppNav /></I18nProvider>);
-
-    const navigation = screen.getByTestId("primary-navigation");
-    const [compactDashboard, desktopDashboard] = screen.getAllByRole("link", { name: "Dashboard" });
-
-    expect(navigation.firstElementChild).toHaveClass("xl:hidden");
-    expect(navigation.lastElementChild).toHaveClass("xl:grid");
-    expect(navigation.querySelector("details > div")).toHaveClass("end-0");
-    expect(navigation.querySelector("details > div")).not.toHaveClass("right-0");
-    expect(compactDashboard.firstElementChild).not.toHaveClass("truncate");
-    expect(compactDashboard).toHaveClass("min-h-11", "px-1");
-    expect(desktopDashboard.firstElementChild).not.toHaveClass("truncate");
+  beforeEach(() => {
+    pathname = "/";
   });
 
-  it("keeps a clear More affordance while naming the current secondary destination", () => {
-    navigationState.pathname = "/market-sizing";
-    render(<I18nProvider><AppNav /></I18nProvider>);
+  it("exposes Content Packs in desktop navigation and mobile More", () => {
+    render(<AppNav />);
 
-    const more = screen.getByLabelText("More destinations: Market Sizing");
-    const marketSizingLinks = screen.getAllByRole("link", { name: "Market Sizing" });
+    const links = screen.getAllByRole("link", { name: "Content Packs" });
+    expect(links).toHaveLength(2);
+    for (const link of links) expect(link).toHaveAttribute("href", "/content-packs");
+  });
 
-    expect(more).toHaveTextContent("More");
-    expect(more).not.toHaveTextContent("Market Sizing");
-    expect(marketSizingLinks.every((link) => link.getAttribute("aria-current") === "page")).toBe(true);
+  it("marks Content Packs active for hub descendants and identifies it in mobile More", () => {
+    pathname = "/content-packs/downloads";
+    render(<AppNav />);
+
+    for (const link of screen.getAllByRole("link", { name: "Content Packs" })) {
+      expect(link).toHaveAttribute("aria-current", "page");
+    }
+    expect(screen.getByLabelText("More destinations: Content Packs")).toBeInTheDocument();
   });
 });

@@ -67,6 +67,7 @@ export function generateQuestionFromTemplate(
 
   if (
     template.category === "arithmetic" &&
+    !template.id.startsWith("question-pack:") &&
     options.settings !== undefined &&
     hasCustomArithmeticSettings(options.settings)
   ) {

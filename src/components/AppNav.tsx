@@ -14,6 +14,7 @@ const navItems = [
   { href: "/market-sizing", label: "Market Sizing" },
   { href: "/exhibits", label: "Exhibits" },
   { href: "/case-practice", label: "Case Practice" },
+  { href: "/content-packs", label: "Content Packs" },
   { href: "/progress", label: "Progress" },
   { href: "/formulas", label: "Formulas" },
   { href: "/settings", label: "Settings" }
@@ -97,7 +98,7 @@ export function AppNav() {
         </details>
       </div>
 
-      <div className="hidden gap-1 border-t border-ink/10 py-2 xl:grid xl:grid-cols-9">
+      <div className="hidden gap-1 border-t border-ink/10 py-2 xl:grid xl:grid-cols-10">
         {navItems.map((item) => (
           <NavLink href={item.href} key={item.href} pathname={pathname}>
             {t(item.label)}

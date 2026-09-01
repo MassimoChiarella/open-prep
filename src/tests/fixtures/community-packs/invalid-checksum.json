@@ -1,0 +1,41 @@
+{
+  "reviewSchemaVersion": 1,
+  "id": "profitability-foundations",
+  "version": "1.0.0",
+  "file": "public/community-packs/profitability-foundations/1.0.0/pack.mathdrill.json",
+  "sha256": "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+  "title": "Profitability foundations",
+  "summary": "Original consulting exercises using clearly labeled synthetic business data.",
+  "kind": "fixed_numeric",
+  "topics": ["business_math", "case_math"],
+  "difficulties": ["beginner", "intermediate"],
+  "language": "en",
+  "publisher": { "id": "open-prep-community", "name": "Open Prep Community" },
+  "contentLicenseId": "CC-BY-4.0",
+  "rights": {
+    "basis": "original",
+    "declaration": "The publisher created every included element and may distribute the complete pack under CC-BY-4.0.",
+    "evidenceReferences": []
+  },
+  "provenance": {
+    "sourceNotes": "Wholly original exercises and answer keys use synthetic business data. No external source applies.",
+    "sourceReferences": []
+  },
+  "compatibility": { "minimumAppVersion": "0.1.0", "packSchemaVersion": 2 },
+  "submissionReference": "pull/42",
+  "conflicts": { "declared": false, "statement": "None declared" },
+  "review": {
+    "reviewDate": "2026-08-31",
+    "reviewerReference": "reviewer:independent-reviewer",
+    "evidenceReference": "pull/42#review-1",
+    "checks": {
+      "editorial": { "result": "pass", "evidence": "Reviewed consulting relevance, clarity, inclusion, and educational usefulness." },
+      "factual": { "result": "pass", "evidence": "Reviewed synthetic-data labels, units, assumptions, and internal consistency." },
+      "answerKey": { "result": "pass", "evidence": "Recalculated every answer, tolerance, unit, and explanation independently." },
+      "accessibility": { "result": "pass", "evidence": "Reviewed language, labels, readability, and color-independent meaning." },
+      "rights": { "result": "pass", "evidence": "Reviewed the license, rights declaration, provenance, privacy, and originality evidence." }
+    },
+    "maintainerApprovalReference": "pull/42#approval"
+  },
+  "events": [{ "type": "accepted", "date": "2026-08-31", "reference": "pull/42#merge", "reason": "Passed automation, independent human review, and maintainer approval." }]
+}

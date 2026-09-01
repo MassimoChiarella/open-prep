@@ -10,6 +10,7 @@ import {
   skillTagOptions,
   unitPreferenceOptions
 } from "@/features/drills/drillSettingsOptions";
+import { useUnsavedChangesGuard } from "@/features/question-packs/useUnsavedChangesGuard";
 import type { Difficulty, RoundingRule, SkillCategory, SkillTag, UnitType } from "@/lib/domain";
 
 interface QuestionPackBuilderProps {
@@ -37,6 +38,11 @@ interface QuestionDraft {
   toleranceMax: string;
 }
 
+interface QuestionDraftErrors {
+  id?: "duplicate" | "empty";
+  toleranceMax?: true;
+}
+
 const toleranceOptions: Array<{ label: string; value: ToleranceType }> = [
   { label: "Exact", value: "exact" },
   { label: "Absolute", value: "absolute" },
@@ -55,6 +61,9 @@ const roundingOptions: Array<{ label: string; value: "" | RoundingRule }> = [
 
 export function QuestionPackBuilder({ onPreview }: QuestionPackBuilderProps) {
   const { t } = useI18n();
+  const { clearDirty, isDirty, markDirty } = useUnsavedChangesGuard(
+    t("Leave this builder? Your unsaved changes will be lost.")
+  );
   const nextQuestionNumber = useRef(2);
   const [title, setTitle] = useState("");
   const [packVersion, setPackVersion] = useState("1.0");
@@ -64,8 +73,10 @@ export function QuestionPackBuilder({ onPreview }: QuestionPackBuilderProps) {
   const [publisher, setPublisher] = useState("");
   const [license, setLicense] = useState("");
   const [questions, setQuestions] = useState<QuestionDraft[]>([createQuestionDraft(1)]);
+  const [questionErrors, setQuestionErrors] = useState<Record<number, QuestionDraftErrors>>({});
 
   function updateQuestion(key: number, update: Partial<QuestionDraft>) {
+    setQuestionErrors({});
     setQuestions((current) =>
       current.map((question) => (question.key === key ? { ...question, ...update } : question))
     );
@@ -75,14 +86,70 @@ export function QuestionPackBuilder({ onPreview }: QuestionPackBuilderProps) {
     const number = nextQuestionNumber.current;
     nextQuestionNumber.current += 1;
     setQuestions((current) => [...current, createQuestionDraft(number)]);
+    markDirty();
   }
 
   function removeQuestion(key: number) {
     setQuestions((current) => current.filter((question) => question.key !== key));
+    setQuestionErrors({});
+    markDirty();
+  }
+
+  function duplicateQuestion(key: number) {
+    const number = nextQuestionNumber.current;
+    nextQuestionNumber.current += 1;
+    setQuestions((current) => {
+      const index = current.findIndex((question) => question.key === key);
+      const source = current[index];
+      if (source === undefined) return current;
+      const duplicate = {
+        ...source,
+        id: `question-${String(number).padStart(3, "0")}`,
+        key: number
+      };
+      return [...current.slice(0, index + 1), duplicate, ...current.slice(index + 1)];
+    });
+    setQuestionErrors({});
+    markDirty();
+  }
+
+  function moveQuestion(key: number, direction: -1 | 1) {
+    setQuestions((current) => {
+      const index = current.findIndex((question) => question.key === key);
+      const destination = index + direction;
+      if (index < 0 || destination < 0 || destination >= current.length) return current;
+      const next = [...current];
+      const selected = next[index];
+      const displaced = next[destination];
+      if (selected === undefined || displaced === undefined) return current;
+      next[index] = displaced;
+      next[destination] = selected;
+      return next;
+    });
+    setQuestionErrors({});
+    markDirty();
+  }
+
+  function discardChanges() {
+    nextQuestionNumber.current = 2;
+    setTitle("");
+    setPackVersion("1.0");
+    setPackId("my-question-pack");
+    setPackIdIsCustom(false);
+    setDescription("");
+    setPublisher("");
+    setLicense("");
+    setQuestions([createQuestionDraft(1)]);
+    setQuestionErrors({});
+    clearDirty();
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const nextErrors = validateQuestionDrafts(questions);
+    setQuestionErrors(nextErrors);
+    if (Object.keys(nextErrors).length > 0) return;
+
     onPreview({
       format: "math-drill-question-pack",
       schemaVersion: 2,
@@ -104,14 +171,15 @@ export function QuestionPackBuilder({ onPreview }: QuestionPackBuilderProps) {
     >
       <summary className="-m-2 cursor-pointer list-none p-2 font-semibold text-ink transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal">
         {t("Build a question pack")}
-        <span className="ml-2 text-sm font-normal text-ink/65">{t("Create fixed numeric questions in the app.")}</span>
+        <span className="ms-2 text-sm font-normal text-ink/65">{t("Create fixed numeric questions in the app.")}</span>
       </summary>
 
-      <form className="mt-5 grid gap-5" onSubmit={handleSubmit}>
+      <form className="mt-5 grid min-w-0 gap-5" onChange={markDirty} onSubmit={handleSubmit}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t("Pack title")}>
             <input
               className={uiInputs.base}
+              dir="auto"
               maxLength={100}
               onChange={(event) => {
                 const nextTitle = event.currentTarget.value;
@@ -152,6 +220,7 @@ export function QuestionPackBuilder({ onPreview }: QuestionPackBuilderProps) {
             <Field label={t("Publisher (optional)")}>
               <input
                 className={uiInputs.base}
+                dir="auto"
                 maxLength={100}
                 onChange={(event) => setPublisher(event.currentTarget.value)}
                 value={publisher}
@@ -168,6 +237,7 @@ export function QuestionPackBuilder({ onPreview }: QuestionPackBuilderProps) {
             <Field label={t("Description (optional)")} wide>
               <textarea
                 className={uiInputs.textarea}
+                dir="auto"
                 maxLength={500}
                 onChange={(event) => setDescription(event.currentTarget.value)}
                 value={description}
@@ -183,8 +253,13 @@ export function QuestionPackBuilder({ onPreview }: QuestionPackBuilderProps) {
               index={index}
               key={question.key}
               onChange={(update) => updateQuestion(question.key, update)}
+              onDuplicate={() => duplicateQuestion(question.key)}
+              onMoveDown={() => moveQuestion(question.key, 1)}
+              onMoveUp={() => moveQuestion(question.key, -1)}
               onRemove={() => removeQuestion(question.key)}
               question={question}
+              canMoveDown={index < questions.length - 1}
+              validationErrors={questionErrors[question.key]}
             />
           ))}
         </div>
@@ -196,6 +271,14 @@ export function QuestionPackBuilder({ onPreview }: QuestionPackBuilderProps) {
           <button className={buttonClass("primary")} type="submit">
             {t("Preview Pack")}
           </button>
+          <button
+            className={buttonClass("secondary")}
+            disabled={!isDirty}
+            onClick={discardChanges}
+            type="button"
+          >
+            {t("Discard changes")}
+          </button>
         </div>
       </form>
     </details>
@@ -203,34 +286,57 @@ export function QuestionPackBuilder({ onPreview }: QuestionPackBuilderProps) {
 }
 
 function QuestionEditor({
+  canMoveDown,
   canRemove,
   index,
   onChange,
+  onDuplicate,
+  onMoveDown,
+  onMoveUp,
   onRemove,
-  question
+  question,
+  validationErrors
 }: {
+  canMoveDown: boolean;
   canRemove: boolean;
   index: number;
   onChange(update: Partial<QuestionDraft>): void;
+  onDuplicate(): void;
+  onMoveDown(): void;
+  onMoveUp(): void;
   onRemove(): void;
   question: QuestionDraft;
+  validationErrors?: QuestionDraftErrors;
 }) {
   const number = index + 1;
   const { formatNumber, t } = useI18n();
 
   return (
-    <fieldset className="grid gap-4 border border-ink/15 border-t-2 border-t-teal bg-white p-4" data-testid="builder-question">
+    <fieldset className="grid min-w-0 gap-4 border border-ink/15 border-t-2 border-t-teal bg-white p-4" data-testid="builder-question">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <legend className="font-semibold text-ink">{t("Question {number}", { number: formatNumber(number) })}</legend>
-        {canRemove ? (
-          <button className={buttonClass("danger", "px-3")} onClick={onRemove} type="button">
-            {t("Remove Question {number}", { number: formatNumber(number) })}
+        <div className="flex min-w-0 flex-wrap gap-2">
+          <button className={buttonClass("secondary", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} disabled={index === 0} onClick={onMoveUp} type="button">
+            {t("Move Question {number} up", { number: formatNumber(number) })}
           </button>
-        ) : null}
+          <button className={buttonClass("secondary", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} disabled={!canMoveDown} onClick={onMoveDown} type="button">
+            {t("Move Question {number} down", { number: formatNumber(number) })}
+          </button>
+          <button className={buttonClass("secondary", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} onClick={onDuplicate} type="button">
+            {t("Duplicate Question {number}", { number: formatNumber(number) })}
+          </button>
+          {canRemove ? (
+            <button className={buttonClass("danger", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} onClick={onRemove} type="button">
+              {t("Remove Question {number}", { number: formatNumber(number) })}
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <Field label={t("Question ID")}>
         <input
+          aria-describedby={validationErrors?.id ? `question-${question.key}-id-error` : undefined}
+          aria-invalid={validationErrors?.id ? true : undefined}
           aria-label={t("Question {number} ID", { number: formatNumber(number) })}
           className={uiInputs.compact}
           maxLength={80}
@@ -239,12 +345,20 @@ function QuestionEditor({
           required
           value={question.id}
         />
+        {validationErrors?.id ? (
+          <span className="text-sm text-coral [overflow-wrap:anywhere]" id={`question-${question.key}-id-error`} role="alert">
+            {validationErrors.id === "empty"
+              ? t("Enter a question ID using lowercase letters, numbers, hyphens, or underscores.")
+              : t("Use a unique question ID. This ID is already used by another question.")}
+          </span>
+        ) : null}
       </Field>
 
       <Field label={t("Prompt")}>
         <textarea
           aria-label={t("Question {number} prompt", { number: formatNumber(number) })}
           className={uiInputs.textarea}
+          dir="auto"
           maxLength={2_000}
           onChange={(event) => onChange({ prompt: event.currentTarget.value })}
           required
@@ -309,7 +423,12 @@ function QuestionEditor({
         </Field>
       </div>
 
-      <ToleranceFields index={number} onChange={onChange} question={question} />
+      <ToleranceFields
+        index={number}
+        onChange={onChange}
+        question={question}
+        validationError={validationErrors?.toleranceMax}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label={t("Category")}>
@@ -372,6 +491,7 @@ function QuestionEditor({
         <input
           aria-label={t("Question {number} explanation summary", { number: formatNumber(number) })}
           className={uiInputs.base}
+          dir="auto"
           maxLength={1_000}
           onChange={(event) => onChange({ summary: event.currentTarget.value })}
           required
@@ -382,6 +502,7 @@ function QuestionEditor({
         <textarea
           aria-label={t("Question {number} explanation steps", { number: formatNumber(number) })}
           className={uiInputs.textarea}
+          dir="auto"
           maxLength={10_009}
           onChange={(event) => onChange({ steps: event.currentTarget.value })}
           required
@@ -395,11 +516,13 @@ function QuestionEditor({
 function ToleranceFields({
   index,
   onChange,
-  question
+  question,
+  validationError
 }: {
   index: number;
   onChange(update: Partial<QuestionDraft>): void;
   question: QuestionDraft;
+  validationError?: true;
 }) {
   const { formatNumber, t } = useI18n();
   if (question.toleranceType === "exact") {
@@ -422,6 +545,8 @@ function ToleranceFields({
         </Field>
         <Field label={t("Accepted maximum")}>
           <input
+            aria-describedby={validationError ? `question-${question.key}-tolerance-error` : undefined}
+            aria-invalid={validationError ? true : undefined}
             aria-label={t("Question {number} tolerance maximum", { number: formatNumber(index) })}
             className={uiInputs.base}
             onChange={(event) => onChange({ toleranceMax: event.currentTarget.value })}
@@ -430,6 +555,11 @@ function ToleranceFields({
             type="number"
             value={question.toleranceMax}
           />
+          {validationError ? (
+            <span className="text-sm text-coral [overflow-wrap:anywhere]" id={`question-${question.key}-tolerance-error`} role="alert">
+              {t("Accepted maximum must be greater than or equal to the accepted minimum.")}
+            </span>
+          ) : null}
         </Field>
       </div>
     );
@@ -554,4 +684,32 @@ function optionalText<TKey extends "description" | "license" | "publisher">(
 ): Partial<Record<TKey, string>> {
   const trimmed = value.trim();
   return trimmed === "" ? {} : { [key]: trimmed } as Record<TKey, string>;
+}
+
+function validateQuestionDrafts(questions: QuestionDraft[]): Record<number, QuestionDraftErrors> {
+  const errors: Record<number, QuestionDraftErrors> = {};
+  const ids = new Set<string>();
+
+  for (const question of questions) {
+    const id = question.id.trim();
+    if (id === "") {
+      errors[question.key] = { id: "empty" };
+    } else if (ids.has(id)) {
+      errors[question.key] = { id: "duplicate" };
+    }
+    ids.add(id);
+
+    if (question.toleranceType === "range") {
+      const minimum = numericValue(question.toleranceMin);
+      const maximum = numericValue(question.toleranceMax);
+      if (!Number.isFinite(minimum) || !Number.isFinite(maximum) || maximum < minimum) {
+        errors[question.key] = {
+          ...errors[question.key],
+          toleranceMax: true
+        };
+      }
+    }
+  }
+
+  return errors;
 }

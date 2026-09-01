@@ -26,11 +26,12 @@ import { SynthesisPractice } from "@/features/case-practice/synthesis/SynthesisP
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { toQuestionPackCasePracticeContent } from "@/features/question-packs/questionPack";
 import {
+  QuestionPackContentBoundary,
   SpecializedPackState,
   useInstalledPack
 } from "@/features/question-packs/SpecializedQuestionPackContent";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
-import type { AppStorage } from "@/lib/storage/appStorageTypes";
+import type { AppStorage, CasePracticeQuestionPackRecord } from "@/lib/storage/appStorageTypes";
 
 export type CasePracticePackView =
   | "brainstorming"
@@ -99,26 +100,45 @@ export function CasePracticeQuestionPackContent({
     return <SpecializedPackState kindLabel="case-practice" packId={packId} state={state} />;
   }
 
-  const pack = state.status === "ready" ? state.pack : undefined;
-  const content = pack === undefined ? builtInContent : toQuestionPackCasePracticeContent(pack);
-  const backHref = pack === undefined ? "/case-practice" : `/case-practice?pack=${encodeURIComponent(pack.id)}`;
-  const contentKey = pack?.id ?? "built-in";
+  const directPack = state.source === "direct" ? state.packs[0] : undefined;
+  const boundaryPack = !state.includeBuiltIns && state.packs.length === 1 ? state.packs[0] : undefined;
+  const content = mergeCasePracticeContent(state.includeBuiltIns, state.packs);
+  const backHref = directPack === undefined ? "/case-practice" : `/case-practice?pack=${encodeURIComponent(directPack.id)}`;
+  const contentKey = [state.includeBuiltIns ? "built-in" : "selected-only", ...state.packs.map(({ id }) => id)].join(":");
+  const renderPackContent = (children: ReactNode) => (
+    <QuestionPackContentBoundary pack={boundaryPack}>{children}</QuestionPackContentBoundary>
+  );
 
   if (view === "hub") {
-    return pack === undefined ? <CasePracticeHub /> : (
+    if (state.source === "preference" && state.includeBuiltIns && state.packs.length === 0) {
+      return renderPackContent(<CasePracticeHub />);
+    }
+
+    return renderPackContent(directPack !== undefined ? (
       <CasePracticeHub
-        action={{ href: "/settings", label: "Manage Content Packs" }}
-        description={pack.description ?? `Practice the locally installed ${pack.title} content pack.`}
+        action={{ href: "/content-packs/?view=installed", label: "Manage Content Packs" }}
+        description={directPack.description ?? `Practice the locally installed ${directPack.title} content pack.`}
         eyebrow="Custom Content"
-        modules={toHubModules(pack.id, content)}
+        modules={toHubModules(content, directPack.id)}
         summary="Choose an exercise included in this installed pack."
-        title={pack.title}
+        title={directPack.title}
       />
-    );
+    ) : (
+      <CasePracticeHub
+        action={{ href: "/settings#question-pool-settings", label: "Question Pool Settings" }}
+        description={state.includeBuiltIns
+          ? "Practice built-in case skills together with your selected local content packs."
+          : "Practice only the case exercises from your selected local content packs."}
+        eyebrow="Selected Content"
+        modules={toHubModules(content, undefined, state.includeBuiltIns)}
+        summary="Choose an exercise available in the active question pool."
+        title="Case Practice"
+      />
+    ));
   }
 
   if (view === "structuring" && content.structuringPrompts?.length) {
-    return (
+    return renderPackContent(
       <StructuringPractice
         backHref={backHref}
         key={contentKey}
@@ -128,7 +148,7 @@ export function CasePracticeQuestionPackContent({
   }
 
   if (view === "questioning" && content.questioningPrompts?.length) {
-    return (
+    return renderPackContent(
       <QuestioningPractice
         backHref={backHref}
         key={contentKey}
@@ -138,7 +158,7 @@ export function CasePracticeQuestionPackContent({
   }
 
   if (view === "brainstorming" && content.brainstormingPrompts?.length) {
-    return (
+    return renderPackContent(
       <BrainstormingDrill
         backHref={backHref}
         key={contentKey}
@@ -148,7 +168,7 @@ export function CasePracticeQuestionPackContent({
   }
 
   if (view === "synthesis" && content.synthesisPrompts?.length) {
-    return (
+    return renderPackContent(
       <ExerciseShell
         backHref={backHref}
         description="Build a concise recommendation from the evidence, then compare it with a model close."
@@ -160,7 +180,7 @@ export function CasePracticeQuestionPackContent({
   }
 
   if (view === "lessons" && content.lessons?.length) {
-    return (
+    return renderPackContent(
       <ConceptLessonsView
         backHref={backHref}
         key={contentKey}
@@ -170,7 +190,7 @@ export function CasePracticeQuestionPackContent({
   }
 
   if (view === "fit" && content.fitPrompts?.length) {
-    return (
+    return renderPackContent(
       <ExerciseShell
         backHref={backHref}
         description="Build evidence-rich stories, rehearse under time pressure, and record a structured self-review."
@@ -188,7 +208,7 @@ export function CasePracticeQuestionPackContent({
         : content.fullCases.find((candidate) => candidate.id === caseId);
 
     if (simulation !== undefined) {
-      return (
+      return renderPackContent(
         <FullCaseSimulation
           backHref={backHref}
           key={`${contentKey}:${simulation.id}`}
@@ -198,20 +218,23 @@ export function CasePracticeQuestionPackContent({
     }
   }
 
-  return <MissingPackContent backHref={backHref} view={view} />;
+  return renderPackContent(<MissingPackContent backHref={backHref} view={view} />);
 }
 
 function toHubModules(
-  packId: string,
-  content: CasePracticeContent
+  content: CasePracticeContent,
+  packId?: string,
+  includePrepPlan = false
 ): CasePracticeHubModule[] {
-  const packQuery = `pack=${encodeURIComponent(packId)}`;
+  const route = (pathname: string) => packId === undefined
+    ? pathname
+    : `${pathname}?pack=${encodeURIComponent(packId)}`;
   const modules: CasePracticeHubModule[] = [];
 
   if (content.questioningPrompts?.length) {
     modules.push({
       description: "Ask focused clarifying and diagnostic questions, then compare them with an authored rubric.",
-      href: `/case-practice/questioning?${packQuery}`,
+      href: route("/case-practice/questioning"),
       label: "Questioning",
       meta: "Opening"
     });
@@ -219,7 +242,7 @@ function toHubModules(
   if (content.structuringPrompts?.length) {
     modules.push({
       description: "Build a hypothesis-led issue tree and compare it with the pack model.",
-      href: `/case-practice/structuring?${packQuery}`,
+      href: route("/case-practice/structuring"),
       label: "Structuring",
       meta: "Opening"
     });
@@ -227,7 +250,7 @@ function toHubModules(
   if (content.brainstormingPrompts?.length) {
     modules.push({
       description: "Generate relevant ideas in themes, then identify the strongest priorities.",
-      href: `/case-practice/brainstorming?${packQuery}`,
+      href: route("/case-practice/brainstorming"),
       label: "Brainstorming",
       meta: "Exploration"
     });
@@ -235,7 +258,7 @@ function toHubModules(
   if (content.synthesisPrompts?.length) {
     modules.push({
       description: "Turn case evidence into an answer-first conclusion with risks and next steps.",
-      href: `/case-practice/synthesis?${packQuery}`,
+      href: route("/case-practice/synthesis"),
       label: "Synthesis",
       meta: "Closing"
     });
@@ -243,7 +266,7 @@ function toHubModules(
   if (content.lessons?.length) {
     modules.push({
       description: "Review pack lessons and worked examples, then test the key idea.",
-      href: `/case-practice/lessons?${packQuery}`,
+      href: route("/case-practice/lessons"),
       label: "Concept Lessons",
       meta: "Learn"
     });
@@ -251,21 +274,52 @@ function toHubModules(
   if (content.fitPrompts?.length) {
     modules.push({
       description: "Use the pack prompts to rehearse stories from your private local story bank.",
-      href: `/case-practice/fit?${packQuery}`,
+      href: route("/case-practice/fit"),
       label: "Fit Practice",
       meta: "Behavioral"
     });
   }
+  if (includePrepPlan) {
+    modules.push({
+      description: "Set an interview target and generate a local weekly preparation sequence.",
+      href: "/case-practice/plan",
+      label: "Prep Plan",
+      meta: "Roadmap"
+    });
+  }
   for (const fullCase of content.fullCases ?? []) {
+    const caseQuery = `case=${encodeURIComponent(fullCase.id)}`;
     modules.push({
       description: fullCase.situation,
-      href: `/case-practice/simulation?${packQuery}&case=${encodeURIComponent(fullCase.id)}`,
+      href: packId === undefined
+        ? `/case-practice/simulation?${caseQuery}`
+        : `/case-practice/simulation?pack=${encodeURIComponent(packId)}&${caseQuery}`,
       label: fullCase.title,
       meta: "Full Case"
     });
   }
 
   return modules;
+}
+
+function mergeCasePracticeContent(
+  includeBuiltIns: boolean,
+  packs: readonly CasePracticeQuestionPackRecord[]
+): CasePracticeContent {
+  const sources: CasePracticeContent[] = [
+    ...(includeBuiltIns ? [builtInContent] : []),
+    ...packs.map(toQuestionPackCasePracticeContent)
+  ];
+
+  return {
+    brainstormingPrompts: sources.flatMap(({ brainstormingPrompts: prompts }) => prompts ?? []),
+    fitPrompts: sources.flatMap(({ fitPrompts: prompts }) => prompts ?? []),
+    fullCases: sources.flatMap(({ fullCases: cases }) => cases ?? []),
+    lessons: sources.flatMap(({ lessons }) => lessons ?? []),
+    questioningPrompts: sources.flatMap(({ questioningPrompts: prompts }) => prompts ?? []),
+    structuringPrompts: sources.flatMap(({ structuringPrompts: prompts }) => prompts ?? []),
+    synthesisPrompts: sources.flatMap(({ synthesisPrompts: prompts }) => prompts ?? [])
+  };
 }
 
 function ExerciseShell({

@@ -93,15 +93,63 @@ test("an installed version-three pack opens questioning practice", async ({ page
   await expect(page.getByText(/monthly customer churn rise from 2% to 5%/)).toBeVisible();
 });
 
+test("saved question-pool modes govern regular numeric and exhibit drills", async ({ page }) => {
+  await installExample(
+    page,
+    "question-pack-example.mathdrill.json",
+    "example-retail-practice",
+    "Example Retail Practice"
+  );
+  await installExample(
+    page,
+    "question-pack-exhibit-example.mathdrill.json",
+    "example-delivery-channel-exhibit",
+    "Example Delivery Channel Exhibit"
+  );
+
+  await page.goto("/settings#question-pool-settings");
+  await page.getByRole("radio", { name: /Selected packs only/ }).check();
+  await page.getByRole("checkbox", { name: /Example Retail Practice/ }).check();
+  await page.getByRole("checkbox", { name: /Example Delivery Channel Exhibit/ }).check();
+  await page.getByRole("button", { name: "Save Question Pool" }).click();
+  await expect(page.getByText("Question pool saved on this device.")).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByRole("radio", { name: /Selected packs only/ })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: /Example Retail Practice/ })).toBeChecked();
+  await expect(page.getByRole("checkbox", { name: /Example Delivery Channel Exhibit/ })).toBeChecked();
+
+  await page.goto(
+    "/drills/session?categories=business_math&tags=revenue&difficulty=beginner&count=1&seed=selected-pool-e2e"
+  );
+  await expect(page.getByTestId("active-question-prompt")).toContainText(
+    "fictional retailer sells 24,000 annual subscriptions"
+  );
+
+  await page.goto("/exhibits");
+  await expect(page.getByRole("heading", { level: 1, name: "Example Delivery Channel Exhibit" })).toBeVisible();
+  await expect(page.getByTestId("exhibit-select").getByRole("option")).toHaveCount(1);
+
+  await page.goto("/settings#question-pool-settings");
+  await page.getByRole("radio", { name: /Built-in and selected packs/ }).check();
+  await page.getByRole("button", { name: "Save Question Pool" }).click();
+  await expect(page.getByText("Question pool saved on this device.")).toBeVisible();
+
+  await page.goto("/exhibits");
+  const exhibits = page.getByTestId("exhibit-select");
+  await expect(exhibits.getByRole("option", { name: "Retail Format Economics" })).toBeAttached();
+  await expect(exhibits.getByRole("option", { name: "Orders by Delivery Channel" })).toBeAttached();
+});
+
 async function installExample(page: Page, fileName: string, packId: string, title: string) {
-  await page.goto("/settings");
-  await page.locator("summary").filter({ hasText: "Content Packs" }).click();
+  await page.goto("/content-packs?view=import");
   await page
     .getByLabel("Choose a question pack")
     .setInputFiles(resolve(process.cwd(), "public", fileName));
   await expect(page.getByTestId("question-pack-preview")).toContainText(title);
   await page.getByRole("checkbox", { name: /I reviewed the answer keys/ }).check();
   await page.getByRole("button", { name: "Install Pack" }).click();
+  await page.getByRole("link", { name: "Installed", exact: true }).click();
   const card = page.getByTestId(`question-pack-${packId}`);
   await expect(card).toBeVisible();
   return card;

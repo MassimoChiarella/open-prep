@@ -1,24 +1,23 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 import { LoadingState } from "@/components/LoadingState";
 import { PageHeader } from "@/components/PageHeader";
-import { ActiveDrillSession } from "@/features/drills/ActiveDrillSession";
 import { accuracyModeSourceParam, createAccuracyModeSettings } from "@/features/drills/accuracyMode";
 import { LocalDrillSessionLoader } from "@/features/drills/AdaptiveDrillSession";
 import { dailyWorkoutSourceParam } from "@/features/drills/dailyWorkout";
 import { buildDrillSessionSeed, parseDrillSettingsQuery } from "@/features/drills/drillSessionQuery";
 import { createQuickFireModeSettings, quickFireModeSourceParam } from "@/features/drills/quickFireMode";
 import { retryMissedSourceParam, reviewQueueSourceParam } from "@/features/drills/mistakeRetry";
-import { createDrillSession } from "@/features/drills/sessionFactory";
 import { weaknessModeSourceParam } from "@/features/drills/weaknessMode";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import {
   QuestionPackDrillSessionLoader,
   questionPackSourceParam
 } from "@/features/question-packs/QuestionPackDrillSession";
+import { QuestionPackPoolDrillSession } from "@/features/question-packs/QuestionPackPoolDrillSession";
 import { nextLocalPracticeNonce } from "@/lib/localPracticeNonce";
 
 export default function DrillSessionPage() {
@@ -49,6 +48,25 @@ function DrillSessionPageContent() {
     return () => window.clearTimeout(timeout);
   }, [queryKey, requestedSeed]);
 
+  const parsed = useMemo(
+    () => parseDrillSettingsQuery(new URLSearchParams(queryKey)),
+    [queryKey]
+  );
+  const namedMode =
+    source === quickFireModeSourceParam
+      ? "quick_fire"
+      : source === accuracyModeSourceParam
+        ? "accuracy"
+        : undefined;
+  const settings = useMemo(
+    () => namedMode === "quick_fire"
+      ? createQuickFireModeSettings(parsed.settings)
+      : namedMode === "accuracy"
+        ? createAccuracyModeSettings(parsed.settings)
+        : parsed.settings,
+    [namedMode, parsed.settings]
+  );
+
   if (source === dailyWorkoutSourceParam || source === weaknessModeSourceParam) {
     const adaptiveCount = parseAdaptiveQuestionCount(searchParams.get("count"), source, t);
 
@@ -61,19 +79,6 @@ function DrillSessionPageContent() {
     );
   }
 
-  const parsed = parseDrillSettingsQuery(searchParams);
-  const namedMode =
-    source === quickFireModeSourceParam
-      ? "quick_fire"
-      : source === accuracyModeSourceParam
-        ? "accuracy"
-        : undefined;
-  const settings =
-    namedMode === "quick_fire"
-      ? createQuickFireModeSettings(parsed.settings)
-      : namedMode === "accuracy"
-        ? createAccuracyModeSettings(parsed.settings)
-        : parsed.settings;
   const interviewMathMode =
     requestedInterviewMathMode ||
     (settings.categories.length === 1 && settings.categories[0] === "case_math");
@@ -103,38 +108,24 @@ function DrillSessionPageContent() {
     return <DrillSessionLoading />;
   }
 
-  const created = createSessionResult(settings, interviewMathMode, sessionSeed.value);
-  const sessionCopy = getSessionCopy(namedMode, interviewMathMode);
-
-  if (created.status === "ready") {
-    return (
-      <ActiveDrillSession
-        initialSession={created.session}
-        interviewMathMode={interviewMathMode}
-        questions={created.questions}
-        queueTitle={sessionCopy.queueTitle === undefined ? undefined : t(sessionCopy.queueTitle)}
-        sessionEyebrow={sessionCopy.eyebrow === undefined ? undefined : t(sessionCopy.eyebrow)}
-        sessionTitle={sessionCopy.title === undefined ? undefined : t(sessionCopy.title)}
-        warnings={parsed.warnings.map((warning) => t(warning))}
-      />
-    );
-  }
+  const sessionCopy = getSessionCopy(namedMode, requestedInterviewMathMode);
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-      <PageHeader
-        action={{ href: "/drills", label: t("Change Settings") }}
-        description={t("Create a local drill session from the selected settings.")}
-        eyebrow={t(sessionCopy.eyebrow ?? "Practice")}
-        title={t(sessionCopy.title ?? "Active Drill Session")}
-      />
-      <p className="border border-s-2 border-coral/30 border-s-coral bg-coral/10 p-4 text-sm leading-6 text-ink">{t(created.message)}</p>
-    </main>
+    <QuestionPackPoolDrillSession
+      interviewMathMode={interviewMathMode}
+      interviewMathRequested={requestedInterviewMathMode}
+      queueTitle={sessionCopy.queueTitle}
+      seed={buildDrillSessionSeed(settings, sessionSeed.value)}
+      sessionEyebrow={sessionCopy.eyebrow}
+      sessionTitle={sessionCopy.title}
+      settings={settings}
+      warnings={parsed.warnings}
+    />
   );
 }
 
-function getSessionCopy(namedMode: "accuracy" | "quick_fire" | undefined, interviewMathMode: boolean) {
-  if (interviewMathMode) {
+function getSessionCopy(namedMode: "accuracy" | "quick_fire" | undefined, interviewMathRequested: boolean) {
+  if (interviewMathRequested) {
     return { eyebrow: "Case Practice", queueTitle: "Case Questions", title: "Interview Math Session" };
   }
 
@@ -198,34 +189,4 @@ function DrillSessionLoading() {
       <LoadingState label={t("Preparing drill")} />
     </main>
   );
-}
-
-function createSessionResult(
-  settings: ReturnType<typeof parseDrillSettingsQuery>["settings"],
-  interviewMathMode: boolean,
-  seedNonce: string | number
-) {
-  try {
-    const created = createDrillSession({
-      seed: buildDrillSessionSeed(settings, seedNonce),
-      settings
-    });
-
-    if (
-      interviewMathMode &&
-      created.questions.some((question) => question.metadata?.caseStyle?.interviewMath === undefined)
-    ) {
-      throw new Error("Interview Math mode requires case-style questions. Choose the Interview Math preset.");
-    }
-
-    return {
-      status: "ready" as const,
-      ...created
-    };
-  } catch (error) {
-    return {
-      status: "error" as const,
-      message: error instanceof Error ? error.message : "Unable to create a local drill session."
-    };
-  }
 }

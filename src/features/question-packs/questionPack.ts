@@ -565,7 +565,7 @@ export async function deleteQuestionPack(storage: AppStorage, id: string): Promi
 }
 
 export function serializeQuestionPack(pack: QuestionPackRecord): string {
-  const { importedAt: _importedAt, ...payload } = pack;
+  const { catalogProvenance: _catalogProvenance, importedAt: _importedAt, ...payload } = pack;
   return `${JSON.stringify({ $schema: `./question-pack-v${pack.schemaVersion}.schema.json`, ...payload }, null, 2)}\n`;
 }
 

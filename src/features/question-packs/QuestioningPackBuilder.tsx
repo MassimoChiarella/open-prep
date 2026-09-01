@@ -1,9 +1,10 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useRef, useState } from "react";
 
 import { buttonClass, uiInputs, uiText } from "@/components/uiStyles";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { useUnsavedChangesGuard } from "@/features/question-packs/useUnsavedChangesGuard";
 
 interface QuestioningPackBuilderProps {
   onPreview(payload: unknown): void;
@@ -46,8 +47,19 @@ const starterIntents = [
   }
 ];
 
+const starterConceptsJson = JSON.stringify(starterConcepts, null, 2);
+const starterIntentsJson = JSON.stringify(starterIntents, null, 2);
+
+type JsonArrayError = "array" | "syntax";
+
 export function QuestioningPackBuilder({ onPreview }: QuestioningPackBuilderProps) {
   const { t } = useI18n();
+  const { clearDirty, isDirty, markDirty } = useUnsavedChangesGuard(
+    t("Leave this builder? Your unsaved changes will be lost.")
+  );
+  const conceptsRef = useRef<HTMLTextAreaElement>(null);
+  const intentsRef = useRef<HTMLTextAreaElement>(null);
+  const maximumQuestionsRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [packId, setPackId] = useState("my-questioning-pack");
   const [packIdIsCustom, setPackIdIsCustom] = useState(false);
@@ -56,44 +68,85 @@ export function QuestioningPackBuilder({ onPreview }: QuestioningPackBuilderProp
   const [industry, setIndustry] = useState("");
   const [situation, setSituation] = useState("");
   const [objective, setObjective] = useState("");
+  const [language, setLanguage] = useState("en");
   const [mode, setMode] = useState<"clarifying" | "diagnostic">("diagnostic");
   const [minimumQuestions, setMinimumQuestions] = useState(3);
   const [maximumQuestions, setMaximumQuestions] = useState(8);
-  const [concepts, setConcepts] = useState(JSON.stringify(starterConcepts, null, 2));
-  const [intents, setIntents] = useState(JSON.stringify(starterIntents, null, 2));
-  const [jsonError, setJsonError] = useState(false);
+  const [concepts, setConcepts] = useState(starterConceptsJson);
+  const [intents, setIntents] = useState(starterIntentsJson);
+  const [conceptsError, setConceptsError] = useState<JsonArrayError>();
+  const [intentsError, setIntentsError] = useState<JsonArrayError>();
+  const [questionCountError, setQuestionCountError] = useState(false);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    try {
-      const parsedConcepts: unknown = JSON.parse(concepts);
-      const parsedIntents: unknown = JSON.parse(intents);
-      if (!Array.isArray(parsedConcepts) || !Array.isArray(parsedIntents)) throw new TypeError();
-      setJsonError(false);
-      onPreview({
-        format: "math-drill-question-pack",
-        schemaVersion: 3,
-        kind: "case_practice",
-        id: packId.trim(),
-        packVersion: packVersion.trim(),
-        title: title.trim(),
-        questioningPrompts: [{
-          id: `${packId.trim()}-prompt`.slice(0, 80),
-          title: promptTitle.trim(),
-          industry: industry.trim(),
-          situation: situation.trim(),
-          objective: objective.trim(),
-          language: "en",
-          mode,
-          minimumQuestions,
-          maximumQuestions,
-          concepts: parsedConcepts,
-          intents: parsedIntents
-        }]
-      });
-    } catch {
-      setJsonError(true);
+    const parsedConcepts = parseJsonArray(concepts);
+    const parsedIntents = parseJsonArray(intents);
+    const nextCountError =
+      !Number.isInteger(minimumQuestions) ||
+      !Number.isInteger(maximumQuestions) ||
+      minimumQuestions < 1 ||
+      maximumQuestions > 12 ||
+      maximumQuestions < minimumQuestions;
+    setConceptsError(parsedConcepts.error);
+    setIntentsError(parsedIntents.error);
+    setQuestionCountError(nextCountError);
+
+    if (parsedConcepts.error !== undefined) {
+      conceptsRef.current?.focus();
+      return;
     }
+    if (parsedIntents.error !== undefined) {
+      intentsRef.current?.focus();
+      return;
+    }
+    if (nextCountError) {
+      maximumQuestionsRef.current?.focus();
+      return;
+    }
+
+    onPreview({
+      format: "math-drill-question-pack",
+      schemaVersion: 3,
+      kind: "case_practice",
+      id: packId.trim(),
+      packVersion: packVersion.trim(),
+      title: title.trim(),
+      questioningPrompts: [{
+        id: `${packId.trim()}-prompt`.slice(0, 80),
+        title: promptTitle.trim(),
+        industry: industry.trim(),
+        situation: situation.trim(),
+        objective: objective.trim(),
+        language,
+        mode,
+        minimumQuestions,
+        maximumQuestions,
+        concepts: parsedConcepts.value,
+        intents: parsedIntents.value
+      }]
+    });
+  }
+
+  function discardChanges() {
+    setTitle("");
+    setPackId("my-questioning-pack");
+    setPackIdIsCustom(false);
+    setPackVersion("1.0");
+    setPromptTitle("");
+    setIndustry("");
+    setSituation("");
+    setObjective("");
+    setLanguage("en");
+    setMode("diagnostic");
+    setMinimumQuestions(3);
+    setMaximumQuestions(8);
+    setConcepts(starterConceptsJson);
+    setIntents(starterIntentsJson);
+    setConceptsError(undefined);
+    setIntentsError(undefined);
+    setQuestionCountError(false);
+    clearDirty();
   }
 
   return (
@@ -103,16 +156,17 @@ export function QuestioningPackBuilder({ onPreview }: QuestioningPackBuilderProp
     >
       <summary className="-m-2 cursor-pointer list-none p-2 font-semibold text-ink transition-colors hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal">
         {t("Build a questioning pack")}
-        <span className="ml-2 text-sm font-normal text-ink/65">
+        <span className="ms-2 text-sm font-normal text-ink/65">
           {t("Create a deterministic case-questioning rubric in the app.")}
         </span>
       </summary>
 
-      <form className="mt-5 grid gap-5" onSubmit={handleSubmit}>
+      <form className="mt-5 grid min-w-0 gap-5" onChange={markDirty} onSubmit={handleSubmit}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Pack title">
             <input
               className={uiInputs.base}
+              dir="auto"
               maxLength={100}
               onChange={(event) => {
                 const nextTitle = event.currentTarget.value;
@@ -143,16 +197,26 @@ export function QuestioningPackBuilder({ onPreview }: QuestioningPackBuilderProp
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Case title">
-            <input className={uiInputs.base} maxLength={100} onChange={(event) => setPromptTitle(event.currentTarget.value)} required value={promptTitle} />
+            <input className={uiInputs.base} dir="auto" maxLength={100} onChange={(event) => setPromptTitle(event.currentTarget.value)} required value={promptTitle} />
           </Field>
           <Field label="Industry">
-            <input className={uiInputs.base} maxLength={100} onChange={(event) => setIndustry(event.currentTarget.value)} required value={industry} />
+            <input className={uiInputs.base} dir="auto" maxLength={100} onChange={(event) => setIndustry(event.currentTarget.value)} required value={industry} />
+          </Field>
+          <Field label="Content language">
+            <input
+              className={uiInputs.base}
+              dir="ltr"
+              maxLength={35}
+              onChange={(event) => setLanguage(event.currentTarget.value)}
+              required
+              value={language}
+            />
           </Field>
           <Field label="Situation" wide>
-            <textarea className={uiInputs.textarea} maxLength={2_000} onChange={(event) => setSituation(event.currentTarget.value)} required value={situation} />
+            <textarea className={uiInputs.textarea} dir="auto" maxLength={2_000} onChange={(event) => setSituation(event.currentTarget.value)} required value={situation} />
           </Field>
           <Field label="Objective" wide>
-            <textarea className={uiInputs.textarea} maxLength={1_000} onChange={(event) => setObjective(event.currentTarget.value)} required value={objective} />
+            <textarea className={uiInputs.textarea} dir="auto" maxLength={1_000} onChange={(event) => setObjective(event.currentTarget.value)} required value={objective} />
           </Field>
         </div>
 
@@ -164,31 +228,102 @@ export function QuestioningPackBuilder({ onPreview }: QuestioningPackBuilderProp
             </select>
           </Field>
           <Field label="Minimum questions">
-            <input className={uiInputs.base} max="12" min="1" onChange={(event) => setMinimumQuestions(event.currentTarget.valueAsNumber)} required type="number" value={minimumQuestions} />
+            <input
+              className={uiInputs.base}
+              max="12"
+              min="1"
+              onChange={(event) => {
+                setMinimumQuestions(event.currentTarget.valueAsNumber);
+                setQuestionCountError(false);
+              }}
+              required
+              type="number"
+              value={minimumQuestions}
+            />
           </Field>
           <Field label="Maximum questions">
-            <input className={uiInputs.base} max="12" min="1" onChange={(event) => setMaximumQuestions(event.currentTarget.valueAsNumber)} required type="number" value={maximumQuestions} />
+            <input
+              aria-describedby={questionCountError ? "questioning-count-error" : undefined}
+              aria-invalid={questionCountError ? true : undefined}
+              className={uiInputs.base}
+              max="12"
+              min="1"
+              onChange={(event) => {
+                setMaximumQuestions(event.currentTarget.valueAsNumber);
+                setQuestionCountError(false);
+              }}
+              ref={maximumQuestionsRef}
+              required
+              type="number"
+              value={maximumQuestions}
+            />
+            {questionCountError ? (
+              <span className="text-sm text-coral" id="questioning-count-error" role="alert">
+                {t("Maximum questions must be between the minimum and 12.")}
+              </span>
+            ) : null}
           </Field>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid min-w-0 gap-4 lg:grid-cols-2">
           <Field label="Concepts JSON">
-            <textarea aria-label={t("Concepts JSON")} className={`${uiInputs.textarea} min-h-80 font-mono text-sm`} onChange={(event) => setConcepts(event.currentTarget.value)} required spellCheck={false} value={concepts} />
-            <span className={uiText.dense}>{t("List canonical concepts and the phrases that should match each one.")}</span>
+            <textarea
+              aria-describedby={`concepts-json-help${conceptsError ? " concepts-json-error" : ""}`}
+              aria-invalid={conceptsError ? true : undefined}
+              aria-label={t("Concepts JSON")}
+              className={`${uiInputs.textarea} min-h-80 min-w-0 font-mono text-sm`}
+              dir="ltr"
+              onChange={(event) => {
+                setConcepts(event.currentTarget.value);
+                setConceptsError(undefined);
+              }}
+              ref={conceptsRef}
+              required
+              spellCheck={false}
+              value={concepts}
+            />
+            <span className={uiText.dense} id="concepts-json-help">{t("List canonical concepts and the phrases that should match each one.")}</span>
+            {conceptsError ? (
+              <span className="text-sm text-coral" id="concepts-json-error" role="alert">
+                {conceptsError === "syntax"
+                  ? t("Concepts must be valid JSON. Check brackets, commas, and quotation marks.")
+                  : t("Concepts must be a JSON array enclosed in square brackets.")}
+              </span>
+            ) : null}
           </Field>
           <Field label="Scoring themes JSON">
-            <textarea aria-label={t("Scoring themes JSON")} className={`${uiInputs.textarea} min-h-80 font-mono text-sm`} onChange={(event) => setIntents(event.currentTarget.value)} required spellCheck={false} value={intents} />
-            <span className={uiText.dense}>{t("Define theme weights, required concept groups, model questions, and optional priorities.")}</span>
+            <textarea
+              aria-describedby={`scoring-themes-json-help${intentsError ? " scoring-themes-json-error" : ""}`}
+              aria-invalid={intentsError ? true : undefined}
+              aria-label={t("Scoring themes JSON")}
+              className={`${uiInputs.textarea} min-h-80 min-w-0 font-mono text-sm`}
+              dir="ltr"
+              onChange={(event) => {
+                setIntents(event.currentTarget.value);
+                setIntentsError(undefined);
+              }}
+              ref={intentsRef}
+              required
+              spellCheck={false}
+              value={intents}
+            />
+            <span className={uiText.dense} id="scoring-themes-json-help">{t("Define theme weights, required concept groups, model questions, and optional priorities.")}</span>
+            {intentsError ? (
+              <span className="text-sm text-coral" id="scoring-themes-json-error" role="alert">
+                {intentsError === "syntax"
+                  ? t("Scoring themes must be valid JSON. Check brackets, commas, and quotation marks.")
+                  : t("Scoring themes must be a JSON array enclosed in square brackets.")}
+              </span>
+            ) : null}
           </Field>
         </div>
 
-        {jsonError ? (
-          <p className="border border-coral/30 bg-coral/10 p-3 text-sm text-ink" role="alert">
-            {t("Concepts and scoring themes must be valid JSON arrays.")}
-          </p>
-        ) : null}
-
-        <button className={buttonClass("primary")} type="submit">{t("Preview Pack")}</button>
+        <div className="flex flex-wrap gap-3">
+          <button className={buttonClass("primary")} type="submit">{t("Preview Pack")}</button>
+          <button className={buttonClass("secondary")} disabled={!isDirty} onClick={discardChanges} type="button">
+            {t("Discard changes")}
+          </button>
+        </div>
       </form>
     </details>
   );
@@ -211,4 +346,13 @@ function slugify(value: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "")
     .slice(0, 73);
+}
+
+function parseJsonArray(source: string): { error?: JsonArrayError; value?: unknown[] } {
+  try {
+    const value: unknown = JSON.parse(source);
+    return Array.isArray(value) ? { value } : { error: "array" };
+  } catch {
+    return { error: "syntax" };
+  }
 }
