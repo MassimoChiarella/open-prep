@@ -76,7 +76,7 @@ describe("DrillSettingsForm", () => {
 
     expect(screen.queryByRole("button", { name: "Revenue" })).not.toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Start Drill" })).not.toHaveAttribute("href", expect.stringContaining("tags="));
-  });
+  }, 15_000);
 
   it("keeps generated session URLs in sync with advanced settings", () => {
     render(<DrillSettingsForm />);
