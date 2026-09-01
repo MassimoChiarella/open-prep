@@ -9,7 +9,7 @@ import {
   assertReleaseFilePrivacy,
   sha256,
   validateReleaseOutput
-} from "./release-contract.mjs";
+} from "./release-contract.mts";
 
 const TAR_BLOCK_BYTES = 512;
 const TAR_MAX_FILE_BYTES = Number.parseInt("77777777777", 8);

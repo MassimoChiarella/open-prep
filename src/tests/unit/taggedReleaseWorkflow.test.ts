@@ -45,7 +45,7 @@ describe("tagged release workflow", () => {
       "node scripts/prepare-web-build.mjs verify --require-clean",
       "rm -rf dist",
       "node scripts/package-release.mjs",
-      "node scripts/check-version-contract.mjs --artifacts dist"
+      "node scripts/check-version-contract.mts --artifacts dist"
     ];
 
     expect(verify).toContain("node-version: 24.19.0");

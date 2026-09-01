@@ -1,27 +1,25 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+import postcss, { type Root } from "postcss";
 import { describe, expect, it } from "vitest";
 
-import {
-  darkExhibitChartColors,
-  lightExhibitChartColors
-} from "@/features/exhibits/exhibitChartData";
 import { darkPalette, lightPalette } from "../../../tailwind.config";
 
 type Rgb = [number, number, number];
 type AppPalette = Record<keyof typeof lightPalette, string>;
+const styles = postcss.parse(readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8"));
+const chartPalettes = {
+  dark: readChartPalette(styles, ':root[data-theme="dark"]'),
+  light: readChartPalette(styles, ":root")
+};
 
 describe("color contrast", () => {
   it("defines eight unique chart colors in both themes", () => {
-    expect(lightExhibitChartColors).toHaveLength(8);
-    expect(darkExhibitChartColors).toHaveLength(8);
-    expect(new Set(lightExhibitChartColors).size).toBe(8);
-    expect(new Set(darkExhibitChartColors).size).toBe(8);
-
-    const globalStyles = readFileSync(resolve(process.cwd(), "src/app/globals.css"), "utf8");
-    expect(globalStyles.match(/--color-chart-7:/g)).toHaveLength(3);
-    expect(globalStyles.match(/--color-chart-8:/g)).toHaveLength(3);
+    for (const colors of Object.values(chartPalettes)) {
+      expect(colors).toHaveLength(8);
+      expect(new Set(colors).size).toBe(8);
+    }
   });
 
   it.each([
@@ -43,8 +41,8 @@ describe("color contrast", () => {
   });
 
   it.each([
-    ["light", lightPalette, lightExhibitChartColors],
-    ["dark", darkPalette, darkExhibitChartColors]
+    ["light", lightPalette, chartPalettes.light],
+    ["dark", darkPalette, chartPalettes.dark]
   ] as const)("keeps %s selection and chart marks distinguishable", (mode, colors, chartColors) => {
     expect(contrastRatio(colors.selectionText, colors.saffron), `${mode}: selected text`).toBeGreaterThanOrEqual(4.5);
 
@@ -53,6 +51,27 @@ describe("color contrast", () => {
     }
   });
 });
+
+function readChartPalette(styles: Root, selector: string): string[] {
+  const rule = styles.nodes.find(
+    (node) => node.type === "rule" && node.selector === selector
+  );
+  if (rule?.type !== "rule") throw new Error(`Missing ${selector} color declarations.`);
+
+  return Array.from({ length: 8 }, (_, index) => {
+    const property = `--color-chart-${index + 1}`;
+    const declaration = rule.nodes.find(
+      (node) => node.type === "decl" && node.prop === property
+    );
+    if (declaration?.type !== "decl") throw new Error(`Missing ${selector} ${property}.`);
+
+    const channels = declaration.value.split(/\s+/).map(Number);
+    if (channels.length !== 3 || channels.some((channel) => !Number.isInteger(channel))) {
+      throw new Error(`Invalid ${selector} ${property}.`);
+    }
+    return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`;
+  });
+}
 
 function coreContrastPairs(colors: AppPalette) {
   return [

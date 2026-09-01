@@ -6,7 +6,6 @@ import { I18nProvider, LanguageSelect, useI18n } from "@/features/i18n/I18nProvi
 import {
   localePreferenceStorageKey,
   matchLocale,
-  mergeCatalogs,
   translate
 } from "@/features/i18n/i18n";
 import {
@@ -37,11 +36,11 @@ describe("locale matching and translation", () => {
     expect(matchLocale(["xx"])).toBe("en");
   });
 
-  it("merges catalogs, interpolates variables, and falls back to the English source", () => {
-    const catalog = mergeCatalogs({
+  it("interpolates variables and falls back to the English source", () => {
+    const catalog = {
       en: { "Hello, {name}": "Hello, {name}" },
       fr: { "Hello, {name}": "Bonjour, {name}" }
-    });
+    };
 
     expect(translate(catalog, "fr", "Hello, {name}", { name: "Ari" })).toBe("Bonjour, Ari");
     expect(translate(catalog, "de", "Hello, {name}", { name: "Ari" })).toBe("Hello, Ari");

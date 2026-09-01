@@ -9,8 +9,8 @@ import {
   selectCorePrecacheInventory,
   sha256,
   writeReleaseMarker
-} from "./release-contract.mjs";
-import { writeStaticSecurityHeaders } from "./security-headers.mjs";
+} from "./release-contract.mts";
+import { writeStaticSecurityHeaders } from "./security-headers.mts";
 
 const BUILD_STATE_SCHEMA_VERSION = 1;
 const CACHE_VERSION_PATTERN = /^const CACHE_VERSION = "([^"]+)";$/m;

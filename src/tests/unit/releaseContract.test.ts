@@ -5,7 +5,7 @@ import path from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 
-import * as releaseContract from "../../../scripts/release-contract.mjs";
+import * as releaseContract from "../../../scripts/release-contract.mts";
 
 const {
   RELEASE_MARKER_FILENAME,

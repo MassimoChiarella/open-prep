@@ -16,7 +16,7 @@ import {
   selectCorePrecacheInventory,
   sha256,
   writeReleaseMarker
-} from "../../../scripts/release-contract.mjs";
+} from "../../../scripts/release-contract.mts";
 
 const packagingScript = path.resolve("scripts/package-release.mjs");
 const temporaryDirectories: string[] = [];
@@ -69,7 +69,7 @@ describe("portable release packaging", () => {
       "npm run check && node scripts/package-release.mjs"
     );
     expect(packageJson.scripts["postdeploy:check"]).toBe(
-      "node scripts/post-deployment-smoke.mjs"
+      "node scripts/post-deployment-smoke.mts"
     );
     expect(readme).toContain("npm run release:artifact");
     expect(readme).toContain("npm run postdeploy:check -- https://practice.example.com/");

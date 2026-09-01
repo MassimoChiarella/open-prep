@@ -1,7 +1,33 @@
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import type { Browser, Page, Request as PlaywrightRequest } from "@playwright/test";
 
-import { createSecurityHeaders } from "./security-headers.mjs";
+import { createSecurityHeaders } from "./security-headers.mts";
+
+export interface DeploymentReleaseIdentity {
+  cacheId: string;
+  product: "Open Prep";
+  version: string;
+}
+
+export interface DeploymentManifestIcon {
+  purpose: string;
+  sizes: string;
+  src: string;
+  type: string;
+}
+
+export interface PostDeploymentSmokeResult extends DeploymentReleaseIdentity {
+  icons: number;
+  origin: string;
+}
+
+export interface RuntimeRequestDescription {
+  method: string;
+  url: string;
+}
+
+type HeaderSource = Headers | Readonly<Record<string, string | null | undefined>>;
 
 const PRODUCT_NAME = "Open Prep";
 const RELEASE_MARKER_PATH = "/open-prep-release.json";
@@ -29,7 +55,7 @@ const HASH_PATTERN = /^[a-f0-9]{64}$/u;
 const SCRIPT_HASH_PATTERN = /^'sha256-[A-Za-z0-9+/]{43}='$/u;
 const REFERENCE_SCRIPT_HASH = `${"A".repeat(43)}=`;
 
-export function validateDeploymentOrigin(value) {
+export function validateDeploymentOrigin(value: string): string {
   if (typeof value !== "string" || value === "" || value.trim() !== value) {
     throw new Error("Provide one HTTPS origin without surrounding whitespace.");
   }
@@ -55,7 +81,7 @@ export function validateDeploymentOrigin(value) {
   return url.origin;
 }
 
-export function validateReleaseMarker(value) {
+export function validateReleaseMarker(value: unknown): Readonly<DeploymentReleaseIdentity> {
   const marker = requireRecord(value, "Release marker");
   const source = requireRecord(marker.source, "Release marker source");
   const artifact = requireRecord(marker.artifact, "Release marker artifact");
@@ -75,7 +101,7 @@ export function validateReleaseMarker(value) {
   if (typeof source.ref !== "string" || source.ref.trim() === "") {
     throw new Error("Release marker source ref is missing.");
   }
-  if (!Number.isSafeInteger(artifact.files) || artifact.files <= 0) {
+  if (typeof artifact.files !== "number" || !Number.isSafeInteger(artifact.files) || artifact.files <= 0) {
     throw new Error("Release marker artifact count must be a positive integer.");
   }
   for (const [label, digest] of [
@@ -103,7 +129,7 @@ export function validateReleaseMarker(value) {
   });
 }
 
-export function validateSecurityHeaders(headers) {
+export function validateSecurityHeaders(headers: HeaderSource): void {
   const contentSecurityPolicy = readHeader(headers, "content-security-policy");
   if (contentSecurityPolicy === null) throw new Error("Content-Security-Policy header is missing.");
 
@@ -165,7 +191,10 @@ export function validateSecurityHeaders(headers) {
   }
 }
 
-export function validateManifest(value, expectedOrigin) {
+export function validateManifest(
+  value: unknown,
+  expectedOrigin: string
+): ReadonlyArray<Readonly<DeploymentManifestIcon>> {
   const origin = validateDeploymentOrigin(expectedOrigin);
   const manifest = requireRecord(value, "Web app manifest");
 
@@ -180,7 +209,7 @@ export function validateManifest(value, expectedOrigin) {
     throw new Error("Web app manifest must declare install icons.");
   }
 
-  const icons = manifest.icons.map((value, index) => {
+  const icons = (manifest.icons as unknown[]).map((value, index) => {
     const icon = requireRecord(value, `Web app manifest icon ${index + 1}`);
     if (
       typeof icon.src !== "string" ||
@@ -225,7 +254,10 @@ export function validateManifest(value, expectedOrigin) {
   return Object.freeze(icons);
 }
 
-export function validateServiceWorkerSource(source, identity) {
+export function validateServiceWorkerSource(
+  source: string,
+  identity: Pick<DeploymentReleaseIdentity, "cacheId">
+): void {
   const cacheId = requireRecord(identity, "Release identity").cacheId;
   if (typeof source !== "string" || typeof cacheId !== "string") {
     throw new Error("Service worker source and release cache identity are required.");
@@ -238,7 +270,7 @@ export function validateServiceWorkerSource(source, identity) {
   }
 }
 
-export function validateServiceWorkerCacheControl(value) {
+export function validateServiceWorkerCacheControl(value: string | null | undefined): void {
   if (typeof value !== "string" || value.trim() === "") {
     throw new Error("Service worker Cache-Control header is missing.");
   }
@@ -250,9 +282,12 @@ export function validateServiceWorkerCacheControl(value) {
   }
 }
 
-export function findRuntimeRequestViolations(requests, expectedOrigin) {
+export function findRuntimeRequestViolations(
+  requests: readonly Readonly<RuntimeRequestDescription>[],
+  expectedOrigin: string
+): string[] {
   const origin = validateDeploymentOrigin(expectedOrigin);
-  const violations = new Set();
+  const violations = new Set<string>();
 
   for (const request of requests) {
     if (request === null || typeof request !== "object" || typeof request.url !== "string") {
@@ -278,7 +313,9 @@ export function findRuntimeRequestViolations(requests, expectedOrigin) {
   return [...violations].sort();
 }
 
-export async function runPostDeploymentSmoke(input) {
+export async function runPostDeploymentSmoke(
+  input: string
+): Promise<Readonly<PostDeploymentSmokeResult>> {
   const origin = validateDeploymentOrigin(input);
 
   const marker = await runCheck("release marker", async () => {
@@ -336,15 +373,18 @@ export async function runPostDeploymentSmoke(input) {
   });
 }
 
-async function runChromiumSmoke(origin, identity) {
-  let chromium;
+async function runChromiumSmoke(
+  origin: string,
+  identity: DeploymentReleaseIdentity
+): Promise<void> {
+  let chromium: typeof import("@playwright/test")["chromium"];
   try {
     ({ chromium } = await import("@playwright/test"));
   } catch {
     throw new Error("Playwright is unavailable. Run npm ci before the deployment smoke.");
   }
 
-  let browser;
+  let browser: Browser;
   try {
     browser = await chromium.launch({ headless: true });
   } catch {
@@ -353,7 +393,7 @@ async function runChromiumSmoke(origin, identity) {
 
   const context = await browser.newContext({ serviceWorkers: "allow" });
   const networkViolations = new Set();
-  const recordRequest = (request) => {
+  const recordRequest = (request: PlaywrightRequest): void => {
     for (const violation of findRuntimeRequestViolations([
       { method: request.method(), url: request.url() }
     ], origin)) {
@@ -376,7 +416,7 @@ async function runChromiumSmoke(origin, identity) {
 
   let page = await context.newPage();
   configurePage(page);
-  let failure;
+  let failure: unknown;
 
   try {
     await openAppRoute(page, origin, "/", "Dashboard | Open Prep");
@@ -461,17 +501,27 @@ async function runChromiumSmoke(origin, identity) {
   if (failure !== undefined) throw failure;
 }
 
-function configurePage(page) {
+function configurePage(page: Page): void {
   page.setDefaultTimeout(15_000);
   page.setDefaultNavigationTimeout(20_000);
 }
 
-async function openAppRoute(page, origin, pathname, expectedTitle) {
+async function openAppRoute(
+  page: Page,
+  origin: string,
+  pathname: string,
+  expectedTitle: string
+): Promise<void> {
   await page.goto(`${origin}${pathname}`, { waitUntil: "domcontentloaded" });
   await assertRenderedApp(page, origin, pathname, expectedTitle);
 }
 
-async function assertRenderedApp(page, origin, pathname, expectedTitle) {
+async function assertRenderedApp(
+  page: Page,
+  origin: string,
+  pathname: string,
+  expectedTitle: string
+): Promise<void> {
   const current = new URL(page.url());
   if (current.origin !== origin || current.pathname !== pathname) {
     throw new Error(`Route ${pathname} redirected outside its expected origin-root location.`);
@@ -484,7 +534,11 @@ async function assertRenderedApp(page, origin, pathname, expectedTitle) {
   }
 }
 
-async function requestDeployment(origin, target, expectedStatus) {
+async function requestDeployment(
+  origin: string,
+  target: string,
+  expectedStatus: number
+): Promise<Response> {
   const url = new URL(target, `${origin}/`);
   if (url.origin !== origin) throw new Error(`Refusing to request a resource outside ${origin}.`);
 
@@ -508,7 +562,7 @@ async function requestDeployment(origin, target, expectedStatus) {
   return response;
 }
 
-async function readJsonResponse(response, pathname) {
+async function readJsonResponse(response: Response, pathname: string): Promise<unknown> {
   try {
     return JSON.parse(await response.text());
   } catch {
@@ -516,7 +570,7 @@ async function readJsonResponse(response, pathname) {
   }
 }
 
-function requireContentType(response, accepted) {
+function requireContentType(response: Response, accepted: readonly string[]): void {
   const contentType = response.headers.get("content-type")?.split(";", 1)[0].trim().toLowerCase();
   if (contentType === undefined || !accepted.includes(contentType)) {
     throw new Error(
@@ -525,7 +579,7 @@ function requireContentType(response, accepted) {
   }
 }
 
-function validateIconBytes(bytes, icon) {
+function validateIconBytes(bytes: Uint8Array, icon: DeploymentManifestIcon): void {
   if (bytes.byteLength === 0) throw new Error(`Manifest icon ${icon.src} is empty.`);
 
   if (icon.type === "image/png") {
@@ -540,15 +594,15 @@ function validateIconBytes(bytes, icon) {
   }
 }
 
-function requireRecord(value, label) {
+function requireRecord(value: unknown, label: string): Record<string, unknown> {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     throw new Error(`${label} must be an object.`);
   }
-  return value;
+  return value as Record<string, unknown>;
 }
 
-function parseContentSecurityPolicy(value) {
-  const directives = new Map();
+function parseContentSecurityPolicy(value: string): Map<string, string[]> {
+  const directives = new Map<string, string[]>();
   for (const entry of value.split(";")) {
     const [name, ...sources] = entry.trim().split(/\s+/u);
     if (name === "") continue;
@@ -561,7 +615,7 @@ function parseContentSecurityPolicy(value) {
   return directives;
 }
 
-function sameValues(actual, expected) {
+function sameValues(actual: readonly string[], expected: readonly string[]): boolean {
   return (
     actual.length === expected.length &&
     new Set(actual).size === actual.length &&
@@ -569,20 +623,20 @@ function sameValues(actual, expected) {
   );
 }
 
-function readHeader(headers, name) {
-  if (typeof headers?.get === "function") return headers.get(name);
-  const entry = Object.entries(headers ?? {}).find(([key]) => key.toLowerCase() === name.toLowerCase());
+function readHeader(headers: HeaderSource, name: string): string | null {
+  if (headers instanceof Headers) return headers.get(name);
+  const entry = Object.entries(headers).find(([key]) => key.toLowerCase() === name.toLowerCase());
   return typeof entry?.[1] === "string" ? entry[1] : null;
 }
 
-function requireHeaderValue(headers, name, expected) {
+function requireHeaderValue(headers: HeaderSource, name: string, expected: string): void {
   const value = readHeader(headers, name);
   if (value?.toLowerCase() !== expected) {
     throw new Error(`${name} must be ${expected}; received ${value ?? "(missing)"}.`);
   }
 }
 
-async function runCheck(label, task) {
+async function runCheck<T>(label: string, task: () => Promise<T>): Promise<T> {
   try {
     const result = await task();
     console.log(`PASS ${label}`);
@@ -592,13 +646,13 @@ async function runCheck(label, task) {
   }
 }
 
-function errorMessage(error) {
+function errorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
-function parseArguments(argumentsList) {
+function parseArguments(argumentsList: string[]): string {
   if (argumentsList.length !== 1) {
-    throw new Error("Usage: node scripts/post-deployment-smoke.mjs https://open-prep.example/");
+    throw new Error("Usage: node scripts/post-deployment-smoke.mts https://open-prep.example/");
   }
   return validateDeploymentOrigin(argumentsList[0]);
 }

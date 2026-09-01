@@ -2,6 +2,42 @@ import { createHash } from "node:crypto";
 import { lstat, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+export interface ArtifactInventoryEntry {
+  bytes: number;
+  path: string;
+  sha256: string;
+}
+
+export interface ReleaseSource {
+  clean: boolean;
+  commit: string;
+  sourceRef: string;
+  version: string;
+  workerPolicySha256: string;
+}
+
+export interface ReleaseMarker {
+  artifact: {
+    cacheId: string;
+    files: number;
+    inventorySha256: string;
+    workerPolicySha256: string;
+  };
+  product: "Open Prep";
+  schemaVersion: number;
+  source: {
+    clean: boolean;
+    commit: string;
+    ref: string;
+  };
+  version: string;
+}
+
+interface ReleaseFile {
+  contents: string | Uint8Array;
+  path: string;
+}
+
 export const RELEASE_MARKER_FILENAME = "open-prep-release.json";
 export const RELEASE_SCHEMA_VERSION = 1;
 export const REQUIRED_STATIC_ARTIFACTS = [
@@ -37,7 +73,7 @@ const FORBIDDEN_PATH_SEGMENTS = new Set([
   "test-results"
 ]);
 const WINDOWS_RESERVED_NAMES = /^(?:con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i;
-const SENSITIVE_CONTENT_PATTERNS = [
+const SENSITIVE_CONTENT_PATTERNS: readonly (readonly [RegExp, string])[] = [
   [/(?:^|[^A-Za-z0-9])[A-Za-z]:[\\/](?:Users|Documents and Settings)[\\/][^\s"'<>]+/i, "absolute Windows user path"],
   [/(?:^|[\s"'=(])\/(?:Users|home)\/[A-Za-z0-9._-]+\/[^\s"'<>]+/, "absolute home-directory path"],
   [/file:\/{2,3}(?:[A-Za-z]:|\/(?:Users|home)\/)/i, "local file URL"],
@@ -47,22 +83,28 @@ const SENSITIVE_CONTENT_PATTERNS = [
   [/sk-(?:proj-)?[A-Za-z0-9_-]{20,}/, "API secret token"]
 ];
 
-export async function removeStaticOutput(outputDirectory = path.resolve("out")) {
+export async function removeStaticOutput(outputDirectory = path.resolve("out")): Promise<void> {
   await rm(outputDirectory, { force: true, recursive: true });
 }
 
-export async function createArtifactInventory(outputDirectory = path.resolve("out")) {
+export async function createArtifactInventory(
+  outputDirectory = path.resolve("out")
+): Promise<ArtifactInventoryEntry[]> {
   const rootStats = await stat(outputDirectory).catch(() => undefined);
   if (!rootStats?.isDirectory()) {
     throw new Error(`Static web build not found at ${outputDirectory}. Build it from a clean output directory first.`);
   }
 
-  const files = [];
+  const files: ArtifactInventoryEntry[] = [];
   await visitDirectory(outputDirectory, "", files);
   return files;
 }
 
-async function visitDirectory(outputDirectory, relativeDirectory, files) {
+async function visitDirectory(
+  outputDirectory: string,
+  relativeDirectory: string,
+  files: ArtifactInventoryEntry[]
+): Promise<void> {
   const directory = path.join(outputDirectory, ...relativeDirectory.split("/").filter(Boolean));
   const entries = await readdir(directory, { withFileTypes: true });
   entries.sort((left, right) => left.name < right.name ? -1 : left.name > right.name ? 1 : 0);
@@ -94,7 +136,7 @@ async function visitDirectory(outputDirectory, relativeDirectory, files) {
   }
 }
 
-export function hashArtifactInventory(inventory) {
+export function hashArtifactInventory(inventory: readonly ArtifactInventoryEntry[]): string {
   const sorted = [...inventory].sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
   const seen = new Set();
 
@@ -110,7 +152,10 @@ export function hashArtifactInventory(inventory) {
   return sha256(`${JSON.stringify(sorted)}\n`);
 }
 
-export function selectCorePrecacheInventory(inventory, corePaths) {
+export function selectCorePrecacheInventory(
+  inventory: readonly ArtifactInventoryEntry[],
+  corePaths: readonly string[]
+): ArtifactInventoryEntry[] {
   const byPath = new Map(inventory.map((entry) => [entry.path, entry]));
   const selected = [...new Set(corePaths)].map((entryPath) => {
     assertPortableArtifactPath(entryPath);
@@ -122,7 +167,14 @@ export function selectCorePrecacheInventory(inventory, corePaths) {
   return selected.sort((left, right) => left.path < right.path ? -1 : left.path > right.path ? 1 : 0);
 }
 
-export function createCacheIdentity({ version, commit, workerPolicySha256, coreInventory }) {
+export function createCacheIdentity({
+  version,
+  commit,
+  workerPolicySha256,
+  coreInventory
+}: Pick<ReleaseSource, "commit" | "version" | "workerPolicySha256"> & {
+  coreInventory: readonly ArtifactInventoryEntry[];
+}): string {
   assertVersion(version);
   assertCommit(commit);
   assertHash(workerPolicySha256, "worker policy SHA-256");
@@ -144,7 +196,11 @@ export function createReleaseProvenance({
   inventorySha256,
   workerPolicySha256,
   cacheId
-}) {
+}: ReleaseSource & {
+  artifactCount: number;
+  cacheId: string;
+  inventorySha256: string;
+}): ReleaseMarker {
   assertCommit(commit);
   const provenance = {
     schemaVersion: RELEASE_SCHEMA_VERSION,
@@ -166,7 +222,10 @@ export function createReleaseProvenance({
   return provenance;
 }
 
-export async function writeReleaseMarker(outputDirectory, source) {
+export async function writeReleaseMarker(
+  outputDirectory: string,
+  source: ReleaseSource & { cacheId: string }
+): Promise<ReleaseMarker> {
   const inventory = await createArtifactInventory(outputDirectory);
   await validateRequiredStaticArtifacts(outputDirectory, inventory);
   await assertReleasePrivacy(outputDirectory, inventory);
@@ -182,19 +241,21 @@ export async function writeReleaseMarker(outputDirectory, source) {
   return marker;
 }
 
-export async function readReleaseMarker(outputDirectory = path.resolve("out")) {
+export async function readReleaseMarker(
+  outputDirectory = path.resolve("out")
+): Promise<ReleaseMarker> {
   const markerPath = path.join(outputDirectory, RELEASE_MARKER_FILENAME);
   let source;
   try {
     source = await readFile(markerPath, "utf8");
   } catch (error) {
-    if (error?.code === "ENOENT") {
+    if (isRecord(error) && error.code === "ENOENT") {
       throw new Error(`Verified release marker is missing: ${RELEASE_MARKER_FILENAME}`);
     }
     throw error;
   }
 
-  let marker;
+  let marker: unknown;
   try {
     marker = JSON.parse(source);
   } catch {
@@ -204,7 +265,10 @@ export async function readReleaseMarker(outputDirectory = path.resolve("out")) {
   return marker;
 }
 
-export async function validateReleaseOutput(outputDirectory = path.resolve("out"), expected = {}) {
+export async function validateReleaseOutput(
+  outputDirectory = path.resolve("out"),
+  expected: Partial<ReleaseSource & { cacheId: string }> = {}
+): Promise<{ inventory: ArtifactInventoryEntry[]; marker: ReleaseMarker }> {
   const inventory = await createArtifactInventory(outputDirectory);
   await validateRequiredStaticArtifacts(outputDirectory, inventory);
   await assertReleasePrivacy(outputDirectory, inventory);
@@ -215,7 +279,7 @@ export async function validateReleaseOutput(outputDirectory = path.resolve("out"
     throw new Error("Static web build does not match its release marker. Rebuild and finalize the artifact.");
   }
 
-  const comparisons = [
+  const comparisons: Array<readonly [string, unknown, unknown]> = [
     ["version", marker.version, expected.version],
     ["commit", marker.source.commit, expected.commit?.toLowerCase()],
     ["source ref", marker.source.ref, expected.sourceRef],
@@ -232,7 +296,10 @@ export async function validateReleaseOutput(outputDirectory = path.resolve("out"
   return { inventory, marker };
 }
 
-export async function validateRequiredStaticArtifacts(outputDirectory, inventory) {
+export async function validateRequiredStaticArtifacts(
+  outputDirectory: string,
+  inventory?: readonly ArtifactInventoryEntry[]
+): Promise<readonly ArtifactInventoryEntry[]> {
   const entries = inventory ?? await createArtifactInventory(outputDirectory);
   const byPath = new Map(entries.map((entry) => [entry.path, entry]));
 
@@ -249,8 +316,11 @@ export async function validateRequiredStaticArtifacts(outputDirectory, inventory
   return entries;
 }
 
-export async function assertReleasePrivacy(outputDirectory, inventory) {
-  const files = [];
+export async function assertReleasePrivacy(
+  outputDirectory: string,
+  inventory: readonly ArtifactInventoryEntry[]
+): Promise<void> {
+  const files: ReleaseFile[] = [];
   for (const entry of inventory) {
     assertPortableArtifactPath(entry.path);
     if (!isTextArtifactPath(entry.path)) continue;
@@ -262,7 +332,7 @@ export async function assertReleasePrivacy(outputDirectory, inventory) {
   assertReleaseFilePrivacy(files);
 }
 
-export function assertReleaseFilePrivacy(files) {
+export function assertReleaseFilePrivacy(files: readonly ReleaseFile[]): void {
   for (const entry of files) {
     assertPortableArtifactPath(entry.path);
     if (!isTextArtifactPath(entry.path)) continue;
@@ -276,11 +346,11 @@ export function assertReleaseFilePrivacy(files) {
   }
 }
 
-function isTextArtifactPath(relativePath) {
+function isTextArtifactPath(relativePath: string): boolean {
   return TEXT_FILENAMES.has(path.posix.basename(relativePath)) || TEXT_EXTENSIONS.has(path.posix.extname(relativePath).toLowerCase());
 }
 
-export function assertPortableArtifactPath(relativePath) {
+export function assertPortableArtifactPath(relativePath: string): void {
   if (typeof relativePath !== "string" || relativePath.length === 0) {
     throw new Error("Release artifact paths must be non-empty strings.");
   }
@@ -307,11 +377,11 @@ export function assertPortableArtifactPath(relativePath) {
   }
 }
 
-export function sha256(value) {
+export function sha256(value: string | Uint8Array): string {
   return createHash("sha256").update(value).digest("hex");
 }
 
-function isReleaseMetadataPath(relativePath) {
+function isReleaseMetadataPath(relativePath: string): boolean {
   const filename = path.posix.basename(relativePath);
   return (
     relativePath === RELEASE_MARKER_FILENAME ||
@@ -321,53 +391,62 @@ function isReleaseMetadataPath(relativePath) {
   );
 }
 
-function validateReleaseMarkerData(marker) {
-  if (marker === null || typeof marker !== "object" || Array.isArray(marker)) {
+function validateReleaseMarkerData(value: unknown): asserts value is ReleaseMarker {
+  if (!isRecord(value)) {
     throw new Error("Release marker must be a JSON object.");
   }
+  const marker = value;
   if (marker.schemaVersion !== RELEASE_SCHEMA_VERSION || marker.product !== "Open Prep") {
     throw new Error("Release marker schema or product is not supported.");
   }
-  assertVersion(marker.version);
-  if (marker.source === null || typeof marker.source !== "object") throw new Error("Release marker source is missing.");
-  assertCommit(marker.source.commit);
-  assertSafeMetadataString(marker.source.ref, "source ref");
-  if (typeof marker.source.clean !== "boolean") throw new Error("Release marker clean state must be boolean.");
-  if (marker.artifact === null || typeof marker.artifact !== "object") throw new Error("Release marker artifact data is missing.");
-  if (!Number.isSafeInteger(marker.artifact.files) || marker.artifact.files <= 0) {
+  const version = marker.version;
+  assertVersion(version);
+  if (!isRecord(marker.source)) throw new Error("Release marker source is missing.");
+  const source = marker.source;
+  assertCommit(source.commit);
+  assertSafeMetadataString(source.ref, "source ref");
+  if (typeof source.clean !== "boolean") throw new Error("Release marker clean state must be boolean.");
+  if (!isRecord(marker.artifact)) throw new Error("Release marker artifact data is missing.");
+  const artifact = marker.artifact;
+  if (typeof artifact.files !== "number" || !Number.isSafeInteger(artifact.files) || artifact.files <= 0) {
     throw new Error("Release marker artifact count must be a positive integer.");
   }
-  assertHash(marker.artifact.inventorySha256, "inventory SHA-256");
-  assertHash(marker.artifact.workerPolicySha256, "worker policy SHA-256");
-  assertSafeMetadataString(marker.artifact.cacheId, "cache identity");
-  if (!marker.artifact.cacheId.startsWith(`math-drill-offline-v${marker.version}-`)) {
+  assertHash(artifact.inventorySha256, "inventory SHA-256");
+  assertHash(artifact.workerPolicySha256, "worker policy SHA-256");
+  const cacheId = artifact.cacheId;
+  assertSafeMetadataString(cacheId, "cache identity");
+  if (!cacheId.startsWith(`math-drill-offline-v${version}-`)) {
     throw new Error("Release marker cache identity does not match its version.");
   }
 }
 
-function assertVersion(version) {
+function assertVersion(version: unknown): asserts version is string {
   if (typeof version !== "string" || !VERSION_PATTERN.test(version)) {
     throw new Error(`Invalid semantic version: ${String(version)}`);
   }
 }
 
-function assertCommit(commit) {
+function assertCommit(commit: unknown): asserts commit is string {
   if (typeof commit !== "string" || !COMMIT_PATTERN.test(commit)) {
     throw new Error("Source commit must be a full 40-character hexadecimal revision.");
   }
 }
 
-function assertHash(value, label) {
+function assertHash(value: unknown, label: string): asserts value is string {
   if (typeof value !== "string" || !HASH_PATTERN.test(value)) {
     throw new Error(`${label} must be a lowercase SHA-256 digest.`);
   }
 }
 
-function assertSafeMetadataString(value, label) {
+function assertSafeMetadataString(value: unknown, label: string): asserts value is string {
   if (typeof value !== "string" || value.length === 0 || value.length > 256 || /[\u0000-\u001f\u007f]/.test(value)) {
     throw new Error(`Release ${label} must be a short printable string.`);
   }
   if (path.posix.isAbsolute(value) || path.win32.isAbsolute(value) || /^file:/i.test(value)) {
     throw new Error(`Release ${label} cannot contain an absolute local path.`);
   }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return value !== null && typeof value === "object" && !Array.isArray(value);
 }

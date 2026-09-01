@@ -11,22 +11,28 @@ const fixedHeaders = Object.freeze({
   "X-Frame-Options": "DENY"
 });
 
-export async function writeStaticSecurityHeaders(outputDirectory) {
+export async function writeStaticSecurityHeaders(
+  outputDirectory: string
+): Promise<Readonly<Record<string, string>>> {
   const headers = createSecurityHeaders(await collectInlineScriptHashes(outputDirectory));
   const contents = serializeStaticSecurityHeaders(headers);
   await writeFile(path.join(outputDirectory, STATIC_SECURITY_HEADERS_FILENAME), contents, "utf8");
   return headers;
 }
 
-export async function readStaticSecurityHeaders(outputDirectory) {
+export async function readStaticSecurityHeaders(
+  outputDirectory: string
+): Promise<Readonly<Record<string, string>>> {
   const contents = await readFile(path.join(outputDirectory, STATIC_SECURITY_HEADERS_FILENAME), "utf8");
   return parseStaticSecurityHeaders(contents);
 }
 
-export function createSecurityHeaders(inlineScriptHashes = []) {
+export function createSecurityHeaders(
+  inlineScriptHashes: readonly string[] = []
+): Readonly<Record<string, string>> {
   const scriptSources = [
     "'self'",
-    ...[...new Set(inlineScriptHashes)].toSorted().map((hash) => `'sha256-${hash}'`)
+    ...[...new Set(inlineScriptHashes)].sort().map((hash) => `'sha256-${hash}'`)
   ];
   const contentSecurityPolicy = [
     "default-src 'self'",
@@ -50,17 +56,17 @@ export function createSecurityHeaders(inlineScriptHashes = []) {
   });
 }
 
-export function serializeStaticSecurityHeaders(headers) {
+export function serializeStaticSecurityHeaders(headers: Readonly<Record<string, string>>): string {
   return `/*\n${Object.entries(headers).map(([name, value]) => `  ${name}: ${value}`).join("\n")}\n`;
 }
 
-export function parseStaticSecurityHeaders(contents) {
+export function parseStaticSecurityHeaders(contents: string): Readonly<Record<string, string>> {
   const lines = contents.split(/\r?\n/u).filter((line) => line.trim() !== "");
   if (lines.shift()?.trim() !== "/*") {
     throw new Error("Static security headers must begin with the /* route pattern.");
   }
 
-  const headers = {};
+  const headers: Record<string, string> = {};
   for (const line of lines) {
     const separator = line.indexOf(":");
     if (separator < 1) throw new Error(`Invalid static security header: ${line.trim()}`);
@@ -72,8 +78,8 @@ export function parseStaticSecurityHeaders(contents) {
   return Object.freeze(headers);
 }
 
-async function collectInlineScriptHashes(outputDirectory) {
-  const hashes = new Set();
+async function collectInlineScriptHashes(outputDirectory: string): Promise<string[]> {
+  const hashes = new Set<string>();
 
   for (const file of await listHtmlFiles(outputDirectory)) {
     const contents = await readFile(file, "utf8");
@@ -83,11 +89,11 @@ async function collectInlineScriptHashes(outputDirectory) {
     }
   }
 
-  return [...hashes].toSorted();
+  return [...hashes].sort();
 }
 
-async function listHtmlFiles(directory) {
-  const files = [];
+async function listHtmlFiles(directory: string): Promise<string[]> {
+  const files: string[] = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const entryPath = path.join(directory, entry.name);
     if (entry.isDirectory()) {
@@ -96,5 +102,5 @@ async function listHtmlFiles(directory) {
       files.push(entryPath);
     }
   }
-  return files.toSorted();
+  return files.sort();
 }

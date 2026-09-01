@@ -4,11 +4,32 @@ import path from "node:path";
 import ts from "typescript";
 import { describe, expect, it } from "vitest";
 
-import { locales } from "@/features/i18n/i18n";
-import { appMessages } from "@/features/i18n/messages";
+import { locales, type Locale, type Messages } from "@/features/i18n/i18n";
+import arMessages from "@/features/i18n/locales/ar";
+import deMessages from "@/features/i18n/locales/de";
+import enMessages from "@/features/i18n/locales/en";
+import esMessages from "@/features/i18n/locales/es";
+import frMessages from "@/features/i18n/locales/fr";
+import hiMessages from "@/features/i18n/locales/hi";
+import jaMessages from "@/features/i18n/locales/ja";
+import ptMessages from "@/features/i18n/locales/pt";
+import zhHansMessages from "@/features/i18n/locales/zh-Hans";
+import zhHantMessages from "@/features/i18n/locales/zh-Hant";
 import { experienceQualityDynamicKeys } from "@/features/i18n/messages/experienceQuality";
 
 const sourceRoot = path.resolve(process.cwd(), "src");
+const runtimeMessages: Record<Locale, Messages> = {
+  ar: arMessages,
+  de: deMessages,
+  en: enMessages,
+  es: esMessages,
+  fr: frMessages,
+  hi: hiMessages,
+  ja: jaMessages,
+  pt: ptMessages,
+  "zh-Hans": zhHansMessages,
+  "zh-Hant": zhHantMessages
+};
 const translatedLocales = locales.filter((locale) => locale !== "en");
 const approvedStaticUiFallbacks = new Set<string>();
 const approvedAuthoredContentBoundary = [
@@ -52,16 +73,16 @@ describe("application translation catalog", () => {
     const missing = Object.fromEntries(
       translatedLocales.map((locale) => [
         locale,
-        [...literalKeys].filter((key) => appMessages[locale][key] === undefined && !approvedStaticUiFallbacks.has(key))
+        [...literalKeys].filter((key) => runtimeMessages[locale][key] === undefined && !approvedStaticUiFallbacks.has(key))
       ])
     );
     expect(missing).toEqual(Object.fromEntries(translatedLocales.map((locale) => [locale, []])));
-    expect(appMessages.fr["Case Practice"]).not.toBe("Case Practice");
+    expect(runtimeMessages.fr["Case Practice"]).not.toBe("Case Practice");
   });
 
   it("preserves interpolation placeholders throughout every locale catalog", () => {
     for (const locale of translatedLocales) {
-      for (const [key, message] of Object.entries(appMessages[locale])) {
+      for (const [key, message] of Object.entries(runtimeMessages[locale])) {
         expect(placeholders(message), `${locale}: ${key}`).toEqual(placeholders(key));
       }
     }
@@ -72,7 +93,7 @@ describe("application translation catalog", () => {
     const missing = Object.fromEntries(
       translatedLocales.map((locale) => [
         locale,
-        missingCatalogKeys(appMessages[locale], dynamicUiKeys)
+        missingCatalogKeys(runtimeMessages[locale], dynamicUiKeys)
       ])
     );
 
@@ -80,7 +101,7 @@ describe("application translation catalog", () => {
   });
 
   it("detects a missing registered dynamic option fixture", () => {
-    expect(missingCatalogKeys(appMessages.de, ["Exact", "Uncataloged dynamic option"])).toEqual([
+    expect(missingCatalogKeys(runtimeMessages.de, ["Exact", "Uncataloged dynamic option"])).toEqual([
       "Uncataloged dynamic option"
     ]);
   });
@@ -118,8 +139,8 @@ describe("application translation catalog", () => {
     ]);
 
     for (const locale of translatedLocales) {
-      expect(appMessages[locale]["Language coverage"], `${locale}: disclosure heading`).toBeTruthy();
-      expect(appMessages[locale][coverageDisclosure], `${locale}: disclosure copy`).toBeTruthy();
+      expect(runtimeMessages[locale]["Language coverage"], `${locale}: disclosure heading`).toBeTruthy();
+      expect(runtimeMessages[locale][coverageDisclosure], `${locale}: disclosure copy`).toBeTruthy();
     }
   });
 });

@@ -5,7 +5,7 @@ import {
   removeStaticOutput,
   validateReleaseOutput,
   writeReleaseMarker
-} from "./release-contract.mjs";
+} from "./release-contract.mts";
 
 const [command, ...rawArguments] = process.argv.slice(2);
 const { flags, values } = parseArguments(rawArguments);

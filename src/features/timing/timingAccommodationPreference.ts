@@ -6,7 +6,7 @@ import {
 export const timingAccommodationPreferenceKey = "open_prep_timing_accommodation" as const;
 
 type PreferenceReader = Pick<Storage, "getItem">;
-type PreferenceWriter = Pick<Storage, "removeItem" | "setItem">;
+type PreferenceWriter = Pick<Storage, "setItem">;
 
 export function readTimingAccommodationPreference(
   storage: PreferenceReader = window.localStorage
@@ -19,10 +19,4 @@ export function writeTimingAccommodationPreference(
   storage: PreferenceWriter = window.localStorage
 ): void {
   storage.setItem(timingAccommodationPreferenceKey, accommodation);
-}
-
-export function clearTimingAccommodationPreference(
-  storage: PreferenceWriter = window.localStorage
-): void {
-  storage.removeItem(timingAccommodationPreferenceKey);
 }

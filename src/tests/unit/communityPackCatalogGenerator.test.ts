@@ -11,7 +11,10 @@ import {
 } from "@/features/question-packs/questionPack";
 import { reviewQuestionPack } from "@/features/question-packs/questionPackReview";
 import { questionPackMaxFileBytes } from "@/features/question-packs/questionPackValidation";
-import { parseCommunityPackReviewMetadata } from "@/features/question-packs/communityPackCatalog";
+import {
+  compareCommunityPackSemVer,
+  parseCommunityPackReviewMetadata
+} from "@/features/question-packs/communityPackCatalog";
 
 // @ts-expect-error The executable JavaScript generator is exercised directly by this suite.
 import { generateCommunityPackCatalog, syncCommunityPackCatalog } from "../../../scripts/sync-community-pack-catalog.mjs";
@@ -19,6 +22,7 @@ import { generateCommunityPackCatalog, syncCommunityPackCatalog } from "../../..
 const fixturePath = resolve("src/tests/fixtures/community-packs/valid-review.json");
 const temporaryDirectories: string[] = [];
 const canonicalTools = {
+  compareCommunityPackSemVer,
   getQuestionPackDifficultyCounts,
   parseCommunityPackReviewMetadata,
   questionPackMaxFileBytes,

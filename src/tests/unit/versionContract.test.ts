@@ -4,7 +4,7 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { checkVersionContract } from "../../../scripts/check-version-contract.mjs";
+import { checkVersionContract } from "../../../scripts/check-version-contract.mts";
 
 describe("release version contract", () => {
   it("uses package.json as the one authoritative repository version", async () => {

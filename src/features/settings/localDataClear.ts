@@ -6,6 +6,7 @@ import {
   localPreferenceKeys,
   type LocalDataInvalidationKind
 } from "@/features/settings/localDataInventory";
+import { countPersonalData } from "@/features/settings/personalDataClear";
 import {
   appStoreNames,
   type AppStorage,
@@ -52,18 +53,11 @@ export async function previewAllSavedAppData(
   const preferenceStorage = options.preferenceStorage === undefined
     ? getLocalStorage()
     : options.preferenceStorage ?? undefined;
-  const fitStories = snapshot.practice_records.filter((record) => record.kind === "fit_story").length;
-  const preparationProfiles = snapshot.practice_records.filter(
-    (record) => record.kind === "prep_profile"
-  ).length;
-  const marketSizingNotes = snapshot.market_sizing_attempts.filter((attempt) =>
-    Object.hasOwn(attempt, "note")
-  ).length;
 
   return {
     indexedDbRecords: countSnapshotRecords(snapshot),
     installedPacks: snapshot.question_packs.length,
-    personalItems: fitStories + preparationProfiles + marketSizingNotes,
+    personalItems: countPersonalData(snapshot).totalItems,
     preferenceCount: preferenceStorage === undefined
       ? 0
       : localPreferenceKeys.filter((key) => preferenceStorage.getItem(key) !== null).length,

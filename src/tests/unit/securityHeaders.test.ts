@@ -10,7 +10,7 @@ import {
   parseStaticSecurityHeaders,
   readStaticSecurityHeaders,
   writeStaticSecurityHeaders
-} from "../../../scripts/security-headers.mjs";
+} from "../../../scripts/security-headers.mts";
 
 const temporaryDirectories: string[] = [];
 

@@ -4,8 +4,6 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import {
-  communityPackCatalogManifestFile,
-  communityPackCatalogSourceRoot,
   communityPackContentLicenseIds,
   getCommunityPackFilePath,
   parseCommunityPackReviewMetadata,
@@ -29,9 +27,7 @@ const context: CommunityPackReviewContext = {
 };
 
 describe("community pack catalog review metadata", () => {
-  it("freezes the source layout, manifest path, and exact content-license allowlist", () => {
-    expect(communityPackCatalogSourceRoot).toBe("public/community-packs");
-    expect(communityPackCatalogManifestFile).toBe("public/community-packs/catalog.v1.json");
+  it("builds the canonical pack path and freezes the content-license allowlist", () => {
     expect(getCommunityPackFilePath("profitability-foundations", "1.0.0")).toBe(expectedPackFile);
     expect(communityPackContentLicenseIds).toEqual(["CC0-1.0", "CC-BY-4.0", "CC-BY-SA-4.0"]);
   });

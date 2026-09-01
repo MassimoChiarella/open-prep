@@ -3,7 +3,6 @@ export const locales = ["en", "es", "fr", "de", "pt", "zh-Hans", "zh-Hant", "ja"
 export type Locale = (typeof locales)[number];
 export type LocalePreference = Locale | "auto";
 export type Messages = Record<string, string>;
-export type MessageCatalog = Record<Locale, Messages>;
 export type PartialMessageCatalog = Partial<Record<Locale, Messages>>;
 export type TranslationVariables = Record<string, string | number>;
 
@@ -46,15 +45,6 @@ export function matchLocale(languageTags: readonly string[] | undefined): Locale
 
 export function localeDirection(locale: Locale): "ltr" | "rtl" {
   return locale === "ar" ? "rtl" : "ltr";
-}
-
-export function mergeCatalogs(...catalogs: readonly PartialMessageCatalog[]): MessageCatalog {
-  return Object.fromEntries(
-    locales.map((locale) => [
-      locale,
-      Object.assign({}, ...catalogs.map((catalog) => catalog[locale] ?? {}))
-    ])
-  ) as MessageCatalog;
 }
 
 export function translate(

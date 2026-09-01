@@ -19,8 +19,7 @@ import {
   type UnknownRecord
 } from "@/features/question-packs/questionPackValidation";
 
-export const communityPackCatalogSourceRoot = "public/community-packs" as const;
-export const communityPackCatalogManifestFile = "public/community-packs/catalog.v1.json" as const;
+const communityPackCatalogSourceRoot = "public/community-packs" as const;
 
 export const communityPackCatalogKinds = [
   "fixed_numeric",

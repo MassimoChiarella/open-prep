@@ -60,7 +60,7 @@ jobs:
           node scripts/prepare-web-build.mjs verify --require-clean
           rm -rf dist
           node scripts/package-release.mjs
-          node scripts/check-version-contract.mjs --artifacts dist
+          node scripts/check-version-contract.mts --artifacts dist
 
       - name: Upload verified release assets
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1

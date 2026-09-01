@@ -4,14 +4,33 @@ import { fileURLToPath } from "node:url";
 
 const SEMVER_PATTERN = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
+export interface VersionContractOptions {
+  artifactDirectory?: string;
+  rootDirectory?: string;
+  sourceRef?: string;
+}
+
+interface PackageMetadata {
+  packages?: Record<string, { version?: unknown }>;
+  version?: unknown;
+}
+
+interface ReleaseProvenanceMetadata {
+  artifact?: {
+    archive?: unknown;
+    topLevelDirectory?: unknown;
+  };
+  version?: unknown;
+}
+
 export async function checkVersionContract({
   rootDirectory = process.cwd(),
   sourceRef = process.env.GITHUB_REF,
   artifactDirectory
-} = {}) {
+}: VersionContractOptions = {}): Promise<{ version: string }> {
   const [packageJson, packageLock, changelog] = await Promise.all([
-    readJson(path.join(rootDirectory, "package.json")),
-    readJson(path.join(rootDirectory, "package-lock.json")),
+    readJson<PackageMetadata>(path.join(rootDirectory, "package.json")),
+    readJson<PackageMetadata>(path.join(rootDirectory, "package-lock.json")),
     readFile(path.join(rootDirectory, "CHANGELOG.md"), "utf8")
   ]);
   const version = packageJson.version;
@@ -46,7 +65,7 @@ export async function checkVersionContract({
   return { version };
 }
 
-async function checkOfficialArtifacts(directory, version) {
+async function checkOfficialArtifacts(directory: string, version: string): Promise<void> {
   const releaseName = `open-prep-v${version}`;
   const archiveName = `${releaseName}.tar.gz`;
   const provenanceName = `${releaseName}.provenance.json`;
@@ -56,7 +75,7 @@ async function checkOfficialArtifacts(directory, version) {
     if (!entries.includes(required)) throw new Error(`Release artifact is missing: ${required}.`);
   }
 
-  const provenance = await readJson(path.join(directory, provenanceName));
+  const provenance = await readJson<ReleaseProvenanceMetadata>(path.join(directory, provenanceName));
   if (
     provenance.version !== version ||
     provenance.artifact?.archive !== archiveName ||
@@ -72,20 +91,20 @@ async function checkOfficialArtifacts(directory, version) {
   }
 }
 
-async function readJson(filename) {
+async function readJson<T>(filename: string): Promise<T> {
   try {
-    return JSON.parse(await readFile(filename, "utf8"));
+    return JSON.parse(await readFile(filename, "utf8")) as T;
   } catch (error) {
     throw new Error(`Could not read valid JSON from ${filename}: ${error instanceof Error ? error.message : String(error)}`);
   }
 }
 
-function parseArguments(argumentsList) {
+function parseArguments(argumentsList: string[]): VersionContractOptions {
   if (argumentsList.length === 0) return {};
   if (argumentsList.length === 2 && argumentsList[0] === "--artifacts") {
     return { artifactDirectory: argumentsList[1] };
   }
-  throw new Error("Usage: node scripts/check-version-contract.mjs [--artifacts <directory>]");
+  throw new Error("Usage: node scripts/check-version-contract.mts [--artifacts <directory>]");
 }
 
 if (process.argv[1] !== undefined && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

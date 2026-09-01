@@ -11,7 +11,6 @@ const packFileName = "pack.mathdrill.json";
 const reviewFileName = "review.json";
 const fixedImportedAt = "1970-01-01T00:00:00.000Z";
 const safeIdPattern = /^[a-z0-9][a-z0-9_-]{0,79}$/;
-const semVerPattern = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|\d*[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 const difficultyOrder = ["beginner", "intermediate", "advanced", "expert"];
 
 export async function createCanonicalPackTools(root = projectRoot) {
@@ -41,6 +40,7 @@ export async function createCanonicalPackTools(root = projectRoot) {
     return {
       close: () => server.close(),
       tools: {
+        compareCommunityPackSemVer: communityCatalog.compareCommunityPackSemVer,
         getQuestionPackDifficultyCounts: questionPack.getQuestionPackDifficultyCounts,
         parseCommunityPackReviewMetadata: communityCatalog.parseCommunityPackReviewMetadata,
         questionPackMaxFileBytes: validation.questionPackMaxFileBytes,
@@ -60,8 +60,9 @@ export async function generateCommunityPackCatalog({ repositoryRoot = projectRoo
   try {
     const activeTools = tools ?? loaded.tools;
     assertCanonicalTools(activeTools);
-    const appVersion = await readAppVersion(repositoryRoot);
-    const candidates = await findPackCandidates(repositoryRoot);
+    const compareSemVer = activeTools.compareCommunityPackSemVer;
+    const appVersion = await readAppVersion(repositoryRoot, compareSemVer);
+    const candidates = await findPackCandidates(repositoryRoot, compareSemVer);
     const identities = new Set();
     const records = [];
 
@@ -77,8 +78,8 @@ export async function generateCommunityPackCatalog({ repositoryRoot = projectRoo
       );
     }
 
-    records.sort(compareCatalogRecord);
-    validateLineages(records);
+    records.sort((left, right) => compareCatalogRecord(left, right, compareSemVer));
+    validateLineages(records, compareSemVer);
 
     const entries = [];
     const tombstones = [];
@@ -222,7 +223,7 @@ async function validateCandidate({
       `${candidate.reviewFile} checksum drift: expected ${review.metadata.sha256}, computed ${sha256}.`
     );
   }
-  if (compareSemVer(review.metadata.compatibility.minimumAppVersion, appVersion) > 0) {
+  if (tools.compareCommunityPackSemVer(review.metadata.compatibility.minimumAppVersion, appVersion) > 0) {
     throw new Error(
       `${candidate.reviewFile} requires Open Prep ${review.metadata.compatibility.minimumAppVersion}, but package.json is ${appVersion}.`
     );
@@ -232,7 +233,7 @@ async function validateCandidate({
   return { bytes: packBytes.byteLength, metadata: review.metadata, sha256 };
 }
 
-async function findPackCandidates(repositoryRoot) {
+async function findPackCandidates(repositoryRoot, compareSemVer) {
   const catalogRoot = join(repositoryRoot, ...sourceDirectory.split("/"));
   const rootEntries = await readDirectory(catalogRoot, true);
   const candidates = [];
@@ -247,7 +248,11 @@ async function findPackCandidates(repositoryRoot) {
     const idPath = join(catalogRoot, idEntry.name);
     for (const versionEntry of sortDirectoryEntries(await readDirectory(idPath))) {
       assertDirectory(versionEntry, `${sourceDirectory}/${idEntry.name}/${versionEntry.name}`);
-      parseSemVer(versionEntry.name, `${sourceDirectory}/${idEntry.name}/${versionEntry.name}`);
+      assertSemVer(
+        versionEntry.name,
+        `${sourceDirectory}/${idEntry.name}/${versionEntry.name}`,
+        compareSemVer
+      );
       const versionPath = join(idPath, versionEntry.name);
       const files = sortDirectoryEntries(await readDirectory(versionPath));
       const expected = new Set([packFileName, reviewFileName]);
@@ -323,7 +328,7 @@ function deriveTopics(pack) {
   ];
 }
 
-function validateLineages(records) {
+function validateLineages(records, compareSemVer) {
   const lastById = new Map();
   const publisherById = new Map();
 
@@ -347,13 +352,13 @@ function validateLineages(records) {
   }
 }
 
-async function readAppVersion(repositoryRoot) {
+async function readAppVersion(repositoryRoot, compareSemVer) {
   const packagePath = join(repositoryRoot, "package.json");
   const payload = parseUtf8Json(await readFile(packagePath), "package.json");
   if (typeof payload !== "object" || payload === null || Array.isArray(payload)) {
     throw new Error("package.json must contain an object.");
   }
-  parseSemVer(payload.version, "package.json version");
+  assertSemVer(payload.version, "package.json version", compareSemVer);
   return payload.version;
 }
 
@@ -389,6 +394,7 @@ function assertDirectory(entry, displayPath) {
 
 function assertCanonicalTools(tools) {
   for (const name of [
+    "compareCommunityPackSemVer",
     "getQuestionPackDifficultyCounts",
     "parseCommunityPackReviewMetadata",
     "reviewQuestionPack",
@@ -401,50 +407,16 @@ function assertCanonicalTools(tools) {
   }
 }
 
-function parseSemVer(value, label) {
+function assertSemVer(value, label, compareSemVer) {
   if (typeof value !== "string") throw new Error(`${label} must be a valid SemVer value.`);
-  const match = semVerPattern.exec(value);
-  if (match === null) throw new Error(`${label} must be a valid SemVer value.`);
-  return {
-    major: BigInt(match[1]),
-    minor: BigInt(match[2]),
-    patch: BigInt(match[3]),
-    prerelease: match[4]?.split(".") ?? []
-  };
+  try {
+    compareSemVer(value, value);
+  } catch {
+    throw new Error(`${label} must be a valid SemVer value.`);
+  }
 }
 
-function compareSemVer(left, right) {
-  const leftVersion = parseSemVer(left, left);
-  const rightVersion = parseSemVer(right, right);
-  for (const part of ["major", "minor", "patch"]) {
-    if (leftVersion[part] !== rightVersion[part]) {
-      return leftVersion[part] < rightVersion[part] ? -1 : 1;
-    }
-  }
-  if (leftVersion.prerelease.length === 0 || rightVersion.prerelease.length === 0) {
-    return leftVersion.prerelease.length === rightVersion.prerelease.length
-      ? 0
-      : leftVersion.prerelease.length === 0
-        ? 1
-        : -1;
-  }
-
-  const length = Math.max(leftVersion.prerelease.length, rightVersion.prerelease.length);
-  for (let index = 0; index < length; index += 1) {
-    const leftPart = leftVersion.prerelease[index];
-    const rightPart = rightVersion.prerelease[index];
-    if (leftPart === undefined || rightPart === undefined) return leftPart === undefined ? -1 : 1;
-    if (leftPart === rightPart) continue;
-    const leftNumeric = /^\d+$/.test(leftPart);
-    const rightNumeric = /^\d+$/.test(rightPart);
-    if (leftNumeric && rightNumeric) return BigInt(leftPart) < BigInt(rightPart) ? -1 : 1;
-    if (leftNumeric !== rightNumeric) return leftNumeric ? -1 : 1;
-    return compareText(leftPart, rightPart);
-  }
-  return 0;
-}
-
-function compareCatalogRecord(left, right) {
+function compareCatalogRecord(left, right, compareSemVer) {
   return (
     compareText(left.metadata.id, right.metadata.id) ||
     compareSemVer(left.metadata.version, right.metadata.version) ||

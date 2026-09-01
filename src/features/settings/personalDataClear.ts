@@ -43,7 +43,7 @@ export async function clearPersonalData(
   return preview;
 }
 
-function countPersonalData(
+export function countPersonalData(
   snapshot: AppStorageSnapshot<typeof personalDataStoreNames>
 ): PersonalDataClearPreview {
   const fitStories = snapshot.practice_records.filter((record) => record.kind === "fit_story").length;

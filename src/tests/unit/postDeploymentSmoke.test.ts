@@ -11,7 +11,7 @@ import {
   validateSecurityHeaders,
   validateServiceWorkerCacheControl,
   validateServiceWorkerSource
-} from "../../../scripts/post-deployment-smoke.mjs";
+} from "../../../scripts/post-deployment-smoke.mts";
 
 const origin = "https://prep.example";
 const version = "1.2.3";
@@ -171,11 +171,11 @@ describe("post-deployment smoke contract", () => {
   });
 
   it("fails without exactly one explicit origin before starting network or browser work", () => {
-    const result = spawnSync(process.execPath, [path.resolve("scripts/post-deployment-smoke.mjs")], {
+    const result = spawnSync(process.execPath, [path.resolve("scripts/post-deployment-smoke.mts")], {
       encoding: "utf8"
     });
 
     expect(result.status).not.toBe(0);
-    expect(result.stderr).toContain("Usage: node scripts/post-deployment-smoke.mjs");
+    expect(result.stderr).toContain("Usage: node scripts/post-deployment-smoke.mts");
   });
 });

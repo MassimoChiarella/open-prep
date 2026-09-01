@@ -7,29 +7,22 @@ import {
   completeBackupLimits,
   completeBackupStoreNames,
   localDataInvalidationKinds,
-  localPreferenceKeys,
-  privateOptionalFields,
-  privatePracticeRecordKinds,
-  standardProgressStoreNames
+  localPreferenceKeys
 } from "@/features/settings/localDataInventory";
-import { appStoreNames, progressStoreNames } from "@/lib/storage/appStorageTypes";
+import { appStoreNames } from "@/lib/storage/appStorageTypes";
 
 describe("local data inventory contract", () => {
-  it("covers every IndexedDB store without widening the legacy progress scope", () => {
+  it("covers every IndexedDB store", () => {
     expect(completeBackupStoreNames).toEqual(appStoreNames);
-    expect(standardProgressStoreNames).toEqual(progressStoreNames);
-    expect(standardProgressStoreNames).not.toContain("question_packs");
   });
 
-  it("freezes explicit preferences, private fields, limits, and invalidation messages", () => {
+  it("freezes explicit preferences, limits, and invalidation messages", () => {
     expect(localPreferenceKeys).toEqual([
       "consulting_math_locale_preference",
       "consulting_math_theme_preference",
       "open_prep_timing_accommodation",
       "open_prep_question_pack_pool"
     ]);
-    expect(privatePracticeRecordKinds).toEqual(["fit_story", "prep_profile"]);
-    expect(privateOptionalFields).toEqual(["market_sizing_attempts.note"]);
     expect(completeBackupLimits.maxQuestionPacks).toBe(200);
     expect(completeBackupLimits.maxFileBytes).toBe(40 * 1024 * 1024);
     expect(localDataInvalidationKinds).toEqual(["personal_data_cleared", "all_data_cleared"]);

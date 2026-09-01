@@ -532,19 +532,6 @@ export async function loadQuestionPackPage(
   });
 }
 
-export async function loadQuestionPacks(storage: AppStorage): Promise<QuestionPackRecord[]> {
-  const packs: QuestionPackRecord[] = [];
-  let afterKey: IDBValidKey | undefined;
-
-  do {
-    const page = await loadQuestionPackPage(storage, afterKey);
-    packs.push(...page.values);
-    afterKey = page.continuationKey;
-  } while (afterKey !== undefined);
-
-  return packs;
-}
-
 export async function saveQuestionPack(
   storage: AppStorage,
   pack: QuestionPackRecord

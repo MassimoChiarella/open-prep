@@ -4,7 +4,6 @@ import {
   deleteQuestionPack,
   getQuestionPackStoredBytes,
   loadQuestionPackPage,
-  loadQuestionPacks,
   projectQuestionPackUsage,
   questionPackListPageSize,
   questionPackMaxInstalledBytes,
@@ -121,7 +120,7 @@ describe("question-pack installed-library limits", () => {
     put.mockRestore();
   });
 
-  it("pages hundreds of legacy packs without gaps, duplicates, or getAll", async () => {
+  it("pages hundreds of legacy packs newest-first without overlap or getAll", async () => {
     const storage = new MemoryAppStorage();
     const installed = Array.from({ length: 300 }, (_, index) => pack(index));
     await Promise.all(installed.map((value) => storage.put("question_packs", value)));
@@ -129,18 +128,21 @@ describe("question-pack installed-library limits", () => {
 
     const first = await loadQuestionPackPage(storage);
     const second = await loadQuestionPackPage(storage, first.continuationKey);
-    const all = await loadQuestionPacks(storage);
 
     expect(first.values).toHaveLength(questionPackListPageSize);
     expect(second.values).toHaveLength(questionPackListPageSize);
     expect(first.values.map(({ id }) => id)).toEqual(
       Array.from({ length: questionPackListPageSize }, (_, index) => `pack-${299 - index}`)
     );
+    expect(second.values.map(({ id }) => id)).toEqual(
+      Array.from(
+        { length: questionPackListPageSize },
+        (_, index) => `pack-${299 - questionPackListPageSize - index}`
+      )
+    );
     expect(new Set([...first.values, ...second.values].map(({ id }) => id)).size).toBe(
       questionPackListPageSize * 2
     );
-    expect(all).toHaveLength(300);
-    expect(new Set(all.map(({ id }) => id)).size).toBe(300);
     expect(getAll).not.toHaveBeenCalled();
   });
 

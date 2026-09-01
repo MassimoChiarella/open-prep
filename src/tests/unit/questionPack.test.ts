@@ -8,7 +8,7 @@ import {
   createQuestionPackDrillSession,
   deleteQuestionPack,
   getQuestionPackDifficultyCounts,
-  loadQuestionPacks,
+  loadQuestionPackPage,
   questionPackMaxFileBytes,
   questionPackMaxQuestions,
   saveQuestionPack,
@@ -502,7 +502,7 @@ describe("question-pack runtime", () => {
       if (second.status === "valid") await saveQuestionPack(storage, second.pack);
     }
 
-    expect(await loadQuestionPacks(storage)).toHaveLength(publicQuestionPackAssets.length);
+    expect(await storage.count("question_packs")).toBe(publicQuestionPackAssets.length);
   });
 
   it("serializes a validated pack without local storage metadata", () => {
@@ -726,13 +726,13 @@ describe("question-pack persistence", () => {
 
     await saveQuestionPack(storage, older);
     await saveQuestionPack(storage, newer);
-    expect((await loadQuestionPacks(storage)).map(({ id }) => id)).toEqual(["school-pack", "company-case-prep"]);
+    expect((await loadQuestionPackPage(storage)).values.map(({ id }) => id)).toEqual(["school-pack", "company-case-prep"]);
 
     await saveQuestionPack(storage, { ...older, title: "Updated Pack", packVersion: "2.0.0" });
     expect(await storage.get("question_packs", older.id)).toMatchObject({ title: "Updated Pack", packVersion: "2.0.0" });
 
     await deleteQuestionPack(storage, newer.id);
-    expect((await loadQuestionPacks(storage)).map(({ id }) => id)).toEqual(["company-case-prep"]);
+    expect((await loadQuestionPackPage(storage)).values.map(({ id }) => id)).toEqual(["company-case-prep"]);
   });
 });
 

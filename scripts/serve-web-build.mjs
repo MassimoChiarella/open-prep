@@ -8,8 +8,8 @@ import {
   RELEASE_MARKER_FILENAME,
   validateReleaseOutput,
   validateRequiredStaticArtifacts
-} from "./release-contract.mjs";
-import { readStaticSecurityHeaders } from "./security-headers.mjs";
+} from "./release-contract.mts";
+import { readStaticSecurityHeaders } from "./security-headers.mts";
 
 const rootDirectory = path.resolve("out");
 const host = "127.0.0.1";
