@@ -169,6 +169,7 @@ export function BrainstormingDrill({
           {t("Optional reflection note")}
           <textarea
             className={uiInputs.textarea}
+            dir="auto"
             onChange={(event) => {
               setNote(event.currentTarget.value);
               setSaveStatus("idle");

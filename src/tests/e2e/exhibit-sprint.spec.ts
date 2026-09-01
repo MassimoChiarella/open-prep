@@ -7,8 +7,16 @@ test("a user completes a deterministic three-question Exhibit Sprint", async ({ 
   await expect(page.getByRole("heading", { name: "Exhibit Sprint" })).toBeVisible();
   await page.waitForLoadState("networkidle");
   await page.getByLabel("3").check();
+  await page.getByRole("combobox", { name: "Timing choice" }).selectOption("time_and_a_half");
+  await page.getByRole("checkbox", { name: "Remember this timing choice on this device" }).check();
   await page.getByRole("button", { name: "Start Exhibit Sprint" }).click();
   await expect(page.getByRole("timer")).toContainText("remaining");
+  await expect(page.getByTestId("exhibit-sprint-active-timing")).toContainText(
+    "Time and a half. Your limit is 1m 30s; the standard limit is 1 min."
+  );
+  expect(await page.evaluate(() => localStorage.getItem("open_prep_timing_accommodation"))).toBe(
+    "time_and_a_half"
+  );
 
   await page.getByLabel("Answer", { exact: true }).fill("45.8%");
   await page.getByRole("button", { name: "Submit Answer" }).click();
@@ -24,6 +32,9 @@ test("a user completes a deterministic three-question Exhibit Sprint", async ({ 
   await page.getByRole("button", { name: "View Summary" }).click();
 
   await expect(page.getByTestId("exhibit-sprint-summary")).toContainText("3 of 3 correct");
+  await expect(page.getByTestId("exhibit-sprint-summary-timing")).toContainText(
+    "Timing accommodation: Time and a half"
+  );
 });
 
 for (const width of [320, 390]) {

@@ -1,15 +1,15 @@
 import { expect, test, type Page } from "@playwright/test";
 
 const releaseViewportRoutes = [
-  { name: "dashboard", path: "/", readyText: "Start with a focused drill" },
-  { name: "drills", path: "/drills", readyText: "Start fast" },
-  { name: "benchmark", path: "/benchmark", readyText: "Benchmark your performance" },
-  { name: "progress", path: "/progress", readyText: "No drill history yet." },
-  { name: "market-sizing", path: "/market-sizing", readyText: "Guided Market Sizing" },
-  { name: "exhibits", path: "/exhibits", readyText: "Exhibit Drills" },
-  { name: "case-practice", path: "/case-practice", readyText: "Choose a focused skill" },
-  { name: "formulas", path: "/formulas", readyText: "Formula Library" },
-  { name: "settings", path: "/settings", readyText: "Local App Settings" }
+  { name: "dashboard", path: "/", readyHeading: "Dashboard" },
+  { name: "drills", path: "/drills", readyHeading: "Drill Selection" },
+  { name: "benchmark", path: "/benchmark", readyHeading: "Benchmark your performance" },
+  { name: "progress", path: "/progress", readyHeading: "Progress Dashboard" },
+  { name: "market-sizing", path: "/market-sizing", readyHeading: "Guided Market Sizing" },
+  { name: "exhibits", path: "/exhibits", readyHeading: "Exhibit Drills" },
+  { name: "case-practice", path: "/case-practice", readyHeading: "Case Practice" },
+  { name: "formulas", path: "/formulas", readyHeading: "Formula Library" },
+  { name: "settings", path: "/settings", readyHeading: "Local App Settings" }
 ];
 
 const viewportCases = [
@@ -65,7 +65,7 @@ test.describe("release viewport visual baselines", () => {
       await page.goto(route.path);
       await installStableScreenshotStyles(page);
       await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-      await expect(page.getByText(route.readyText).first()).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: route.readyHeading })).toBeVisible();
       await expect(page).toHaveScreenshot(`${route.name}-dark-desktop.png`, {
         animations: "disabled",
         fullPage: true,
@@ -95,12 +95,12 @@ test.describe("release viewport visual baselines", () => {
 
 async function expectCoreRouteScreenshot(
   page: Page,
-  route: { name: string; path: string; readyText: string },
+  route: { name: string; path: string; readyHeading: string },
   viewportLabel: "desktop" | "mobile" | "tablet"
 ): Promise<void> {
   await page.goto(route.path);
   await installStableScreenshotStyles(page);
-  await expect(page.getByText(route.readyText).first()).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: route.readyHeading })).toBeVisible();
   await expect(page).toHaveScreenshot(`${route.name}-${viewportLabel}.png`, {
     animations: "disabled",
     fullPage: true,

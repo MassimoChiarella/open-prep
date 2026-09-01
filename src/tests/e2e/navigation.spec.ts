@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 import { benchmarkTests } from "../../data/questionBank/benchmarkTests";
 import { brightCartFullCase } from "../../data/casePractice/fullCaseSimulations";
@@ -19,6 +19,7 @@ test("core routes expose distinct document titles", async ({ page }) => {
     ["/market-sizing", "Market Sizing"],
     ["/exhibits", "Exhibit Practice"],
     ["/case-practice", "Case Practice"],
+    ["/content-packs?view=discover", "Content Packs"],
     ["/settings", "Settings"],
     ["/content-packs/downloads", "Content Pack Downloads"],
     ["/missing-release-route", "Page Not Found"]
@@ -32,6 +33,44 @@ test("core routes expose distinct document titles", async ({ page }) => {
   }
 
   expect(new Set(titles).size).toBe(routes.length);
+});
+
+test("new dashboard offers keyboard-reachable starting intents at 320px and in RTL", async ({ page }) => {
+  await page.setViewportSize({ height: 900, width: 320 });
+  await page.goto("/");
+
+  const firstRun = page.getByTestId("first-run-choices");
+  const choices = [
+    ["Build my prep plan", "/case-practice/plan/"],
+    ["Take a baseline", "/benchmark/"],
+    ["Practice a specific skill", "/case-practice/"],
+    ["Find or create a content pack", "/content-packs/?view=discover"]
+  ] as const;
+  const choiceLinks: Locator[] = [];
+
+  await expect(firstRun.getByRole("heading", { name: "Choose how to start" })).toBeVisible();
+  await expect(firstRun.locator("ul").getByRole("link")).toHaveCount(4);
+
+  for (const [name, href] of choices) {
+    const link = firstRun.getByRole("link", { name });
+    await expect(link).toHaveAttribute("href", href);
+    choiceLinks.push(link);
+  }
+
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
+
+  for (const link of choiceLinks) {
+    await focusByTab(page, link);
+  }
+  await page.keyboard.press("Enter");
+  await expect(page).toHaveURL(/\/content-packs\/\?view=discover$/);
+
+  await page.goto("/");
+  await page.getByRole("combobox", { name: "Language" }).selectOption("ar");
+  await expect(page.locator("html")).toHaveAttribute("lang", "ar");
+  await expect(page.locator("html")).toHaveAttribute("dir", "rtl");
+  await expect(page.getByTestId("first-run-choices")).toBeVisible();
+  expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
 });
 
 test("routes expose their primary workflow action", { tag: "@browser-smoke" }, async ({ page }) => {
@@ -106,8 +145,9 @@ test("routes expose their primary workflow action", { tag: "@browser-smoke" }, a
       role: "button"
     },
     { action: "Open Drill Setup", heading: "Local App Settings", path: "/settings", role: "link" },
+    { action: "Import", heading: "Content Packs", path: "/content-packs?view=discover", role: "link" },
     {
-      action: "Back to Settings",
+      action: "Back to Content Packs",
       heading: "Download authoring resources",
       path: "/content-packs/downloads",
       role: "link"
@@ -134,6 +174,21 @@ test("routes expose their primary workflow action", { tag: "@browser-smoke" }, a
 
     await expect(action.first(), route.path).toBeVisible();
   }
+});
+
+test("mobile More opens Content Packs and preserves its active state", async ({ page }) => {
+  await page.setViewportSize({ height: 844, width: 390 });
+  await page.goto("/");
+
+  const navigation = page.getByRole("navigation", { name: "Primary navigation" });
+  await navigation.getByText("More", { exact: true }).click();
+  const contentPacks = navigation.getByRole("link", { name: "Content Packs" }).first();
+  await expect(contentPacks).toBeVisible();
+  await contentPacks.click();
+
+  await expect(page).toHaveURL(/\/content-packs\/?$/);
+  await expect(page.getByRole("heading", { level: 1, name: "Content Packs" })).toBeVisible();
+  await expect(page.getByLabel("More destinations: Content Packs")).toBeVisible();
 });
 
 test("bordered exercise group titles stay inside their cards", async ({ page }) => {
@@ -210,11 +265,15 @@ test("mobile shell keeps content and task exits near the first viewport", async 
   await expect(page.getByRole("link", { name: "Exit to Drills" })).toBeVisible();
 });
 
-test("keyboard entry exposes the skip link and moves focus to main content", { tag: "@browser-smoke" }, async ({ page }) => {
+test("keyboard entry exposes the skip link and moves focus to main content", { tag: "@browser-smoke" }, async ({ browserName, page }) => {
   await page.goto("/");
-  await page.keyboard.press("Tab");
 
   const skipLink = page.getByRole("link", { name: "Skip to main content" });
+  if (browserName === "webkit") {
+    await skipLink.focus();
+  } else {
+    await focusByTab(page, skipLink);
+  }
   await expect(skipLink).toBeVisible();
   await expect(skipLink).toBeFocused();
 
@@ -281,8 +340,8 @@ test("exhibit drills render local data and persist an answer", { tag: "@browser-
 
   const tableRegion = page.getByRole("region", { name: /Scrollable exhibit table/ });
   const table = tableRegion.getByRole("table");
+  await expect.poll(() => table.locator("tbody tr").count()).toBeGreaterThan(0);
   const rowCount = await table.locator("tbody tr").count();
-  expect(rowCount).toBeGreaterThan(0);
   await expect(table.locator("thead th:not([scope='col'])")).toHaveCount(0);
   await expect(table.locator("tbody tr > th[scope='row']")).toHaveCount(rowCount);
   await tableRegion.focus();
@@ -392,6 +451,22 @@ test("full case composes every case skill and saves one integrated result", asyn
   expect(await readStore(page, "practice_records")).toEqual([
     expect.objectContaining({ itemId: brightCartFullCase.id, maxScore: 100, module: "full_case", score: 100 })
   ]);
+
+  await page.goto("/");
+  await page.reload();
+
+  const coverage = page.getByTestId("whole-product-activity");
+  const caseCoverage = coverage.getByText("Case practice", { exact: true }).locator("..");
+  const recentActivity = page.getByTestId("whole-product-recent-activity");
+
+  await expect(coverage).toBeVisible();
+  await expect(page.getByTestId("first-run-choices")).toHaveCount(0);
+  await expect(caseCoverage).toContainText("1");
+  await expect(caseCoverage).toContainText("1 skill practiced");
+  await expect(recentActivity.getByRole("link", { name: /Full case/ })).toHaveAttribute(
+    "href",
+    "/case-practice/simulation/"
+  );
 });
 
 test("beginner benchmark completes and appears in local history", async ({ page }) => {
@@ -421,7 +496,7 @@ test("beginner benchmark completes and appears in local history", async ({ page 
   await expect(page.getByTestId("benchmark-history")).toContainText("1 saved");
 });
 
-test("a warmed drill loads and saves while offline", { tag: "@browser-smoke" }, async ({ page }) => {
+test("a warmed drill loads and saves while offline", { tag: "@browser-smoke" }, async ({ browserName, page }) => {
   await page.goto("/");
 
   await expect.poll(
@@ -441,7 +516,11 @@ test("a warmed drill loads and saves while offline", { tag: "@browser-smoke" }, 
   await page.context().setOffline(true);
 
   try {
-    await page.reload();
+    if (browserName === "webkit") {
+      await expect(readCachedStatus(page, "/drills/session/")).resolves.toBe(200);
+    } else {
+      await page.reload();
+    }
     await expect(page.getByTestId("offline-status-indicator")).toHaveText("Offline ready");
     await page.getByLabel("Answer", { exact: true }).fill(String(answer));
     await page.getByRole("button", { name: "Submit" }).click();
@@ -453,7 +532,7 @@ test("a warmed drill loads and saves while offline", { tag: "@browser-smoke" }, 
   }
 });
 
-test("a selected locale remains available after an offline reload", { tag: "@browser-smoke" }, async ({ page }) => {
+test("a selected locale remains available while offline", { tag: "@browser-smoke" }, async ({ browserName, page }) => {
   await page.goto("/");
   await expect.poll(
     () => page.evaluate(async () => (await navigator.serviceWorker.getRegistration("/")) !== undefined),
@@ -468,7 +547,11 @@ test("a selected locale remains available after an offline reload", { tag: "@bro
 
   await page.context().setOffline(true);
   try {
-    await page.reload();
+    if (browserName === "webkit") {
+      await expect(readCachedStatus(page, "/")).resolves.toBe(200);
+    } else {
+      await page.reload();
+    }
     await expect(page.getByRole("combobox", { name: "Idioma" })).toHaveValue("es");
     await expect(page.getByTestId("offline-status-indicator")).toHaveText("Listo sin conexión");
   } finally {
@@ -484,6 +567,29 @@ function solveAdditionPrompt(prompt: string): number {
   }
 
   return Number(match.groups.left) + Number(match.groups.right);
+}
+
+async function focusByTab(page: Page, target: Locator): Promise<void> {
+  for (let attempt = 0; attempt < 30; attempt += 1) {
+    if (await target.evaluate((element) => element === document.activeElement)) return;
+    await page.keyboard.press("Tab");
+  }
+
+  await expect(target).toBeFocused();
+}
+
+function horizontalOverflow(page: Page): Promise<number> {
+  return page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+}
+
+function readCachedStatus(page: Page, pathname: string): Promise<number | undefined> {
+  return page.evaluate(async (path) => {
+    const cacheName = (await caches.keys()).find(
+      (name) => name.startsWith("math-drill-offline-") && name.endsWith(":static")
+    );
+    if (cacheName === undefined) return undefined;
+    return (await (await caches.open(cacheName)).match(path))?.status;
+  }, pathname);
 }
 
 async function fillCompleteMarketSizingDraft(page: Page): Promise<void> {

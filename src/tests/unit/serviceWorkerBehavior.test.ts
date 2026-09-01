@@ -115,6 +115,70 @@ describe("service worker cache lifecycle", () => {
     expect(await response.text()).toBe("current shell");
     expect(await refreshed?.text()).toBe("updated shell");
   });
+
+  it("runtime-caches community catalog and pack files without precaching them", async () => {
+    let offline = false;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (offline) throw new TypeError("offline");
+      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, appOrigin);
+      return new Response(`fetched ${url.pathname}`, { headers: { "Content-Type": "application/json" } });
+    });
+    const harness = createHarness({ fetch: fetchMock });
+    await harness.dispatchLifetimeEvent("install");
+
+    expect(await harness.match(currentCacheName, "/community-packs/catalog.v1.json")).toBeUndefined();
+    expect(await harness.match(currentCacheName, "/community-packs/example/1.0.0/pack.mathdrill.json")).toBeUndefined();
+
+    const catalog = await harness.dispatchFetch("/community-packs/catalog.v1.json", "cors");
+    const pack = await harness.dispatchFetch("/community-packs/example/1.0.0/pack.mathdrill.json", "cors");
+    expect(await catalog.text()).toContain("catalog.v1.json");
+    expect(await pack.text()).toContain("pack.mathdrill.json");
+
+    offline = true;
+    const cachedPack = await harness.dispatchFetch("/community-packs/example/1.0.0/pack.mathdrill.json", "cors");
+    expect(await cachedPack.text()).toContain("pack.mathdrill.json");
+
+    const unseenPack = await harness.dispatchFetch("/community-packs/unseen/1.0.0/pack.mathdrill.json", "cors");
+    expect(unseenPack.status).toBe(503);
+    expect(await unseenPack.text()).toBe("This resource is not available offline yet.");
+  });
+
+  it("caches authoring downloads only after use and canonicalizes revision queries", async () => {
+    let offline = false;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      if (offline) throw new TypeError("offline");
+      const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, appOrigin);
+      return new Response(`downloaded ${url.pathname}`);
+    });
+    const harness = createHarness({ fetch: fetchMock });
+    await harness.dispatchLifetimeEvent("install");
+
+    const recommended = "/math-drill-ai-pack-fixed-numeric-complete.md";
+    const advanced = "/math-drill-ai-pack-authoring-kit.md";
+    expect(await harness.match(currentCacheName, recommended)).toBeUndefined();
+    expect(await harness.match(currentCacheName, advanced)).toBeUndefined();
+
+    await harness.dispatchFetch(`${recommended}?revision=2026-08-29`, "cors");
+    await harness.dispatchFetch(`${advanced}?revision=2026-08-29`, "cors");
+    expect(await (await harness.match(currentCacheName, recommended))?.text()).toContain(recommended);
+    expect(await (await harness.match(currentCacheName, advanced))?.text()).toContain(advanced);
+
+    offline = true;
+    expect(await (await harness.dispatchFetch(`${recommended}?revision=older`, "cors")).text()).toContain(recommended);
+    const unseen = await harness.dispatchFetch("/question-pack-v3.schema.json", "cors");
+    expect(unseen.status).toBe(503);
+  });
+
+  it("does not cache failed authoring responses", async () => {
+    const path = "/question-pack-author-guide.md";
+    const harness = createHarness({
+      fetch: vi.fn().mockResolvedValue(new Response("failure", { status: 500 }))
+    });
+    await harness.dispatchLifetimeEvent("install");
+
+    expect((await harness.dispatchFetch(path, "cors")).status).toBe(500);
+    expect(await harness.match(currentCacheName, path)).toBeUndefined();
+  });
 });
 
 interface HarnessOptions {
@@ -153,14 +217,14 @@ function createHarness(options: HarnessOptions = {}) {
 
   return {
     cacheNames: () => cacheStorage.keys(),
-    dispatchFetch: async (pathname: string) => {
+    dispatchFetch: async (pathname: string, mode: RequestMode = "navigate") => {
       let responsePromise: Promise<Response> | undefined;
       const lifetimePromises: Promise<unknown>[] = [];
       const event: MockEvent = {
         request: {
           headers: new Headers(),
           method: "GET",
-          mode: "navigate",
+          mode,
           url: `${appOrigin}${pathname}`
         },
         respondWith(value) {

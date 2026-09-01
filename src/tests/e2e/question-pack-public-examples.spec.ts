@@ -26,12 +26,12 @@ test("discovers all 13 public example packs", () => {
 for (const example of publicExamples) {
   test(`${example.title} (${example.fileName}) installs, persists offline, and opens`, async ({ page }) => {
     test.slow();
-    await page.goto("/settings");
-    await openContentPacks(page);
+    await page.goto("/content-packs?view=import");
     await page.getByLabel("Choose a question pack").setInputFiles(resolve(publicDirectory, example.fileName));
     await expect(page.getByTestId("question-pack-preview")).toContainText(example.title);
     await page.getByRole("checkbox", { name: /I reviewed the answer keys/ }).check();
     await page.getByRole("button", { name: "Install Pack" }).click();
+    await page.getByRole("link", { name: "Installed", exact: true }).click();
 
     let card = page.getByTestId(`question-pack-${example.id}`);
     await expect(card).toBeVisible();
@@ -60,8 +60,8 @@ for (const example of publicExamples) {
 }
 
 async function openContentPacks(page: Page): Promise<void> {
-  const summary = page.locator("summary").filter({ hasText: "Content Packs" });
-  if ((await summary.locator("..").getAttribute("open")) === null) await summary.click();
+  const installed = page.getByRole("link", { name: "Installed", exact: true });
+  if ((await installed.getAttribute("aria-current")) !== "page") await installed.click();
 }
 
 async function openRuntime(page: Page, card: Locator, kind: PublicExample["kind"]): Promise<void> {

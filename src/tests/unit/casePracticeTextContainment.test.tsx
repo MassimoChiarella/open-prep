@@ -5,7 +5,7 @@ import { brainstormingPrompts } from "@/data/casePractice/brainstormingPrompts";
 import { conceptLessons } from "@/data/casePractice/conceptLessons";
 import { structuringPrompts } from "@/data/casePractice/structuringPrompts";
 import { exhibitDatasets } from "@/data/exhibits/exhibitDatasets";
-import { BrainstormingResponseFields } from "@/features/case-practice/brainstorming/BrainstormingDrill";
+import { BrainstormingDrill, BrainstormingResponseFields } from "@/features/case-practice/brainstorming/BrainstormingDrill";
 import { CasePracticeHub } from "@/features/case-practice/CasePracticeHub";
 import { ConceptLessonsView } from "@/features/case-practice/lessons/ConceptLessonsView";
 import { StructuringResponseFields } from "@/features/case-practice/structuring/StructuringPractice";
@@ -15,6 +15,12 @@ import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 const unbroken = (character: string, length = 500) => character.repeat(length);
 
 describe("case-practice imported-text containment", () => {
+  it("uses automatic direction for learner-authored reflection text", () => {
+    render(<BrainstormingDrill prompts={[brainstormingPrompts[0]]} />);
+
+    expect(screen.getByLabelText(/Optional reflection note/)).toHaveAttribute("dir", "auto");
+  });
+
   it("contains structuring hypothesis, branch, and model copy", () => {
     const prompt = structuringPrompts[0];
     const hypothesisLabel = unbroken("H");

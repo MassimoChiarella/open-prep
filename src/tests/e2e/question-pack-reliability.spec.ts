@@ -77,7 +77,7 @@ test("maximum-length imported prompt stays contained and renders HTML-looking te
 
   await page.getByRole("checkbox", { name: /I reviewed the answer keys/ }).check();
   await page.getByRole("button", { name: "Install Pack" }).click();
-  const card = page.getByTestId("question-pack-maximum-prompt-reliability");
+  const card = await openInstalledPack(page, "maximum-prompt-reliability");
   await card.getByText(`Manage ${maximumEnvelopeText.title}`, { exact: true }).click();
   await expectTargetsContainedAtWidths(page, [
     card.getByText(maximumEnvelopeText.title, { exact: true }),
@@ -111,7 +111,7 @@ test("a 500-point scatter exhibit warns about readability but remains installabl
   await page.getByRole("checkbox", { name: /I reviewed the answer keys/ }).check();
   await expect(installButton).toBeEnabled();
   await installButton.click();
-  await expect(page.getByTestId("question-pack-scatter-density-reliability")).toBeVisible();
+  await openInstalledPack(page, "scatter-density-reliability");
 });
 
 for (const boundary of [
@@ -131,9 +131,7 @@ for (const boundary of [
     expect(await exactJsonControl.inputValue()).toContain(maximumPrompt);
     await expectTargetsContainedAtWidths(page, [exactJsonControl]);
 
-    await page.getByRole("checkbox", { name: /I reviewed the answer keys/ }).check();
-    await page.getByRole("button", { name: "Install Pack" }).click();
-    const card = page.getByTestId(`question-pack-${boundary.packId}`);
+    const card = await installUploadedPack(page, boundary.packId);
     await openSpecializedRuntime(page, card, boundary.kind);
     await expect(runtimeMaximumText(page, boundary.kind)).toContainText(htmlLookingText);
     await expectImportedTextWasNotExecuted(page);
@@ -311,20 +309,20 @@ test("maximum imported text stays contained across every version-two case-practi
     { route: "synthesis", text: maximumCaseText.synthesis },
     { route: "lessons", text: maximumCaseText.lesson }
   ]) {
-    await page.goto(`/case-practice/${surface.route}?${packQuery}`);
+    await page.goto(`/case-practice/${surface.route}/?${packQuery}`);
     await expectTargetsContainedAtWidths(page, [page.getByText(surface.text, { exact: true })]);
   }
 
-  await page.goto(`/case-practice/fit?${packQuery}`);
+  await page.goto(`/case-practice/fit/?${packQuery}`);
   await saveImpactStory(page);
-  await page.getByRole("button", { name: "Rehearse" }).click();
+  await page.getByRole("button", { name: "Rehearse", exact: true }).click();
   const rehearsal = page.locator("#fit-rehearsal");
   await expectTargetsContainedAtWidths(page, [
     rehearsal.locator("p").filter({ hasText: maximumCaseText.fitPrompt }),
     rehearsal.getByText(maximumCaseText.fitFollowUp, { exact: true })
   ]);
 
-  await page.goto(`/case-practice?${packQuery}`);
+  await page.goto(`/case-practice/?${packQuery}`);
   await page.getByRole("link", { name: "Open Neighborhood pickup rollout" }).click();
   await expectTargetsContainedAtWidths(page, [page.getByText(maximumCaseText.fullCaseObjective, { exact: true })]);
 });
@@ -400,8 +398,7 @@ test("maximum version-three text stays contained through every full-case stage a
 });
 
 async function openQuestionPackImporter(page: Page): Promise<void> {
-  await page.goto("/settings");
-  await page.locator("summary").filter({ hasText: "Content Packs" }).click();
+  await page.goto("/content-packs/?view=import");
 }
 
 async function uploadPack(page: Page, name: string, payload: object): Promise<void> {
@@ -416,6 +413,12 @@ async function uploadPack(page: Page, name: string, payload: object): Promise<vo
 async function installUploadedPack(page: Page, packId: string): Promise<Locator> {
   await page.getByRole("checkbox", { name: /I reviewed the answer keys/ }).check();
   await page.getByRole("button", { name: "Install Pack" }).click();
+  return openInstalledPack(page, packId);
+}
+
+async function openInstalledPack(page: Page, packId: string): Promise<Locator> {
+  await expect(page.getByText("Question pack installed on this device.", { exact: true })).toBeVisible();
+  await page.getByRole("link", { name: "Installed", exact: true }).click();
   const card = page.getByTestId(`question-pack-${packId}`);
   await expect(card).toBeVisible();
   return card;

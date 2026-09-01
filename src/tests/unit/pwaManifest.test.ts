@@ -136,7 +136,7 @@ describe("PWA install metadata", () => {
     expect(precachedUrls).toContain("/exhibits/sprint/");
   });
 
-  it("precaches the six recommended authoring bundles and caches advanced artifacts on demand", () => {
+  it("keeps every authoring artifact out of core precache and available on demand", () => {
     const publicDirectory = path.join(process.cwd(), "public");
     const serviceWorker = readFileSync(path.join(process.cwd(), "public", "sw.js"), "utf8");
     const recommendedFiles = [
@@ -156,7 +156,7 @@ describe("PWA install metadata", () => {
       expect(existsSync(path.join(publicDirectory, filename)), filename).toBe(true);
       expect(recommendedBlock, filename).toContain(`"/${filename}"`);
     }
-    expect(precacheBlock).toContain("...RECOMMENDED_AUTHORING_ARTIFACT_URLS");
+    expect(precacheBlock).not.toContain("...RECOMMENDED_AUTHORING_ARTIFACT_URLS");
     expect(precacheBlock).not.toContain("...AUTHORING_ARTIFACT_URLS");
     expect(serviceWorker).toContain('"/math-drill-ai-pack-authoring-kit.md"');
     expect(serviceWorker).toContain("AUTHORING_ARTIFACT_URLS.includes(url.pathname)");

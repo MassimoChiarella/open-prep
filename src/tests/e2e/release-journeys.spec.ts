@@ -26,8 +26,9 @@ test("database upgrade removes the legacy saved-preset store", async ({ page }) 
 
 test("local practice journey updates dashboard and progress, then reset returns to first-run state", async ({ page }) => {
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Start with a focused drill" })).toBeVisible();
-  await expect(page.getByTestId("first-run-quick-starts")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
+  await expect(page.getByTestId("first-run-choices")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Choose how to start" })).toBeVisible();
 
   await page.goto("/drills/session?categories=arithmetic&tags=addition&count=1&feedbackMode=instant");
   await expect(page.getByRole("heading", { name: "Active Drill Session" })).toBeVisible();
@@ -43,7 +44,7 @@ test("local practice journey updates dashboard and progress, then reset returns 
 
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible();
-  await expect(page.getByTestId("first-run-quick-starts")).toHaveCount(0);
+  await expect(page.getByTestId("first-run-choices")).toHaveCount(0);
   await expect(page.getByTestId("dashboard-priority-panel")).toBeVisible();
   await expect(page.getByRole("heading", { name: "Recommended Next Drill" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Last Session" })).toBeVisible();
@@ -83,8 +84,9 @@ test("local practice journey updates dashboard and progress, then reset returns 
   });
 
   await page.goto("/");
-  await expect(page.getByRole("heading", { name: "Start with a focused drill" })).toBeVisible();
-  await expect(page.getByTestId("first-run-quick-starts")).toBeVisible();
+  await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
+  await expect(page.getByTestId("first-run-choices")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Choose how to start" })).toBeVisible();
   await expect(page.getByTestId("dashboard-priority-panel")).toHaveCount(0);
 
   await page.goto("/progress");
@@ -93,8 +95,7 @@ test("local practice journey updates dashboard and progress, then reset returns 
 });
 
 test("a local question pack can be installed and practiced", async ({ page }) => {
-  await page.goto("/settings");
-  await page.locator("summary").filter({ hasText: "Content Packs" }).click();
+  await page.goto("/content-packs?view=import");
 
   await page.getByLabel("Choose a question pack").setInputFiles({
     buffer: Buffer.from(JSON.stringify(questionPackPayload())),
@@ -105,6 +106,7 @@ test("a local question pack can be installed and practiced", async ({ page }) =>
   await expect(page.getByTestId("question-pack-preview")).toContainText("Company Case Prep");
   await page.getByRole("checkbox", { name: /I reviewed the answer keys/ }).check();
   await page.getByRole("button", { name: "Install Pack" }).click();
+  await page.getByRole("link", { name: "Installed", exact: true }).click();
 
   const packCard = page.getByTestId("question-pack-company-case-prep");
   await expect(packCard).toBeVisible();
