@@ -61,12 +61,13 @@ export async function createLocalProgressExport(
   exportedAt = new Date().toISOString(),
   privacyScope: LocalProgressExportPrivacyScope = "standard"
 ): Promise<LocalProgressExportV1> {
-  const stores = Object.fromEntries(
-    await Promise.all(localProgressExportStoreNames.map(async (storeName) => [storeName, await storage.getAll(storeName)]))
-  ) as unknown as LocalProgressExportStores;
+  const stores = await storage.getSnapshot(localProgressExportStoreNames);
 
   if (privacyScope === "standard") {
-    stores.practice_records = stores.practice_records.filter((record) => record.kind !== "fit_story");
+    stores.practice_records = stores.practice_records.filter(
+      (record) => record.kind !== "fit_story" && record.kind !== "prep_profile"
+    );
+    stores.market_sizing_attempts = stores.market_sizing_attempts.map(({ note: _note, ...record }) => record);
   }
 
   return {
@@ -315,7 +316,8 @@ function isBenchmarkResult(value: Record<string, unknown>): boolean {
     isDateString(value.completedAt) &&
     isOneOf(value.difficulty, difficulties) &&
     isSessionScore(value.score) &&
-    isNonEmptyString(value.sessionId)
+    isNonEmptyString(value.sessionId) &&
+    optional(value.timingAccommodation, (accommodation) => isOneOf(accommodation, ["standard", "time_and_a_half", "double_time", "untimed"]))
   );
 }
 
@@ -366,7 +368,8 @@ function isExhibitAttempt(value: Record<string, unknown>): boolean {
     optional(value.isCorrect, isBoolean) &&
     optional(value.normalizedValue, isFiniteNumber) &&
     optional(value.rawInput, isString) &&
-    optional(value.score, isFiniteNumber)
+    optional(value.score, isFiniteNumber) &&
+    optional(value.timingAccommodation, (accommodation) => isOneOf(accommodation, ["standard", "time_and_a_half", "double_time", "untimed"]))
   );
 }
 
@@ -417,7 +420,10 @@ function isPracticeRecord(value: Record<string, unknown>): boolean {
   if (value.kind === "attempt") {
     return isOneOf(value.module, practiceModules) && isNonEmptyString(value.itemId) &&
       isDateString(value.completedAt) && isFiniteNumber(value.score) && isFiniteNumber(value.maxScore) &&
-      optional(value.durationSeconds, isNonNegativeFiniteNumber);
+      optional(value.durationSeconds, isNonNegativeFiniteNumber) &&
+      optional(value.timingAccommodation, (accommodation) =>
+        isOneOf(accommodation, ["standard", "time_and_a_half", "double_time", "untimed"])
+      );
   }
 
   if (value.kind === "prep_profile") {
@@ -463,6 +469,7 @@ function isDrillSettings(value: unknown): boolean {
     optional(value.unitPreference, (unit) => isOneOf(unit, unitTypes)) &&
     optional(value.hintsEnabled, isBoolean) &&
     optional(value.questionPackId, isNonEmptyString) &&
+    optional(value.timingAccommodation, (accommodation) => isOneOf(accommodation, ["standard", "time_and_a_half", "double_time", "untimed"])) &&
     isOneOf(value.timeMode, ["untimed", "per_question", "session"]) &&
     optional(value.secondsPerQuestion, isNonNegativeFiniteNumber) &&
     optional(value.totalSessionSeconds, isNonNegativeFiniteNumber) &&

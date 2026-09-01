@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { EmptyState } from "@/components/EmptyState";
@@ -193,7 +194,7 @@ export function MarketSizingGuidedForm({
           onSubmit={(event) => {
             event.preventDefault();
 
-            if (activeStage !== 3) {
+            if (activeStage !== 3 || saveStatus === "saving") {
               return;
             }
 
@@ -383,7 +384,9 @@ export function MarketSizingGuidedForm({
               <label className="grid min-w-0 gap-2 text-sm font-medium text-ink/80">
                 {t("Notes")}
                 <textarea
+                  aria-describedby="market-sizing-note-shared-device-disclosure"
                   className="min-h-28 w-full min-w-0 rounded-md border border-ink/50 bg-white px-3 py-2 text-base text-ink outline-none transition placeholder:text-ink/65 focus:border-teal"
+                  dir="auto"
                   onChange={(event) => {
                     const note = event.currentTarget.value;
 
@@ -393,6 +396,17 @@ export function MarketSizingGuidedForm({
                   value={draft.note}
                 />
               </label>
+              <div
+                className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 border-s-2 border-coral bg-coral/10 px-3 py-3 [overflow-wrap:anywhere]"
+                id="market-sizing-note-shared-device-disclosure"
+              >
+                <p className="min-w-0 text-xs leading-5 text-ink/70">
+                  {t("Saved self-review notes are browser-local, unencrypted, and visible to anyone with access to this browser profile.")}
+                </p>
+                <Link className="w-fit max-w-full break-words text-sm font-semibold text-teal underline" href="/settings">
+                  {t("Manage backups and clear saved data in Settings")}
+                </Link>
+              </div>
 
               <div className="flex flex-wrap gap-3">
                 <button
@@ -403,8 +417,8 @@ export function MarketSizingGuidedForm({
                   {t("Back to Final Answer")}
                 </button>
                 <button
-                  className="inline-flex min-h-11 items-center justify-center rounded-md bg-teal px-4 text-sm font-semibold text-white transition hover:bg-ink disabled:cursor-not-allowed disabled:bg-ink/30"
-                  disabled={saveStatus === "saving"}
+                  aria-disabled={saveStatus === "saving"}
+                  className="inline-flex min-h-11 items-center justify-center rounded-md bg-teal px-4 text-sm font-semibold text-white transition hover:bg-ink aria-disabled:cursor-wait aria-disabled:bg-ink/70"
                   type="submit"
                 >
                   {saveStatus === "saving" ? t("Saving...") : hasScored ? t("Score Again") : t("Score Draft")}
@@ -905,6 +919,7 @@ function fieldForStep(
       <textarea
         aria-label={step.label}
         className="min-h-24 w-full min-w-0 max-w-full rounded-md border border-ink/50 bg-white px-3 py-2 text-base text-ink outline-none transition placeholder:text-ink/65 focus:border-teal"
+        dir="auto"
         onChange={(event) => onChange(event.currentTarget.value)}
         value={stringValue(value)}
       />

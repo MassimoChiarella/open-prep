@@ -1,10 +1,11 @@
 "use client";
 
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 
 import { AppNav } from "@/components/AppNav";
 import { I18nProvider, LanguageSelect, useI18n } from "@/features/i18n/I18nProvider";
 import { OfflineStatusIndicator } from "@/features/offline/OfflineStatusIndicator";
+import { subscribeToLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 
 export function LocalizedAppShell({ children }: { children: ReactNode }) {
   return (
@@ -16,6 +17,10 @@ export function LocalizedAppShell({ children }: { children: ReactNode }) {
 
 function AppChrome({ children }: { children: ReactNode }) {
   const { t } = useI18n();
+
+  useEffect(() => subscribeToLocalDataInvalidation(() => {
+    returnToNeutralRoute(window.location);
+  }), []);
 
   return (
     <div className="flex min-h-[100dvh] flex-col">
@@ -49,4 +54,8 @@ function AppChrome({ children }: { children: ReactNode }) {
       </div>
     </div>
   );
+}
+
+export function returnToNeutralRoute(location: Pick<Location, "replace">): void {
+  location.replace("/");
 }

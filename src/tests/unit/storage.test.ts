@@ -55,6 +55,24 @@ describe("typed app storage", () => {
     expect(await storage.get("drill_sessions", session.id)).toBeUndefined();
   });
 
+  it("scans records without requiring an unbounded result array", async () => {
+    const storage = new MemoryAppStorage();
+    const first = storedDrillSession();
+    const second = { ...storedDrillSession(), id: "session-2" };
+    await storage.put("drill_sessions", first);
+    await storage.put("drill_sessions", second);
+    const ids: string[] = [];
+
+    await storage.scan("drill_sessions", (session) => ids.push(session.id));
+
+    expect(ids).toEqual(["session-1", "session-2"]);
+    await expect(
+      storage.scan("drill_sessions", () => {
+        throw new Error("stop scan");
+      })
+    ).rejects.toThrow("stop scan");
+  });
+
   it("pages newest-first by a stable compound index without gaps or duplicates", async () => {
     const storage = new MemoryAppStorage();
 
@@ -138,6 +156,28 @@ describe("typed app storage", () => {
 
     expect(await storage.getAll("drill_sessions")).toEqual([session]);
     expect(await storage.getAll("responses")).toHaveLength(1);
+  });
+
+  it("captures requested stores in one typed snapshot before later writes", async () => {
+    const storage = new MemoryAppStorage();
+    await storage.put("drill_sessions", storedDrillSession());
+
+    const pending = storage.getSnapshot(["drill_sessions", "question_packs"] as const);
+    await storage.put("drill_sessions", { ...storedDrillSession(), id: "session-2" });
+    const snapshot = await pending;
+
+    expect(snapshot.drill_sessions.map(({ id }) => id)).toEqual(["session-1"]);
+    expect(snapshot.question_packs).toEqual([]);
+    expect(Object.keys(snapshot)).toEqual(["drill_sessions", "question_packs"]);
+  });
+
+  it("handles empty snapshots and rejects duplicate store requests", async () => {
+    const storage = new MemoryAppStorage();
+
+    await expect(storage.getSnapshot([] as const)).resolves.toEqual({});
+    await expect(storage.getSnapshot(["drill_sessions", "drill_sessions"] as const)).rejects.toThrow(
+      "must be unique"
+    );
   });
 
   it("fails early when IndexedDB is unavailable", () => {

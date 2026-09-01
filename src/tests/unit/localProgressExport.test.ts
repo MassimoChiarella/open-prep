@@ -55,7 +55,7 @@ describe("local progress export schema", () => {
     expect(buildLocalProgressExportFileName(exported.exportedAt)).toBe("open-prep-progress-2026-06-02.json");
   });
 
-  it("excludes private Fit stories by default and includes them only in a complete export", async () => {
+  it("excludes private stories, profile, and notes by default and includes them only in a complete export", async () => {
     const storage = new MemoryAppStorage();
     const story = {
       action: "I aligned the team.",
@@ -71,15 +71,35 @@ describe("local progress export schema", () => {
     };
 
     await storage.put("practice_records", story);
+    await storage.put("practice_records", {
+      experienceLevel: "intermediate",
+      id: "prep-profile",
+      kind: "prep_profile",
+      targetFirms: ["Firm A"],
+      updatedAt: "2026-06-02T00:00:00.000Z",
+      weeklySessions: 4
+    });
+    await storage.put("market_sizing_attempts", {
+      id: "market-1",
+      note: "Private sizing note",
+      startedAt: "2026-06-02T00:00:00.000Z",
+      templateId: "market-template-1"
+    });
 
     const standard = await createLocalProgressExport(storage, "2026-06-02T00:01:00.000Z");
     const complete = await createLocalProgressExport(storage, "2026-06-02T00:01:00.000Z", "complete");
 
     expect(standard.privacyScope).toBe("standard");
     expect(standard.stores.practice_records).toEqual([]);
+    expect(standard.stores.market_sizing_attempts[0]).not.toHaveProperty("note");
     expect(serializeLocalProgressExport(standard)).not.toContain(story.situation);
+    expect(serializeLocalProgressExport(standard)).not.toContain("Private sizing note");
     expect(complete.privacyScope).toBe("complete");
-    expect(complete.stores.practice_records).toEqual([story]);
+    expect(complete.stores.practice_records).toEqual([
+      story,
+      expect.objectContaining({ id: "prep-profile", kind: "prep_profile" })
+    ]);
+    expect(complete.stores.market_sizing_attempts[0]).toHaveProperty("note", "Private sizing note");
     expect(validateLocalProgressImportPayload(JSON.parse(serializeLocalProgressExport(complete)))).toEqual({
       exportData: complete,
       status: "valid"

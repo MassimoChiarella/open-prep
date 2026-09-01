@@ -97,6 +97,40 @@ describe("MarketSizingGuidedForm", () => {
     ]);
   });
 
+  it("discloses shared-browser exposure beside notes without changing persistence", async () => {
+    const storage = new MemoryAppStorage();
+
+    render(<MarketSizingGuidedForm storageFactory={() => storage} templates={marketSizingTemplates} />);
+
+    completeCoffeeAssumptions();
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Calculation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Final Answer" }));
+    fireEvent.change(screen.getByLabelText("Final answer (Currency)"), { target: { value: "$2.628B" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit Answer" }));
+
+    const note = screen.getByLabelText("Notes");
+    const disclosureText = screen.getByText(
+      "Saved self-review notes are browser-local, unencrypted, and visible to anyone with access to this browser profile."
+    );
+    const disclosure = disclosureText.closest("#market-sizing-note-shared-device-disclosure");
+    if (!(disclosure instanceof HTMLElement)) throw new Error("Missing note disclosure container.");
+
+    expect(note).toHaveAttribute("aria-describedby", "market-sizing-note-shared-device-disclosure");
+    expect(note).toHaveAttribute("dir", "auto");
+    expect(disclosure).toHaveClass("min-w-0", "grid-cols-[minmax(0,1fr)]", "[overflow-wrap:anywhere]");
+    expect(within(disclosure).getByRole("link", { name: "Manage backups and clear saved data in Settings" }))
+      .toHaveAttribute("href", "/settings");
+
+    fireEvent.change(note, { target: { value: "Recheck the demand-side assumption." } });
+    fireEvent.change(screen.getByLabelText("Interpretation"), { target: { value: "plausible" } });
+    fireEvent.click(screen.getByRole("button", { name: "Score Draft" }));
+
+    expect(await screen.findByText("Score 100/100 saved on this device.")).toBeInTheDocument();
+    expect(storage.peekAll("market_sizing_attempts")).toEqual([
+      expect.objectContaining({ note: "Recheck the demand-side assumption.", score: 100 })
+    ]);
+  });
+
   it("withholds the calculated result and answer evaluation until final-answer submission", () => {
     render(<MarketSizingGuidedForm templates={marketSizingTemplates} />);
 

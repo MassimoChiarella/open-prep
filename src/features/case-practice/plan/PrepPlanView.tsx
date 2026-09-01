@@ -205,6 +205,7 @@ export function PrepPlanView({
                 <label className={cx(uiText.controlLabel, "grid gap-2")}>
                   {t("Interview date (optional)")}
                   <input
+                    aria-describedby="prep-profile-shared-device-disclosure"
                     className={uiInputs.base}
                     min={loadState.today}
                     onChange={(event) => {
@@ -219,8 +220,9 @@ export function PrepPlanView({
                 <label className={cx(uiText.controlLabel, "grid gap-2 sm:col-span-2")}>
                   {t("Target firms (optional)")}
                   <input
-                    aria-describedby="target-firms-help"
+                    aria-describedby="target-firms-help prep-profile-shared-device-disclosure"
                     className={uiInputs.base}
+                    dir="auto"
                     onChange={(event) => {
                       setDraft((current) => ({ ...current, targetFirms: event.currentTarget.value }));
                       setSaveStatus("idle");
@@ -254,6 +256,18 @@ export function PrepPlanView({
                     value={draft.weeklySessions}
                   />
                 </label>
+              </div>
+
+              <div
+                className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 border-s-2 border-coral bg-coral/10 px-3 py-3 [overflow-wrap:anywhere]"
+                id="prep-profile-shared-device-disclosure"
+              >
+                <p className={uiText.dense}>
+                  {t("Saved preparation profile data is browser-local, unencrypted, and visible to anyone with access to this browser profile.")}
+                </p>
+                <Link className="w-fit max-w-full break-words text-sm font-semibold text-teal underline" href="/settings">
+                  {t("Manage backups and clear saved data in Settings")}
+                </Link>
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
@@ -323,7 +337,7 @@ function SnapshotItem({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 border-b border-teal/10 pb-3 last:border-0 last:pb-0">
       <dt className={uiText.dense}>{label}</dt>
-      <dd className="mt-1 break-words text-sm font-semibold text-ink">{value}</dd>
+      <dd className="mt-1 break-words text-sm font-semibold text-ink" dir="auto">{value}</dd>
     </div>
   );
 }
