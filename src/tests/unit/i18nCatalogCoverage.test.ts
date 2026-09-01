@@ -18,13 +18,25 @@ const approvedAuthoredContentBoundary = [
 ] as const;
 const coverageDisclosure =
   "Menus, controls, and guidance use the selected language. Bundled practice questions, case materials, and imported packs may remain in their source language.";
+const timingAccommodationDynamicKeys = [
+  "Double time",
+  "Standard time",
+  "Time and a half",
+  "Untimed practice"
+] as const;
 const auditedUiFiles = [
   "app/content-packs/downloads/page.tsx",
+  "app/content-packs/page.tsx",
   "features/offline/NotFoundView.tsx",
   "features/settings/LocalSettingsView.tsx",
+  "features/question-packs/CommunityPackDiscover.tsx",
   "features/question-packs/ContentPackDownloadsView.tsx",
+  "features/question-packs/ContentPacksHub.tsx",
+  "features/question-packs/ContentPackStarterLibrary.tsx",
   "features/question-packs/QuestionPackBuilder.tsx",
   "features/question-packs/QuestionPackManager.tsx",
+  "features/question-packs/QuestioningPackBuilder.tsx",
+  "features/timing/TimingAccommodationControl.tsx",
   "features/exhibits/ExhibitChartRenderer.tsx",
   "features/exhibits/ExhibitTableRenderer.tsx"
 ] as const;
@@ -56,10 +68,11 @@ describe("application translation catalog", () => {
   });
 
   it("covers registered dynamic UI keys that a literal t() scan cannot discover", () => {
+    const dynamicUiKeys = [...experienceQualityDynamicKeys, ...timingAccommodationDynamicKeys];
     const missing = Object.fromEntries(
       translatedLocales.map((locale) => [
         locale,
-        missingCatalogKeys(appMessages[locale], experienceQualityDynamicKeys)
+        missingCatalogKeys(appMessages[locale], dynamicUiKeys)
       ])
     );
 

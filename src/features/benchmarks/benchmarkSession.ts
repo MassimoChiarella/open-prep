@@ -1,9 +1,14 @@
 import type { BenchmarkId, BenchmarkTest } from "@/features/benchmarks/benchmarkTypes";
+import {
+  normalizeTimingAccommodation,
+  type TimingAccommodation
+} from "@/features/timing/timingAccommodation";
 import type { DrillSession, Question } from "@/lib/domain";
 
 export interface CreateBenchmarkSessionOptions {
   sessionId?: string;
   startedAt?: string;
+  timingAccommodation?: unknown;
 }
 
 export interface CreatedBenchmarkSession {
@@ -28,7 +33,10 @@ export function createBenchmarkSession(
       id: sessionId,
       questionIds: benchmark.questions.map((question) => question.id),
       responses: [],
-      settings: benchmark.settings,
+      settings: {
+        ...benchmark.settings,
+        timingAccommodation: normalizeTimingAccommodation(options.timingAccommodation)
+      },
       startedAt
     }
   };
@@ -41,10 +49,29 @@ export function findBenchmarkTest(
   return benchmarks.find((benchmark) => benchmark.id === benchmarkId);
 }
 
-export function buildBenchmarkSessionHref(benchmarkId: BenchmarkId, questionPackId?: string): string {
+export function buildBenchmarkSessionHref(
+  benchmarkId: BenchmarkId,
+  questionPackId?: string,
+  timingAccommodation?: TimingAccommodation
+): string {
   const params = new URLSearchParams({ benchmark: benchmarkId });
   if (questionPackId !== undefined) params.set("pack", questionPackId);
+  if (timingAccommodation !== undefined && timingAccommodation !== "standard") {
+    params.set("timingAccommodation", timingAccommodation);
+  }
   return `/benchmark/session?${params.toString()}`;
+}
+
+export function buildBenchmarkSelectionHref(benchmarkId: BenchmarkId, questionPackId?: string): string {
+  const params = new URLSearchParams({ benchmark: benchmarkId });
+  if (questionPackId?.trim()) params.set("pack", questionPackId);
+  return `/benchmark?${params.toString()}`;
+}
+
+export function parseBenchmarkTimingAccommodation(
+  value: string | null | undefined
+): TimingAccommodation {
+  return normalizeTimingAccommodation(value);
 }
 
 function validateBenchmarkTest(benchmark: BenchmarkTest): void {

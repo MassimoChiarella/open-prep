@@ -4,6 +4,7 @@ export const defaultDrillSettings: DrillSettings = {
   categories: ["arithmetic"],
   difficulty: "beginner",
   questionCount: 5,
+  timingAccommodation: "standard",
   timeMode: "untimed",
   feedbackMode: "instant"
 };

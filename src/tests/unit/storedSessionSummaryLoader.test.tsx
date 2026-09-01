@@ -61,7 +61,7 @@ describe("StoredSessionSummaryLoader", () => {
     const repeatLink = await screen.findByRole("link", { name: "Repeat Benchmark" });
     const repeatUrl = new URL(repeatLink.getAttribute("href") ?? "", "http://localhost");
 
-    expect(repeatUrl.pathname).toBe("/benchmark/session");
+    expect(repeatUrl.pathname).toBe("/benchmark");
     expect(repeatUrl.searchParams.get("benchmark")).toBe(benchmarkId);
     expect(repeatUrl.searchParams.get("pack")).toBe("school-pack");
   });

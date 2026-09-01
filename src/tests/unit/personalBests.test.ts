@@ -82,6 +82,43 @@ describe("personal bests", () => {
     }
   });
 
+  it("excludes accommodated attempts from Standard personal bests and streaks", () => {
+    const standard = session("standard-session", "2026-06-01", [response("question-1", true, 20)]);
+    const accommodated = {
+      ...session("accommodated-session", "2026-06-02", [response("question-1", true, 5)]),
+      settings: createDrillSettings({
+        categories: ["business_math"],
+        difficulty: "beginner",
+        questionCount: 1,
+        timingAccommodation: "double_time"
+      })
+    };
+    const bests = createPersonalBestRecords({
+      benchmarkResults: [
+        benchmarkResult("standard-benchmark", 70, "2026-06-01T12:00:00.000Z"),
+        { ...benchmarkResult("accommodated-benchmark", 100, "2026-06-02T12:00:00.000Z"), timingAccommodation: "time_and_a_half" }
+      ],
+      responses: [standard, accommodated].flatMap((item) =>
+        item.responses.map((itemResponse) => storedResponse(item.id, itemResponse))
+      ),
+      sessions: [standard, accommodated]
+    });
+
+    expect(findBest(bests, "benchmark:beginner:score")).toMatchObject({
+      sourceId: "standard-benchmark",
+      value: 70
+    });
+    expect(findBest(bests, "drill_skill:margin:beginner:untimed:average_time")).toMatchObject({
+      sourceId: "standard-session",
+      value: 20
+    });
+    expect(findBest(bests, "drill_streak:beginner:untimed:streak")).toMatchObject({
+      sourceId: "standard-session",
+      value: 1
+    });
+    expect(findSourcePersonalBests(bests, ["accommodated-session", "accommodated-benchmark"])).toEqual([]);
+  });
+
   it("calculates the longest streak with the same injected local-calendar policy", () => {
     const sessions = [
       sessionAt("session-1", "2026-06-01T23:30:00.000Z"),

@@ -34,7 +34,30 @@ describe("exhibit persistence", () => {
       questionId: "suburban_gross_profit",
       rawInput: "$48.4M",
       score: 100,
-      startedAt: "2026-06-02T12:00:00.000Z"
+      startedAt: "2026-06-02T12:00:00.000Z",
+      timingAccommodation: "standard"
     });
+  });
+
+  it("stores an accommodated policy with the attempt", async () => {
+    const storage = new MemoryAppStorage();
+    const dataset = exhibitDatasets[0];
+    const question = dataset.questions[0];
+
+    await persistExhibitAttempt({
+      completedAt: "2026-06-02T12:01:00.000Z",
+      dataset,
+      id: "attempt-double-time",
+      question,
+      rawInput: "$48.4M",
+      startedAt: "2026-06-02T12:00:00.000Z",
+      storage,
+      timingAccommodation: "double_time",
+      validation: validateAnswer("$48.4M", question.answer)
+    });
+
+    expect((await storage.get("exhibit_attempts", "attempt-double-time"))?.timingAccommodation).toBe(
+      "double_time"
+    );
   });
 });

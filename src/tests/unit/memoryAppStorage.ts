@@ -6,6 +6,7 @@ import {
   type AppStorageMutation,
   type AppStoragePage,
   type AppStoragePageOptions,
+  type AppStorageSnapshot,
   type AppIndexedStoreName,
   type AppStoreIndexName,
   type AppStoreKey,
@@ -35,8 +36,26 @@ export class MemoryAppStorage implements AppStorage {
     return this.peekAll(storeName);
   }
 
+  async scan<TStore extends AppStoreName>(
+    storeName: TStore,
+    visit: (value: AppStoreValue<TStore>) => void
+  ): Promise<void> {
+    for (const value of this.getStore(storeName).values()) visit(structuredClone(value));
+  }
+
   async count<TStore extends AppStoreName>(storeName: TStore): Promise<number> {
     return this.getStore(storeName).size;
+  }
+
+  async getSnapshot<const TStores extends readonly AppStoreName[]>(
+    storeNames: TStores
+  ): Promise<AppStorageSnapshot<TStores>> {
+    if (new Set(storeNames).size !== storeNames.length) {
+      throw new Error("Storage snapshot store names must be unique.");
+    }
+    return Object.fromEntries(
+      storeNames.map((storeName) => [storeName, this.peekAll(storeName)])
+    ) as AppStorageSnapshot<TStores>;
   }
 
   async getPage<TStore extends AppIndexedStoreName>(

@@ -190,9 +190,10 @@ export function ExhibitQuestionFlow({
 
           <div className="flex flex-wrap gap-3">
             <button
-              className="inline-flex min-h-11 items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-white transition hover:bg-teal motion-reduce:transform-none active:scale-[0.98]"
-              disabled={saveStatus === "saving"}
+              aria-disabled={saveStatus === "saving"}
+              className="inline-flex min-h-11 items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-white transition hover:bg-teal aria-disabled:cursor-wait aria-disabled:bg-ink/70 motion-reduce:transform-none active:scale-[0.98]"
               onClick={() => {
+                if (saveStatus === "saving") return;
                 void submitExhibitAttempt({
                   answerDraft,
                   dataset: selectedDataset,

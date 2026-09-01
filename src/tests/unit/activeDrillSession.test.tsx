@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ActiveDrillSession } from "@/features/drills/ActiveDrillSession";
 import { submitAnswer } from "@/features/drills/answerSubmission";
@@ -9,10 +9,181 @@ import {
 } from "@/features/drills/drillPersistence";
 import { createDrillSession } from "@/features/drills/sessionFactory";
 import { unitPreferenceOptions } from "@/features/drills/drillSettingsOptions";
+import { timingAccommodationPreferenceKey } from "@/features/timing/timingAccommodationPreference";
 import type { AppStorageMutation } from "@/lib/storage/appStorageTypes";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
+afterEach(() => {
+  vi.useRealTimers();
+  window.localStorage.removeItem(timingAccommodationPreferenceKey);
+});
+
 describe("ActiveDrillSession", () => {
+  it("locks the launch accommodation into the active timer snapshot", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-02T00:00:00.000Z"));
+    const created = createDrillSession({
+      seed: "active-accommodation-snapshot",
+      startedAt: new Date().toISOString(),
+      settings: {
+        questionCount: 1,
+        secondsPerQuestion: 20,
+        tags: ["addition"],
+        timeMode: "per_question",
+        timingAccommodation: "double_time"
+      }
+    });
+
+    render(
+      <ActiveDrillSession
+        initialSession={created.session}
+        questions={created.questions}
+        storageFactory={() => new MemoryAppStorage()}
+      />
+    );
+
+    expect(screen.getByRole("timer", { name: "Time remaining 0:40" })).toBeInTheDocument();
+    expect(screen.getByTestId("active-timing-accommodation")).toHaveTextContent(
+      "Double time. Your limit is 0m 40s; the standard limit is 0m 20s."
+    );
+
+    window.localStorage.setItem(timingAccommodationPreferenceKey, "untimed");
+    window.dispatchEvent(new StorageEvent("storage", {
+      key: timingAccommodationPreferenceKey,
+      newValue: "untimed"
+    }));
+    act(() => vi.advanceTimersByTime(1_000));
+
+    expect(screen.getByRole("timer", { name: "Time remaining 0:39" })).toBeInTheDocument();
+    expect(screen.getByTestId("active-timing-accommodation")).toHaveTextContent("Double time");
+  });
+
+  it("keeps Untimed Practice active past the authored deadline", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-02T00:00:00.000Z"));
+    const created = createDrillSession({
+      seed: "active-accommodation-untimed",
+      startedAt: new Date().toISOString(),
+      settings: {
+        questionCount: 1,
+        secondsPerQuestion: 5,
+        tags: ["addition"],
+        timeMode: "per_question",
+        timingAccommodation: "untimed"
+      }
+    });
+
+    render(
+      <ActiveDrillSession
+        initialSession={created.session}
+        questions={created.questions}
+        storageFactory={() => new MemoryAppStorage()}
+      />
+    );
+    act(() => vi.advanceTimersByTime(6_000));
+
+    expect(screen.getByRole("timer", { name: "Elapsed time 0:06" })).toBeInTheDocument();
+    expect(screen.getByTestId("active-timing-accommodation")).toHaveTextContent(
+      "Untimed practice. No automatic timeout; the standard limit is 0m 5s."
+    );
+    expect(screen.getByLabelText("Answer")).toBeEnabled();
+    expect(screen.queryByText("Timed out")).not.toBeInTheDocument();
+  });
+
+  it("accepts the final second but rejects an answer at the exact deadline", () => {
+    vi.useFakeTimers();
+    const startedAt = new Date("2026-06-02T00:00:00.000Z");
+    vi.setSystemTime(startedAt);
+    const finalSecond = createDrillSession({
+      seed: "active-final-second",
+      startedAt: startedAt.toISOString(),
+      settings: {
+        questionCount: 1,
+        secondsPerQuestion: 5,
+        tags: ["addition"],
+        timeMode: "per_question"
+      }
+    });
+    const first = render(
+      <ActiveDrillSession
+        initialSession={finalSecond.session}
+        questions={finalSecond.questions}
+        storageFactory={() => new MemoryAppStorage()}
+      />
+    );
+
+    vi.setSystemTime(startedAt.getTime() + 4_999);
+    fireEvent.change(screen.getByLabelText("Answer"), {
+      target: { value: String(finalSecond.questions[0].answer.value) }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+    expect(screen.getByTestId("active-feedback-panel")).toHaveTextContent("Correct.");
+
+    first.unmount();
+    vi.setSystemTime(startedAt);
+    const expired = createDrillSession({
+      seed: "active-exact-deadline",
+      startedAt: startedAt.toISOString(),
+      settings: {
+        questionCount: 1,
+        secondsPerQuestion: 5,
+        tags: ["addition"],
+        timeMode: "per_question"
+      }
+    });
+    render(
+      <ActiveDrillSession
+        initialSession={expired.session}
+        questions={expired.questions}
+        storageFactory={() => new MemoryAppStorage()}
+      />
+    );
+
+    vi.setSystemTime(startedAt.getTime() + 5_000);
+    fireEvent.change(screen.getByLabelText("Answer"), {
+      target: { value: String(expired.questions[0].answer.value) }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+    act(() => vi.advanceTimersByTime(0));
+
+    expect(screen.getByTestId("active-feedback-panel")).toHaveTextContent("Timeout");
+    expect(screen.getByTestId("active-feedback-panel")).not.toHaveTextContent("Correct.");
+  });
+
+  it("saves accommodated sessions without awarding standard personal bests", async () => {
+    const storage = new MemoryAppStorage();
+    const created = createDrillSession({
+      seed: "active-accommodation-personal-best",
+      settings: {
+        feedbackMode: "end_of_session",
+        questionCount: 1,
+        secondsPerQuestion: 120,
+        tags: ["addition"],
+        timeMode: "per_question",
+        timingAccommodation: "time_and_a_half"
+      }
+    });
+
+    render(
+      <ActiveDrillSession
+        initialSession={created.session}
+        questions={created.questions}
+        storageFactory={() => storage}
+      />
+    );
+    fireEvent.change(screen.getByLabelText("Answer"), {
+      target: { value: String(created.questions[0].answer.value) }
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+
+    expect(await screen.findByText("Session saved on this device.")).toBeInTheDocument();
+    expect(screen.getByTestId("session-summary-timing")).toHaveTextContent("Time and a half");
+    expect(screen.queryByTestId("session-summary-new-bests")).not.toBeInTheDocument();
+    expect(await storage.get("drill_sessions", created.session.id)).toMatchObject({
+      settings: { timingAccommodation: "time_and_a_half" }
+    });
+  });
+
   it("shows unit, timing, and rounding expectations beside the prompt", () => {
     const created = createDrillSession({
       seed: "active-question-expectations",
@@ -134,7 +305,7 @@ describe("ActiveDrillSession", () => {
 
     expect(await screen.findByRole("link", { name: "Repeat Benchmark" })).toHaveAttribute(
       "href",
-      "/benchmark/session?benchmark=beginner&pack=pack-one"
+      "/benchmark?benchmark=beginner&pack=pack-one"
     );
   });
 
@@ -243,6 +414,7 @@ describe("ActiveDrillSession", () => {
     expect(screen.getByText(created.questions[0].explanation.short)).toBeInTheDocument();
 
     const scratchpad = screen.getByLabelText("Private notes for this session");
+    expect(scratchpad).toHaveAttribute("dir", "auto");
     fireEvent.change(scratchpad, { target: { value: "Round, then adjust" } });
     fireEvent.change(screen.getByLabelText("Answer unit"), { target: { value: "m" } });
     fireEvent.change(screen.getByLabelText("Answer"), { target: { value: "0" } });

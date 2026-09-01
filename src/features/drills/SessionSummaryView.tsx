@@ -5,13 +5,22 @@ import Link from "next/link";
 import { InterviewMathScoreBreakdown } from "@/features/drills/InterviewMathScoreBreakdown";
 import { SessionGuidancePanel } from "@/features/drills/SessionGuidancePanel";
 import { resolveStrategyTip } from "@/features/drills/strategyTips";
-import type { ErrorBreakdown, ErrorType, UnitType } from "@/lib/domain";
+import {
+  getStandardTimeLimitSeconds,
+  getTimeLimitSeconds,
+  timingAccommodationLabel
+} from "@/features/drills/drillTimer";
+import type { DrillSettings, ErrorBreakdown, ErrorType, UnitType } from "@/lib/domain";
 import { formatNumber } from "@/lib/format";
 
 import { buildDrillSettingsQuery } from "@/features/drills/drillSettingsOptions";
 import { deriveWeaknessDrillSettings, rankWeaknesses } from "@/features/progress/weaknessAnalysis";
 import type { SessionSummarySnapshot } from "@/features/drills/sessionSummary";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import {
+  isStandardPersonalBestEligible,
+  normalizeTimingAccommodation
+} from "@/features/timing/timingAccommodation";
 
 interface SessionSummaryViewProps {
   newBestLabels?: readonly string[];
@@ -29,7 +38,10 @@ export function SessionSummaryView({ newBestLabels = [], repeatAction, snapshot 
   const errorCount = score.errorBreakdown.reduce((total, item) => total + item.count, 0);
   const repeatHref = repeatAction?.href ?? buildRepeatDrillHref(snapshot);
   const repeatLabel = repeatAction?.label ?? "Repeat Drill";
-  const visibleNewBestLabels = score.correctCount === 0 ? [] : Array.from(new Set(newBestLabels));
+  const visibleNewBestLabels =
+    score.correctCount === 0 || !isStandardPersonalBestEligible(snapshot.settings.timingAccommodation)
+      ? []
+      : Array.from(new Set(newBestLabels));
   const guidance = createSessionGuidance(snapshot);
 
   return (
@@ -48,6 +60,8 @@ export function SessionSummaryView({ newBestLabels = [], repeatAction, snapshot 
       </div>
 
       {visibleNewBestLabels.length > 0 ? <NewBestNotice labels={visibleNewBestLabels.map((label) => t(label))} /> : null}
+
+      <TimingSummary settings={snapshot.settings} />
 
       <section className="grid gap-3 border-y border-ink/20 bg-paper/70 py-4" data-testid="session-summary-actions">
         <div>
@@ -97,6 +111,41 @@ export function SessionSummaryView({ newBestLabels = [], repeatAction, snapshot 
           ))}
         </ol>
       </section>
+    </section>
+  );
+}
+
+function TimingSummary({ settings }: { settings: DrillSettings }) {
+  const { formatDuration, t } = useI18n();
+  const accommodation = normalizeTimingAccommodation(settings.timingAccommodation);
+  const standardLimitSeconds = getStandardTimeLimitSeconds(settings);
+  const effectiveLimitSeconds = getTimeLimitSeconds(settings);
+  const label = standardLimitSeconds === undefined
+    ? "Untimed drill"
+    : timingAccommodationLabel(accommodation);
+  const detail = standardLimitSeconds === undefined
+    ? t("No time limit; elapsed time was recorded.")
+    : effectiveLimitSeconds === undefined
+      ? t("No automatic timeout. The standard limit was {standard}.", {
+          standard: formatDuration(standardLimitSeconds)
+        })
+      : accommodation === "standard"
+        ? t("The active limit was {effective}.", {
+            effective: formatDuration(effectiveLimitSeconds)
+          })
+        : t("The adjusted limit was {effective}; the standard limit was {standard}.", {
+            effective: formatDuration(effectiveLimitSeconds),
+            standard: formatDuration(standardLimitSeconds)
+          });
+
+  return (
+    <section
+      aria-label={t("Session timing")}
+      className="grid gap-1 border-s-2 border-teal bg-mint/60 px-3 py-3 text-sm leading-6 text-ink"
+      data-testid="session-summary-timing"
+    >
+      <p className="font-semibold text-teal">{t(label)}</p>
+      <p>{detail}</p>
     </section>
   );
 }

@@ -29,7 +29,8 @@ describe("benchmark result persistence", () => {
       difficulty: "beginner",
       id: `benchmark-result-beginner-${completed.session.id}`,
       score: completed.session.score,
-      sessionId: completed.session.id
+      sessionId: completed.session.id,
+      timingAccommodation: "standard"
     });
   });
 
@@ -45,6 +46,75 @@ describe("benchmark result persistence", () => {
         storage: new MemoryAppStorage()
       })
     ).rejects.toThrow("Only completed benchmark sessions can be persisted.");
+  });
+
+  it("saves accommodated attempts but keeps Standard-only comparison records", async () => {
+    const storage = new MemoryAppStorage();
+    const completed = createCompletedBenchmarkSession("beginner", "2026-06-02T12:00:00.000Z");
+    const standard = {
+      benchmarkId: "beginner",
+      completedAt: "2026-06-02T12:00:10.000Z",
+      difficulty: "beginner" as const,
+      id: "standard-lower",
+      score: { ...completed.session.score!, accuracy: 0.7, totalScore: 700 },
+      sessionId: "standard-session"
+    };
+    const accommodated = {
+      ...standard,
+      completedAt: "2026-06-03T12:00:10.000Z",
+      id: "accommodated-higher",
+      score: { ...standard.score, accuracy: 1, totalScore: 1_000 },
+      sessionId: "accommodated-session",
+      timingAccommodation: "double_time" as const
+    };
+
+    await storage.put("benchmark_results", standard);
+    await storage.put("benchmark_results", accommodated);
+
+    const snapshot = await loadBenchmarkHistorySnapshot(storage);
+
+    expect(snapshot.totalCount).toBe(2);
+    expect(snapshot.results.map((result) => result.id)).toEqual(["accommodated-higher", "standard-lower"]);
+    expect(snapshot.aggregates[0]).toMatchObject({
+      attempts: 2,
+      best: { id: "standard-lower" },
+      bestScore: { id: "standard-lower" },
+      latest: { id: "accommodated-higher" },
+      latestStandard: { id: "standard-lower" },
+      standardAttempts: 1
+    });
+  });
+
+  it("records the selected policy and treats missing legacy values as Standard", async () => {
+    const storage = new MemoryAppStorage();
+    const completed = createCompletedBenchmarkSession("beginner", "2026-06-02T12:00:00.000Z");
+    completed.session.settings = {
+      ...completed.session.settings,
+      timingAccommodation: "time_and_a_half"
+    };
+
+    const persisted = await persistBenchmarkResult({
+      benchmarkId: "beginner",
+      session: completed.session,
+      storage
+    });
+
+    expect(persisted.timingAccommodation).toBe("time_and_a_half");
+
+    await storage.put("benchmark_results", {
+      ...persisted,
+      completedAt: "2026-06-01T12:00:00.000Z",
+      id: "legacy-standard",
+      sessionId: "legacy-session",
+      timingAccommodation: undefined
+    });
+
+    const snapshot = await loadBenchmarkHistorySnapshot(storage);
+    expect(snapshot.aggregates[0]).toMatchObject({
+      best: { id: "legacy-standard" },
+      latestStandard: { id: "legacy-standard" },
+      standardAttempts: 1
+    });
   });
 
   it("pages large histories without duplicates and builds compact summaries", async () => {

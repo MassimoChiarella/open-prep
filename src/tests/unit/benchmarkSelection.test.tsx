@@ -2,11 +2,11 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
 import { benchmarkTests } from "@/data/questionBank/benchmarkTests";
+import { BenchmarkSelectionView } from "@/features/benchmarks/BenchmarkSelectionView";
 import {
-  BenchmarkSelectionView,
   buildBenchmarkSelectionHref,
-} from "@/features/benchmarks/BenchmarkSelectionView";
-import { buildBenchmarkSessionHref } from "@/features/benchmarks/benchmarkSession";
+  buildBenchmarkSessionHref
+} from "@/features/benchmarks/benchmarkSession";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 import { localePreferenceStorageKey } from "@/features/i18n/i18n";
 

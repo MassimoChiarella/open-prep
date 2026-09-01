@@ -347,24 +347,26 @@ function ChartValueList({
   const { t } = useI18n();
 
   return (
-    <dl
+    <div
       aria-label={t("Chart values")}
-      className="grid max-h-[32rem] auto-rows-fr gap-2 overflow-auto overscroll-contain sm:grid-cols-2"
+      className="max-h-[32rem] overflow-auto overscroll-contain"
       data-testid="exhibit-chart-values"
       role="region"
       tabIndex={0}
     >
-      {chartData.map((datum) => (
-        <div className="min-w-0 border-s-2 border-ink/15 bg-paper px-3 py-2" key={datum.label}>
-          <dt className="min-w-0 text-sm font-semibold text-ink [overflow-wrap:anywhere]">{datum.label}</dt>
-          {series.map((item) => (
-            <dd className="mt-1 min-w-0 text-sm text-ink/70 [overflow-wrap:anywhere]" key={item.column.id}>
-              {item.column.label}: {formatExhibitCellValue(datum.values[item.column.id] ?? 0, item.column)}
-            </dd>
-          ))}
-        </div>
-      ))}
-    </dl>
+      <dl className="grid auto-rows-fr gap-2 sm:grid-cols-2">
+        {chartData.map((datum) => (
+          <div className="min-w-0 border-s-2 border-ink/15 bg-paper px-3 py-2" key={datum.label}>
+            <dt className="min-w-0 text-sm font-semibold text-ink [overflow-wrap:anywhere]">{datum.label}</dt>
+            {series.map((item) => (
+              <dd className="mt-1 min-w-0 text-sm text-ink/70 [overflow-wrap:anywhere]" key={item.column.id}>
+                {item.column.label}: {formatExhibitCellValue(datum.values[item.column.id] ?? 0, item.column)}
+              </dd>
+            ))}
+          </div>
+        ))}
+      </dl>
+    </div>
   );
 }
 

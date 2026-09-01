@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
-import { buildBenchmarkSessionHref } from "@/features/benchmarks/benchmarkSession";
+import { buildBenchmarkSelectionHref } from "@/features/benchmarks/benchmarkSession";
 import {
   loadLatestStoredSessionSummarySnapshot,
   loadStoredSessionSummarySnapshotById
@@ -76,7 +76,7 @@ export function StoredSessionSummaryLoader({
               repeatHref:
                 benchmarkResult === undefined
                   ? undefined
-                  : buildBenchmarkSessionHref(
+                  : buildBenchmarkSelectionHref(
                       benchmarkResult.benchmarkId,
                       questionPackIdFromBenchmarkId(benchmarkResult.benchmarkId)
                     ),

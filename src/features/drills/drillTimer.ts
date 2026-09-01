@@ -1,4 +1,9 @@
 import type { DrillSettings } from "@/lib/domain";
+import {
+  getEffectiveDurationSeconds,
+  normalizeTimingAccommodation,
+  type TimingAccommodation
+} from "@/features/timing/timingAccommodation";
 
 export interface TimerSnapshot {
   elapsedSeconds: number;
@@ -6,6 +11,7 @@ export interface TimerSnapshot {
   label: string;
   limitSeconds?: number;
   remainingSeconds?: number;
+  standardLimitSeconds?: number;
 }
 
 interface CreateTimerSnapshotOptions {
@@ -17,13 +23,15 @@ interface CreateTimerSnapshotOptions {
 
 export function createTimerSnapshot(options: CreateTimerSnapshotOptions): TimerSnapshot {
   const elapsedSeconds = calculateElapsedSeconds(activeStartedAtMs(options), options.nowMs);
+  const standardLimitSeconds = getStandardTimeLimitSeconds(options.settings);
   const limitSeconds = getTimeLimitSeconds(options.settings);
 
   if (limitSeconds === undefined) {
     return {
       elapsedSeconds,
       isExpired: false,
-      label: formatSeconds(elapsedSeconds)
+      label: formatSeconds(elapsedSeconds),
+      ...(standardLimitSeconds === undefined ? {} : { standardLimitSeconds })
     };
   }
 
@@ -34,11 +42,22 @@ export function createTimerSnapshot(options: CreateTimerSnapshotOptions): TimerS
     isExpired: remainingSeconds <= 0,
     label: formatSeconds(remainingSeconds),
     limitSeconds,
-    remainingSeconds
+    remainingSeconds,
+    standardLimitSeconds
   };
 }
 
 export function getTimeLimitSeconds(settings: DrillSettings): number | undefined {
+  const standardLimitSeconds = getStandardTimeLimitSeconds(settings);
+
+  if (standardLimitSeconds === undefined) {
+    return undefined;
+  }
+
+  return getEffectiveDurationSeconds(standardLimitSeconds, settings.timingAccommodation) ?? undefined;
+}
+
+export function getStandardTimeLimitSeconds(settings: DrillSettings): number | undefined {
   if (settings.timeMode === "per_question") {
     return settings.secondsPerQuestion;
   }
@@ -48,6 +67,18 @@ export function getTimeLimitSeconds(settings: DrillSettings): number | undefined
   }
 
   return undefined;
+}
+
+export function timingAccommodationLabel(accommodation: unknown): string {
+  const normalized = normalizeTimingAccommodation(accommodation);
+  const labels: Record<TimingAccommodation, string> = {
+    double_time: "Double time",
+    standard: "Standard time",
+    time_and_a_half: "Time and a half",
+    untimed: "Untimed practice"
+  };
+
+  return labels[normalized];
 }
 
 export function calculateElapsedSeconds(startedAtMs: number, nowMs: number): number {

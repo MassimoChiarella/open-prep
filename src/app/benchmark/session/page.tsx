@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 
 import { LoadingState } from "@/components/LoadingState";
 import { benchmarkTests } from "@/data/questionBank/benchmarkTests";
+import { parseBenchmarkTimingAccommodation } from "@/features/benchmarks/benchmarkSession";
 import { QuestionPackBenchmarkSession } from "@/features/question-packs/SpecializedQuestionPackContent";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
@@ -25,6 +26,7 @@ function BenchmarkSessionPageContent() {
       benchmarkId={searchParams.get("benchmark") ?? undefined}
       builtInBenchmarks={benchmarkTests}
       packId={searchParams.get("pack") ?? undefined}
+      timingAccommodation={parseBenchmarkTimingAccommodation(searchParams.get("timingAccommodation"))}
     />
   );
 }

@@ -53,6 +53,31 @@ describe("drill persistence", () => {
     });
   });
 
+  it("isolates in-progress drafts by an optional content-pool scope", async () => {
+    const storage = new MemoryAppStorage();
+    const created = createDrillSession({
+      seed: "scoped-draft",
+      startedAt: "2026-06-02T00:00:00.000Z",
+      settings: { questionCount: 1, tags: ["addition"] }
+    });
+    const route = "/drills/session?categories=arithmetic&count=1";
+    const firstPoolKey = buildDrillDraftKey(route, created.session.settings, "pool-a");
+
+    await persistInProgressDrillSession({
+      draftKey: firstPoolKey,
+      questions: created.questions,
+      session: created.session,
+      storage
+    });
+
+    expect(await loadInProgressDrillSession(
+      storage,
+      buildDrillDraftKey(route, created.session.settings, "pool-b")
+    )).toBeUndefined();
+    expect(await loadInProgressDrillSession(storage, firstPoolKey)).toEqual(created);
+    expect(buildDrillDraftKey(route, created.session.settings)).not.toBe(firstPoolKey);
+  });
+
   it("persists completed sessions and individual responses", async () => {
     const storage = new MemoryAppStorage();
     const completed = createCompletedSession();

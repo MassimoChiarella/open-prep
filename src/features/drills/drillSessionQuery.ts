@@ -16,6 +16,7 @@ import {
   unitPreferenceOptions
 } from "@/features/drills/drillSettingsOptions";
 import type { DrillSettings } from "@/lib/domain";
+import { timingAccommodationIds } from "@/features/timing/timingAccommodation";
 
 import { createDrillSettings } from "@/features/drills/drillSettings";
 
@@ -146,6 +147,13 @@ export function parseDrillSettingsQuery(searchParams: DrillSessionSearchParams =
       ),
       hintsEnabled: parseOptionalBoolean(readParam(searchParams, "hints"), "hints setting", warnings),
       questionPackId,
+      timingAccommodation: parseSingleOption(
+        readParam(searchParams, "timingAccommodation"),
+        timingAccommodationIds,
+        "standard",
+        "timing accommodation",
+        warnings
+      ),
       timeMode,
       feedbackMode: parseSingleOption(
         readParam(searchParams, "feedbackMode"),
@@ -174,6 +182,7 @@ export function buildDrillSessionSeed(settings: DrillSettings, nonce?: string | 
     settings.tags?.join("-") ?? "all",
     settings.difficulty,
     settings.questionCount,
+    settings.timingAccommodation ?? "standard",
     settings.timeMode,
     settings.feedbackMode,
     ...(settings.questionPackId === undefined ? [] : [settings.questionPackId])

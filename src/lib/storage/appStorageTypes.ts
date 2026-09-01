@@ -145,13 +145,26 @@ export interface CasePracticeQuestionPackRecord {
   importedAt: string;
 }
 
+export interface CommunityPackCatalogProvenance {
+  file: string;
+  id: string;
+  language?: string;
+  publisherId: string;
+  reviewDate: string;
+  sha256: string;
+  source: "repository_catalog";
+  version: string;
+}
+
 export type QuestionPackRecord =
-  | FixedNumericQuestionPackRecord
-  | GeneratedTemplateQuestionPackRecord
-  | ExhibitQuestionPackRecord
-  | MarketSizingQuestionPackRecord
-  | BenchmarkQuestionPackRecord
-  | CasePracticeQuestionPackRecord;
+  (
+    | FixedNumericQuestionPackRecord
+    | GeneratedTemplateQuestionPackRecord
+    | ExhibitQuestionPackRecord
+    | MarketSizingQuestionPackRecord
+    | BenchmarkQuestionPackRecord
+    | CasePracticeQuestionPackRecord
+  ) & { catalogProvenance?: CommunityPackCatalogProvenance };
 
 export interface StoredDrillSession extends DrillSession {
   draftKey?: string;
@@ -173,6 +186,7 @@ export interface BenchmarkResultRecord {
   difficulty: Difficulty;
   score: SessionScore;
   sessionId: string;
+  timingAccommodation?: import("@/features/timing/timingAccommodation").TimingAccommodation;
 }
 
 export interface UserSettingsRecord {
@@ -219,6 +233,7 @@ export interface ExhibitAttemptRecord {
   normalizedValue?: number;
   rawInput?: string;
   score?: number;
+  timingAccommodation?: import("@/features/timing/timingAccommodation").TimingAccommodation;
 }
 
 export type MistakeNotebookSourceType = "benchmark" | "drill" | "exhibit" | "market_sizing";
@@ -289,6 +304,10 @@ export interface AppStoragePage<TValue> {
   values: TValue[];
 }
 
+export type AppStorageSnapshot<TStores extends readonly AppStoreName[]> = {
+  [TStore in TStores[number]]: AppStoreValue<TStore>[];
+};
+
 export interface AppStoragePageOptions {
   afterKey?: IDBValidKey;
   direction?: "next" | "prev";
@@ -308,7 +327,14 @@ export interface AppStorage {
     key: AppStoreKey<TStore>
   ): Promise<AppStoreValue<TStore> | undefined>;
   getAll<TStore extends AppStoreName>(storeName: TStore): Promise<AppStoreValue<TStore>[]>;
+  scan<TStore extends AppStoreName>(
+    storeName: TStore,
+    visit: (value: AppStoreValue<TStore>) => void
+  ): Promise<void>;
   count<TStore extends AppStoreName>(storeName: TStore): Promise<number>;
+  getSnapshot<const TStores extends readonly AppStoreName[]>(
+    storeNames: TStores
+  ): Promise<AppStorageSnapshot<TStores>>;
   getPage<TStore extends AppIndexedStoreName>(
     storeName: TStore,
     indexName: AppStoreIndexName<TStore>,

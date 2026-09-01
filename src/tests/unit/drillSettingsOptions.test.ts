@@ -22,6 +22,7 @@ describe("drill settings options", () => {
       categories: "arithmetic,percentages",
       difficulty: "beginner",
       count: "8",
+      timingAccommodation: "standard",
       timeMode: "per_question",
       feedbackMode: "retry_first",
       tags: "addition,percentage_of_number",
@@ -55,7 +56,33 @@ describe("drill settings options", () => {
       })
     });
     expect(buildDrillSessionSeed(parsed.settings)).toBe(
-      "session:arithmetic-percentages:addition-percentage_of_number:beginner:3:session:end_of_session"
+      "session:arithmetic-percentages:addition-percentage_of_number:beginner:3:standard:session:end_of_session"
+    );
+  });
+
+  it("round-trips and snapshots a functional timing accommodation", () => {
+    const settings = createDrillSettings({
+      timingAccommodation: "time_and_a_half",
+      timeMode: "session",
+      totalSessionSeconds: 61
+    });
+    const query = buildDrillSettingsQuery(settings);
+    const parsed = parseDrillSettingsQuery(new URLSearchParams(query));
+    const created = createDrillSession({ seed: "accommodated", settings: parsed.settings });
+
+    expect(new URLSearchParams(query).get("timingAccommodation")).toBe("time_and_a_half");
+    expect(parsed).toEqual({ settings, warnings: [] });
+    expect(created.session.settings.timingAccommodation).toBe("time_and_a_half");
+    expect(buildDrillSessionSeed(parsed.settings)).toContain(":time_and_a_half:session:");
+  });
+
+  it("normalizes missing legacy timing to Standard and warns on invalid query input", () => {
+    expect(parseDrillSettingsQuery(new URLSearchParams()).settings.timingAccommodation).toBe("standard");
+    const invalid = parseDrillSettingsQuery(new URLSearchParams({ timingAccommodation: "diagnosis" }));
+
+    expect(invalid.settings.timingAccommodation).toBe("standard");
+    expect(invalid.warnings).toContain(
+      "Used default timing accommodation; unsupported value was diagnosis."
     );
   });
 

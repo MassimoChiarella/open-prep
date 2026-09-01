@@ -1,4 +1,5 @@
 import type { BenchmarkId } from "@/features/benchmarks/benchmarkTypes";
+import { isStandardComparisonEligible } from "@/features/timing/timingAccommodation";
 import type { Difficulty, DrillSettings, SkillCategory, SkillTag } from "@/lib/domain";
 import { formatLabel } from "@/lib/format";
 import type { BenchmarkResultRecord, StoredDrillSession, StoredUserResponse } from "@/lib/storage/appStorageTypes";
@@ -53,7 +54,9 @@ export interface CreatePersonalBestRecordsOptions {
 export function createPersonalBestRecords(options: CreatePersonalBestRecordsOptions): PersonalBestRecord[] {
   const bests = new Map<string, PersonalBestRecord>();
   const responsesById = new Map((options.responses ?? []).map((response) => [response.id, response]));
-  const completedSessions = options.sessions.filter((session) => session.score !== undefined);
+  const completedSessions = options.sessions.filter(
+    (session) => session.score !== undefined && isStandardComparisonEligible(session.settings.timingAccommodation)
+  );
 
   for (const session of completedSessions) {
     addDrillBests(bests, session, collectSessionResponses(session, responsesById));
@@ -64,6 +67,8 @@ export function createPersonalBestRecords(options: CreatePersonalBestRecordsOpti
   }
 
   for (const result of options.benchmarkResults ?? []) {
+    if (!isStandardComparisonEligible(result.timingAccommodation)) continue;
+
     addBest(bests, {
       achievedAt: result.completedAt,
       benchmarkId: result.benchmarkId as BenchmarkId,

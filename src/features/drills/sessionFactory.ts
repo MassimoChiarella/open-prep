@@ -37,7 +37,7 @@ export function createDrillSession(options: CreateDrillSessionOptions): CreatedD
   };
 }
 
-function validateDrillSettings(settings: DrillSettings): void {
+export function validateDrillSettings(settings: DrillSettings): void {
   if (settings.categories.length === 0) {
     throw new Error("A drill session requires at least one category.");
   }

@@ -1,4 +1,8 @@
 import type { BenchmarkId } from "@/features/benchmarks/benchmarkTypes";
+import {
+  isStandardComparisonEligible,
+  normalizeTimingAccommodation
+} from "@/features/timing/timingAccommodation";
 import type { DrillSession } from "@/lib/domain";
 import {
   appStoreIndexNames,
@@ -12,10 +16,12 @@ const benchmarkAggregateScanPageSize = 2_000;
 export interface BenchmarkHistoryAggregate {
   attempts: number;
   benchmarkId: string;
-  best: BenchmarkResultRecord;
-  bestScore: BenchmarkResultRecord;
+  best?: BenchmarkResultRecord;
+  bestScore?: BenchmarkResultRecord;
   latest: BenchmarkResultRecord;
+  latestStandard?: BenchmarkResultRecord;
   previous?: BenchmarkResultRecord;
+  standardAttempts: number;
 }
 
 export interface BenchmarkHistorySnapshot {
@@ -51,7 +57,8 @@ export async function persistBenchmarkResult(options: PersistBenchmarkResultOpti
     completedAt,
     difficulty: options.session.settings.difficulty,
     score: options.session.score,
-    sessionId: options.session.id
+    sessionId: options.session.id,
+    timingAccommodation: normalizeTimingAccommodation(options.session.settings.timingAccommodation)
   };
 
   await options.storage.put("benchmark_results", record);
@@ -121,37 +128,53 @@ function addBenchmarkResultsToAggregates(
     const current = aggregates.get(result.benchmarkId);
 
     if (current === undefined) {
-      aggregates.set(result.benchmarkId, {
+      const aggregate: BenchmarkHistoryAggregate = {
         attempts: 1,
         benchmarkId: result.benchmarkId,
-        best: result,
-        bestScore: result,
-        latest: result
-      });
+        latest: result,
+        standardAttempts: 0
+      };
+      addStandardBenchmarkResult(aggregate, result);
+      aggregates.set(result.benchmarkId, aggregate);
       continue;
     }
 
     current.attempts += 1;
 
-    if (isLaterResult(result, current.latest)) {
-      current.previous = current.latest;
-      current.latest = result;
-    } else if (current.previous === undefined || isLaterResult(result, current.previous)) {
-      current.previous = result;
-    }
+    if (isLaterResult(result, current.latest)) current.latest = result;
 
-    if (
-      result.score.accuracy > current.best.score.accuracy ||
-      (result.score.accuracy === current.best.score.accuracy && isPreferredMetricTie(result, current.best))
-    ) {
-      current.best = result;
-    }
-    if (
-      result.score.totalScore > current.bestScore.score.totalScore ||
-      (result.score.totalScore === current.bestScore.score.totalScore && isPreferredMetricTie(result, current.bestScore))
-    ) {
-      current.bestScore = result;
-    }
+    addStandardBenchmarkResult(current, result);
+  }
+}
+
+function addStandardBenchmarkResult(
+  aggregate: BenchmarkHistoryAggregate,
+  result: BenchmarkResultRecord
+): void {
+  if (!isStandardComparisonEligible(result.timingAccommodation)) return;
+
+  aggregate.standardAttempts += 1;
+
+  if (aggregate.latestStandard === undefined || isLaterResult(result, aggregate.latestStandard)) {
+    aggregate.previous = aggregate.latestStandard;
+    aggregate.latestStandard = result;
+  } else if (aggregate.previous === undefined || isLaterResult(result, aggregate.previous)) {
+    aggregate.previous = result;
+  }
+
+  if (
+    aggregate.best === undefined ||
+    result.score.accuracy > aggregate.best.score.accuracy ||
+    (result.score.accuracy === aggregate.best.score.accuracy && isPreferredMetricTie(result, aggregate.best))
+  ) {
+    aggregate.best = result;
+  }
+  if (
+    aggregate.bestScore === undefined ||
+    result.score.totalScore > aggregate.bestScore.score.totalScore ||
+    (result.score.totalScore === aggregate.bestScore.score.totalScore && isPreferredMetricTie(result, aggregate.bestScore))
+  ) {
+    aggregate.bestScore = result;
   }
 }
 

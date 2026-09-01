@@ -16,9 +16,13 @@ import {
   type InterviewMathSubmission
 } from "@/features/drills/interviewMathEvaluation";
 import { persistBenchmarkResult } from "@/features/benchmarks/benchmarkPersistence";
-import { buildBenchmarkSessionHref } from "@/features/benchmarks/benchmarkSession";
+import { buildBenchmarkSelectionHref } from "@/features/benchmarks/benchmarkSession";
 import type { BenchmarkId } from "@/features/benchmarks/benchmarkTypes";
-import { createTimerSnapshot, getTimeLimitSeconds } from "@/features/drills/drillTimer";
+import {
+  createTimerSnapshot,
+  getTimeLimitSeconds,
+  timingAccommodationLabel
+} from "@/features/drills/drillTimer";
 import { unitPreferenceOptions } from "@/features/drills/drillSettingsOptions";
 import { SessionSummaryView } from "@/features/drills/SessionSummaryView";
 import { completeDrillSession } from "@/features/drills/sessionCompletion";
@@ -33,12 +37,17 @@ import { starterQuestionTemplates } from "@/data/questionTemplates/starterTempla
 import { generateSimilarQuestionFromTemplates } from "@/features/questions/questionGenerator";
 import { createPersonalBestRecords, findSourcePersonalBests } from "@/features/progress/personalBests";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import {
+  isStandardPersonalBestEligible,
+  normalizeTimingAccommodation
+} from "@/features/timing/timingAccommodation";
 import type {
   DrillSession,
   DrillSettings,
   ErrorType,
   InterviewMathSpec,
   Question,
+  QuestionTemplate,
   RoundingRule,
   UnitType,
   UserResponse
@@ -50,6 +59,7 @@ import { validateAnswer, type ValidationResult } from "@/lib/validation/validate
 
 interface ActiveDrillSessionProps {
   benchmarkId?: BenchmarkId;
+  draftKeyScope?: string;
   initialSession: DrillSession;
   interviewMathMode?: boolean;
   lockedModeSummary?: LockedModeSummaryItem[];
@@ -58,6 +68,7 @@ interface ActiveDrillSessionProps {
   sessionEyebrow?: string;
   sessionTimerDescription?: string;
   sessionTitle?: string;
+  similarQuestionTemplates?: readonly QuestionTemplate[];
   storageFactory?: () => AppStorage;
   warnings?: string[];
 }
@@ -95,6 +106,7 @@ const roundingRuleLabels: Record<RoundingRule, string> = {
 
 export function ActiveDrillSession({
   benchmarkId,
+  draftKeyScope,
   initialSession,
   interviewMathMode = false,
   lockedModeSummary = [],
@@ -103,6 +115,7 @@ export function ActiveDrillSession({
   sessionEyebrow = "Practice",
   sessionTimerDescription,
   sessionTitle = "Active Drill Session",
+  similarQuestionTemplates = starterQuestionTemplates,
   storageFactory = createIndexedDbAppStorage,
   warnings = []
 }: ActiveDrillSessionProps) {
@@ -135,9 +148,10 @@ export function ActiveDrillSession({
     () =>
       buildDrillDraftKey(
         typeof window === "undefined" ? "" : `${window.location.pathname}${window.location.search}`,
-        initialSession.settings
+        initialSession.settings,
+        draftKeyScope
       ),
-    [initialSession.settings]
+    [draftKeyScope, initialSession.settings]
   );
 
   const progress = useMemo(() => getDrillProgressSummary(session), [session]);
@@ -154,16 +168,17 @@ export function ActiveDrillSession({
     questionStartedAt,
     session.startedAt
   ]);
-  const timer = useMemo(
-    () =>
+  const timerAt = useCallback(
+    (timestamp: number) =>
       createTimerSnapshot({
         settings: session.settings,
-        nowMs,
+        nowMs: timestamp,
         questionStartedAtMs: questionStartedAt,
         sessionStartedAtMs
       }),
-    [nowMs, questionStartedAt, session.settings, sessionStartedAtMs]
+    [questionStartedAt, session.settings, sessionStartedAtMs]
   );
+  const timer = useMemo(() => timerAt(nowMs), [nowMs, timerAt]);
   const timerIsActive =
     completedSession?.score === undefined &&
     currentQuestion !== undefined &&
@@ -175,14 +190,14 @@ export function ActiveDrillSession({
       lockedModeSummary.length === 0 &&
       session.settings.questionPackId === undefined
         ? generateSimilarQuestionFromTemplates(
-            starterQuestionTemplates,
+            similarQuestionTemplates,
             feedback.question,
             session.settings,
             `${session.id}:similar:${feedback.question.id}:${session.responses.length}`,
             questionQueue.map((question) => question.id)
           )
         : undefined,
-    [benchmarkId, feedback, lockedModeSummary.length, questionQueue, session.id, session.responses.length, session.settings]
+    [benchmarkId, feedback, lockedModeSummary.length, questionQueue, session.id, session.responses.length, session.settings, similarQuestionTemplates]
   );
 
   const prepareNextQuestion = useCallback(() => {
@@ -424,7 +439,15 @@ export function ActiveDrillSession({
               storage.getAll("benchmark_results")
             ]);
             const bests = findSourcePersonalBests(
-              createPersonalBestRecords({ benchmarkResults, responses, sessions }),
+              createPersonalBestRecords({
+                benchmarkResults: benchmarkResults.filter((result) =>
+                  isStandardPersonalBestEligible(result.timingAccommodation)
+                ),
+                responses,
+                sessions: sessions.filter((storedSession) =>
+                  isStandardPersonalBestEligible(storedSession.settings.timingAccommodation)
+                )
+              }),
               sourceIds
             );
 
@@ -471,12 +494,15 @@ export function ActiveDrillSession({
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const submittedAtMs = currentTimestampMs();
+    const submissionTimer = timerAt(submittedAtMs);
 
-    if (currentQuestion === undefined || feedback?.recorded || timer.isExpired) {
+    if (currentQuestion === undefined || feedback?.recorded || submissionTimer.isExpired) {
+      if (submissionTimer.isExpired) setNowMs(submittedAtMs);
       return;
     }
 
-    const timeTakenSeconds = timer.elapsedSeconds;
+    const timeTakenSeconds = submissionTimer.elapsedSeconds;
     const interviewMath = isInterviewMathQuestion(currentQuestion, interviewMathMode)
       ? createInterviewMathSubmission(equationOptionId, interpretationOptionId, session.settings)
       : undefined;
@@ -522,7 +548,11 @@ export function ActiveDrillSession({
   }
 
   function handleSkip() {
-    if (currentQuestion === undefined || feedback !== undefined || timer.isExpired) {
+    const skippedAtMs = currentTimestampMs();
+    const skipTimer = timerAt(skippedAtMs);
+
+    if (currentQuestion === undefined || feedback !== undefined || skipTimer.isExpired) {
+      if (skipTimer.isExpired) setNowMs(skippedAtMs);
       return;
     }
 
@@ -538,7 +568,7 @@ export function ActiveDrillSession({
       question: currentQuestion,
       rawInput: "",
       selectedUnit: submittedUnit,
-      timeTakenSeconds: timer.elapsedSeconds
+      timeTakenSeconds: skipTimer.elapsedSeconds
     });
 
     recordSubmission(submitted, currentQuestion, "", submittedUnit);
@@ -616,7 +646,7 @@ export function ActiveDrillSession({
             benchmarkId === undefined
               ? undefined
               : {
-                  href: buildBenchmarkSessionHref(benchmarkId, completedSummary.settings.questionPackId),
+                  href: buildBenchmarkSelectionHref(benchmarkId, completedSummary.settings.questionPackId),
                   label: "Repeat Benchmark"
                 }
           }
@@ -701,7 +731,11 @@ export function ActiveDrillSession({
               reviewing={feedback?.recorded === true}
               totalQuestions={progress.totalQuestions}
             />
-            <TimerPanel mode={session.settings.timeMode} timer={timer} timerDescriptionOverride={sessionTimerDescription} />
+            <TimerPanel
+              settings={session.settings}
+              timer={timer}
+              timerDescriptionOverride={sessionTimerDescription}
+            />
           </div>
 
           <section className="min-w-0 border border-ink/15 border-t-2 border-t-teal bg-white p-4 sm:p-6">
@@ -711,6 +745,7 @@ export function ActiveDrillSession({
                 <p
                   className="min-w-0 max-w-3xl text-2xl font-semibold leading-9 text-ink [overflow-wrap:anywhere] sm:text-3xl sm:leading-10"
                   data-testid="active-question-prompt"
+                  dir="auto"
                   id="active-question-prompt"
                 >
                   {displayedQuestion.prompt}
@@ -758,6 +793,7 @@ export function ActiveDrillSession({
                   {showHint ? (
                     <p
                       className="min-w-0 rounded-md border border-teal/20 bg-mint/50 px-3 py-2 text-sm leading-6 text-ink [overflow-wrap:anywhere]"
+                      dir="auto"
                       id="active-question-hint"
                     >
                       {displayedQuestion.explanation.short}
@@ -877,6 +913,7 @@ export function ActiveDrillSession({
                   {t("Private notes for this session")}
                   <textarea
                     className="min-h-28 resize-y rounded-md border border-ink/50 bg-white p-3 text-sm leading-6 text-ink outline-none focus:border-teal focus:ring-2 focus:ring-mint"
+                    dir="auto"
                     onChange={(event) => setScratchpad(event.currentTarget.value)}
                     value={scratchpad}
                   />
@@ -907,7 +944,11 @@ export function ActiveDrillSession({
                 {t(queueTitle)}
               </h2>
             </div>
-            <ol className="grid max-h-[28rem] min-w-0 grid-cols-[minmax(0,1fr)] gap-2 overflow-y-auto pr-1">
+            <ol
+              aria-labelledby="active-session-queue-heading"
+              className="grid max-h-[28rem] min-w-0 grid-cols-[minmax(0,1fr)] gap-2 overflow-y-auto pr-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal"
+              tabIndex={0}
+            >
               {questionQueue.map((question, index) => {
                 const response = session.responses.find((item) => item.questionId === question.id);
                 const active = question.id === displayedQuestion.id;
@@ -921,7 +962,7 @@ export function ActiveDrillSession({
                     key={question.id}
                   >
                     <span className="font-semibold">{formatLocaleNumber(index + 1)}.</span>{" "}
-                    {active || response !== undefined ? question.prompt : t("Upcoming question")}
+                    {active || response !== undefined ? <bdi dir="auto">{question.prompt}</bdi> : t("Upcoming question")}
                     {response !== undefined ? <ResponseBadge response={response} /> : null}
                   </li>
                 );
@@ -999,7 +1040,7 @@ function InterviewMathAnswerFields({
                   type="radio"
                   value={option.id}
                 />
-                <span className="min-w-0 break-words font-semibold">{option.label}</span>
+                <span className="min-w-0 break-words font-semibold" dir="auto">{option.label}</span>
               </label>
             ))}
           </fieldset>
@@ -1084,7 +1125,7 @@ function InterviewMathAnswerFields({
                 type="radio"
                 value={option.id}
               />
-              <span className="min-w-0 break-words font-semibold">{option.label}</span>
+              <span className="min-w-0 break-words font-semibold" dir="auto">{option.label}</span>
             </label>
           ))}
         </fieldset>
@@ -1180,15 +1221,16 @@ function LocalSaveStatus({
 }
 
 function TimerPanel({
-  mode,
+  settings,
   timer,
   timerDescriptionOverride
 }: {
-  mode: DrillSession["settings"]["timeMode"];
+  settings: DrillSession["settings"];
   timer: ReturnType<typeof createTimerSnapshot>;
   timerDescriptionOverride?: string;
 }) {
-  const { t } = useI18n();
+  const { formatDuration, t } = useI18n();
+  const accommodation = normalizeTimingAccommodation(settings.timingAccommodation);
   const timed = timer.remainingSeconds !== undefined;
   const timerPercent =
     timer.remainingSeconds !== undefined && timer.limitSeconds !== undefined
@@ -1203,6 +1245,7 @@ function TimerPanel({
           ? "border-coral/30 border-t-coral bg-coral/10"
           : "border-ink/15 border-t-teal bg-white"
       ].join(" ")}
+      aria-label={t("Session timing")}
       data-testid="active-session-timer"
     >
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -1210,9 +1253,25 @@ function TimerPanel({
           <p className="text-xs font-semibold uppercase tracking-wide text-ink/65">
             {t(timed ? "Time Left" : "Elapsed")}
           </p>
-          <p className="mt-1 text-2xl font-semibold text-ink">{timer.label}</p>
+          <p
+            aria-label={t(timed ? "Time remaining {time}" : "Elapsed time {time}", { time: timer.label })}
+            aria-live="off"
+            className="mt-1 text-2xl font-semibold text-ink"
+            role="timer"
+          >
+            {timer.label}
+          </p>
         </div>
-        <span className="rounded bg-paper px-2 py-1 text-xs font-semibold text-ink/70">{t(timerModeLabel(mode))}</span>
+        <div className="flex flex-wrap justify-end gap-2">
+          <span className="rounded bg-paper px-2 py-1 text-xs font-semibold text-ink/70">
+            {t(timerModeLabel(settings.timeMode))}
+          </span>
+          {timer.standardLimitSeconds === undefined ? null : (
+            <span className="rounded bg-mint px-2 py-1 text-xs font-semibold text-teal">
+              {t(timingAccommodationLabel(accommodation))}
+            </span>
+          )}
+        </div>
       </div>
       <div className="grid gap-2">
         <div className="h-2 overflow-hidden rounded-full bg-paper" aria-hidden="true">
@@ -1222,8 +1281,27 @@ function TimerPanel({
           />
         </div>
         <p className="text-xs font-semibold text-ink/65">
-          {t(timerDescriptionOverride ?? timerDescription(mode, timer))}
+          {t(timerDescriptionOverride ?? timerDescription(settings.timeMode, timer))}
         </p>
+        {timer.standardLimitSeconds === undefined ? null : (
+          <p className="text-xs font-semibold text-ink/65" data-testid="active-timing-accommodation">
+            {timer.limitSeconds === undefined
+              ? t("{accommodation}. No automatic timeout; the standard limit is {standard}.", {
+                  accommodation: t(timingAccommodationLabel(accommodation)),
+                  standard: formatDuration(timer.standardLimitSeconds)
+                })
+              : accommodation === "standard"
+                ? t("{accommodation}. The active limit is {effective}.", {
+                    accommodation: t(timingAccommodationLabel(accommodation)),
+                    effective: formatDuration(timer.limitSeconds)
+                  })
+                : t("{accommodation}. Your limit is {effective}; the standard limit is {standard}.", {
+                    accommodation: t(timingAccommodationLabel(accommodation)),
+                    effective: formatDuration(timer.limitSeconds),
+                    standard: formatDuration(timer.standardLimitSeconds)
+                  })}
+          </p>
+        )}
       </div>
     </section>
   );
@@ -1242,6 +1320,12 @@ function timerModeLabel(mode: DrillSession["settings"]["timeMode"]): string {
 }
 
 function timerDescription(mode: DrillSession["settings"]["timeMode"], timer: ReturnType<typeof createTimerSnapshot>): string {
+  if (timer.limitSeconds === undefined) {
+    return timer.standardLimitSeconds === undefined
+      ? "No time limit; elapsed time is recorded for scoring context."
+      : "No automatic timeout; elapsed time is recorded for scoring context.";
+  }
+
   if (mode === "per_question") {
     return `${formatWholeSeconds(timer.limitSeconds)} limit for this question; resets for each question.`;
   }
@@ -1385,7 +1469,7 @@ function FeedbackPanel({
         {feedback.recorded ? (
           <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2 [overflow-wrap:anywhere]">
             {feedback.question.explanation.steps.map((step) => (
-              <p className="text-sm leading-6 text-ink/75" key={step}>
+              <p className="text-sm leading-6 text-ink/75" dir="auto" key={step}>
                 {step}
               </p>
             ))}
@@ -1393,7 +1477,8 @@ function FeedbackPanel({
         ) : null}
         {feedback.recorded && feedback.question.explanation.shortcut !== undefined ? (
           <p className="min-w-0 rounded-md border border-saffron/30 bg-white/80 px-3 py-2 text-sm leading-6 text-ink [overflow-wrap:anywhere]">
-            <span className="font-semibold">{t("Shortcut:")}</span> {feedback.question.explanation.shortcut}
+            <span className="font-semibold">{t("Shortcut:")}</span>{" "}
+            <bdi dir="auto">{feedback.question.explanation.shortcut}</bdi>
           </p>
         ) : null}
         {strategyTip !== undefined ? (
@@ -1567,6 +1652,10 @@ const errorTypeLabels: Record<ErrorType, string> = {
 
 function elapsedSeconds(startedAt: number, endedAt: number): number {
   return Math.max(0, Math.round(((endedAt - startedAt) / 1000) * 10) / 10);
+}
+
+function currentTimestampMs(): number {
+  return Date.now();
 }
 
 function parseSessionStartedAt(startedAt: string, fallback: number): number {

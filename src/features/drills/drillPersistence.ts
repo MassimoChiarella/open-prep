@@ -27,8 +27,12 @@ export interface PersistInProgressDrillSessionOptions {
   updatedAt?: string;
 }
 
-export function buildDrillDraftKey(route: string, settings: DrillSettings): string {
-  return `${route}:${JSON.stringify(settings)}`;
+export function buildDrillDraftKey(
+  route: string,
+  settings: DrillSettings,
+  scope?: string
+): string {
+  return `${route}${scope === undefined ? "" : `:${JSON.stringify(scope)}`}:${JSON.stringify(settings)}`;
 }
 
 export async function loadInProgressDrillSession(

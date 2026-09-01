@@ -7,6 +7,7 @@ import {
   type AppStorageMutation,
   type AppStoragePage,
   type AppStoragePageOptions,
+  type AppStorageSnapshot,
   type AppIndexedStoreName,
   type AppStoreIndexName,
   type AppStoreKey,
@@ -44,8 +45,66 @@ class IndexedDbAppStorage implements AppStorage {
     return this.runStoreRequest(storeName, "readonly", (store) => store.getAll());
   }
 
+  async scan<TStore extends AppStoreName>(
+    storeName: TStore,
+    visit: (value: AppStoreValue<TStore>) => void
+  ): Promise<void> {
+    const database = await this.openDatabase();
+
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction(storeName, "readonly");
+      const request = transaction.objectStore(storeName).openCursor();
+
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error ?? new Error(`IndexedDB scan failed: ${storeName}.`));
+      transaction.onabort = () => reject(transaction.error ?? new Error(`IndexedDB scan failed: ${storeName}.`));
+      request.onerror = () => reject(request.error ?? new Error(`IndexedDB scan request failed: ${storeName}.`));
+      request.onsuccess = () => {
+        const cursor = request.result;
+
+        if (cursor === null) return;
+
+        try {
+          visit(cursor.value as AppStoreValue<TStore>);
+          cursor.continue();
+        } catch (error) {
+          transaction.abort();
+          reject(error);
+        }
+      };
+    });
+  }
+
   async count<TStore extends AppStoreName>(storeName: TStore): Promise<number> {
     return this.runStoreRequest(storeName, "readonly", (store) => store.count());
+  }
+
+  async getSnapshot<const TStores extends readonly AppStoreName[]>(
+    storeNames: TStores
+  ): Promise<AppStorageSnapshot<TStores>> {
+    const uniqueStoreNames = [...new Set(storeNames)];
+    if (uniqueStoreNames.length !== storeNames.length) {
+      throw new Error("IndexedDB snapshot store names must be unique.");
+    }
+    if (uniqueStoreNames.length === 0) return {} as AppStorageSnapshot<TStores>;
+
+    const database = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(uniqueStoreNames, "readonly");
+      const snapshot: Partial<Record<AppStoreName, unknown[]>> = {};
+
+      transaction.oncomplete = () => resolve(snapshot as AppStorageSnapshot<TStores>);
+      transaction.onerror = () => reject(transaction.error ?? new Error("IndexedDB snapshot failed."));
+      transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDB snapshot was aborted."));
+
+      for (const storeName of uniqueStoreNames) {
+        const request = transaction.objectStore(storeName).getAll();
+        request.onsuccess = () => {
+          snapshot[storeName] = request.result;
+        };
+        request.onerror = () => reject(request.error ?? new Error(`IndexedDB snapshot request failed: ${storeName}.`));
+      }
+    });
   }
 
   async getPage<TStore extends AppIndexedStoreName>(

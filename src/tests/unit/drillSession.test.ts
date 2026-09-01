@@ -9,6 +9,7 @@ describe("createDrillSettings", () => {
       categories: ["arithmetic"],
       difficulty: "beginner",
       questionCount: 5,
+      timingAccommodation: "standard",
       timeMode: "untimed",
       feedbackMode: "instant"
     });

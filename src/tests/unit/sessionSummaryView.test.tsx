@@ -39,6 +39,28 @@ describe("SessionSummaryView", () => {
       `/drills/session?${buildDrillSettingsQuery(snapshot.settings)}`
     );
   });
+
+  it("labels the adjusted limit and suppresses standard bests for accommodated results", () => {
+    const snapshot = summarySnapshot();
+    snapshot.settings = {
+      ...snapshot.settings,
+      timeMode: "session",
+      timingAccommodation: "time_and_a_half",
+      totalSessionSeconds: 60
+    };
+
+    render(<SessionSummaryView newBestLabels={["Arithmetic accuracy"]} snapshot={snapshot} />);
+
+    expect(screen.getByTestId("session-summary-timing")).toHaveTextContent("Time and a half");
+    expect(screen.getByTestId("session-summary-timing")).toHaveTextContent(
+      "The adjusted limit was 1m 30s; the standard limit was 1 min."
+    );
+    expect(screen.queryByTestId("session-summary-new-bests")).not.toBeInTheDocument();
+    expect(new URL(
+      screen.getByRole("link", { name: "Repeat Drill" }).getAttribute("href") ?? "",
+      "http://localhost"
+    ).searchParams.get("timingAccommodation")).toBe("time_and_a_half");
+  });
 });
 
 function summarySnapshot(): SessionSummarySnapshot {

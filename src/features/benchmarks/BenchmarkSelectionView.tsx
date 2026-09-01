@@ -1,12 +1,22 @@
 "use client";
 
 import Link from "next/link";
+import { useState, useSyncExternalStore } from "react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { BenchmarkHistoryView } from "@/features/benchmarks/BenchmarkHistoryView";
-import { buildBenchmarkSessionHref } from "@/features/benchmarks/benchmarkSession";
+import {
+  buildBenchmarkSelectionHref,
+  buildBenchmarkSessionHref
+} from "@/features/benchmarks/benchmarkSession";
 import type { BenchmarkId, BenchmarkTest } from "@/features/benchmarks/benchmarkTypes";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { TimingAccommodationControl } from "@/features/timing/TimingAccommodationControl";
+import type { TimingAccommodation } from "@/features/timing/timingAccommodation";
+import {
+  readTimingAccommodationPreference,
+  writeTimingAccommodationPreference
+} from "@/features/timing/timingAccommodationPreference";
 import { formatLabel } from "@/lib/format";
 
 interface BenchmarkSelectionViewProps {
@@ -22,6 +32,14 @@ export function BenchmarkSelectionView({
   selectedBenchmarkId
 }: BenchmarkSelectionViewProps) {
   const { t } = useI18n();
+  const [rememberTiming, setRememberTiming] = useState(false);
+  const [selectedTimingAccommodation, setSelectedTimingAccommodation] = useState<TimingAccommodation>();
+  const rememberedTimingAccommodation = useSyncExternalStore<TimingAccommodation>(
+    subscribeToTimingPreference,
+    readRememberedTimingPreference,
+    () => "standard"
+  );
+  const timingAccommodation = selectedTimingAccommodation ?? rememberedTimingAccommodation;
   const selectedBenchmark =
     benchmarks.find((benchmark) => benchmark.id === selectedBenchmarkId) ?? benchmarks[0];
 
@@ -43,7 +61,7 @@ export function BenchmarkSelectionView({
             {t("Choose a benchmark")}
           </h2>
           <p className="mt-1 text-sm text-ink/65">
-            {t("Each option uses fixed settings so results remain comparable over time.")}
+            {t("Each option keeps fixed questions and a fixed Standard limit. Only Standard attempts enter comparisons.")}
           </p>
         </div>
 
@@ -60,7 +78,14 @@ export function BenchmarkSelectionView({
       </section>
 
       {selectedBenchmark === undefined ? null : (
-        <BenchmarkConfirmation benchmark={selectedBenchmark} questionPackId={questionPackId} />
+        <BenchmarkConfirmation
+          benchmark={selectedBenchmark}
+          onRememberTimingChange={setRememberTiming}
+          onTimingAccommodationChange={setSelectedTimingAccommodation}
+          questionPackId={questionPackId}
+          rememberTiming={rememberTiming}
+          timingAccommodation={timingAccommodation}
+        />
       )}
 
       <details className="group" data-testid="benchmark-history-disclosure">
@@ -144,17 +169,36 @@ function BenchmarkStat({ label, value }: { label: string; value: string }) {
 
 function BenchmarkConfirmation({
   benchmark,
-  questionPackId
+  onRememberTimingChange,
+  onTimingAccommodationChange,
+  questionPackId,
+  rememberTiming,
+  timingAccommodation
 }: {
   benchmark: BenchmarkTest;
+  onRememberTimingChange: (remember: boolean) => void;
+  onTimingAccommodationChange: (timingAccommodation: TimingAccommodation) => void;
   questionPackId?: string;
+  rememberTiming: boolean;
+  timingAccommodation: TimingAccommodation;
 }) {
   const { formatDuration, formatNumber, t } = useI18n();
+  const standardDurationSeconds = benchmark.settings.totalSessionSeconds ?? 0;
+
+  function rememberTimingPreference(): void {
+    if (!rememberTiming) return;
+
+    try {
+      writeTimingAccommodationPreference(timingAccommodation);
+    } catch {
+      // Starting a benchmark must still work when local storage is unavailable.
+    }
+  }
 
   return (
     <section
       aria-labelledby="benchmark-confirmation-heading"
-      className="border-y border-teal/40 bg-mint/40 py-5 sm:flex sm:items-center sm:justify-between sm:gap-6"
+      className="grid gap-4 border-y border-teal/40 bg-mint/40 py-5"
       data-testid="benchmark-confirmation"
       id="benchmark-confirmation"
     >
@@ -164,28 +208,31 @@ function BenchmarkConfirmation({
           {t("Ready to begin?")}
         </h2>
         <p className="mt-2 min-w-0 max-w-3xl text-sm leading-6 text-ink/65 [overflow-wrap:anywhere]">
-          {t("{title} is a locked {duration} run with {count} questions. Hints stay off and feedback appears after the final question.", {
+          {t("{title} is a locked {duration} run with {count} questions. This is the Standard limit. Hints stay off and feedback appears after the final question.", {
             count: formatNumber(benchmark.questions.length),
-            duration: formatDuration(benchmark.settings.totalSessionSeconds ?? 0),
+            duration: formatDuration(standardDurationSeconds),
             title: t(benchmark.title)
           })}
         </p>
       </div>
 
+      <TimingAccommodationControl
+        onChange={onTimingAccommodationChange}
+        onRememberChange={onRememberTimingChange}
+        remember={rememberTiming}
+        standardDurationSeconds={standardDurationSeconds}
+        value={timingAccommodation}
+      />
+
       <Link
-        className="mt-4 inline-flex min-h-11 shrink-0 items-center justify-center rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-ink/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 sm:mt-0"
-        href={buildBenchmarkSessionHref(benchmark.id, questionPackId)}
+        className="inline-flex min-h-11 w-fit items-center justify-center rounded-md bg-ink px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-ink/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
+        href={buildBenchmarkSessionHref(benchmark.id, questionPackId, timingAccommodation)}
+        onClick={rememberTimingPreference}
       >
         {t("Begin Benchmark")}
       </Link>
     </section>
   );
-}
-
-export function buildBenchmarkSelectionHref(benchmarkId: BenchmarkId, questionPackId?: string): string {
-  const params = new URLSearchParams({ benchmark: benchmarkId });
-  if (questionPackId?.trim()) params.set("pack", questionPackId);
-  return `/benchmark?${params.toString()}`;
 }
 
 function getBenchmarkPace(benchmark: BenchmarkTest): number {
@@ -199,4 +246,16 @@ function getPrimaryCategory(benchmark: BenchmarkTest): string {
     counts.set(question.category, (counts.get(question.category) ?? 0) + 1);
   }
   return [...counts].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0]))[0]?.[0] ?? "mixed";
+}
+
+function subscribeToTimingPreference(): () => void {
+  return () => undefined;
+}
+
+function readRememberedTimingPreference(): TimingAccommodation {
+  try {
+    return readTimingAccommodationPreference();
+  } catch {
+    return "standard";
+  }
 }

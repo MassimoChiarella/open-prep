@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import Link from "next/link";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 
 import { badgeClass, buttonClass, cx, statusMessageClass, uiInputs, uiText } from "@/components/uiStyles";
 import { fitPracticePrompts } from "@/data/casePractice/fitPrompts";
@@ -22,6 +23,15 @@ import {
   savePracticeAttempt
 } from "@/features/case-practice/practiceRecords";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { TimingAccommodationControl } from "@/features/timing/TimingAccommodationControl";
+import {
+  getEffectiveDurationSeconds,
+  type TimingAccommodation
+} from "@/features/timing/timingAccommodation";
+import {
+  readTimingAccommodationPreference,
+  writeTimingAccommodationPreference
+} from "@/features/timing/timingAccommodationPreference";
 import type { FitCompetency, FitStoryRecord } from "@/features/case-practice/practiceTypes";
 import type { AppStorage } from "@/lib/storage/appStorageTypes";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
@@ -31,6 +41,13 @@ type SaveStatus = "error" | "idle" | "saved" | "saving";
 type StoryStatus = "error" | "idle" | "loading" | "saved" | "saving";
 
 const rehearsalDurations = [90, 120] as const;
+const unsavedStoryId = "fit-story-unsaved-rehearsal";
+const timingAccommodationLabels: Record<TimingAccommodation, string> = {
+  double_time: "Double time",
+  standard: "Standard time",
+  time_and_a_half: "Time and a half",
+  untimed: "Untimed practice"
+};
 
 export function FitPracticeView({
   prompts = fitPracticePrompts,
@@ -44,19 +61,33 @@ export function FitPracticeView({
   const [storyStatus, setStoryStatus] = useState<StoryStatus>("loading");
   const [editingStoryId, setEditingStoryId] = useState<string>();
   const [draft, setDraft] = useState<FitStoryDraft>(createEmptyDraft);
+  const [unsavedStory, setUnsavedStory] = useState<FitStoryDraft>();
   const [validationErrors, setValidationErrors] = useState<FitStoryValidationErrors>({});
   const [selectedStoryId, setSelectedStoryId] = useState("");
   const [selectedPromptId, setSelectedPromptId] = useState("");
   const [durationSeconds, setDurationSeconds] = useState<(typeof rehearsalDurations)[number]>(120);
-  const [remainingSeconds, setRemainingSeconds] = useState(120);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [timingAccommodation, setTimingAccommodation] = useState<TimingAccommodation>("standard");
+  const [rememberTimingAccommodation, setRememberTimingAccommodation] = useState(false);
+  const [activeTimingAccommodation, setActiveTimingAccommodation] = useState<TimingAccommodation>();
+  const [activeDurationSeconds, setActiveDurationSeconds] = useState<number | null>();
   const [phase, setPhase] = useState<RehearsalPhase>("idle");
   const [completedCriteria, setCompletedCriteria] = useState<FitReviewCriterionId[]>([]);
   const [reviewStatus, setReviewStatus] = useState<SaveStatus>("idle");
+  const elapsedSecondsRef = useRef(0);
+  const timingAccommodationTouched = useRef(false);
 
-  const selectedStory = stories.find((story) => story.id === selectedStoryId);
+  const selectedStory = selectedStoryId === unsavedStoryId
+    ? unsavedStory
+    : stories.find((story) => story.id === selectedStoryId);
   const availablePrompts = prompts.filter((prompt) => prompt.competency === selectedStory?.competency);
   const selectedPrompt = availablePrompts.find((prompt) => prompt.id === selectedPromptId) ?? availablePrompts[0];
   const reviewScore = scoreFitReview(completedCriteria);
+  const selectedDurationSeconds = getEffectiveDurationSeconds(durationSeconds, timingAccommodation);
+  const displayedDurationSeconds = phase === "idle" ? selectedDurationSeconds : activeDurationSeconds;
+  const displayedTimerSeconds = displayedDurationSeconds === null
+    ? elapsedSeconds
+    : Math.max(0, (displayedDurationSeconds ?? selectedDurationSeconds ?? 0) - elapsedSeconds);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,30 +124,59 @@ export function FitPracticeView({
   }, [prompts, storageFactory]);
 
   useEffect(() => {
-    if (phase !== "running") return;
+    let cancelled = false;
+    let rememberedAccommodation: TimingAccommodation = "standard";
 
-    if (remainingSeconds === 0) return;
+    try {
+      rememberedAccommodation = readTimingAccommodationPreference();
+    } catch {
+      // Rehearsal stays available when local storage is blocked.
+    }
 
-    const timeout = window.setTimeout(() => {
-      if (remainingSeconds === 1) {
-        setRemainingSeconds(0);
+    void Promise.resolve().then(() => {
+      if (!cancelled && !timingAccommodationTouched.current) {
+        setTimingAccommodation(rememberedAccommodation);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (phase !== "running" || activeDurationSeconds === undefined) return;
+
+    const interval = window.setInterval(() => {
+      const nextElapsedSeconds = elapsedSecondsRef.current + 1;
+
+      if (activeDurationSeconds !== null && nextElapsedSeconds >= activeDurationSeconds) {
+        elapsedSecondsRef.current = activeDurationSeconds;
+        setElapsedSeconds(activeDurationSeconds);
         setPhase("review");
+        window.clearInterval(interval);
       } else {
-        setRemainingSeconds(remainingSeconds - 1);
+        elapsedSecondsRef.current = nextElapsedSeconds;
+        setElapsedSeconds(nextElapsedSeconds);
       }
     }, 1_000);
-    return () => window.clearTimeout(timeout);
-  }, [phase, remainingSeconds]);
+    return () => window.clearInterval(interval);
+  }, [activeDurationSeconds, phase]);
+
+  function validateCurrentDraft(): boolean {
+    const errors = validateFitStoryDraft(draft);
+    const firstInvalidField = Object.keys(errors)[0];
+    setValidationErrors(errors);
+
+    if (firstInvalidField === undefined) return true;
+
+    window.requestAnimationFrame(() => document.getElementById(`fit-story-${firstInvalidField}`)?.focus());
+    return false;
+  }
 
   async function handleSaveStory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const errors = validateFitStoryDraft(draft);
-    setValidationErrors(errors);
-
-    if (Object.keys(errors).length > 0) {
-      window.requestAnimationFrame(() => document.getElementById(`fit-story-${Object.keys(errors)[0]}`)?.focus());
-      return;
-    }
+    if (!validateCurrentDraft()) return;
 
     setStoryStatus("saving");
     let storage: AppStorage | undefined;
@@ -126,13 +186,14 @@ export function FitPracticeView({
       storage = storageFactory();
       await saveFitStory(storage, record);
       setStories((current) => [record, ...current.filter((story) => story.id !== record.id)]);
-      setSelectedStoryId((current) => current || record.id);
+      setSelectedStoryId((current) => current === "" || current === unsavedStoryId ? record.id : current);
 
-      if (selectedStoryId === record.id || selectedStoryId === "") {
+      if (selectedStoryId === record.id || selectedStoryId === "" || selectedStoryId === unsavedStoryId) {
         setSelectedPromptId(firstPromptId(prompts, record.competency));
         resetRehearsal();
       }
 
+      setUnsavedStory(undefined);
       setDraft(createEmptyDraft());
       setEditingStoryId(undefined);
       setValidationErrors({});
@@ -142,6 +203,17 @@ export function FitPracticeView({
     } finally {
       storage?.close();
     }
+  }
+
+  function rehearseWithoutSaving() {
+    if (!validateCurrentDraft()) return;
+
+    setUnsavedStory({ ...draft });
+    setSelectedStoryId(unsavedStoryId);
+    setSelectedPromptId(firstPromptId(prompts, draft.competency));
+    setEditingStoryId(undefined);
+    setStoryStatus("idle");
+    resetRehearsal();
   }
 
   function handleStoryChange(update: Partial<FitStoryDraft>): void {
@@ -172,11 +244,20 @@ export function FitPracticeView({
     setStoryStatus("idle");
   }
 
-  function cancelEdit() {
+  function cancelStoryDraft() {
+    const selectedUnsavedStory = selectedStoryId === unsavedStoryId;
     setEditingStoryId(undefined);
+    setUnsavedStory(undefined);
     setDraft(createEmptyDraft());
     setValidationErrors({});
     setStoryStatus("idle");
+
+    if (selectedUnsavedStory) {
+      const nextStory = stories[0];
+      setSelectedStoryId(nextStory?.id ?? "");
+      setSelectedPromptId(nextStory === undefined ? "" : firstPromptId(prompts, nextStory.competency));
+      resetRehearsal();
+    }
   }
 
   async function removeStory(story: FitStoryRecord) {
@@ -192,7 +273,7 @@ export function FitPracticeView({
       const remainingStories = stories.filter((candidate) => candidate.id !== story.id);
       setStories(remainingStories);
 
-      if (editingStoryId === story.id) cancelEdit();
+      if (editingStoryId === story.id) cancelStoryDraft();
       if (selectedStoryId === story.id) {
         const nextStory = remainingStories[0];
         setSelectedStoryId(nextStory?.id ?? "");
@@ -209,7 +290,15 @@ export function FitPracticeView({
   }
 
   function chooseStory(storyId: string) {
-    const story = stories.find((candidate) => candidate.id === storyId);
+    const story = storyId === unsavedStoryId
+      ? unsavedStory
+      : stories.find((candidate) => candidate.id === storyId);
+
+    if (storyId !== unsavedStoryId && unsavedStory !== undefined) {
+      setUnsavedStory(undefined);
+      if (editingStoryId === undefined) setDraft(createEmptyDraft());
+    }
+
     setSelectedStoryId(storyId);
     setSelectedPromptId(story === undefined ? "" : firstPromptId(prompts, story.competency));
     resetRehearsal();
@@ -221,16 +310,21 @@ export function FitPracticeView({
   }
 
   function changeDuration(seconds: number) {
-    const duration = seconds === 90 ? 90 : 120;
-    setDurationSeconds(duration);
-    setRemainingSeconds(duration);
-    setPhase("idle");
-    setCompletedCriteria([]);
-    setReviewStatus("idle");
+    setDurationSeconds(seconds === 90 ? 90 : 120);
+    resetRehearsal();
+  }
+
+  function changeTimingAccommodation(accommodation: TimingAccommodation) {
+    timingAccommodationTouched.current = true;
+    setTimingAccommodation(accommodation);
+    resetRehearsal();
   }
 
   function resetRehearsal() {
-    setRemainingSeconds(durationSeconds);
+    elapsedSecondsRef.current = 0;
+    setElapsedSeconds(0);
+    setActiveDurationSeconds(undefined);
+    setActiveTimingAccommodation(undefined);
     setPhase("idle");
     setCompletedCriteria([]);
     setReviewStatus("idle");
@@ -239,10 +333,22 @@ export function FitPracticeView({
   function startRehearsal() {
     if (selectedStory === undefined || selectedPrompt === undefined) return;
 
-    setRemainingSeconds(durationSeconds);
+    const effectiveDurationSeconds = getEffectiveDurationSeconds(durationSeconds, timingAccommodation);
+    elapsedSecondsRef.current = 0;
+    setElapsedSeconds(0);
+    setActiveDurationSeconds(effectiveDurationSeconds);
+    setActiveTimingAccommodation(timingAccommodation);
     setCompletedCriteria([]);
     setReviewStatus("idle");
     setPhase("running");
+
+    if (rememberTimingAccommodation) {
+      try {
+        writeTimingAccommodationPreference(timingAccommodation);
+      } catch {
+        // A blocked preference write must not block rehearsal.
+      }
+    }
   }
 
   function toggleCriterion(id: FitReviewCriterionId) {
@@ -262,11 +368,12 @@ export function FitPracticeView({
       storage = storageFactory();
       await savePracticeAttempt(storage, {
         completedAt: new Date().toISOString(),
-        durationSeconds: durationSeconds - remainingSeconds,
+        durationSeconds: elapsedSeconds,
         itemId: selectedPrompt.id,
         maxScore: reviewScore.maxScore,
         module: "fit",
-        score: reviewScore.score
+        score: reviewScore.score,
+        timingAccommodation: activeTimingAccommodation ?? "standard"
       });
       setPhase("saved");
       setReviewStatus("saved");
@@ -296,9 +403,11 @@ export function FitPracticeView({
         <StoryForm
           draft={draft}
           editing={editingStoryId !== undefined}
+          ephemeral={unsavedStory !== undefined}
           errors={validationErrors}
-          onCancel={cancelEdit}
+          onCancel={cancelStoryDraft}
           onChange={handleStoryChange}
+          onRehearseWithoutSaving={rehearseWithoutSaving}
           onSubmit={handleSaveStory}
           saving={storyStatus === "saving"}
         />
@@ -308,7 +417,7 @@ export function FitPracticeView({
         <div className="grid gap-1">
           <h3 className={uiText.sectionTitle}>{t("Saved stories")}</h3>
           {stories.length === 0 && storyStatus !== "loading" ? (
-            <p className={uiText.body}>{t("Add your first story to begin a rehearsal.")}</p>
+            <p className={uiText.body}>{t("Add a story above, then save it or rehearse without saving.")}</p>
           ) : (
             <ul className="divide-y divide-ink/10">
               {stories.map((story) => (
@@ -354,11 +463,14 @@ export function FitPracticeView({
           <Field label={t("Story")}>
             <select
               className={uiInputs.base}
-              disabled={phase === "running" || stories.length === 0}
+              disabled={phase === "running" || (stories.length === 0 && unsavedStory === undefined)}
               onChange={(event) => chooseStory(event.currentTarget.value)}
               value={selectedStoryId}
             >
-              {stories.length === 0 ? <option value="">{t("No saved stories")}</option> : null}
+              {stories.length === 0 && unsavedStory === undefined ? <option value="">{t("No saved stories")}</option> : null}
+              {unsavedStory === undefined ? null : (
+                <option value={unsavedStoryId}>{t("Unsaved rehearsal draft")}</option>
+              )}
               {stories.map((story) => (
                 <option key={story.id} value={story.id}>
                   {story.title}
@@ -392,14 +504,23 @@ export function FitPracticeView({
             </ul>
           </div>
         ) : (
-          <p className={uiText.body}>{t("Save a story to unlock a matching rehearsal prompt.")}</p>
+          <p className={uiText.body}>{t("Save a story or use a valid unsaved draft to unlock a matching rehearsal prompt.")}</p>
         )}
+
+        <TimingAccommodationControl
+          disabled={phase === "running" || phase === "review"}
+          onChange={changeTimingAccommodation}
+          onRememberChange={setRememberTimingAccommodation}
+          remember={rememberTimingAccommodation}
+          standardDurationSeconds={durationSeconds}
+          value={timingAccommodation}
+        />
 
         <div className="grid gap-4 sm:grid-cols-[1fr_auto] sm:items-end xl:grid-cols-1">
           <Field label={t("Answer time")}>
             <select
               className={uiInputs.base}
-              disabled={phase === "running"}
+              disabled={phase === "running" || phase === "review"}
               onChange={(event) => changeDuration(Number(event.currentTarget.value))}
               value={durationSeconds}
             >
@@ -411,18 +532,35 @@ export function FitPracticeView({
             </select>
           </Field>
           <p
-            aria-label={t("{seconds} seconds remaining", { seconds: formatNumber(remainingSeconds) })}
+            aria-label={
+              displayedDurationSeconds === null
+                ? displayedTimerSeconds === 1
+                  ? t("1 second elapsed")
+                  : t("{seconds} seconds elapsed", { seconds: formatNumber(displayedTimerSeconds) })
+                : displayedTimerSeconds === 1
+                  ? t("1 second remaining")
+                  : t("{seconds} seconds remaining", { seconds: formatNumber(displayedTimerSeconds) })
+            }
+            aria-live="off"
             className="min-w-32 text-center text-4xl font-semibold tabular-nums text-ink"
             role="timer"
           >
-            {formatTimer(remainingSeconds)}
+            {formatTimer(displayedTimerSeconds)}
           </p>
         </div>
+
+        {activeTimingAccommodation === undefined ? null : (
+          <ActiveTimingStatus
+            accommodation={activeTimingAccommodation}
+            effectiveDurationSeconds={activeDurationSeconds ?? null}
+            standardDurationSeconds={durationSeconds}
+          />
+        )}
 
         <div className="flex flex-wrap gap-3">
           {phase === "running" ? (
             <button className={buttonClass("primary")} onClick={() => setPhase("review")} type="button">
-              {t("Finish Answer")}
+              {t("Finish Rehearsal")}
             </button>
           ) : (
             <button className={buttonClass("primary")} disabled={selectedPrompt === undefined} onClick={startRehearsal} type="button">
@@ -470,20 +608,57 @@ export function FitPracticeView({
   );
 }
 
+function ActiveTimingStatus({
+  accommodation,
+  effectiveDurationSeconds,
+  standardDurationSeconds
+}: {
+  accommodation: TimingAccommodation;
+  effectiveDurationSeconds: number | null;
+  standardDurationSeconds: number;
+}) {
+  const { formatDuration, t } = useI18n();
+  const accommodationLabel = t(timingAccommodationLabels[accommodation]);
+
+  return (
+    <p
+      aria-live="polite"
+      className={statusMessageClass("neutral")}
+      data-testid="fit-active-timing-accommodation"
+      role="status"
+    >
+      {effectiveDurationSeconds === null
+        ? t("{accommodation}. No automatic timeout; Standard limit: {standard}.", {
+            accommodation: accommodationLabel,
+            standard: formatDuration(standardDurationSeconds)
+          })
+        : t("{accommodation}. Active limit: {effective}; Standard limit: {standard}.", {
+            accommodation: accommodationLabel,
+            effective: formatDuration(effectiveDurationSeconds),
+            standard: formatDuration(standardDurationSeconds)
+          })}
+    </p>
+  );
+}
+
 function StoryForm({
   draft,
   editing,
+  ephemeral,
   errors,
   onCancel,
   onChange,
+  onRehearseWithoutSaving,
   onSubmit,
   saving
 }: {
   draft: FitStoryDraft;
   editing: boolean;
+  ephemeral: boolean;
   errors: FitStoryValidationErrors;
   onCancel(): void;
   onChange(update: Partial<FitStoryDraft>): void;
+  onRehearseWithoutSaving(): void;
   onSubmit(event: FormEvent<HTMLFormElement>): void;
   saving: boolean;
 }) {
@@ -492,7 +667,7 @@ function StoryForm({
     <form className="grid gap-4 border-y border-ink/10 py-5" noValidate onSubmit={onSubmit}>
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h3 className={uiText.sectionTitle}>{editing ? t("Edit story") : t("Add a story")}</h3>
-        {editing ? (
+        {editing || ephemeral ? (
           <button className={buttonClass("secondary", "px-3")} onClick={onCancel} type="button">
             {t("Cancel")}
           </button>
@@ -501,7 +676,7 @@ function StoryForm({
 
       {Object.keys(errors).length > 0 ? (
         <div aria-live="polite" className={statusMessageClass("error")} role="alert">
-          <p className="text-sm font-semibold text-ink">{t("Complete every story field before saving.")}</p>
+          <p className="text-sm font-semibold text-ink">{t("Complete every story field before continuing.")}</p>
         </div>
       ) : null}
 
@@ -511,6 +686,7 @@ function StoryForm({
             aria-describedby={errors.title === undefined ? undefined : "fit-story-title-error"}
             aria-invalid={errors.title !== undefined}
             className={uiInputs.base}
+            dir="auto"
             id="fit-story-title"
             maxLength={80}
             onChange={(event) => onChange({ title: event.currentTarget.value })}
@@ -543,9 +719,26 @@ function StoryForm({
       </div>
       <StoryTextArea field="reflection" label={t("Reflection")} />
 
-      <button className={buttonClass("primary")} disabled={saving} type="submit">
-        {saving ? t("Saving...") : editing ? t("Update Story") : t("Save Story")}
-      </button>
+      <p className={uiText.dense}>
+        {t("Story text is browser-local and unencrypted. Anyone with access to this browser profile can read saved stories.")} {" "}
+        <Link className="font-semibold text-teal underline underline-offset-2" href="/settings">
+          {t("Open Settings for backup and clear controls.")}
+        </Link>
+      </p>
+
+      <div className="flex flex-wrap gap-3">
+        <button className={buttonClass("primary")} disabled={saving} type="submit">
+          {saving ? t("Saving...") : editing ? t("Update Story") : t("Save Story")}
+        </button>
+        <button
+          className={buttonClass("secondary")}
+          disabled={saving}
+          onClick={onRehearseWithoutSaving}
+          type="button"
+        >
+          {t("Rehearse Without Saving")}
+        </button>
+      </div>
     </form>
   );
 
@@ -557,6 +750,7 @@ function StoryForm({
           aria-describedby={errors[field] === undefined ? undefined : `${id}-error`}
           aria-invalid={errors[field] !== undefined}
           className={uiInputs.textarea}
+          dir="auto"
           id={id}
           maxLength={1_200}
           onChange={(event) => onChange({ [field]: event.currentTarget.value })}

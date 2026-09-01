@@ -16,6 +16,7 @@ export interface PracticeAttemptRecord {
   score: number;
   maxScore: number;
   durationSeconds?: number;
+  timingAccommodation?: import("@/features/timing/timingAccommodation").TimingAccommodation;
 }
 
 export type PrepExperienceLevel = "beginner" | "intermediate" | "advanced";

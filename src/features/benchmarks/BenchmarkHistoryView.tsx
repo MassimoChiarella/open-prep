@@ -14,6 +14,11 @@ import {
 } from "@/features/benchmarks/benchmarkPersistence";
 import type { BenchmarkTest } from "@/features/benchmarks/benchmarkTypes";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import {
+  isStandardComparisonEligible,
+  normalizeTimingAccommodation,
+  type TimingAccommodation
+} from "@/features/timing/timingAccommodation";
 import { formatLabel } from "@/lib/format";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 import type { AppStorage, BenchmarkResultRecord } from "@/lib/storage/appStorageTypes";
@@ -154,7 +159,6 @@ export function BenchmarkHistoryView({
           onLoadMore={() => void handleLoadMore()}
           pageError={state.pageError}
           results={state.results}
-          totalCount={state.totalCount}
         />
       ) : null}
     </section>
@@ -168,8 +172,7 @@ function HistoryTable({
   loadingMore,
   onLoadMore,
   pageError,
-  results,
-  totalCount
+  results
 }: {
   aggregates: readonly BenchmarkHistoryAggregate[];
   benchmarkById: Map<string, BenchmarkTest>;
@@ -178,23 +181,32 @@ function HistoryTable({
   onLoadMore: () => void;
   pageError: boolean;
   results: readonly BenchmarkResultRecord[];
-  totalCount: number;
 }) {
   const { formatDate, formatNumber, formatPercent, t } = useI18n();
   const latest = results[0];
+  const latestIsStandard = isStandardComparisonEligible(latest.timingAccommodation);
   const latestBenchmark = benchmarkById.get(latest.benchmarkId);
-  const latestBand = latestBenchmark === undefined
+  const latestBand = latestBenchmark === undefined || !latestIsStandard
     ? undefined
     : getBenchmarkScoreBand(latest.score.accuracy, latestBenchmark.scoreBands);
   const summaries = createBenchmarkSummaries(aggregates, benchmarkById);
-  const latestSummary = summaries.find((summary) => summary.benchmarkId === latest.benchmarkId);
+  const latestStandard = aggregates.reduce<BenchmarkResultRecord | undefined>(
+    (current, summary) => summary.latestStandard !== undefined && (
+      current === undefined || isLaterBenchmarkResult(summary.latestStandard, current)
+    ) ? summary.latestStandard : current,
+    undefined
+  );
+  const latestStandardSummary = latestStandard === undefined
+    ? undefined
+    : summaries.find((summary) => summary.benchmarkId === latestStandard.benchmarkId);
   const bestOverall = aggregates.reduce<BenchmarkResultRecord | undefined>(
-    (best, summary) => best === undefined || summary.best.score.accuracy > best.score.accuracy
-      ? summary.best
-      : best,
+    (best, summary) => summary.best !== undefined && (
+      best === undefined || summary.best.score.accuracy > best.score.accuracy
+    ) ? summary.best : best,
     undefined
   );
   const bestOverallBenchmark = bestOverall === undefined ? undefined : benchmarkById.get(bestOverall.benchmarkId);
+  const standardAttemptCount = aggregates.reduce((total, summary) => total + summary.standardAttempts, 0);
 
   return (
     <div className="grid gap-4">
@@ -202,39 +214,54 @@ function HistoryTable({
         <HistoryStat label={t("Latest")} value={t(latestBenchmark?.title ?? fallbackBenchmarkTitle(latest.benchmarkId))} />
         <HistoryStat label={t("Score")} value={t("{score} pts", { score: formatNumber(latest.score.totalScore) })} />
         <HistoryStat label={t("Accuracy")} value={formatPercent(latest.score.accuracy)} />
-        <HistoryStat label={t("Label")} value={t(latestBand?.title ?? "Recorded")} />
+        <HistoryStat
+          label={t("Label")}
+          value={t(latestIsStandard ? latestBand?.title ?? "Recorded" : "Accommodated practice")}
+        />
       </dl>
 
       <section className="grid gap-4 border-y border-ink/20 bg-paper/70 py-4" data-testid="benchmark-history-comparison">
-        <div className="grid gap-1">
-          <p className="text-sm font-semibold uppercase tracking-wide text-coral">{t("Comparison Snapshot")}</p>
-          <h3 className="text-lg font-semibold text-ink">{t("Latest result in context")}</h3>
-          {latest.score.correctCount === 0 ? (
-            <p className="w-fit bg-paper px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ink/70">
-              {t("Baseline recorded")}
+        {latestStandard === undefined ? (
+          <div className="grid gap-2">
+            <p className="text-sm font-semibold uppercase tracking-wide text-coral">{t("Comparison Snapshot")}</p>
+            <h3 className="text-lg font-semibold text-ink">{t("No Standard results yet")}</h3>
+            <p className="text-sm leading-6 text-ink/65">
+              {t("Accommodated attempts remain saved below. Complete a Standard attempt to start benchmark comparisons and personal-best tracking.")}
             </p>
-          ) : isNewBenchmarkBest(latest, latestSummary) ? (
-            <p className="w-fit border border-teal/20 bg-mint px-2 py-1 text-xs font-semibold uppercase tracking-wide text-teal">
-              {t("New Best benchmark score")}
-            </p>
-          ) : null}
-        </div>
-        <dl className="grid gap-3 sm:grid-cols-4">
-          <HistoryStat label={t("Latest Accuracy")} value={formatPercent(latest.score.accuracy)} />
-          <HistoryStat
-            label={t("Best Accuracy")}
-            value={
-              bestOverall === undefined
-                ? t("No result")
-                : `${formatPercent(bestOverall.score.accuracy)} ${t(bestOverallBenchmark?.title ?? fallbackBenchmarkTitle(bestOverall.benchmarkId))}`
-            }
-          />
-          <HistoryStat
-            label={t("Change")}
-            value={formatAccuracyChange(latest, latestSummary?.previous, formatNumber, t)}
-          />
-          <HistoryStat label={t("Attempts")} value={t("{count} saved", { count: formatNumber(totalCount) })} />
-        </dl>
+          </div>
+        ) : (
+          <>
+            <div className="grid gap-1">
+              <p className="text-sm font-semibold uppercase tracking-wide text-coral">{t("Comparison Snapshot")}</p>
+              <h3 className="text-lg font-semibold text-ink">{t("Latest result in context")}</h3>
+              {latestStandard.score.correctCount === 0 ? (
+                <p className="w-fit bg-paper px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ink/70">
+                  {t("Baseline recorded")}
+                </p>
+              ) : isNewBenchmarkBest(latestStandard, latestStandardSummary) ? (
+                <p className="w-fit border border-teal/20 bg-mint px-2 py-1 text-xs font-semibold uppercase tracking-wide text-teal">
+                  {t("New Best benchmark score")}
+                </p>
+              ) : null}
+            </div>
+            <dl className="grid gap-3 sm:grid-cols-4">
+              <HistoryStat label={t("Latest Standard accuracy")} value={formatPercent(latestStandard.score.accuracy)} />
+              <HistoryStat
+                label={t("Best Standard accuracy")}
+                value={
+                  bestOverall === undefined
+                    ? t("No result")
+                    : `${formatPercent(bestOverall.score.accuracy)} ${t(bestOverallBenchmark?.title ?? fallbackBenchmarkTitle(bestOverall.benchmarkId))}`
+                }
+              />
+              <HistoryStat
+                label={t("Change")}
+                value={formatAccuracyChange(latestStandard, latestStandardSummary?.previous, formatNumber, t)}
+              />
+              <HistoryStat label={t("Standard attempts")} value={formatNumber(standardAttemptCount)} />
+            </dl>
+          </>
+        )}
       </section>
 
       <section className="grid gap-3" data-testid="benchmark-history-by-benchmark">
@@ -254,11 +281,11 @@ function HistoryTable({
               <div className="min-w-0">
                 <div className="flex flex-wrap items-center gap-2">
                   <h4 className="min-w-0 text-sm font-semibold text-ink [overflow-wrap:anywhere]">{t(summary.title)}</h4>
-                  {summary.latest.score.correctCount === 0 ? (
+                  {summary.latestStandard?.score.correctCount === 0 ? (
                     <span className="bg-paper px-2 py-1 text-xs font-semibold uppercase tracking-wide text-ink/70">
                       {t("Baseline recorded")}
                     </span>
-                  ) : isNewBenchmarkBest(summary.latest, summary) ? (
+                  ) : summary.latestStandard !== undefined && isNewBenchmarkBest(summary.latestStandard, summary) ? (
                     <span className="border border-teal/20 bg-mint px-2 py-1 text-xs font-semibold uppercase tracking-wide text-teal">
                       {t("New Best")}
                     </span>
@@ -270,9 +297,20 @@ function HistoryTable({
                   })}
                 </p>
               </div>
-              <HistoryInlineStat label={t("Latest")} value={formatPercent(summary.latest.score.accuracy)} />
-              <HistoryInlineStat label={t("Best")} value={formatPercent(summary.best.score.accuracy)} />
-              <HistoryInlineStat label={t("Change")} value={formatAccuracyChange(summary.latest, summary.previous, formatNumber, t)} />
+              <HistoryInlineStat
+                label={t("Latest Standard")}
+                value={summary.latestStandard === undefined ? t("No Standard result") : formatPercent(summary.latestStandard.score.accuracy)}
+              />
+              <HistoryInlineStat
+                label={t("Best Standard")}
+                value={summary.best === undefined ? t("No Standard result") : formatPercent(summary.best.score.accuracy)}
+              />
+              <HistoryInlineStat
+                label={t("Change")}
+                value={summary.latestStandard === undefined
+                  ? t("Not comparable")
+                  : formatAccuracyChange(summary.latestStandard, summary.previous, formatNumber, t)}
+              />
             </article>
           ))}
         </div>
@@ -286,7 +324,7 @@ function HistoryTable({
         <p className="px-3 pt-3 text-xs font-semibold uppercase tracking-wide text-ink/65 sm:hidden">
           {t("Scroll table sideways to compare all columns.")}
         </p>
-        <table className="min-w-[48rem] w-full border-separate border-spacing-y-2 text-start text-sm">
+        <table className="min-w-[54rem] w-full border-separate border-spacing-y-2 text-start text-sm">
           <caption className="sr-only">{t("Saved benchmark results")}</caption>
           <thead className="text-xs font-semibold uppercase tracking-wide text-ink/65">
             <tr>
@@ -294,6 +332,7 @@ function HistoryTable({
               <th className="sticky top-0 bg-white px-3 py-2" scope="col">{t("Completed")}</th>
               <th className="sticky top-0 bg-white px-3 py-2" scope="col">{t("Accuracy")}</th>
                <th className="sticky top-0 bg-white px-3 py-2" scope="col">{t("Score")}</th>
+               <th className="sticky top-0 bg-white px-3 py-2" scope="col">{t("Timing")}</th>
                <th className="sticky top-0 bg-white px-3 py-2" scope="col">{t("Result")}</th>
                <th className="sticky top-0 bg-white px-3 py-2" scope="col">{t("Review")}</th>
             </tr>
@@ -301,7 +340,9 @@ function HistoryTable({
           <tbody>
             {results.map((result) => {
               const benchmark = benchmarkById.get(result.benchmarkId);
-              const band = benchmark === undefined
+              const timingAccommodation = normalizeTimingAccommodation(result.timingAccommodation);
+              const isStandard = isStandardComparisonEligible(timingAccommodation);
+              const band = benchmark === undefined || !isStandard
                 ? undefined
                 : getBenchmarkScoreBand(result.score.accuracy, benchmark.scoreBands);
 
@@ -313,7 +354,8 @@ function HistoryTable({
                   <td className="px-3 py-2">{formatDate(result.completedAt, { day: "numeric", month: "short", year: "numeric" })}</td>
                   <td className="px-3 py-2">{formatPercent(result.score.accuracy)}</td>
                   <td className="px-3 py-2">{t("{score} pts", { score: formatNumber(result.score.totalScore) })}</td>
-                  <td className="px-3 py-2">{t(band?.title ?? "Recorded")}</td>
+                  <td className="px-3 py-2">{t(timingAccommodationLabels[timingAccommodation])}</td>
+                  <td className="px-3 py-2">{t(isStandard ? band?.title ?? "Recorded" : "Saved practice")}</td>
                   <td className="px-3 py-2">
                     <Link
                       className="inline-flex min-h-11 items-center font-semibold text-teal underline decoration-teal/40 underline-offset-4 hover:text-ink"
@@ -353,16 +395,18 @@ function isNewBenchmarkBest(
   result: BenchmarkResultRecord,
   summary: BenchmarkHistorySummary | undefined
 ): boolean {
-  return summary?.bestScore.id === result.id;
+  return summary?.bestScore?.id === result.id;
 }
 
 interface BenchmarkHistorySummary {
   attempts: number;
   benchmarkId: string;
-  best: BenchmarkResultRecord;
-  bestScore: BenchmarkResultRecord;
+  best?: BenchmarkResultRecord;
+  bestScore?: BenchmarkResultRecord;
   latest: BenchmarkResultRecord;
+  latestStandard?: BenchmarkResultRecord;
   previous?: BenchmarkResultRecord;
+  standardAttempts: number;
   title: string;
 }
 
@@ -419,3 +463,19 @@ function formatAccuracyChange(
 function fallbackBenchmarkTitle(benchmarkId: string): string {
   return formatLabel(benchmarkId.split(":").at(-1) ?? benchmarkId);
 }
+
+function isLaterBenchmarkResult(
+  candidate: BenchmarkResultRecord,
+  current: BenchmarkResultRecord
+): boolean {
+  return candidate.completedAt > current.completedAt || (
+    candidate.completedAt === current.completedAt && candidate.id > current.id
+  );
+}
+
+const timingAccommodationLabels: Record<TimingAccommodation, string> = {
+  double_time: "Double time",
+  standard: "Standard time",
+  time_and_a_half: "Time and a half",
+  untimed: "Untimed practice"
+};

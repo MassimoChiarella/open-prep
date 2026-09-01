@@ -159,6 +159,7 @@ export function buildDrillSettingsQuery(settings: DrillSettings): string {
     categories: settings.categories.join(","),
     difficulty: settings.difficulty,
     count: String(settings.questionCount),
+    timingAccommodation: settings.timingAccommodation ?? "standard",
     timeMode: settings.timeMode,
     feedbackMode: settings.feedbackMode
   });

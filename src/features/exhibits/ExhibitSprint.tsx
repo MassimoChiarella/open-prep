@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
 import { ExhibitAnswerInput } from "@/features/exhibits/ExhibitAnswerInput";
 import { ExhibitChartRenderer } from "@/features/exhibits/ExhibitChartRenderer";
@@ -20,6 +20,16 @@ import {
 import { ExhibitTableRenderer } from "@/features/exhibits/ExhibitTableRenderer";
 import type { ExhibitDataset, ExhibitQuestionSpec } from "@/features/exhibits/exhibitTypes";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { TimingAccommodationControl } from "@/features/timing/TimingAccommodationControl";
+import {
+  getEffectiveDurationSeconds,
+  type TimingAccommodation
+} from "@/features/timing/timingAccommodation";
+import {
+  readTimingAccommodationPreference,
+  timingAccommodationPreferenceKey,
+  writeTimingAccommodationPreference
+} from "@/features/timing/timingAccommodationPreference";
 import { formatLabel } from "@/lib/format";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 import type { AppStorage } from "@/lib/storage/appStorageTypes";
@@ -42,12 +52,21 @@ interface SprintFeedback {
 
 interface SprintResult {
   datasetTitle: string;
+  effectiveDurationSeconds: number | null;
   isCorrect: boolean;
   prompt: string;
+  standardDurationSeconds: number;
   timedOut: boolean;
 }
 
 type SprintPhase = "active" | "setup" | "summary";
+
+const timingAccommodationLabels: Record<TimingAccommodation, string> = {
+  double_time: "Double time",
+  standard: "Standard time",
+  time_and_a_half: "Time and a half",
+  untimed: "Untimed practice"
+};
 
 export function ExhibitSprint({
   backHref = "/exhibits",
@@ -67,21 +86,45 @@ export function ExhibitSprint({
   const [answerDraft, setAnswerDraft] = useState("");
   const [feedback, setFeedback] = useState<SprintFeedback>();
   const [results, setResults] = useState<SprintResult[]>([]);
-  const [secondsRemaining, setSecondsRemaining] = useState(0);
+  const [secondsRemaining, setSecondsRemaining] = useState<number | null>(0);
+  const [rememberTiming, setRememberTiming] = useState(false);
+  const [selectedTimingAccommodation, setSelectedTimingAccommodation] = useState<TimingAccommodation>();
+  const [activeTimingAccommodation, setActiveTimingAccommodation] = useState<TimingAccommodation>("standard");
+  const [timerAnnouncement, setTimerAnnouncement] = useState("");
+  const rememberedTimingAccommodation = useSyncExternalStore<TimingAccommodation>(
+    subscribeToTimingPreference,
+    readRememberedTimingPreference,
+    () => "standard"
+  );
+  const timingAccommodation = selectedTimingAccommodation ?? rememberedTimingAccommodation;
   const startedAtRef = useRef(new Date().toISOString());
+  const questionStartedAtMsRef = useRef(0);
+  const submissionLockRef = useRef(false);
+  const warningAnnouncedRef = useRef(false);
   const item = items[questionIndex];
 
   const submitCurrent = useCallback(
-    async (timedOut = false) => {
-      if (item === undefined || feedback !== undefined) {
+    async (requestedTimeout = false) => {
+      if (item === undefined || feedback !== undefined || submissionLockRef.current) {
         return;
       }
+
+      const standardDurationSeconds = standardQuestionSeconds(item);
+      const effectiveDurationSeconds = getEffectiveDurationSeconds(
+        standardDurationSeconds,
+        activeTimingAccommodation
+      );
+      const timedOut = requestedTimeout || (
+        effectiveDurationSeconds !== null &&
+        Date.now() - questionStartedAtMsRef.current >= effectiveDurationSeconds * 1_000
+      );
 
       if (!timedOut && answerDraft.trim().length === 0) {
         setFeedback(undefined);
         return;
       }
 
+      submissionLockRef.current = true;
       const validation = validateExhibitResponse(answerDraft, item.question, { locale, timedOut });
       const initialFeedback: SprintFeedback = {
         message: timedOut ? t("Time expired. Review the answer, then continue.") : t(validation.feedbackMessage),
@@ -95,8 +138,10 @@ export function ExhibitSprint({
         ...current,
         {
           datasetTitle: item.dataset.title,
+          effectiveDurationSeconds,
           isCorrect: validation.isCorrect,
           prompt: item.question.prompt,
+          standardDurationSeconds,
           timedOut
         }
       ]);
@@ -111,6 +156,7 @@ export function ExhibitSprint({
             rawInput: answerDraft,
             startedAt: startedAtRef.current,
             storage,
+            timingAccommodation: activeTimingAccommodation,
             validation
           });
         } finally {
@@ -121,14 +167,14 @@ export function ExhibitSprint({
       } catch {
         setFeedback({
           ...initialFeedback,
-            message: t("{feedback} The attempt could not be saved on this device.", {
-              feedback: initialFeedback.message
-            }),
+          message: t("{feedback} The attempt could not be saved on this device.", {
+            feedback: initialFeedback.message
+          }),
           saveStatus: "error"
         });
       }
     },
-    [answerDraft, feedback, item, locale, storageFactory, t]
+    [activeTimingAccommodation, answerDraft, feedback, item, locale, storageFactory, t]
   );
 
   useEffect(() => {
@@ -136,17 +182,39 @@ export function ExhibitSprint({
       return;
     }
 
-    const timer = window.setTimeout(() => {
-      if (secondsRemaining <= 1) {
-        setSecondsRemaining(0);
-        void submitCurrent(true);
-      } else {
-        setSecondsRemaining((seconds) => seconds - 1);
-      }
-    }, 1_000);
+    const effectiveDurationSeconds = getEffectiveDurationSeconds(
+      standardQuestionSeconds(item),
+      activeTimingAccommodation
+    );
 
-    return () => window.clearTimeout(timer);
-  }, [feedback, item, phase, secondsRemaining, submitCurrent]);
+    if (effectiveDurationSeconds === null) {
+      return;
+    }
+
+    const updateTimer = () => {
+      const nextRemaining = Math.max(
+        0,
+        Math.ceil(
+          (questionStartedAtMsRef.current + effectiveDurationSeconds * 1_000 - Date.now()) / 1_000
+        )
+      );
+
+      setSecondsRemaining(nextRemaining);
+      if (nextRemaining > 0 && nextRemaining <= 10 && !warningAnnouncedRef.current) {
+        warningAnnouncedRef.current = true;
+        setTimerAnnouncement(t("{seconds} seconds remaining", { seconds: formatNumber(nextRemaining) }));
+      }
+
+      if (nextRemaining === 0) {
+        void submitCurrent(true);
+      }
+    };
+
+    const timer = window.setInterval(updateTimer, 250);
+    updateTimer();
+
+    return () => window.clearInterval(timer);
+  }, [activeTimingAccommodation, feedback, formatNumber, item, phase, submitCurrent, t]);
 
   if (items.length < 3) {
     return (
@@ -162,7 +230,9 @@ export function ExhibitSprint({
       <section className="grid gap-6 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6" data-testid="exhibit-sprint-setup">
         <div className="grid gap-2">
           <h2 className="text-xl font-semibold text-ink">{t("Choose sprint length")}</h2>
-          <p className="text-sm leading-6 text-ink/70">{t("Each question uses its own countdown and saves locally.")}</p>
+          <p className="text-sm leading-6 text-ink/70">
+            {t("Each question keeps its authored Standard limit and saves locally.")}
+          </p>
         </div>
         <fieldset className="grid gap-2">
           <legend className="text-sm font-semibold text-ink">{t("Questions")}</legend>
@@ -184,19 +254,39 @@ export function ExhibitSprint({
             ))}
           </div>
         </fieldset>
+        <TimingAccommodationControl
+          onChange={setSelectedTimingAccommodation}
+          onRememberChange={setRememberTiming}
+          remember={rememberTiming}
+          value={timingAccommodation}
+        />
         <button
           className="inline-flex min-h-11 w-fit items-center justify-center rounded-md bg-ink px-5 text-sm font-semibold text-white transition hover:bg-teal motion-reduce:transform-none active:scale-[0.98]"
           onClick={() => {
             const nextSeed = seed ?? nextLocalPracticeNonce("exhibit-sprint");
             const nextItems = buildExhibitSprintItems(datasets, questionCount, nextSeed);
+            const startedAtMs = Date.now();
+
+            if (rememberTiming) {
+              try {
+                writeTimingAccommodationPreference(timingAccommodation);
+              } catch {
+                // A blocked preference write must not block the sprint.
+              }
+            }
 
             setSprintSeed(nextSeed);
             setQuestionIndex(0);
             setAnswerDraft("");
             setFeedback(undefined);
             setResults([]);
-            setSecondsRemaining(questionSeconds(nextItems[0]));
-            startedAtRef.current = new Date().toISOString();
+            setActiveTimingAccommodation(timingAccommodation);
+            setSecondsRemaining(effectiveQuestionSeconds(nextItems[0], timingAccommodation));
+            setTimerAnnouncement("");
+            submissionLockRef.current = false;
+            warningAnnouncedRef.current = false;
+            questionStartedAtMsRef.current = startedAtMs;
+            startedAtRef.current = new Date(startedAtMs).toISOString();
             setPhase("active");
           }}
           type="button"
@@ -225,6 +315,9 @@ export function ExhibitSprint({
               percent: formatPercent(results.length === 0 ? 0 : correctCount / results.length)
             })}
           </p>
+          <p className="text-sm font-semibold text-ink/70" data-testid="exhibit-sprint-summary-timing">
+            {t("Timing accommodation")}: {t(timingAccommodationLabels[activeTimingAccommodation])}
+          </p>
         </div>
         <ol className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3">
           {results.map((result, index) => (
@@ -234,6 +327,11 @@ export function ExhibitSprint({
               <p className={`mt-2 text-sm font-semibold ${result.isCorrect ? "text-teal" : "text-coral"}`}>
               {result.isCorrect ? t("Correct") : result.timedOut ? t("Timed out") : t("Incorrect")}
               </p>
+              <SprintTimingDetails
+                accommodation={activeTimingAccommodation}
+                effectiveDurationSeconds={result.effectiveDurationSeconds}
+                standardDurationSeconds={result.standardDurationSeconds}
+              />
             </li>
           ))}
         </ol>
@@ -260,7 +358,9 @@ export function ExhibitSprint({
     <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-5" data-testid="exhibit-sprint-active">
       <header className="grid min-w-0 gap-4 border border-ink/15 border-t-2 border-t-coral bg-white p-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
         <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2" data-testid="exhibit-sprint-prompt">
-          <p className="text-xs font-semibold uppercase tracking-wide text-coral">{t("Timed exhibit")}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-coral">
+            {t(timingAccommodationLabels[activeTimingAccommodation])}
+          </p>
           <h2 className="min-w-0 text-xl font-semibold text-ink [overflow-wrap:anywhere]">{item.question.prompt}</h2>
         </div>
         <div className="flex flex-wrap items-center justify-between gap-3 sm:grid sm:justify-items-end">
@@ -275,14 +375,24 @@ export function ExhibitSprint({
           </div>
           <p
             aria-live="off"
-            className={`rounded-md px-3 py-2 font-semibold tabular-nums ${secondsRemaining <= 10 ? "bg-coral/10 text-coral" : "bg-paper text-ink"}`}
+            className={`rounded-md px-3 py-2 font-semibold tabular-nums ${secondsRemaining !== null && secondsRemaining <= 10 ? "bg-coral/10 text-coral" : "bg-paper text-ink"}`}
             data-testid="exhibit-sprint-timer"
             role="timer"
           >
-            {t("{duration} remaining", { duration: formatTime(secondsRemaining, formatNumber) })}
+            {secondsRemaining === null
+              ? t("No automatic expiry")
+              : t("{duration} remaining", { duration: formatTime(secondsRemaining, formatNumber) })}
           </p>
         </div>
       </header>
+      <p aria-live="polite" className="sr-only">{timerAnnouncement}</p>
+
+      <SprintTimingDetails
+        accommodation={activeTimingAccommodation}
+        effectiveDurationSeconds={effectiveQuestionSeconds(item, activeTimingAccommodation)}
+        standardDurationSeconds={standardQuestionSeconds(item)}
+        testId="exhibit-sprint-active-timing"
+      />
 
       <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div className="min-w-0" data-testid="exhibit-sprint-exhibit">
@@ -333,8 +443,12 @@ export function ExhibitSprint({
                 setQuestionIndex(nextIndex);
                 setAnswerDraft("");
                 setFeedback(undefined);
-                setSecondsRemaining(questionSeconds(items[nextIndex]));
-                startedAtRef.current = new Date().toISOString();
+                setSecondsRemaining(effectiveQuestionSeconds(items[nextIndex], activeTimingAccommodation));
+                setTimerAnnouncement("");
+                submissionLockRef.current = false;
+                warningAnnouncedRef.current = false;
+                questionStartedAtMsRef.current = Date.now();
+                startedAtRef.current = new Date(questionStartedAtMsRef.current).toISOString();
               }}
               type="button"
             >
@@ -345,6 +459,38 @@ export function ExhibitSprint({
       </div>
     </section>
   );
+}
+
+function SprintTimingDetails({
+  accommodation,
+  effectiveDurationSeconds,
+  standardDurationSeconds,
+  testId
+}: {
+  accommodation: TimingAccommodation;
+  effectiveDurationSeconds: number | null;
+  standardDurationSeconds: number;
+  testId?: string;
+}) {
+  const { formatDuration, t } = useI18n();
+  const accommodationLabel = t(timingAccommodationLabels[accommodation]);
+  const message = effectiveDurationSeconds === null
+    ? t("{accommodation}. No automatic timeout; the standard limit is {standard}.", {
+        accommodation: accommodationLabel,
+        standard: formatDuration(standardDurationSeconds)
+      })
+    : accommodation === "standard"
+      ? t("{accommodation}. The active limit is {effective}.", {
+          accommodation: accommodationLabel,
+          effective: formatDuration(effectiveDurationSeconds)
+        })
+      : t("{accommodation}. Your limit is {effective}; the standard limit is {standard}.", {
+          accommodation: accommodationLabel,
+          effective: formatDuration(effectiveDurationSeconds),
+          standard: formatDuration(standardDurationSeconds)
+        });
+
+  return <p className="text-xs font-semibold text-ink/65" data-testid={testId}>{message}</p>;
 }
 
 function SprintFeedbackPanel({
@@ -396,6 +542,30 @@ function formatTime(
   })}`;
 }
 
-function questionSeconds(item: ExhibitSprintItem | undefined): number {
+function standardQuestionSeconds(item: ExhibitSprintItem | undefined): number {
   return item?.question.expectedTimeSeconds ?? 60;
+}
+
+function effectiveQuestionSeconds(
+  item: ExhibitSprintItem | undefined,
+  accommodation: TimingAccommodation
+): number | null {
+  return getEffectiveDurationSeconds(standardQuestionSeconds(item), accommodation);
+}
+
+function subscribeToTimingPreference(onStoreChange: () => void): () => void {
+  const handleStorage = (event: StorageEvent) => {
+    if (event.key === null || event.key === timingAccommodationPreferenceKey) onStoreChange();
+  };
+
+  window.addEventListener("storage", handleStorage);
+  return () => window.removeEventListener("storage", handleStorage);
+}
+
+function readRememberedTimingPreference(): TimingAccommodation {
+  try {
+    return readTimingAccommodationPreference();
+  } catch {
+    return "standard";
+  }
 }

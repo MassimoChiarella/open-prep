@@ -8,6 +8,8 @@ import {
   validateFitStoryDraft,
   type FitStoryDraft
 } from "@/features/case-practice/fit/fitPractice";
+import type { PracticeAttemptRecord } from "@/features/case-practice/practiceTypes";
+import { normalizeTimingAccommodation } from "@/features/timing/timingAccommodation";
 
 const completeDraft: FitStoryDraft = {
   competency: "leadership",
@@ -33,6 +35,26 @@ describe("fit self-review scoring", () => {
     const result = scoreFitReview(fitReviewCriteria.map((criterion) => criterion.id));
 
     expect(result).toMatchObject({ maxScore: 6, percentage: 100, score: 6 });
+  });
+
+  it("keeps legacy attempts Standard while accepting an accommodated timing label", () => {
+    const legacyAttempt: PracticeAttemptRecord = {
+      completedAt: "2026-08-12T12:34:56.000Z",
+      id: "attempt-fit-legacy",
+      itemId: "leadership-uncertainty",
+      kind: "attempt",
+      maxScore: 6,
+      module: "fit",
+      score: 4
+    };
+    const accommodatedAttempt: PracticeAttemptRecord = {
+      ...legacyAttempt,
+      id: "attempt-fit-accommodated",
+      timingAccommodation: "double_time"
+    };
+
+    expect(normalizeTimingAccommodation(legacyAttempt.timingAccommodation)).toBe("standard");
+    expect(accommodatedAttempt.timingAccommodation).toBe("double_time");
   });
 });
 

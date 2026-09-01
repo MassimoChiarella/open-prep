@@ -188,6 +188,7 @@ export interface DrillSettings {
   unitPreference?: UnitType;
   hintsEnabled?: boolean;
   questionPackId?: string;
+  timingAccommodation?: import("@/features/timing/timingAccommodation").TimingAccommodation;
   timeMode: "untimed" | "per_question" | "session";
   secondsPerQuestion?: number;
   totalSessionSeconds?: number;

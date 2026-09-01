@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { starterQuestionTemplates } from "@/data/questionTemplates/starterTemplates";
@@ -28,11 +28,22 @@ import {
   type DrillOption
 } from "@/features/drills/drillSettingsOptions";
 import { createDrillSettings, hasActiveRemainderDivision } from "@/features/drills/drillSettings";
+import { timingAccommodationLabel } from "@/features/drills/drillTimer";
 import { createQuickFireModeSettings, quickFireModeSourceParam } from "@/features/drills/quickFireMode";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { createDrillSession } from "@/features/drills/sessionFactory";
 import { getQuestionGenerationCapacity } from "@/features/questions/questionGenerator";
 import { loadUserDrillSettings, saveUserDrillSettings } from "@/features/settings/settingsPersistence";
+import { TimingAccommodationControl } from "@/features/timing/TimingAccommodationControl";
+import {
+  getEffectiveDurationSeconds,
+  normalizeTimingAccommodation,
+  type TimingAccommodation
+} from "@/features/timing/timingAccommodation";
+import {
+  readTimingAccommodationPreference,
+  writeTimingAccommodationPreference
+} from "@/features/timing/timingAccommodationPreference";
 import type {
   ArithmeticMixedOperator,
   CaseCalculationStepCount,
@@ -144,6 +155,8 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
   const [settings, setSettingsState] = useState<DrillSettings>(() => createFormDrillSettings());
   const [savedSettingsSignature, setSavedSettingsSignature] = useState<string>();
   const [persistenceStatus, setPersistenceStatus] = useState<SettingsPersistenceStatus>("loading");
+  const [rememberTimingAccommodation, setRememberTimingAccommodation] = useState(false);
+  const timingAccommodationTouched = useRef(false);
   const setSettings = useCallback<React.Dispatch<React.SetStateAction<DrillSettings>>>((update) => {
     setSettingsState((current) => {
       const next = typeof update === "function" ? update(current) : update;
@@ -161,7 +174,20 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
   );
   const preview = useMemo(() => createPreview(settings), [settings]);
   const startHref = useMemo(() => buildFormSessionHref(settings), [settings]);
-  const settingsMatchSavedDefaults = JSON.stringify(settings) === savedSettingsSignature;
+  const timingAccommodation = normalizeTimingAccommodation(settings.timingAccommodation);
+  const displayedQuickDrillPresets = useMemo(
+    () => quickDrillPresets.map((preset) =>
+      preset.label === "Quick Fire"
+        ? {
+            ...preset,
+            href: withTimingAccommodation(preset.href, timingAccommodation),
+            meta: quickFireMeta(timingAccommodation)
+          }
+        : preset
+    ),
+    [timingAccommodation]
+  );
+  const settingsMatchSavedDefaults = settingsDefaultsSignature(settings) === savedSettingsSignature;
   const selectedCategories = useMemo(() => new Set(settings.categories), [settings.categories]);
   const selectedTags = useMemo(() => new Set(settings.tags ?? []), [settings.tags]);
   const compatibleSkillOptions = useMemo(() => {
@@ -188,6 +214,22 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
 
   useEffect(() => {
     let cancelled = false;
+    let rememberedAccommodation = normalizeTimingAccommodation(undefined);
+
+    try {
+      rememberedAccommodation = readTimingAccommodationPreference();
+    } catch {
+      // Local storage can be unavailable while drill defaults remain usable.
+    }
+
+    void Promise.resolve().then(() => {
+      if (!cancelled && !timingAccommodationTouched.current) {
+        setSettings((current) => createDrillSettings({
+          ...current,
+          timingAccommodation: rememberedAccommodation
+        }));
+      }
+    });
 
     try {
       const storage = storageFactory();
@@ -199,10 +241,18 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
           }
 
           if (savedSettings !== undefined) {
-            const formSettings = createFormDrillSettings(savedSettings);
+            const formSettings = createFormDrillSettings({
+              ...savedSettings,
+              timingAccommodation: rememberedAccommodation
+            });
 
-            setSettings(formSettings);
-            setSavedSettingsSignature(JSON.stringify(formSettings));
+            setSettings((current) => createFormDrillSettings({
+              ...formSettings,
+              timingAccommodation: timingAccommodationTouched.current
+                ? current.timingAccommodation
+                : rememberedAccommodation
+            }));
+            setSavedSettingsSignature(settingsDefaultsSignature(formSettings));
           }
 
           setPersistenceStatus("ready");
@@ -233,8 +283,11 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
 
     try {
       storage = storageFactory();
-      await saveUserDrillSettings(storage, settings);
-      setSavedSettingsSignature(JSON.stringify(settings));
+      await saveUserDrillSettings(storage, createDrillSettings({
+        ...settings,
+        timingAccommodation: "standard"
+      }));
+      setSavedSettingsSignature(settingsDefaultsSignature(settings));
       setPersistenceStatus("saved");
     } catch {
       setPersistenceStatus("error");
@@ -243,8 +296,27 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
     }
   }
 
+  function handleLaunchClick(event: React.MouseEvent<HTMLElement>) {
+    if (
+      !rememberTimingAccommodation ||
+      !(event.target instanceof Element) ||
+      event.target.closest('a[href^="/drills/session?"]') === null
+    ) {
+      return;
+    }
+
+    try {
+      writeTimingAccommodationPreference(timingAccommodation);
+    } catch {
+      // A blocked preference write must not block the selected drill.
+    }
+  }
+
   return (
-    <main className="mx-auto grid w-full max-w-6xl flex-1 gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:px-8">
+    <main
+      className="mx-auto grid w-full max-w-6xl flex-1 gap-6 px-4 py-8 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:px-8"
+      onClickCapture={handleLaunchClick}
+    >
       <section className="space-y-8">
         <header className="grid gap-3">
           <PageHeader
@@ -270,6 +342,26 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
           </div>
         </header>
 
+        <TimingAccommodationControl
+          onChange={(value) => {
+            timingAccommodationTouched.current = true;
+            setSettings((current) => createDrillSettings({
+              ...current,
+              timingAccommodation: value
+            }));
+          }}
+          onRememberChange={setRememberTimingAccommodation}
+          remember={rememberTimingAccommodation}
+          standardDurationSeconds={
+            settings.timeMode === "per_question"
+              ? settings.secondsPerQuestion
+              : settings.timeMode === "session"
+                ? settings.totalSessionSeconds
+                : undefined
+          }
+          value={timingAccommodation}
+        />
+
         <section className="grid gap-5 border-y border-ink/20 py-6">
           <div className="grid max-w-2xl gap-2">
             <div className="flex items-center gap-3">
@@ -279,7 +371,7 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
             <h2 className="text-2xl font-semibold tracking-[-0.025em] text-ink">{t("Start fast")}</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2" data-testid="quick-drill-presets">
-            {quickDrillPresets.map((preset, index) => (
+            {displayedQuickDrillPresets.map((preset, index) => (
               <Link
                 className="group grid gap-4 border border-ink/15 bg-white px-4 py-5 text-left transition-colors hover:border-ink/30 hover:bg-paper focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2"
                 href={preset.href}
@@ -300,7 +392,13 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
           </div>
         </section>
 
-        <div className="space-y-8 border-y border-ink/20 bg-white px-4 py-6 sm:px-6" data-testid="advanced-drill-options">
+        <fieldset
+          aria-busy={persistenceStatus === "loading" || persistenceStatus === "saving"}
+          aria-label={t("Customize the drill")}
+          className="min-w-0 space-y-8 border-y border-ink/20 bg-white px-4 py-6 sm:px-6"
+          data-testid="advanced-drill-options"
+          disabled={persistenceStatus === "loading" || persistenceStatus === "saving"}
+        >
           <div className="grid gap-2">
             <div className="flex items-center gap-3">
               <span aria-hidden="true" className="font-mono text-xs font-semibold text-ink/45">03</span>
@@ -396,7 +494,7 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
                 <label className="grid gap-2 text-sm font-medium text-ink/80">
                   {t("Number of terms")}
                   <select
-                    className="h-11 rounded-md border border-ink/50 bg-white px-3 text-sm text-ink"
+                    className="h-11 min-w-0 w-full max-w-full rounded-md border border-ink/50 bg-white px-3 text-sm text-ink"
                     onChange={(event) => {
                       const arithmeticTermCount = Number(event.currentTarget.value) as 2 | 3 | 4 | 5;
                       setSettings((current) =>
@@ -418,7 +516,7 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
                 <label className="grid gap-2 text-sm font-medium text-ink/80">
                   {t("Unit preference")}
                   <select
-                    className="h-11 rounded-md border border-ink/50 bg-white px-3 text-sm text-ink"
+                    className="h-11 min-w-0 w-full max-w-full rounded-md border border-ink/50 bg-white px-3 text-sm text-ink"
                     onChange={(event) => {
                       const unitPreference = event.currentTarget.value as DrillSettings["unitPreference"];
                       setSettings((current) =>
@@ -767,7 +865,7 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
             </label>
           </DisclosureGroup>
 
-        </div>
+        </fieldset>
       </section>
 
       <aside
@@ -788,6 +886,9 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
             <PreviewStat label="Questions" value={formatLocaleNumber(settings.questionCount)} />
             <PreviewStat label="Difficulty" value={labelFor(difficultyOptions, settings.difficulty)} />
             <PreviewStat label="Timing" value={labelFor(timeModeOptions, settings.timeMode)} />
+            {settings.timeMode === "untimed" ? null : (
+              <PreviewStat label="Accommodation" value={timingAccommodationLabel(timingAccommodation)} />
+            )}
             <PreviewStat label="Feedback" value={labelFor(feedbackModeOptions, settings.feedbackMode)} />
           </dl>
 
@@ -1216,23 +1317,46 @@ function createFormDrillSettings(overrides: Partial<DrillSettings> = {}): DrillS
   });
 }
 
+function settingsDefaultsSignature(settings: DrillSettings): string {
+  return JSON.stringify(createDrillSettings({
+    ...settings,
+    timingAccommodation: "standard"
+  }));
+}
+
 function buildPresetHref(
   settings: Parameters<typeof createDrillSettings>[0],
   mode?: "interview",
   source?: string
 ): string {
   const resolvedSettings = createDrillSettings(settings);
-  const resolvedMode = mode ?? (isCaseOnly(resolvedSettings) ? "interview" : undefined);
-  const suffix = [resolvedMode ? `mode=${resolvedMode}` : undefined, source ? `source=${source}` : undefined]
+  const suffix = [mode ? `mode=${mode}` : undefined, source ? `source=${source}` : undefined]
     .filter((value): value is string => value !== undefined)
     .join("&");
 
   return `/drills/session?${buildDrillSettingsQuery(resolvedSettings)}${suffix ? `&${suffix}` : ""}`;
 }
 
+function withTimingAccommodation(href: string, accommodation: TimingAccommodation): string {
+  const url = new URL(href, "http://localhost");
+  url.searchParams.set("timingAccommodation", accommodation);
+
+  return `${url.pathname}?${url.searchParams.toString()}`;
+}
+
+function quickFireMeta(accommodation: TimingAccommodation): string {
+  const duration = getEffectiveDurationSeconds(20, accommodation);
+
+  return duration === null
+    ? "10 questions - untimed practice"
+    : `10 questions - ${duration} sec each`;
+}
+
 function buildFormSessionHref(settings: DrillSettings): string {
-  const mode = isCaseOnly(settings) ? "&mode=interview" : "";
-  return `/drills/session?${buildDrillSettingsQuery(settings)}${mode}`;
+  const launchSettings = settings.timeMode === "untimed"
+    ? createDrillSettings({ ...settings, timingAccommodation: "standard" })
+    : settings;
+  return `/drills/session?${buildDrillSettingsQuery(launchSettings)}`;
 }
 
 function isCaseOnly(settings: Pick<DrillSettings, "categories">): boolean {
