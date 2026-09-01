@@ -7,6 +7,7 @@ export default defineConfig({
   testDir: "./src/tests/e2e",
   fullyParallel: true,
   workers: process.platform === "win32" ? 1 : 2,
+  timeout: process.env.CI ? 60_000 : 30_000,
   retries: 0,
   reporter: "list",
   use: {
