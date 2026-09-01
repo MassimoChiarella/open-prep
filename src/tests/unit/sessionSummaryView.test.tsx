@@ -1,21 +1,19 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { buildDrillSettingsQuery } from "@/features/drills/drillSettingsOptions";
 import { SessionSummaryView } from "@/features/drills/SessionSummaryView";
 import type { SessionSummarySnapshot } from "@/features/drills/sessionSummary";
-import { I18nProvider } from "@/features/i18n/I18nProvider";
-import { localePreferenceStorageKey } from "@/features/i18n/i18n";
-import "@/features/i18n/locales/es";
+import { renderWithStoredLocale, resetI18nTestState } from "@/tests/renderWithStoredLocale";
 
-afterEach(() => window.localStorage.removeItem(localePreferenceStorageKey));
+afterEach(resetI18nTestState);
 
 describe("SessionSummaryView", () => {
   it("localizes the core results handoff", async () => {
-    window.localStorage.setItem(localePreferenceStorageKey, "es");
-    render(<I18nProvider><SessionSummaryView snapshot={summarySnapshot()} /></I18nProvider>);
+    const locale = renderWithStoredLocale(<SessionSummaryView snapshot={summarySnapshot()} />, "es");
+    await locale.initialize();
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Resultados de la sesión" })).toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "Resultados de la sesión" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Repetir ejercicio" })).toBeInTheDocument();
   });
 

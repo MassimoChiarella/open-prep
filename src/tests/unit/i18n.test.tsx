@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { renderToString } from "react-dom/server";
 import { afterAll, afterEach, describe, expect, it } from "vitest";
 
@@ -9,13 +9,17 @@ import {
   mergeCatalogs,
   translate
 } from "@/features/i18n/i18n";
+import {
+  renderWithI18n,
+  renderWithStoredLocale,
+  resetI18nTestState
+} from "@/tests/renderWithStoredLocale";
 
 const originalLanguages = Object.getOwnPropertyDescriptor(window.navigator, "languages");
 
 afterEach(() => {
+  resetI18nTestState();
   window.localStorage.clear();
-  document.documentElement.lang = "en";
-  document.documentElement.dir = "ltr";
   setSystemLanguages(["en"]);
 });
 
@@ -53,39 +57,40 @@ describe("I18nProvider", () => {
   });
 
   it("restores a persisted preference and updates document language and direction", async () => {
-    window.localStorage.setItem(localePreferenceStorageKey, "ar");
-    render(<I18nProvider><LocaleProbe /></I18nProvider>);
+    const locale = renderWithStoredLocale(<LocaleProbe />, "ar");
+    await locale.initialize();
 
-    await waitFor(() => expect(screen.getByTestId("locale")).toHaveTextContent("ar|ar"));
-    await waitFor(() => {
-      expect(document.documentElement).toHaveAttribute("lang", "ar");
-      expect(document.documentElement).toHaveAttribute("dir", "rtl");
-    });
+    expect(screen.getByTestId("locale")).toHaveTextContent("ar|ar");
+    expect(document.documentElement).toHaveAttribute("lang", "ar");
+    expect(document.documentElement).toHaveAttribute("dir", "rtl");
   });
 
   it("auto-detects the best navigator language and follows system changes", async () => {
     setSystemLanguages(["zh-TW", "en"]);
-    render(<I18nProvider><LocaleProbe /><LanguageSelect /></I18nProvider>);
+    const locale = renderWithI18n(<><LocaleProbe /><LanguageSelect /></>);
 
-    await waitFor(() => expect(screen.getByTestId("locale")).toHaveTextContent("auto|zh-Hant"));
+    await locale.waitForLocale("zh-Hant", "auto");
+    expect(screen.getByTestId("locale")).toHaveTextContent("auto|zh-Hant");
     expect(screen.getByRole("option", { name: "自動（繁體中文）" })).toBeInTheDocument();
 
     setSystemLanguages(["fr-CA"]);
     fireEvent(window, new Event("languagechange"));
-    await waitFor(() => expect(screen.getByTestId("locale")).toHaveTextContent("auto|fr"));
+    await locale.waitForLocale("fr", "auto");
+    expect(screen.getByTestId("locale")).toHaveTextContent("auto|fr");
     expect(document.documentElement).toHaveAttribute("lang", "fr");
   });
 
   it("persists selector changes and exposes an accessible localized label", async () => {
     setSystemLanguages(["en"]);
-    render(<I18nProvider><LanguageSelect /></I18nProvider>);
+    const locale = renderWithI18n(<LanguageSelect />);
     const select = screen.getByRole("combobox", { name: "Language" });
 
     expect(select).toHaveValue("auto");
     expect(screen.getAllByRole("option")).toHaveLength(11);
     fireEvent.change(select, { target: { value: "ar" } });
 
-    await waitFor(() => expect(document.documentElement).toHaveAttribute("dir", "rtl"));
+    await locale.waitForLocale("ar", "ar");
+    expect(document.documentElement).toHaveAttribute("dir", "rtl");
     expect(window.localStorage.getItem(localePreferenceStorageKey)).toBe("ar");
     expect(screen.getByRole("combobox", { name: "اللغة" })).toHaveValue("ar");
   });

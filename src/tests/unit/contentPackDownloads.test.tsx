@@ -1,14 +1,14 @@
 import { existsSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import ContentPackDownloadsPage from "@/app/content-packs/downloads/page";
-import { I18nProvider } from "@/features/i18n/I18nProvider";
-import { localePreferenceStorageKey } from "@/features/i18n/i18n";
+import { renderWithStoredLocale, resetI18nTestState } from "@/tests/renderWithStoredLocale";
 
 afterEach(() => {
+  resetI18nTestState();
   window.localStorage.clear();
   vi.unstubAllGlobals();
 });
@@ -145,10 +145,10 @@ describe("ContentPackDownloadsPage", () => {
   });
 
   it("uses the localization hook in Arabic without requiring catalog edits", async () => {
-    window.localStorage.setItem(localePreferenceStorageKey, "ar");
-    render(<I18nProvider><ContentPackDownloadsPage /></I18nProvider>);
+    const locale = renderWithStoredLocale(<ContentPackDownloadsPage />, "ar");
+    await locale.initialize();
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "تنزيل موارد التأليف" })).toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "تنزيل موارد التأليف" })).toBeInTheDocument();
     expect(document.documentElement).toHaveAttribute("dir", "rtl");
     expect(screen.getByRole("link", { name: "العودة إلى حزم المحتوى" })).toHaveAttribute(
       "href",
