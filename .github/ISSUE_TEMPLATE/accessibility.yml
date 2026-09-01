@@ -1,0 +1,76 @@
+name: Accessibility issue
+description: Report a barrier that makes Open Prep harder to perceive, understand, or use.
+title: "[Accessibility]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting an accessibility barrier. Do not post security vulnerabilities here. Follow the private-reporting instructions in `SECURITY.md` using this repository's **Security** tab.
+
+  - type: dropdown
+    id: barrier-type
+    attributes:
+      label: Barrier type
+      options:
+        - Keyboard or focus
+        - Screen reader or semantics
+        - Zoom, reflow, or text size
+        - Color, contrast, or forced colors
+        - Motion or animation
+        - Language, translation, or right-to-left layout
+        - Timing
+        - Other accessibility barrier
+    validations:
+      required: true
+
+  - type: textarea
+    id: barrier
+    attributes:
+      label: What is the barrier?
+      description: Describe what prevents or complicates completing the task. Medical or diagnostic information is not needed.
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Affected route or content ID
+      description: Include the page path or visible content ID when available.
+      placeholder: /case-practice/ or exhibit-001
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to encounter the barrier
+      description: Include the interaction method and the smallest reliable sequence.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected accessible behavior
+      description: Describe the result or access you expected.
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Relevant environment
+      description: If useful, include browser, OS, input method, and assistive technology with versions.
+      placeholder: Safari 19 with VoiceOver on macOS 16
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Additional evidence
+      description: Add a screenshot or short redacted recording if useful. Remove learner answers, private stories, and other personal data.
+
+  - type: checkboxes
+    id: public-report
+    attributes:
+      label: Public report check
+      options:
+        - label: I have not included a security vulnerability or unnecessary personal or confidential data.
+          required: true

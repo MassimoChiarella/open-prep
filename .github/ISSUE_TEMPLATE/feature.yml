@@ -1,0 +1,65 @@
+name: Consulting-prep feature proposal
+description: Propose a focused improvement to consulting interview preparation.
+title: "[Feature]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Open Prep is a deterministic, local-first static PWA. Proposals must improve consulting interview preparation without runtime AI, servers, accounts, analytics, synchronization, or external grading, content, generation, or recommendation services.
+
+        Do not post security vulnerabilities here. Follow the private-reporting instructions in `SECURITY.md` using this repository's **Security** tab.
+
+  - type: dropdown
+    id: practice-area
+    attributes:
+      label: Practice area
+      options:
+        - Math or quantitative reasoning
+        - Exhibits or data interpretation
+        - Market sizing
+        - Case practice
+        - Behavioral or Fit/PEI preparation
+        - Content packs or authoring
+        - Progress, planning, or recommendations
+        - Accessibility or general experience
+        - Contributor or release workflow
+    validations:
+      required: true
+
+  - type: textarea
+    id: consulting-value
+    attributes:
+      label: Consulting-prep value
+      description: What learner, coach, educator, or contributor problem would this solve, and how would it improve consulting preparation?
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-experience
+    attributes:
+      label: Proposed experience
+      description: Describe the smallest useful workflow and its expected outcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: constraint-fit
+    attributes:
+      label: Optional technical considerations
+      description: If known, note how this could remain deterministic, browser-local, offline-capable, static-hostable, and free of runtime services or analytics.
+
+  - type: textarea
+    id: accessibility
+    attributes:
+      label: Accessibility considerations
+      description: Note relevant keyboard, screen-reader, timing, language, contrast, motion, or narrow-screen needs.
+
+  - type: checkboxes
+    id: public-report
+    attributes:
+      label: Public proposal check
+      options:
+        - label: I have not included a security vulnerability or unnecessary personal or confidential data.
+          required: true
+        - label: I understand that accepted features must preserve Open Prep's deterministic, local-first, no-runtime-service architecture.
+          required: true

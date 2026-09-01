@@ -1,0 +1,59 @@
+name: Practice-content error
+description: Report an accuracy, rubric, accessibility, or rights concern in practice content.
+title: "[Content]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Identify content by its route or ID and describe the concern in your own words. Do not repost proprietary source material. Do not post security vulnerabilities here; follow the private-reporting instructions in `SECURITY.md` using this repository's **Security** tab.
+
+  - type: dropdown
+    id: concern-type
+    attributes:
+      label: Concern type
+      options:
+        - Factual accuracy
+        - Answer key or calculation
+        - Rubric, explanation, or feedback
+        - Accessibility or representation
+        - Rights, license, or provenance
+        - Other content-quality concern
+    validations:
+      required: true
+
+  - type: input
+    id: content-location
+    attributes:
+      label: Content ID or route
+      description: Give the stable content ID, pack ID and version, or page path needed to locate the item.
+      placeholder: pack-id@1.0.0 / item-003
+    validations:
+      required: true
+
+  - type: textarea
+    id: concern
+    attributes:
+      label: Describe the concern
+      description: Explain the issue without copying proprietary text or including a learner's answer.
+    validations:
+      required: true
+
+  - type: textarea
+    id: correction
+    attributes:
+      label: Suggested correction
+      description: If known, suggest the expected answer, wording, rubric, accessibility improvement, or rights action.
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Public sources or evidence
+      description: Cite public, authorized sources when useful. Summarize proprietary-source concerns instead of reproducing the material.
+
+  - type: checkboxes
+    id: public-report
+    attributes:
+      label: Public report check
+      options:
+        - label: I have not included proprietary content, a security vulnerability, learner data, or unnecessary personal or confidential data.
+          required: true

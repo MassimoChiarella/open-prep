@@ -1,0 +1,64 @@
+name: Software bug
+description: Report a reproducible problem with Open Prep.
+title: "[Bug]: "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Open Prep. Do not post security vulnerabilities here. Follow the private-reporting instructions in `SECURITY.md` using this repository's **Security** tab.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened?
+      description: Describe the problem and its effect in a few sentences.
+    validations:
+      required: true
+
+  - type: input
+    id: route
+    attributes:
+      label: Affected route
+      description: Include the page path when it helps locate the problem.
+      placeholder: /drills/
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction steps
+      description: List the smallest reliable sequence that causes the problem.
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What should have happened instead?
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Browser and operating system
+      description: Include browser and OS versions when known and relevant.
+      placeholder: Firefox 145 on Windows 11
+
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Additional evidence
+      description: Add a screenshot or redacted console output if useful. Remove answers, private Fit stories, file paths, credentials, and other personal data.
+
+  - type: checkboxes
+    id: public-report
+    attributes:
+      label: Public report check
+      options:
+        - label: I have not included a security vulnerability or unnecessary personal or confidential data.
+          required: true
