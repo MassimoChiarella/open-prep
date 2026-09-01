@@ -30,14 +30,14 @@ describe("tagged release workflow", () => {
     expect(result.status, result.stderr).toBe(0);
   });
 
-  it("builds, verifies, scans, and packages fresh output before drafting a release", () => {
+  it("compares two fresh builds and packages only the verified second artifact", () => {
     const verify = jobBlock("verify", "draft_release");
     const commands = [
       "npm ci",
       "npm run version:check",
       "npm audit --audit-level=high",
       "npx playwright install --with-deps chromium firefox webkit",
-      "npm run release:artifact",
+      "npm run check",
       "cp out/open-prep-release.json",
       "npm run build",
       "cmp \"$RUNNER_TEMP/open-prep-release.first.json\" out/open-prep-release.json",
@@ -57,6 +57,8 @@ describe("tagged release workflow", () => {
     expect(verify).toContain("if: failure()");
     expect(verify).toContain("test-results/");
     expect(verify).toContain("playwright-report/");
+    expect(verify).not.toContain("npm run release:artifact");
+    expect(verify.match(/node scripts\/package-release\.mjs/gu)).toHaveLength(1);
     expect(verify).not.toContain("contents: write");
   });
 

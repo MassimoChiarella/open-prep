@@ -40,8 +40,8 @@ jobs:
       - name: Install lockfile-matched browsers
         run: npx playwright install --with-deps chromium firefox webkit
 
-      - name: Run source-to-artifact release gate
-        run: npm run release:artifact
+      - name: Build and verify first fresh artifact
+        run: npm run check
 
       - name: Save first finalized release manifest
         run: cp out/open-prep-release.json "$RUNNER_TEMP/open-prep-release.first.json"
