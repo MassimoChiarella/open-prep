@@ -361,7 +361,10 @@ describe("progress aggregation", () => {
       templateId: "market-1"
     });
 
-    await expect(loadProgressSummary(storage, { now: "2026-06-02T12:00:00.000Z" })).resolves.toMatchObject({
+    await expect(loadProgressSummary(storage, {
+      now: "2026-06-02T12:00:00.000Z",
+      timeZone: "America/Toronto"
+    })).resolves.toMatchObject({
       dashboard: {
         currentStreakDays: 2,
         totalQuestionsAnswered: 1,

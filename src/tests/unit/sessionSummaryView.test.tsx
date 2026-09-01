@@ -1,11 +1,14 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { buildDrillSettingsQuery } from "@/features/drills/drillSettingsOptions";
 import { SessionSummaryView } from "@/features/drills/SessionSummaryView";
 import type { SessionSummarySnapshot } from "@/features/drills/sessionSummary";
 import { I18nProvider } from "@/features/i18n/I18nProvider";
 import { localePreferenceStorageKey } from "@/features/i18n/i18n";
+import "@/features/i18n/locales/es";
+
+afterEach(() => window.localStorage.removeItem(localePreferenceStorageKey));
 
 describe("SessionSummaryView", () => {
   it("localizes the core results handoff", async () => {
@@ -14,7 +17,6 @@ describe("SessionSummaryView", () => {
 
     await waitFor(() => expect(screen.getByRole("heading", { name: "Resultados de la sesión" })).toBeInTheDocument());
     expect(screen.getByRole("link", { name: "Repetir ejercicio" })).toBeInTheDocument();
-    window.localStorage.removeItem(localePreferenceStorageKey);
   });
 
   it("summarizes results, reviews misses, and repeats the same custom-pack drill", () => {

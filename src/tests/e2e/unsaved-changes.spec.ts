@@ -2,8 +2,6 @@ import { expect, test, type Page } from "@playwright/test";
 
 const warning = "Leave this builder? Your unsaved changes will be lost.";
 
-test.use({ bypassCSP: true });
-
 test("dirty content-pack work survives a declined browser Back navigation", async ({ page }) => {
   await page.goto("/content-packs/?view=create");
   await page.evaluate(() => {

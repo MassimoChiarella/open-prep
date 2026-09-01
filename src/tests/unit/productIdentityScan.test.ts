@@ -1,6 +1,8 @@
 import { spawnSync } from "node:child_process";
 import {
+  copyFileSync,
   mkdtempSync,
+  mkdirSync,
   readdirSync,
   rmSync,
   writeFileSync
@@ -13,13 +15,11 @@ const projectRoot = process.cwd();
 const publicDirectory = resolve(projectRoot, "public");
 const scanScript = resolve(projectRoot, "scripts", "check-product-identity.mjs");
 const temporaryRoots: string[] = [];
-const temporaryFiles: string[] = [];
 
 afterAll(() => {
   for (const root of temporaryRoots) {
     rmSync(root, { force: true, recursive: true });
   }
-  for (const file of temporaryFiles) rmSync(file, { force: true });
 });
 
 describe("product identity scan", () => {
@@ -57,14 +57,24 @@ describe("product identity scan", () => {
   });
 
   it("includes untracked, non-ignored repository files by default", () => {
-    const stalePath = join(projectRoot, `identity-scan-untracked-${process.pid}.md`);
-    temporaryFiles.push(stalePath);
+    const root = mkdtempSync(join(tmpdir(), "open-prep-identity-repository-"));
+    temporaryRoots.push(root);
+    const temporaryScript = join(root, "scripts", "check-product-identity.mjs");
+    mkdirSync(join(root, "scripts"));
+    copyFileSync(scanScript, temporaryScript);
+    const gitInit = spawnSync("git", ["init", "--quiet"], { cwd: root, encoding: "utf8" });
+    expect(gitInit.status, gitInit.stderr).toBe(0);
+
+    const stalePath = join(root, "identity-scan-untracked.md");
     writeFileSync(stalePath, ["Consulting", "Math", "Practice"].join(" "), "utf8");
 
-    const result = runScan([]);
+    const result = spawnSync(process.execPath, [temporaryScript], {
+      cwd: root,
+      encoding: "utf8"
+    });
 
     expect(result.status).toBe(1);
-    expect(result.stderr).toContain(`identity-scan-untracked-${process.pid}.md:1:1`);
+    expect(result.stderr).toContain("identity-scan-untracked.md:1:1");
   });
 });
 
