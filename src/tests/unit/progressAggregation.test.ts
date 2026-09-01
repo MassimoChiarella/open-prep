@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { createProgressSummary, loadProgressSummary } from "@/features/progress/progressAggregation";
+import { createWholeProductActivitySummary } from "@/features/progress/wholeProductActivity";
 import type { Question, SkillCategory, SkillTag, UserResponse } from "@/lib/domain";
 import type {
   BenchmarkResultRecord,
@@ -235,7 +236,8 @@ describe("progress aggregation", () => {
       recentSessions: [],
       reviewQueue: { dueCount: 0, nextDueAt: undefined, scheduledCount: 0 },
       skillPerformance: [],
-      unitErrorCount: 0
+      unitErrorCount: 0,
+      wholeProductActivity: createWholeProductActivitySummary()
     });
   });
 
@@ -273,6 +275,39 @@ describe("progress aggregation", () => {
       marketSizing: { attemptCount: 1, averageScorePercent: 80, completedCount: 1 }
     });
     expect(summary.isEmpty).toBe(false);
+  });
+
+  it("uses completed case activity for the empty state and whole-product streak", () => {
+    const summary = createProgressSummary({
+      now: "2026-06-03T12:00:00.000Z",
+      practiceRecords: [
+        {
+          completedAt: "2026-06-01T12:00:00.000Z",
+          id: "case-1",
+          itemId: "structure-1",
+          kind: "attempt",
+          maxScore: 4,
+          module: "structuring",
+          score: 3
+        },
+        {
+          completedAt: "2026-06-02T12:00:00.000Z",
+          id: "case-2",
+          itemId: "synthesis-1",
+          kind: "attempt",
+          maxScore: 4,
+          module: "synthesis",
+          score: 2
+        }
+      ],
+      sessions: [],
+      timeZone: "UTC"
+    });
+
+    expect(summary.isEmpty).toBe(false);
+    expect(summary.dashboard).toMatchObject({ currentStreakDays: 2, totalSessions: 0 });
+    expect(summary.wholeProductActivity.casePractice).toMatchObject({ completedAttemptCount: 2 });
+    expect(summary.wholeProductActivity).not.toHaveProperty("overallScore");
   });
 
   it("summarizes due retry schedules for unresolved mistakes", () => {
@@ -328,7 +363,7 @@ describe("progress aggregation", () => {
 
     await expect(loadProgressSummary(storage, { now: "2026-06-02T12:00:00.000Z" })).resolves.toMatchObject({
       dashboard: {
-        currentStreakDays: 1,
+        currentStreakDays: 2,
         totalQuestionsAnswered: 1,
         totalSessions: 1
       },
@@ -352,6 +387,42 @@ describe("progress aggregation", () => {
         })
       ])
     });
+  });
+
+  it("streams case records without a full practice-record read", async () => {
+    const storage = new MemoryAppStorage();
+    await storage.put("practice_records", {
+      completedAt: "2026-06-02T12:00:00.000Z",
+      id: "case-only-attempt",
+      itemId: "case-only-item",
+      kind: "attempt",
+      maxScore: 4,
+      module: "questioning",
+      score: 3
+    });
+    const getAllSpy = vi.spyOn(storage, "getAll");
+    const scanSpy = vi.spyOn(storage, "scan");
+
+    const summary = await loadProgressSummary(storage, {
+      now: "2026-06-02T12:00:00.000Z",
+      timeZone: "UTC"
+    });
+
+    expect(summary.isEmpty).toBe(false);
+    expect(summary.wholeProductActivity.casePractice.completedAttemptCount).toBe(1);
+    expect(summary.wholeProductActivity.recentActivities[0]).toMatchObject({
+      kind: "case_practice",
+      label: "Questioning"
+    });
+    expect(scanSpy).toHaveBeenCalledWith("practice_records", expect.any(Function));
+    expect(getAllSpy.mock.calls.some(([storeName]) => storeName === "practice_records")).toBe(false);
+  });
+
+  it("propagates a practice-record scan failure to the progress error boundary", async () => {
+    const storage = new MemoryAppStorage();
+    vi.spyOn(storage, "scan").mockRejectedValueOnce(new Error("practice scan unavailable"));
+
+    await expect(loadProgressSummary(storage)).rejects.toThrow("practice scan unavailable");
   });
 
   it("folds every benchmark result through bounded index pages without a full-store read", async () => {
@@ -385,6 +456,28 @@ describe("progress aggregation", () => {
     expect(getAllSpy.mock.calls.some(([storeName]) => storeName === "benchmark_results")).toBe(false);
     expect(getPageSpy).toHaveBeenCalledTimes(3);
     expect(getPageSpy.mock.calls.every(([, , options]) => options.limit === 500)).toBe(true);
+  });
+
+  it("keeps accommodated benchmarks in activity while selecting only Standard personal bests", async () => {
+    const storage = new MemoryAppStorage();
+    await storage.put("benchmark_results", benchmarkRecord(
+      "standard-result",
+      70,
+      "2026-06-01T12:00:00.000Z"
+    ));
+    await storage.put("benchmark_results", {
+      ...benchmarkRecord("accommodated-result", 100, "2026-06-02T12:00:00.000Z"),
+      timingAccommodation: "double_time"
+    });
+
+    const summary = await loadProgressSummary(storage);
+
+    expect(summary.personalBests).toContainEqual(expect.objectContaining({
+      id: "benchmark:beginner:score",
+      sourceId: "standard-result",
+      value: 70
+    }));
+    expect(summary.wholeProductActivity.benchmarks.completedResultCount).toBe(2);
   });
 
   it.each([1_000, 5_000, 10_000, 20_000])(

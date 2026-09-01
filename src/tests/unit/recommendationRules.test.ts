@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { createDrillSession } from "@/features/drills/sessionFactory";
 import type { ProgressSummary } from "@/features/progress/progressAggregation";
+import { createWholeProductActivitySummary } from "@/features/progress/wholeProductActivity";
 import { createDeterministicRecommendations } from "@/features/recommendations/recommendationRules";
 
 const generatedAt = "2026-06-10T12:00:00.000Z";
@@ -98,7 +99,8 @@ function summary(overrides: Partial<ProgressSummary> = {}): ProgressSummary {
     mistakeNotebook: [],
     recentSessions: [],
     skillPerformance: [],
-    unitErrorCount: 0
+    unitErrorCount: 0,
+    wholeProductActivity: createWholeProductActivitySummary()
   };
 
   return { ...empty, ...overrides };

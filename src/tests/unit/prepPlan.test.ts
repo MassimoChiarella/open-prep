@@ -8,6 +8,7 @@ import {
   type PrepPlanProfile
 } from "@/features/case-practice/plan/prepPlan";
 import type { ProgressSummary } from "@/features/progress/progressAggregation";
+import { createWholeProductActivitySummary } from "@/features/progress/wholeProductActivity";
 
 describe("preparation roadmap", () => {
   it("starts a new user with a benchmark and allocates the full weekly target", () => {
@@ -139,7 +140,8 @@ function emptyProgress(): ProgressSummary {
     recentSessions: [],
     reviewQueue: { dueCount: 0, scheduledCount: 0 },
     skillPerformance: [],
-    unitErrorCount: 0
+    unitErrorCount: 0,
+    wholeProductActivity: createWholeProductActivitySummary()
   };
 }
 

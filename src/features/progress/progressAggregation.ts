@@ -1,4 +1,6 @@
 import type { ErrorType, SkillCategory, SkillTag } from "@/lib/domain";
+import type { PracticeRecord } from "@/features/case-practice/practiceTypes";
+import { isStandardComparisonEligible } from "@/features/timing/timingAccommodation";
 import {
   appStoreIndexNames,
   type AppStorage,
@@ -13,6 +15,11 @@ import {
 
 import { localDateKey, shiftLocalDateKey } from "@/features/progress/localCalendar";
 import { createPersonalBestRecords, type PersonalBestRecord } from "@/features/progress/personalBests";
+import {
+  createWholeProductActivityAccumulator,
+  createWholeProductActivitySummary,
+  type WholeProductActivitySummary
+} from "@/features/progress/wholeProductActivity";
 
 export interface CreateProgressSummaryOptions {
   benchmarkResults?: readonly BenchmarkResultRecord[];
@@ -20,11 +27,13 @@ export interface CreateProgressSummaryOptions {
   marketSizingAttempts?: readonly MarketSizingAttemptRecord[];
   mistakeNotebook?: readonly MistakeNotebookRecord[];
   now?: string;
+  practiceRecords?: Iterable<PracticeRecord>;
   recentSessionLimit?: number;
   responses?: readonly StoredUserResponse[];
   retrySchedules?: readonly RetryScheduleRecord[];
   sessions: readonly StoredDrillSession[];
   timeZone?: string;
+  wholeProductActivity?: WholeProductActivitySummary;
 }
 
 export interface ProgressDashboardSummary {
@@ -102,6 +111,7 @@ export interface ProgressSummary {
   reviewQueue?: ReviewQueueSummary;
   skillPerformance: SkillProgressSummary[];
   unitErrorCount: number;
+  wholeProductActivity: WholeProductActivitySummary;
 }
 
 const defaultRecentSessionLimit = 5;
@@ -109,8 +119,9 @@ const benchmarkScanPageSize = 500;
 
 export async function loadProgressSummary(
   storage: AppStorage,
-  options: Omit<CreateProgressSummaryOptions, "responses" | "sessions"> = {}
+  options: Pick<CreateProgressSummaryOptions, "now" | "recentSessionLimit" | "timeZone"> = {}
 ): Promise<ProgressSummary> {
+  const activity = createWholeProductActivityAccumulator({ timeZone: options.timeZone });
   const [
     sessions,
     responses,
@@ -120,16 +131,23 @@ export async function loadProgressSummary(
     exhibitAttempts,
     marketSizingAttempts
   ] = await Promise.all([
-    // ponytail: exact lifetime metrics still require full reads for these unindexed stores;
-    // add a generic storage cursor/fold API if the 20k-record budget is exceeded.
+    // ponytail: exact lifetime drill metrics still require full reads for these unindexed stores;
+    // add chronological indexes if the existing 20k-record budget is exceeded.
     storage.getAll("drill_sessions"),
     storage.getAll("responses"),
     storage.getAll("mistake_notebook"),
-    loadBenchmarkPersonalBestResults(storage),
+    loadBenchmarkPersonalBestResults(storage, (result) => activity.addBenchmarkResult(result)),
     storage.getAll("retry_schedules"),
     storage.getAll("exhibit_attempts"),
-    storage.getAll("market_sizing_attempts")
+    storage.getAll("market_sizing_attempts"),
+    storage.scan("practice_records", (record) => activity.addPracticeRecord(record))
   ]);
+
+  for (const session of sessions) activity.addDrillSession(session);
+  for (const attempt of exhibitAttempts) activity.addExhibitAttempt(attempt);
+  for (const attempt of marketSizingAttempts) activity.addMarketSizingAttempt(attempt);
+  for (const mistake of mistakeNotebook) activity.addMistakeNotebookRecord(mistake);
+  for (const schedule of retrySchedules) activity.addRetrySchedule(schedule);
 
   return createProgressSummary({
     ...options,
@@ -139,11 +157,15 @@ export async function loadProgressSummary(
     mistakeNotebook,
     responses,
     retrySchedules,
-    sessions
+    sessions,
+    wholeProductActivity: activity.finalize()
   });
 }
 
-async function loadBenchmarkPersonalBestResults(storage: AppStorage): Promise<BenchmarkResultRecord[]> {
+async function loadBenchmarkPersonalBestResults(
+  storage: AppStorage,
+  visit?: (result: BenchmarkResultRecord) => void
+): Promise<BenchmarkResultRecord[]> {
   const bestByBenchmark = new Map<string, BenchmarkResultRecord>();
   let afterKey: IDBValidKey | undefined;
 
@@ -159,6 +181,9 @@ async function loadBenchmarkPersonalBestResults(storage: AppStorage): Promise<Be
     );
 
     for (const result of page.values) {
+      visit?.(result);
+      if (!isStandardComparisonEligible(result.timingAccommodation)) continue;
+
       const current = bestByBenchmark.get(result.benchmarkId);
 
       if (current === undefined || isBetterBenchmarkScore(result, current)) {
@@ -209,8 +234,16 @@ export function createProgressSummary(options: CreateProgressSummaryOptions): Pr
         : (attempt.score / attempt.maxScore) * 100
     )
   };
-  const additionalAttemptCount =
-    additionalPractice.exhibits.attemptCount + additionalPractice.marketSizing.attemptCount;
+  const wholeProductActivity = options.wholeProductActivity ?? createWholeProductActivitySummary({
+    benchmarkResults: options.benchmarkResults,
+    exhibitAttempts: options.exhibitAttempts,
+    marketSizingAttempts: options.marketSizingAttempts,
+    mistakeNotebook: options.mistakeNotebook,
+    practiceRecords: options.practiceRecords,
+    retrySchedules: options.retrySchedules,
+    sessions,
+    timeZone: options.timeZone
+  });
 
   return {
     additionalPractice,
@@ -218,7 +251,7 @@ export function createProgressSummary(options: CreateProgressSummaryOptions): Pr
     dashboard: {
       averageTimeSeconds: totalQuestionsAnswered === 0 ? 0 : totalTimeSeconds / totalQuestionsAnswered,
       currentStreakDays: calculateCurrentStreakDays(
-        sessions,
+        wholeProductActivity.activityDates,
         options.now ?? new Date().toISOString(),
         options.timeZone
       ),
@@ -230,12 +263,7 @@ export function createProgressSummary(options: CreateProgressSummaryOptions): Pr
       totalSessions: sessions.length
     },
     errorBreakdown,
-    isEmpty:
-      totalQuestionsAnswered === 0 &&
-      sessions.length === 0 &&
-      mistakeNotebook.length === 0 &&
-      reviewQueue.scheduledCount === 0 &&
-      additionalAttemptCount === 0,
+    isEmpty: wholeProductActivity.isEmpty,
     magnitudeErrorCount: countError(errorBreakdown, "magnitude_error"),
     mistakeNotebook,
     personalBests: createPersonalBestRecords({
@@ -247,7 +275,8 @@ export function createProgressSummary(options: CreateProgressSummaryOptions): Pr
     recentSessions,
     reviewQueue,
     skillPerformance: createSkillPerformance(responses),
-    unitErrorCount: countError(errorBreakdown, "unit_error")
+    unitErrorCount: countError(errorBreakdown, "unit_error"),
+    wholeProductActivity
   };
 }
 
@@ -379,15 +408,11 @@ function createRecentSessionSummaries(
 }
 
 function calculateCurrentStreakDays(
-  sessions: readonly StoredDrillSession[],
+  dates: Iterable<string>,
   now: string,
   timeZone: string | undefined
 ): number {
-  const activityDates = new Set(
-    sessions
-      .map((session) => localDateKey(session.endedAt ?? session.updatedAt ?? session.startedAt, timeZone))
-      .filter((date): date is string => date !== undefined)
-  );
+  const activityDates = new Set(dates);
 
   if (activityDates.size === 0) {
     return 0;

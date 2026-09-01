@@ -8,12 +8,15 @@ import { LoadingState } from "@/components/LoadingState";
 import { PageHeader } from "@/components/PageHeader";
 import { badgeClass, buttonClass, cx, panelClass, uiText, type StatusTone } from "@/components/uiStyles";
 import { buildDailyWorkoutHref } from "@/features/drills/dailyWorkout";
-import { buildDrillSettingsQuery } from "@/features/drills/drillSettingsOptions";
-import { createDrillSettings } from "@/features/drills/drillSettings";
 import { buildRetryMissedDrillHref, buildReviewDrillHref } from "@/features/drills/mistakeRetry";
 import { buildWeaknessModeDrillHref } from "@/features/drills/weaknessMode";
+import { FirstRunChoices } from "@/features/progress/FirstRunChoices";
 import type { PersonalBestRecord } from "@/features/progress/personalBests";
 import { loadProgressSummary, type ProgressSummary } from "@/features/progress/progressAggregation";
+import type {
+  WholeProductActivitySummary,
+  WholeProductRecentActivity
+} from "@/features/progress/wholeProductActivity";
 import { RecommendationCards } from "@/features/recommendations/RecommendationCards";
 import {
   createDeterministicRecommendations,
@@ -107,45 +110,6 @@ interface TodaysPracticeSuggestion {
 const categoryAccuracyTarget = 0.8;
 const categoryPaceTargetSeconds = 25;
 const categoryMinimumQuestionCount = minimumRecommendationQuestionCount;
-
-export const firstRunQuickStarts = [
-  {
-    description: "Five untimed addition questions to get comfortable with the answer flow.",
-    href: buildQuickStartHref({
-      categories: ["arithmetic"],
-      feedbackMode: "instant",
-      questionCount: 5,
-      tags: ["addition"],
-      timeMode: "untimed"
-    }),
-    label: "Arithmetic Warmup",
-    meta: "5 questions"
-  },
-  {
-    description: "A short percentage set for common consulting math basics.",
-    href: buildQuickStartHref({
-      categories: ["percentages"],
-      feedbackMode: "instant",
-      questionCount: 5,
-      tags: ["percentage_of_number", "percentage_change"],
-      timeMode: "untimed"
-    }),
-    label: "Percentage Basics",
-    meta: "5 questions"
-  },
-  {
-    description: "Revenue and margin practice with business units and exact answers.",
-    href: buildQuickStartHref({
-      categories: ["business_math"],
-      feedbackMode: "instant",
-      questionCount: 5,
-      tags: ["revenue", "margin"],
-      timeMode: "untimed"
-    }),
-    label: "Business Math Starter",
-    meta: "5 questions"
-  }
-];
 
 export function DashboardProgressView() {
   const { t } = useI18n();
@@ -257,15 +221,44 @@ export function DashboardContent({ summary }: { summary: ProgressSummary }) {
 
   return (
     <>
+      <WholeProductActivityPanel activity={summary.wholeProductActivity} />
+
+      <ContentPacksDashboardLink />
+
       <section className="grid gap-4 lg:grid-cols-[minmax(0,2fr)_minmax(18rem,1fr)]" data-testid="dashboard-priority-panel">
         <RecommendationCards limit={1} recommendations={recommendations} />
-        <LastSessionPanel summary={summary} />
+        {summary.dashboard.lastSession === undefined ? (
+          <LatestActivityPanel activity={summary.wholeProductActivity.recentActivities[0]} />
+        ) : (
+          <LastSessionPanel summary={summary} />
+        )}
       </section>
 
       <DueReviewPanel summary={summary} />
 
-      <RecentSessionsList sessions={recentSessions} />
+      <WholeProductRecentActivityList activities={summary.wholeProductActivity.recentActivities} />
+
+      {recentSessions.length === 0 ? null : <RecentSessionsList sessions={recentSessions} />}
     </>
+  );
+}
+
+function ContentPacksDashboardLink() {
+  const { t } = useI18n();
+
+  return (
+    <section
+      className="flex min-w-0 flex-col items-start justify-between gap-4 border-y border-ink/15 py-4 sm:flex-row sm:items-center"
+      data-testid="dashboard-content-packs"
+    >
+      <div className="min-w-0">
+        <h2 className={cx(uiText.subsectionTitle, "break-words [overflow-wrap:anywhere]")}>{t("Content Packs")}</h2>
+        <p className={cx(uiText.body, "mt-1 max-w-2xl")}>{t("Find focused practice from the community or create and import your own local pack.")}</p>
+      </div>
+      <Link className={buttonClass("secondary", "shrink-0")} href="/content-packs/?view=discover">
+        {t("Browse Content Packs")}
+      </Link>
+    </section>
   );
 }
 
@@ -281,11 +274,18 @@ export function ProgressContent({ summary }: { summary: ProgressSummary }) {
     <>
       <section className="grid gap-4" data-testid="progress-what-changed">
         <SectionIntro
-          description={t("Cumulative practice volume, accuracy, pace, streak, and bests saved locally on this device.")}
+          description={t("Review activity across interview skills. Scores stay within each practice area and are never combined.")}
           eyebrow={t("Local History")}
-          title={t("Lifetime Progress Snapshot")}
+          title={t("Whole-product progress")}
         />
-        <MetricGrid summary={summary} />
+        <WholeProductActivityPanel activity={summary.wholeProductActivity} />
+        <section className="grid gap-4" data-testid="math-progress-detail">
+          <div className="grid gap-1">
+            <h2 className={cx(uiText.sectionTitle, "min-w-0 break-words [overflow-wrap:anywhere]")}>{t("Math drill detail")}</h2>
+            <p className={uiText.body}>{t("Accuracy and pace below use numeric drill questions only.")}</p>
+          </div>
+          <MetricGrid summary={summary} />
+        </section>
         <PersonalBestsPanel bests={summary.personalBests ?? []} />
       </section>
 
@@ -329,6 +329,8 @@ export function ProgressContent({ summary }: { summary: ProgressSummary }) {
         <AdditionalPracticePanel summary={summary.additionalPractice} />
 
         <MistakeNotebookPanel mistakes={summary.mistakeNotebook} />
+
+        <WholeProductRecentActivityList activities={summary.wholeProductActivity.recentActivities} />
 
         <RecentSessionsList sessions={summary.recentSessions} />
       </section>
@@ -389,6 +391,178 @@ function AdditionalPracticePanel({
       </ul>
     </section>
   );
+}
+
+function WholeProductActivityPanel({ activity }: { activity: WholeProductActivitySummary }) {
+  const { formatNumber, formatPercent, t } = useI18n();
+  const activeCaseSkills = activity.casePractice.modules.filter(
+    (module) => module.completedAttemptCount > 0
+  ).length;
+  const items = [
+    {
+      count: activity.math.completedSessionCount,
+      detail: activity.math.accuracy === undefined
+        ? t("Insufficient evidence")
+        : t("{value} correct", { value: formatPercent(activity.math.accuracy) }),
+      label: t("Math drills")
+    },
+    {
+      count: activity.benchmarks.completedResultCount,
+      detail: activity.benchmarks.accuracy === undefined
+        ? t("Insufficient evidence")
+        : t("{value} correct", { value: formatPercent(activity.benchmarks.accuracy) }),
+      label: t("Benchmarks")
+    },
+    {
+      count: activity.exhibits.completedAttemptCount,
+      detail: activity.exhibits.accuracy === undefined
+        ? t("Insufficient evidence")
+        : t("{value} correct", { value: formatPercent(activity.exhibits.accuracy) }),
+      label: t("Exhibits")
+    },
+    {
+      count: activity.marketSizing.completedAttemptCount,
+      detail: activity.marketSizing.averageScorePercent === undefined
+        ? t("Insufficient evidence")
+        : t("{value} average score", {
+            value: formatPercent(activity.marketSizing.averageScorePercent / 100)
+          }),
+      label: t("Market sizing")
+    },
+    {
+      count: activity.casePractice.completedAttemptCount,
+      detail: activeCaseSkills === 0
+        ? t("Insufficient evidence")
+        : activeCaseSkills === 1
+          ? t("1 skill practiced")
+          : t("{count} skills practiced", { count: formatNumber(activeCaseSkills) }),
+      label: t("Case practice")
+    },
+    {
+      count: activity.prepPlan.saved ? 1 : 0,
+      detail: activity.prepPlan.saved ? t("Saved locally") : t("Not started"),
+      label: t("Prep plan")
+    }
+  ];
+
+  return (
+    <section className="grid gap-4" data-testid="whole-product-activity">
+      <div className="grid gap-1">
+        <h2 className={cx(uiText.sectionTitle, "min-w-0 break-words [overflow-wrap:anywhere]")}>{t("Practice coverage")}</h2>
+        <p className={uiText.body}>{t("Completed local activity by practice area. Domain scores are shown separately.")}</p>
+      </div>
+      <dl className="grid gap-px border-y border-ink/20 bg-ink/15 sm:grid-cols-2 lg:grid-cols-3">
+        {items.map((item) => (
+          <div
+            className="grid min-w-0 gap-1 bg-paper px-3 py-4 sm:px-4"
+            key={item.label}
+          >
+            <dt className={cx(uiText.eyebrow, "min-w-0 break-words text-ink/65 [overflow-wrap:anywhere]")}>{item.label}</dt>
+            <dd className="text-xl font-semibold text-ink">{formatNumber(item.count)}</dd>
+            <dd className={cx(uiText.dense, "min-w-0 break-words [overflow-wrap:anywhere]")}>{item.detail}</dd>
+          </div>
+        ))}
+      </dl>
+    </section>
+  );
+}
+
+function WholeProductRecentActivityList({
+  activities
+}: {
+  activities: readonly WholeProductRecentActivity[];
+}) {
+  const { formatDate, t } = useI18n();
+
+  return (
+    <section className={panelClass("default", "grid gap-4")} data-testid="whole-product-recent-activity">
+      <div className="grid gap-1">
+        <h2 className={cx(uiText.sectionTitle, "min-w-0 break-words [overflow-wrap:anywhere]")}>{t("Recent practice")}</h2>
+        <p className={uiText.body}>{t("Latest completed activity across every interview practice area.")}</p>
+      </div>
+      {activities.length === 0 ? (
+        <p className={cx(uiText.body, "rounded-md bg-paper px-3 py-2")}>
+          {t("Saved history is available; complete a new activity to add it here.")}
+        </p>
+      ) : (
+        <ul className="divide-y divide-ink/10 border-y border-ink/15">
+          {activities.map((item) => (
+            <li key={item.id}>
+              <Link
+                className="flex min-w-0 flex-wrap items-center justify-between gap-4 px-3 py-3 text-start hover:bg-mint/45 focus-visible:bg-mint/45"
+                href={item.href}
+              >
+                <span className="min-w-0">
+                  <span className="block min-w-0 break-words font-semibold text-ink [overflow-wrap:anywhere]">
+                    {translatedActivityLabel(item, t)}
+                  </span>
+                  <span className="mt-1 block text-xs text-ink/65">{translatedActivityKind(item, t)}</span>
+                </span>
+                <span className="shrink-0 text-sm text-ink/65">{formatDate(item.timestamp)}</span>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function LatestActivityPanel({ activity }: { activity?: WholeProductRecentActivity }) {
+  const { formatDate, t } = useI18n();
+
+  return (
+    <section className={panelClass("default", "grid content-start gap-3")} data-testid="latest-whole-product-activity">
+      <p className={cx(uiText.eyebrow, "text-ink/60")}>{t("Latest activity")}</p>
+      {activity === undefined ? (
+        <p className={uiText.body}>{t("Saved history is available; complete a new activity to add it here.")}</p>
+      ) : (
+        <>
+          <h2 className={cx(uiText.subsectionTitle, "min-w-0 break-words [overflow-wrap:anywhere]")}>
+            {translatedActivityLabel(activity, t)}
+          </h2>
+          <p className={uiText.body}>{formatDate(activity.timestamp)}</p>
+          <Link className={buttonClass("secondary")} href={activity.href}>{t("Open activity")}</Link>
+        </>
+      )}
+    </section>
+  );
+}
+
+function translatedActivityLabel(
+  activity: WholeProductRecentActivity,
+  t: ReturnType<typeof useI18n>["t"]
+): string {
+  switch (activity.label) {
+    case "Brainstorming": return t("Brainstorming");
+    case "Concept lessons": return t("Concept lessons");
+    case "Fit practice": return t("Fit practice");
+    case "Full case": return t("Full case");
+    case "Questioning": return t("Questioning");
+    case "Structuring": return t("Structuring");
+    case "Synthesis": return t("Synthesis");
+    case "Benchmark": return t("Benchmark");
+    case "Exhibit practice": return t("Exhibit practice");
+    case "Market sizing": return t("Market sizing");
+    case "Math drill": return t("Math drill");
+    case "Prep plan": return t("Prep plan");
+  }
+
+  return t("Practice activity");
+}
+
+function translatedActivityKind(
+  activity: WholeProductRecentActivity,
+  t: ReturnType<typeof useI18n>["t"]
+): string {
+  switch (activity.kind) {
+    case "benchmark": return t("Benchmark");
+    case "case_practice": return t("Case practice");
+    case "drill": return t("Math drill");
+    case "exhibit": return t("Exhibit");
+    case "market_sizing": return t("Market sizing");
+    case "prep_plan": return t("Prep plan");
+  }
 }
 
 function SectionIntro({ description, eyebrow, title }: { description: string; eyebrow: string; title: string }) {
@@ -1016,69 +1190,7 @@ function EmptyProgressState() {
 }
 
 function FirstRunDashboardState() {
-  const { t } = useI18n();
-  return (
-    <section className="grid gap-7">
-      <div className="grid max-w-3xl gap-2">
-        <div className="flex items-center gap-3">
-          <span aria-hidden="true" className="font-mono text-xs font-semibold text-ink/45">02</span>
-          <p className={cx(uiText.eyebrow, "text-coral")}>{t("First Run")}</p>
-        </div>
-        <h2 className="min-w-0 break-words text-2xl font-semibold tracking-[-0.025em] text-ink [overflow-wrap:anywhere]">
-          {t("Start with a focused drill")}
-        </h2>
-        <p className={cx(uiText.body, "max-w-2xl")}>
-          {t("Complete a quick start to unlock accuracy, timing, recent sessions, and a recommended next drill.")}
-        </p>
-      </div>
-
-      <div
-        className="grid border-y border-ink/20 md:grid-cols-3"
-        data-testid="first-run-quick-starts"
-      >
-        {firstRunQuickStarts.map((quickStart, index) => (
-          <Link
-            className={cx(
-              "group grid min-w-0 gap-4 border-b border-ink/15 bg-transparent px-4 py-6 text-left transition-colors last:border-b-0 hover:bg-mint/45 focus-visible:z-10 focus-visible:bg-mint/45 md:border-b-0 md:px-6",
-              index < firstRunQuickStarts.length - 1 && "md:border-e"
-            )}
-            href={quickStart.href}
-            key={quickStart.label}
-          >
-            <span aria-hidden="true" className="flex items-center justify-between font-mono text-xs font-semibold text-ink/65">
-              0{index + 1}
-              <span
-                className="inline-flex h-7 w-7 items-center justify-center border border-teal/30 bg-mint/70 text-base text-teal transition-colors group-hover:border-teal group-hover:bg-white"
-              >
-                <span className="rtl:hidden">→</span>
-                <span className="hidden rtl:inline">←</span>
-              </span>
-            </span>
-            <span className={cx(uiText.subsectionTitle, "break-words [overflow-wrap:anywhere]")}>
-              {t(quickStart.label)}
-            </span>
-            <span className={uiText.body}>{t(quickStart.description)}</span>
-            <span className={cx(uiText.eyebrow, "text-xs text-teal")}>{t(quickStart.meta)}</span>
-          </Link>
-        ))}
-      </div>
-
-      <div className="flex flex-wrap gap-3">
-        <Link
-          className={buttonClass("primary")}
-          href="/drills"
-        >
-          {t("Customize Drill")}
-        </Link>
-        <Link
-          className={buttonClass("secondary")}
-          href="/formulas"
-        >
-          {t("Review Formulas")}
-        </Link>
-      </div>
-    </section>
-  );
+  return <FirstRunChoices showContentPacksAction />;
 }
 
 function StatusPanel({ text, tone = "neutral" }: { text: string; tone?: "error" | "neutral" }) {
@@ -1252,8 +1364,4 @@ function uniqueSorted<TValue extends string>(values: readonly TValue[]): TValue[
 
 function metricTestId(label: string): string {
   return `metric-${label.toLowerCase().replaceAll(" ", "-")}`;
-}
-
-function buildQuickStartHref(settings: Parameters<typeof createDrillSettings>[0]): string {
-  return `/drills/session?${buildDrillSettingsQuery(createDrillSettings(settings))}`;
 }

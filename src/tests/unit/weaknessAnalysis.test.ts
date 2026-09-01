@@ -138,7 +138,8 @@ describe("weakness analysis", () => {
       feedbackMode: "instant",
       questionCount: 5,
       tags: ["margin"],
-      timeMode: "untimed"
+      timeMode: "untimed",
+      timingAccommodation: "standard"
     });
   });
 });
