@@ -1,5 +1,5 @@
-import { render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { act, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { benchmarkTests } from "@/data/questionBank/benchmarkTests";
 import { BenchmarkSelectionView } from "@/features/benchmarks/BenchmarkSelectionView";
@@ -11,14 +11,21 @@ import { I18nProvider } from "@/features/i18n/I18nProvider";
 import { localePreferenceStorageKey } from "@/features/i18n/i18n";
 import "@/features/i18n/locales/es";
 
-afterEach(() => window.localStorage.removeItem(localePreferenceStorageKey));
+afterEach(() => {
+  vi.useRealTimers();
+  window.localStorage.removeItem(localePreferenceStorageKey);
+});
 
 describe("BenchmarkSelectionView", () => {
   it("localizes the benchmark decision surface", async () => {
+    vi.useFakeTimers();
     window.localStorage.setItem(localePreferenceStorageKey, "es");
     render(<I18nProvider><BenchmarkSelectionView benchmarks={benchmarkTests} /></I18nProvider>);
 
-    await waitFor(() => expect(screen.getByRole("heading", { name: "Evalúa tu rendimiento" })).toBeInTheDocument());
+    expect(screen.getByRole("heading", { name: "Benchmark your performance" })).toBeInTheDocument();
+    await act(async () => vi.runOnlyPendingTimersAsync());
+
+    expect(screen.getByRole("heading", { name: "Evalúa tu rendimiento" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Elige una prueba" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Iniciar prueba" })).toBeInTheDocument();
   });
