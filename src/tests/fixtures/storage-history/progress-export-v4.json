@@ -1,0 +1,265 @@
+{
+  "app": "consulting_math_drill_tool",
+  "exportedAt": "2026-08-31T05:15:00.000Z",
+  "privacyScope": "standard",
+  "schemaVersion": 4,
+  "stores": {
+    "drill_sessions": [
+      {
+        "id": "session-export-v4-001",
+        "startedAt": "2026-08-31T05:00:00.000Z",
+        "endedAt": "2026-08-31T05:01:00.000Z",
+        "settings": {
+          "categories": [
+            "business_math"
+          ],
+          "tags": [
+            "margin"
+          ],
+          "difficulty": "intermediate",
+          "questionCount": 1,
+          "unitPreference": "percentage",
+          "timeMode": "per_question",
+          "secondsPerQuestion": 60,
+          "feedbackMode": "instant"
+        },
+        "questionIds": [
+          "margin-export-v4-001"
+        ],
+        "responses": [
+          {
+            "questionId": "margin-export-v4-001",
+            "rawInput": "20%",
+            "normalizedValue": 0.2,
+            "selectedUnit": "percentage",
+            "isCorrect": false,
+            "errorTypes": [
+              "arithmetic_error"
+            ],
+            "timeTakenSeconds": 47,
+            "submittedAt": "2026-08-31T05:00:47.000Z"
+          }
+        ],
+        "score": {
+          "totalScore": 0,
+          "accuracy": 0,
+          "averageTimeSeconds": 47,
+          "correctCount": 0,
+          "incorrectCount": 1,
+          "categoryBreakdown": [
+            {
+              "category": "business_math",
+              "accuracy": 0,
+              "averageTimeSeconds": 47,
+              "questionCount": 1
+            }
+          ],
+          "errorBreakdown": [
+            {
+              "errorType": "arithmetic_error",
+              "count": 1
+            }
+          ]
+        },
+        "updatedAt": "2026-08-31T05:01:00.000Z"
+      }
+    ],
+    "responses": [
+      {
+        "id": "session-export-v4-001:margin-export-v4-001",
+        "sessionId": "session-export-v4-001",
+        "questionId": "margin-export-v4-001",
+        "rawInput": "20%",
+        "normalizedValue": 0.2,
+        "selectedUnit": "percentage",
+        "isCorrect": false,
+        "errorTypes": [
+          "arithmetic_error"
+        ],
+        "timeTakenSeconds": 47,
+        "submittedAt": "2026-08-31T05:00:47.000Z",
+        "category": "business_math",
+        "tags": [
+          "margin"
+        ]
+      }
+    ],
+    "benchmark_results": [
+      {
+        "id": "benchmark-export-v4-001",
+        "benchmarkId": "baseline_intermediate",
+        "completedAt": "2026-08-31T05:01:00.000Z",
+        "difficulty": "intermediate",
+        "score": {
+          "totalScore": 0,
+          "accuracy": 0,
+          "averageTimeSeconds": 47,
+          "correctCount": 0,
+          "incorrectCount": 1,
+          "categoryBreakdown": [
+            {
+              "category": "business_math",
+              "accuracy": 0,
+              "averageTimeSeconds": 47,
+              "questionCount": 1
+            }
+          ],
+          "errorBreakdown": [
+            {
+              "errorType": "arithmetic_error",
+              "count": 1
+            }
+          ]
+        },
+        "sessionId": "session-export-v4-001"
+      }
+    ],
+    "user_settings": [
+      {
+        "id": "default",
+        "settings": {
+          "categories": [
+            "business_math"
+          ],
+          "tags": [
+            "margin"
+          ],
+          "difficulty": "intermediate",
+          "questionCount": 5,
+          "hintsEnabled": true,
+          "timeMode": "untimed",
+          "feedbackMode": "instant"
+        },
+        "updatedAt": "2026-08-31T04:55:00.000Z"
+      }
+    ],
+    "market_sizing_attempts": [
+      {
+        "id": "market-sizing-export-v4-001",
+        "templateId": "urban-coffee-shops",
+        "startedAt": "2026-08-31T05:02:00.000Z",
+        "completedAt": "2026-08-31T05:09:00.000Z",
+        "calculatedValue": 125000000,
+        "errorTypes": [
+          "none"
+        ],
+        "finalAnswer": "$125M",
+        "inputValues": {
+          "population": "5000000",
+          "annualVisits": "50",
+          "averageTicket": "5",
+          "usesProxy": true
+        },
+        "interpretationId": "annual-market-value",
+        "maxScore": 10,
+        "normalizedFinalAnswer": 125000000,
+        "note": "Check whether commuter demand should be included.",
+        "score": 9,
+        "scoreBreakdown": [
+          {
+            "awardedPoints": 9,
+            "id": "overall",
+            "label": "Overall",
+            "maxPoints": 10,
+            "message": "The estimate is structured and internally consistent."
+          }
+        ]
+      }
+    ],
+    "exhibit_attempts": [
+      {
+        "id": "exhibit-export-v4-001",
+        "exhibitId": "regional-margin-table",
+        "questionId": "regional-margin-gap",
+        "startedAt": "2026-08-31T05:10:00.000Z",
+        "completedAt": "2026-08-31T05:10:42.000Z",
+        "correctValue": 0.08,
+        "errorTypes": [
+          "none"
+        ],
+        "feedbackMessage": "The margin gap is eight percentage points.",
+        "isCorrect": true,
+        "normalizedValue": 0.08,
+        "rawInput": "8 pp",
+        "score": 1
+      }
+    ],
+    "mistake_notebook": [
+      {
+        "id": "mistake-export-v4-001",
+        "sourceQuestionId": "margin-export-v4-001",
+        "sourceResponseId": "session-export-v4-001:margin-export-v4-001",
+        "sourceSessionId": "session-export-v4-001",
+        "sourceType": "drill",
+        "prompt": "Revenue is $12M and profit is $3M. What is the profit margin?",
+        "answer": {
+          "value": 0.25,
+          "unit": "percentage",
+          "tolerance": {
+            "type": "absolute",
+            "value": 0.001
+          },
+          "roundingRule": "nearest_0_1"
+        },
+        "category": "business_math",
+        "tags": [
+          "margin"
+        ],
+        "difficulty": "intermediate",
+        "explanation": {
+          "short": "Divide profit by revenue.",
+          "steps": [
+            "Margin = 3 / 12 = 0.25, or 25%."
+          ]
+        },
+        "metadata": {
+          "sourceType": "manual",
+          "expectedTimeSeconds": 45
+        },
+        "rawInput": "20%",
+        "normalizedValue": 0.2,
+        "errorTypes": [
+          "arithmetic_error"
+        ],
+        "missedAt": "2026-08-31T05:00:47.000Z",
+        "retryCount": 0,
+        "status": "unresolved"
+      }
+    ],
+    "retry_schedules": [
+      {
+        "id": "retry-export-v4-001",
+        "sourceId": "mistake-export-v4-001",
+        "sourceType": "mistake_notebook",
+        "dueAt": "2026-09-02T05:00:47.000Z",
+        "intervalDays": 2,
+        "attemptCount": 0,
+        "createdAt": "2026-08-31T05:00:47.000Z",
+        "updatedAt": "2026-08-31T05:00:47.000Z"
+      }
+    ],
+    "practice_records": [
+      {
+        "id": "practice-export-v4-001",
+        "kind": "attempt",
+        "module": "structuring",
+        "itemId": "profitability-structure-01",
+        "completedAt": "2026-08-31T05:12:00.000Z",
+        "score": 8,
+        "maxScore": 10,
+        "durationSeconds": 240
+      },
+      {
+        "id": "prep-profile",
+        "kind": "prep_profile",
+        "experienceLevel": "intermediate",
+        "interviewDate": "2026-09-30T12:00:00.000Z",
+        "targetFirms": [
+          "Example Strategy Group"
+        ],
+        "weeklySessions": 4,
+        "updatedAt": "2026-08-31T04:50:00.000Z"
+      }
+    ]
+  }
+}

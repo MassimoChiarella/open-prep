@@ -7,6 +7,7 @@ export const RELEASE_SCHEMA_VERSION = 1;
 export const REQUIRED_STATIC_ARTIFACTS = [
   "index.html",
   "404.html",
+  "_headers",
   "manifest.webmanifest",
   "sw.js"
 ];
@@ -27,6 +28,7 @@ const TEXT_EXTENSIONS = new Set([
   ".webmanifest",
   ".xml"
 ]);
+const TEXT_FILENAMES = new Set(["LICENSE"]);
 const FORBIDDEN_PATH_SEGMENTS = new Set([
   ".git",
   "blob-report",
@@ -248,18 +250,34 @@ export async function validateRequiredStaticArtifacts(outputDirectory, inventory
 }
 
 export async function assertReleasePrivacy(outputDirectory, inventory) {
+  const files = [];
   for (const entry of inventory) {
     assertPortableArtifactPath(entry.path);
-    if (!TEXT_EXTENSIONS.has(path.posix.extname(entry.path).toLowerCase())) continue;
-    const contents = await readFile(path.join(outputDirectory, ...entry.path.split("/")), "utf8");
-    const normalized = contents.replaceAll("\\\\", "\\");
+    if (!isTextArtifactPath(entry.path)) continue;
+    files.push({
+      path: entry.path,
+      contents: await readFile(path.join(outputDirectory, ...entry.path.split("/")))
+    });
+  }
+  assertReleaseFilePrivacy(files);
+}
 
+export function assertReleaseFilePrivacy(files) {
+  for (const entry of files) {
+    assertPortableArtifactPath(entry.path);
+    if (!isTextArtifactPath(entry.path)) continue;
+    const contents = Buffer.from(entry.contents).toString("utf8");
+    const normalized = contents.replaceAll("\\\\", "\\");
     for (const [pattern, label] of SENSITIVE_CONTENT_PATTERNS) {
       if (pattern.test(contents) || pattern.test(normalized)) {
         throw new Error(`Release privacy check rejected ${entry.path}: found ${label}.`);
       }
     }
   }
+}
+
+function isTextArtifactPath(relativePath) {
+  return TEXT_FILENAMES.has(path.posix.basename(relativePath)) || TEXT_EXTENSIONS.has(path.posix.extname(relativePath).toLowerCase());
 }
 
 export function assertPortableArtifactPath(relativePath) {

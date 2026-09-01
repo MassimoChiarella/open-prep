@@ -10,6 +10,7 @@ import {
   sha256,
   writeReleaseMarker
 } from "./release-contract.mjs";
+import { writeStaticSecurityHeaders } from "./security-headers.mjs";
 
 const BUILD_STATE_SCHEMA_VERSION = 1;
 const CACHE_VERSION_PATTERN = /^const CACHE_VERSION = "([^"]+)";$/m;
@@ -21,6 +22,7 @@ const statePath = path.resolve(options.get("state") ?? ".next/open-prep-build-st
 const packageJson = JSON.parse(await readFile(path.resolve("package.json"), "utf8"));
 
 if (command === "worker") {
+  await writeStaticSecurityHeaders(outputDirectory);
   const workerPath = path.join(outputDirectory, "sw.js");
   const workerSource = await readFile(workerPath, "utf8");
   const workerPolicySource = replaceCacheVersion(workerSource, CACHE_VERSION_PLACEHOLDER);
@@ -92,9 +94,7 @@ if (command === "worker") {
 }
 
 function readCorePrecacheUrls(workerSource) {
-  const recommended = readStringArray(workerSource, "RECOMMENDED_AUTHORING_ARTIFACT_URLS");
-  const core = readStringArray(workerSource, "PRECACHED_URLS");
-  return [...new Set([...recommended, ...core])].sort();
+  return [...new Set(readStringArray(workerSource, "PRECACHED_URLS"))].sort();
 }
 
 function readStringArray(source, name) {

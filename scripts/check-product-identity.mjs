@@ -137,7 +137,7 @@ if (cliArguments.includes("--list-compatibility")) {
   console.log(JSON.stringify(legacyCompatibilityAllowlist, null, 2));
 } else {
   const explicitFiles = cliArguments.filter((argument) => !argument.startsWith("--"));
-  const files = explicitFiles.length > 0 ? explicitFiles : trackedTextFiles();
+  const files = explicitFiles.length > 0 ? explicitFiles : repositoryTextFiles();
   const findings = await scanFiles(files);
 
   if (findings.length === 0) {
@@ -154,12 +154,16 @@ if (cliArguments.includes("--list-compatibility")) {
   }
 }
 
-function trackedTextFiles() {
-  const output = execFileSync("git", ["ls-files", "-z"], {
-    cwd: projectRoot,
-    encoding: "utf8",
-    maxBuffer: 16 * 1024 * 1024
-  });
+function repositoryTextFiles() {
+  const output = execFileSync(
+    "git",
+    ["ls-files", "--cached", "--others", "--exclude-standard", "-z"],
+    {
+      cwd: projectRoot,
+      encoding: "utf8",
+      maxBuffer: 16 * 1024 * 1024
+    }
+  );
 
   return output
     .split("\0")

@@ -1,0 +1,123 @@
+name: Tagged release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  actions: read
+  contents: read
+
+jobs:
+  verify:
+    name: Verify release artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 75
+
+    steps:
+      - name: Check out tagged revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+          cache: npm
+
+      - name: Install lockfile dependencies
+        run: npm ci
+
+      - name: Validate tag and version contract
+        run: npm run version:check
+
+      - name: Audit production dependencies
+        run: npm audit --audit-level=high
+
+      - name: Install lockfile-matched browsers
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Run source-to-artifact release gate
+        run: npm run release:artifact
+
+      - name: Save first finalized release manifest
+        run: cp out/open-prep-release.json "$RUNNER_TEMP/open-prep-release.first.json"
+
+      - name: Build a second fresh artifact
+        run: npm run build
+
+      - name: Compare finalized release manifests
+        run: cmp "$RUNNER_TEMP/open-prep-release.first.json" out/open-prep-release.json
+
+      - name: Run cross-browser smoke gate
+        run: npm run e2e:cross-browser
+
+      - name: Verify and package the second fresh artifact
+        run: |
+          node scripts/prepare-web-build.mjs verify --require-clean
+          rm -rf dist
+          node scripts/package-release.mjs
+          node scripts/check-version-contract.mjs --artifacts dist
+
+      - name: Upload verified release assets
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: open-prep-release-${{ github.ref_name }}
+          path: |
+            dist/open-prep-v*.tar.gz
+            dist/open-prep-v*.provenance.json
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Retain Playwright failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: release-playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  draft_release:
+    name: Attach verified artifacts to draft release
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: release
+    permissions:
+      actions: read
+      contents: write
+
+    steps:
+      - name: Download verified release assets
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: gh run download "$GITHUB_RUN_ID" --name "open-prep-release-$GITHUB_REF_NAME" --dir dist
+
+      - name: Create draft release with checksummed artifacts
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" \
+            dist/open-prep-v*.tar.gz \
+            dist/open-prep-v*.provenance.json \
+            dist/SHA256SUMS \
+            --verify-tag \
+            --title "Open Prep $GITHUB_REF_NAME" \
+            --generate-notes \
+            --draft
+
+      # No origin-root static host or deployment credential is configured in this repository.
+      - name: Record deployed-origin follow-up
+        run: |
+          echo "::warning title=Release gates pending::Verified artifacts were attached to a draft GitHub release. The draft remains unpublished until hosted, accessibility, repository-setting, and other release gates are reviewed."
+          echo "### Deployed-origin follow-up" >> "$GITHUB_STEP_SUMMARY"
+          echo "No static host is configured. A draft release now holds the verified artifacts; it remains unpublished until hosted, accessibility, repository-setting, and other release gates are reviewed in RELEASE_CHECKLIST.md." >> "$GITHUB_STEP_SUMMARY"

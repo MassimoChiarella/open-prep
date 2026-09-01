@@ -13,11 +13,13 @@ const projectRoot = process.cwd();
 const publicDirectory = resolve(projectRoot, "public");
 const scanScript = resolve(projectRoot, "scripts", "check-product-identity.mjs");
 const temporaryRoots: string[] = [];
+const temporaryFiles: string[] = [];
 
 afterAll(() => {
   for (const root of temporaryRoots) {
     rmSync(root, { force: true, recursive: true });
   }
+  for (const file of temporaryFiles) rmSync(file, { force: true });
 });
 
 describe("product identity scan", () => {
@@ -52,6 +54,17 @@ describe("product identity scan", () => {
     expect(result.stderr).toContain("stale-copy.md:1:1");
     expect(result.stderr).toContain(expectedName);
     expect(result.stderr).toContain("Product identity scan failed with 1 finding.");
+  });
+
+  it("includes untracked, non-ignored repository files by default", () => {
+    const stalePath = join(projectRoot, `identity-scan-untracked-${process.pid}.md`);
+    temporaryFiles.push(stalePath);
+    writeFileSync(stalePath, ["Consulting", "Math", "Practice"].join(" "), "utf8");
+
+    const result = runScan([]);
+
+    expect(result.status).toBe(1);
+    expect(result.stderr).toContain(`identity-scan-untracked-${process.pid}.md:1:1`);
   });
 });
 

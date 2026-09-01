@@ -9,6 +9,7 @@ import {
   validateReleaseOutput,
   validateRequiredStaticArtifacts
 } from "./release-contract.mjs";
+import { readStaticSecurityHeaders } from "./security-headers.mjs";
 
 const rootDirectory = path.resolve("out");
 const host = "127.0.0.1";
@@ -32,6 +33,7 @@ if (!allowUnverified || markerExists) {
   await validateRequiredStaticArtifacts(rootDirectory);
   console.warn("Serving an unverified developer build. Release and E2E gates must not use --allow-unverified.");
 }
+const securityHeaders = await readStaticSecurityHeaders(rootDirectory);
 const mimeTypes = new Map([
   [".css", "text/css; charset=utf-8"],
   [".html", "text/html; charset=utf-8"],
@@ -107,6 +109,7 @@ const server = createServer(async (request, response) => {
       ? selectContentEncoding(request.headers["accept-encoding"])
       : undefined;
     const headers = {
+      ...securityHeaders,
       "Cache-Control": cacheControl(pathname),
       "Content-Type": contentType,
       "Vary": "Accept-Encoding"

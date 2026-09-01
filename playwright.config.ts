@@ -1,9 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
-// PowerShell opt-in: $env:PLAYWRIGHT_CROSS_BROWSER="1"; npm run e2e -- --project=firefox-smoke --project=webkit-smoke
 // Portable browser smoke covers web and service-worker journeys; OS-level PWA install prompts remain manual QA.
-const crossBrowserSmokeEnabled = process.env.PLAYWRIGHT_CROSS_BROWSER === "1";
-const crossBrowserSmokeFiles = /(?:navigation|theme)\.spec\.ts/;
+const backupPortabilityTest = /cross-browser-backup\.spec\.ts/u;
 
 export default defineConfig({
   testDir: "./src/tests/e2e",
@@ -13,6 +11,7 @@ export default defineConfig({
   reporter: "list",
   use: {
     baseURL: "http://127.0.0.1:3000",
+    screenshot: "only-on-failure",
     trace: "retain-on-failure"
   },
   webServer: {
@@ -24,21 +23,25 @@ export default defineConfig({
   projects: [
     {
       name: "chromium",
+      testIgnore: backupPortabilityTest,
       use: { ...devices["Desktop Chrome"] }
     },
-    ...(crossBrowserSmokeEnabled ? [
-      {
-        grep: /@browser-smoke/,
-        name: "firefox-smoke",
-        testMatch: crossBrowserSmokeFiles,
-        use: { ...devices["Desktop Firefox"] }
-      },
-      {
-        grep: /@browser-smoke/,
-        name: "webkit-smoke",
-        testMatch: crossBrowserSmokeFiles,
-        use: { ...devices["Desktop Safari"] }
-      }
-    ] : [])
+    {
+      grep: /@browser-smoke/,
+      name: "firefox-smoke",
+      testIgnore: backupPortabilityTest,
+      use: { ...devices["Desktop Firefox"] }
+    },
+    {
+      grep: /@browser-smoke/,
+      name: "webkit-smoke",
+      testIgnore: backupPortabilityTest,
+      use: { ...devices["Desktop Safari"] }
+    },
+    {
+      name: "backup-portability",
+      testMatch: backupPortabilityTest,
+      use: { ...devices["Desktop Chrome"] }
+    }
   ]
 });

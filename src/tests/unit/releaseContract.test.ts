@@ -111,6 +111,7 @@ describe("release output freshness", () => {
     const state = JSON.parse(await readFile(statePath, "utf8"));
     const generatedWorker = await readFile(path.join(outputDirectory, "sw.js"), "utf8");
     expect(generatedWorker).toContain(`const CACHE_VERSION = "${state.cacheId}";`);
+    expect(await readFile(path.join(outputDirectory, "_headers"), "utf8")).toContain("Content-Security-Policy:");
 
     const finalized = runFinalizer(projectDirectory, "finalize", outputDirectory, statePath);
     expect(finalized.status, finalized.stderr).toBe(0);
@@ -248,6 +249,7 @@ async function seedStaticOutput(outputDirectory?: string) {
   await Promise.all([
     writeFile(path.join(directory, "index.html"), "home"),
     writeFile(path.join(directory, "404.html"), "not found"),
+    writeFile(path.join(directory, "_headers"), "/*\n  X-Content-Type-Options: nosniff\n"),
     writeFile(path.join(directory, "manifest.webmanifest"), "{}"),
     writeFile(path.join(directory, "sw.js"), "const worker = true;"),
     writeFile(path.join(directory, "_next", "static", "chunks", "app.js"), "const app = true;")

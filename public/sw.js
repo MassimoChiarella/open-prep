@@ -43,6 +43,8 @@ const AUTHORING_ARTIFACT_URLS = [
   ...RECOMMENDED_AUTHORING_ARTIFACT_URLS,
   ...ADVANCED_AUTHORING_ARTIFACT_URLS
 ];
+const COMMUNITY_PACK_CATALOG_URL = "/community-packs/catalog.v1.json";
+const COMMUNITY_PACK_PREFIX = "/community-packs/";
 
 const PRECACHED_URLS = [
   "/404.html",
@@ -53,7 +55,6 @@ const PRECACHED_URLS = [
   "/icons/app-icon-512.png",
   "/icons/maskable-icon-512.png",
   "/icons/apple-touch-icon-180.png",
-  ...RECOMMENDED_AUTHORING_ARTIFACT_URLS,
   "/",
   "/drills/",
   "/drills/session/",
@@ -74,6 +75,7 @@ const PRECACHED_URLS = [
   "/case-practice/simulation/",
   "/case-practice/structuring/",
   "/case-practice/synthesis/",
+  "/content-packs/",
   "/content-packs/downloads/",
   "/settings/"
 ];
@@ -107,6 +109,11 @@ self.addEventListener("fetch", (event) => {
   }
 
   if (AUTHORING_ARTIFACT_URLS.includes(url.pathname)) {
+    event.respondWith(staleWhileRevalidate(event, request, normalizedCacheKey(request)));
+    return;
+  }
+
+  if (url.pathname === COMMUNITY_PACK_CATALOG_URL || url.pathname.startsWith(COMMUNITY_PACK_PREFIX)) {
     event.respondWith(staleWhileRevalidate(event, request, normalizedCacheKey(request)));
     return;
   }

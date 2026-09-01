@@ -1,0 +1,486 @@
+{
+  "fixtureFormat": "open-prep-indexeddb-fixture",
+  "fixtureFormatVersion": 1,
+  "sourceCommit": "4e8fe70c3eae1deb34f609ad8bf1e002b9745989",
+  "database": {
+    "name": "consulting_math_drill_tool",
+    "version": 7,
+    "stores": {
+      "drill_sessions": {
+        "keyPath": "id",
+        "autoIncrement": false,
+        "indexes": [],
+        "records": [
+          {
+            "id": "session-v7-001",
+            "startedAt": "2026-08-28T14:00:00.000Z",
+            "endedAt": "2026-08-28T14:02:00.000Z",
+            "settings": {
+              "categories": [
+                "business_math"
+              ],
+              "tags": [
+                "margin",
+                "market_share"
+              ],
+              "difficulty": "intermediate",
+              "questionCount": 2,
+              "unitPreference": "percentage",
+              "hintsEnabled": true,
+              "timeMode": "per_question",
+              "secondsPerQuestion": 60,
+              "feedbackMode": "end_of_session"
+            },
+            "questionIds": [
+              "margin-v7-001",
+              "market-share-v7-001"
+            ],
+            "responses": [
+              {
+                "questionId": "margin-v7-001",
+                "rawInput": "25%",
+                "normalizedValue": 0.25,
+                "selectedUnit": "percentage",
+                "isCorrect": true,
+                "errorTypes": [
+                  "none"
+                ],
+                "timeTakenSeconds": 38,
+                "submittedAt": "2026-08-28T14:00:38.000Z"
+              },
+              {
+                "questionId": "market-share-v7-001",
+                "rawInput": "30%",
+                "normalizedValue": 0.3,
+                "selectedUnit": "percentage",
+                "isCorrect": false,
+                "errorTypes": [
+                  "arithmetic_error"
+                ],
+                "timeTakenSeconds": 51,
+                "submittedAt": "2026-08-28T14:01:29.000Z"
+              }
+            ],
+            "score": {
+              "totalScore": 50,
+              "accuracy": 0.5,
+              "averageTimeSeconds": 44.5,
+              "correctCount": 1,
+              "incorrectCount": 1,
+              "categoryBreakdown": [
+                {
+                  "category": "business_math",
+                  "accuracy": 0.5,
+                  "averageTimeSeconds": 44.5,
+                  "questionCount": 2
+                }
+              ],
+              "errorBreakdown": [
+                {
+                  "errorType": "arithmetic_error",
+                  "count": 1
+                }
+              ]
+            },
+            "questions": [
+              {
+                "id": "margin-v7-001",
+                "type": "numeric",
+                "category": "business_math",
+                "tags": [
+                  "margin",
+                  "profit",
+                  "revenue"
+                ],
+                "difficulty": "intermediate",
+                "prompt": "Revenue is $12M and profit is $3M. What is the profit margin?",
+                "answer": {
+                  "value": 0.25,
+                  "unit": "percentage",
+                  "tolerance": {
+                    "type": "absolute",
+                    "value": 0.001
+                  },
+                  "roundingRule": "nearest_0_1"
+                },
+                "explanation": {
+                  "short": "Divide profit by revenue.",
+                  "steps": [
+                    "Margin = 3 / 12 = 0.25, or 25%."
+                  ],
+                  "shortcut": "Cancel the millions before dividing."
+                },
+                "metadata": {
+                  "sourceType": "manual",
+                  "expectedTimeSeconds": 45
+                }
+              },
+              {
+                "id": "market-share-v7-001",
+                "type": "numeric",
+                "category": "business_math",
+                "tags": [
+                  "market_share"
+                ],
+                "difficulty": "intermediate",
+                "prompt": "A company sells 42,000 units in a 120,000-unit market. What is its market share?",
+                "answer": {
+                  "value": 0.35,
+                  "unit": "percentage",
+                  "tolerance": {
+                    "type": "absolute",
+                    "value": 0.001
+                  },
+                  "roundingRule": "nearest_0_1"
+                },
+                "explanation": {
+                  "short": "Divide company units by total market units.",
+                  "steps": [
+                    "Market share = 42,000 / 120,000 = 0.35, or 35%."
+                  ]
+                },
+                "metadata": {
+                  "sourceType": "manual",
+                  "expectedTimeSeconds": 45
+                }
+              }
+            ],
+            "updatedAt": "2026-08-28T14:02:00.000Z"
+          }
+        ]
+      },
+      "responses": {
+        "keyPath": "id",
+        "autoIncrement": false,
+        "indexes": [],
+        "records": [
+          {
+            "id": "session-v7-001:margin-v7-001",
+            "sessionId": "session-v7-001",
+            "questionId": "margin-v7-001",
+            "rawInput": "25%",
+            "normalizedValue": 0.25,
+            "selectedUnit": "percentage",
+            "isCorrect": true,
+            "errorTypes": [
+              "none"
+            ],
+            "timeTakenSeconds": 38,
+            "submittedAt": "2026-08-28T14:00:38.000Z",
+            "category": "business_math",
+            "tags": [
+              "margin",
+              "profit",
+              "revenue"
+            ]
+          },
+          {
+            "id": "session-v7-001:market-share-v7-001",
+            "sessionId": "session-v7-001",
+            "questionId": "market-share-v7-001",
+            "rawInput": "30%",
+            "normalizedValue": 0.3,
+            "selectedUnit": "percentage",
+            "isCorrect": false,
+            "errorTypes": [
+              "arithmetic_error"
+            ],
+            "timeTakenSeconds": 51,
+            "submittedAt": "2026-08-28T14:01:29.000Z",
+            "category": "business_math",
+            "tags": [
+              "market_share"
+            ]
+          }
+        ]
+      },
+      "benchmark_results": {
+        "keyPath": "id",
+        "autoIncrement": false,
+        "indexes": [],
+        "records": [
+          {
+            "id": "benchmark-v7-001",
+            "benchmarkId": "baseline_intermediate",
+            "completedAt": "2026-08-28T14:02:00.000Z",
+            "difficulty": "intermediate",
+            "score": {
+              "totalScore": 50,
+              "accuracy": 0.5,
+              "averageTimeSeconds": 44.5,
+              "correctCount": 1,
+              "incorrectCount": 1,
+              "categoryBreakdown": [
+                {
+                  "category": "business_math",
+                  "accuracy": 0.5,
+                  "averageTimeSeconds": 44.5,
+                  "questionCount": 2
+                }
+              ],
+              "errorBreakdown": [
+                {
+                  "errorType": "arithmetic_error",
+                  "count": 1
+                }
+              ]
+            },
+            "sessionId": "session-v7-001"
+          }
+        ]
+      },
+      "user_settings": {
+        "keyPath": "id",
+        "autoIncrement": false,
+        "indexes": [],
+        "records": [
+          {
+            "id": "default",
+            "settings": {
+              "categories": [
+                "business_math"
+              ],
+              "tags": [
+                "margin"
+              ],
+              "difficulty": "intermediate",
+              "questionCount": 5,
+              "unitPreference": "percentage",
+              "hintsEnabled": true,
+              "timeMode": "untimed",
+              "feedbackMode": "instant"
+            },
+            "updatedAt": "2026-08-28T13:55:00.000Z"
+          }
+        ]
+      },
+      "market_sizing_attempts": {
+        "keyPath": "id",
+        "autoIncrement": false,
+        "indexes": [],
+        "records": [
+          {
+            "id": "market-sizing-v7-001",
+            "templateId": "urban-coffee-shops",
+            "startedAt": "2026-08-28T15:00:00.000Z",
+            "completedAt": "2026-08-28T15:07:00.000Z",
+            "calculatedValue": 125000000,
+            "errorTypes": [
+              "none"
+            ],
+            "finalAnswer": "$125M",
+            "inputValues": {
+              "population": "5000000",
+              "annualVisits": "50",
+              "averageTicket": "5",
+              "usesProxy": true
+            },
+            "interpretationId": "annual-market-value",
+            "maxScore": 10,
+            "normalizedFinalAnswer": 125000000,
+            "note": "Check whether commuter demand should be included.",
+            "score": 9,
+            "scoreBreakdown": [
+              {
+                "awardedPoints": 4,
+                "id": "structure",
+                "label": "Structure",
+                "maxPoints": 4,
+                "message": "The estimate follows a clear demand-led structure."
+              },
+              {
+                "awardedPoints": 5,
+                "id": "calculation",
+                "label": "Calculation",
+                "maxPoints": 6,
+                "message": "The arithmetic is consistent with the stated assumptions."
+              }
+            ]
+          }
+        ]
+      },
+      "exhibit_attempts": {
+        "keyPath": "id",
+        "autoIncrement": false,
+        "indexes": [],
+        "records": [
+          {
+            "id": "exhibit-v7-001",
+            "exhibitId": "regional-margin-table",
+            "questionId": "regional-margin-gap",
+            "startedAt": "2026-08-28T16:00:00.000Z",
+            "completedAt": "2026-08-28T16:00:42.000Z",
+            "correctValue": 0.08,
+            "errorTypes": [
+              "none"
+            ],
+            "feedbackMessage": "The margin gap is eight percentage points.",
+            "isCorrect": true,
+            "normalizedValue": 0.08,
+            "rawInput": "8 pp",
+            "score": 1
+          }
+        ]
+      },
+      "mistake_notebook": {
+        "keyPath": "id",
+        "autoIncrement": false,
+        "indexes": [],
+        "records": [
+          {
+            "id": "mistake-v7-001",
+            "sourceQuestionId": "market-share-v7-001",
+            "sourceResponseId": "session-v7-001:market-share-v7-001",
+            "sourceSessionId": "session-v7-001",
+            "sourceType": "drill",
+            "prompt": "A company sells 42,000 units in a 120,000-unit market. What is its market share?",
+            "answer": {
+              "value": 0.35,
+              "unit": "percentage",
+              "tolerance": {
+                "type": "absolute",
+                "value": 0.001
+              },
+              "roundingRule": "nearest_0_1"
+            },
+            "category": "business_math",
+            "tags": [
+              "market_share"
+            ],
+            "difficulty": "intermediate",
+            "explanation": {
+              "short": "Divide company units by total market units.",
+              "steps": [
+                "Market share = 42,000 / 120,000 = 0.35, or 35%."
+              ]
+            },
+            "metadata": {
+              "sourceType": "manual",
+              "expectedTimeSeconds": 45
+            },
+            "rawInput": "30%",
+            "normalizedValue": 0.3,
+            "errorTypes": [
+              "arithmetic_error"
+            ],
+            "missedAt": "2026-08-28T14:01:29.000Z",
+            "retryCount": 0,
+            "status": "unresolved"
+          }
+        ]
+      },
+      "retry_schedules": {
+        "keyPath": "id",
+        "autoIncrement": false,
+        "indexes": [],
+        "records": [
+          {
+            "id": "retry-v7-001",
+            "sourceId": "mistake-v7-001",
+            "sourceType": "mistake_notebook",
+            "dueAt": "2026-08-30T14:01:29.000Z",
+            "intervalDays": 2,
+            "attemptCount": 0,
+            "createdAt": "2026-08-28T14:01:29.000Z",
+            "updatedAt": "2026-08-28T14:01:29.000Z"
+          }
+        ]
+      },
+      "practice_records": {
+        "keyPath": "id",
+        "autoIncrement": false,
+        "indexes": [],
+        "records": [
+          {
+            "id": "practice-v7-001",
+            "kind": "attempt",
+            "module": "structuring",
+            "itemId": "profitability-structure-01",
+            "completedAt": "2026-08-28T17:00:00.000Z",
+            "score": 8,
+            "maxScore": 10,
+            "durationSeconds": 240
+          },
+          {
+            "id": "prep-profile",
+            "kind": "prep_profile",
+            "experienceLevel": "intermediate",
+            "interviewDate": "2026-09-30T12:00:00.000Z",
+            "targetFirms": [
+              "Example Strategy Group"
+            ],
+            "weeklySessions": 4,
+            "updatedAt": "2026-08-28T13:50:00.000Z"
+          },
+          {
+            "id": "fit-story-v7-001",
+            "kind": "fit_story",
+            "competency": "leadership",
+            "title": "Recovering a delayed student project",
+            "situation": "A fictional student team was behind schedule before a presentation.",
+            "task": "Create a workable plan and restore clear ownership.",
+            "action": "I split the work into milestones and held short daily check-ins.",
+            "result": "The team delivered the presentation on time.",
+            "reflection": "I would assign owners earlier in the project.",
+            "updatedAt": "2026-08-28T17:30:00.000Z"
+          }
+        ]
+      },
+      "question_packs": {
+        "keyPath": "id",
+        "autoIncrement": false,
+        "indexes": [],
+        "records": [
+          {
+            "id": "company-case-prep",
+            "format": "math-drill-question-pack",
+            "schemaVersion": 2,
+            "kind": "fixed_numeric",
+            "packVersion": "1.0.0",
+            "title": "Company Case Prep",
+            "description": "Specialized interview practice.",
+            "publisher": "Example School",
+            "license": "CC-BY-4.0",
+            "questions": [
+              {
+                "id": "margin-001",
+                "type": "numeric",
+                "category": "business_math",
+                "tags": [
+                  "margin"
+                ],
+                "difficulty": "intermediate",
+                "prompt": "Revenue is $12M and profit is $3M. What is the profit margin?",
+                "answer": {
+                  "value": 0.25,
+                  "unit": "percentage",
+                  "tolerance": {
+                    "type": "absolute",
+                    "value": 0.001
+                  },
+                  "errorChecks": {
+                    "percentagePointValue": 0.25,
+                    "roundingTolerance": {
+                      "type": "percentage",
+                      "value": 0.01
+                    }
+                  },
+                  "roundingRule": "nearest_0_1"
+                },
+                "explanation": {
+                  "short": "Divide profit by revenue.",
+                  "steps": [
+                    "Margin = 3 / 12 = 0.25, or 25%."
+                  ],
+                  "shortcut": "Cancel the millions before dividing."
+                },
+                "expectedTimeSeconds": 45
+              }
+            ],
+            "importedAt": "2026-08-28T18:00:00.000Z"
+          }
+        ]
+      }
+    }
+  }
+}

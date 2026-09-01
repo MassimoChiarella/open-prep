@@ -14,12 +14,12 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
-          node-version: 22
+          node-version: 24.19.0
           cache: npm
 
       - name: Install dependencies
@@ -30,3 +30,18 @@ jobs:
 
       - name: Verify project
         run: npm run check
+
+      - name: Install Firefox and WebKit
+        run: npx playwright install firefox webkit
+
+      - name: Run cross-browser smoke tests
+        run: npm run e2e:cross-browser
+
+      - name: Retain Playwright failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14

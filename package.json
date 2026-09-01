@@ -2,25 +2,33 @@
   "name": "consulting-math-drill-tool",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "npm@11.17.0",
   "license": "MIT",
   "description": "Local-first consulting interview preparation web application.",
   "scripts": {
     "authoring:check": "node scripts/sync-question-pack-authoring-kit.mjs --check",
     "authoring:sync": "node scripts/sync-question-pack-authoring-kit.mjs",
+    "catalog:check": "node scripts/sync-community-pack-catalog.mjs --check",
+    "catalog:sync": "node scripts/sync-community-pack-catalog.mjs",
     "identity:check": "node scripts/check-product-identity.mjs",
+    "version:check": "node scripts/check-version-contract.mjs",
+    "actions:check": "node scripts/check-action-pins.mjs",
     "i18n:check": "node scripts/sync-i18n-locales.mjs --check",
     "i18n:sync": "node scripts/sync-i18n-locales.mjs",
     "clean:web": "node scripts/prepare-web-build.mjs clean",
     "dev": "next dev",
-    "build": "npm run clean:web && npm run i18n:check && next build && node scripts/finalize-web-build.mjs worker && npm run perf:check && node scripts/finalize-web-build.mjs finalize",
+    "build": "npm run clean:web && npm run catalog:check && npm run i18n:check && next build && node scripts/finalize-web-build.mjs worker && npm run perf:check && node scripts/finalize-web-build.mjs finalize",
     "perf:check": "node scripts/check-performance-budgets.mjs",
     "preview": "node scripts/serve-web-build.mjs",
-    "check": "npm run clean:web && npm run authoring:check && npm run identity:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run e2e",
+    "postdeploy:check": "node scripts/post-deployment-smoke.mjs",
+    "release:artifact": "npm run check && node scripts/package-release.mjs",
+    "check": "npm run clean:web && npm run version:check && npm run actions:check && npm run authoring:check && npm run identity:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run e2e",
     "lint": "eslint .",
     "typecheck": "next typegen && tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "e2e": "playwright test"
+    "e2e": "playwright test --project=chromium",
+    "e2e:cross-browser": "playwright test --grep @browser-smoke --project=chromium --project=firefox-smoke --project=webkit-smoke --project=backup-portability"
   },
   "dependencies": {
     "next": "^16.2.7",
@@ -46,6 +54,7 @@
     "vitest": "^4.1.8"
   },
   "engines": {
-    "node": ">=20.19.0"
+    "node": ">=24.19.0 <25",
+    "npm": ">=11.17.0 <12"
   }
 }

@@ -5,7 +5,7 @@ import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { metadata } from "@/app/layout";
-import { LocalizedAppShell } from "@/components/LocalizedAppShell";
+import { LocalizedAppShell, returnToNeutralRoute } from "@/components/LocalizedAppShell";
 import { coreMessages } from "@/features/i18n/messages/core";
 
 vi.mock("@/components/AppNav", () => ({
@@ -32,6 +32,14 @@ describe("Open Prep product identity", () => {
 
     expect(screen.getByText("Open Prep")).toBeInTheDocument();
     expect(screen.getByText("Consulting interview preparation")).toBeInTheDocument();
+  });
+
+  it("returns every invalidated tab to the neutral route", () => {
+    const replace = vi.fn();
+
+    returnToNeutralRoute({ replace });
+
+    expect(replace).toHaveBeenCalledWith("/");
   });
 
   it("keeps the proper name out of locale catalogs while translating the descriptor", () => {
