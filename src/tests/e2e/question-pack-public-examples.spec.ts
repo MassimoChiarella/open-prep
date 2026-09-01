@@ -31,6 +31,7 @@ for (const example of publicExamples) {
     await expect(page.getByTestId("question-pack-preview")).toContainText(example.title);
     await page.getByRole("checkbox", { name: /I reviewed the answer keys/ }).check();
     await page.getByRole("button", { name: "Install Pack" }).click();
+    await expect(page.getByText("Question pack installed on this device.", { exact: true })).toBeVisible();
     await page.getByRole("link", { name: "Installed", exact: true }).click();
 
     let card = page.getByTestId(`question-pack-${example.id}`);

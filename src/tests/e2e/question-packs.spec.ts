@@ -149,6 +149,7 @@ async function installExample(page: Page, fileName: string, packId: string, titl
   await expect(page.getByTestId("question-pack-preview")).toContainText(title);
   await page.getByRole("checkbox", { name: /I reviewed the answer keys/ }).check();
   await page.getByRole("button", { name: "Install Pack" }).click();
+  await expect(page.getByText("Question pack installed on this device.", { exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Installed", exact: true }).click();
   const card = page.getByTestId(`question-pack-${packId}`);
   await expect(card).toBeVisible();
