@@ -52,6 +52,7 @@ describe("BenchmarkSelectionView", () => {
     expect(screen.queryByTestId("benchmark-details")).not.toBeInTheDocument();
 
     const confirmation = screen.getByTestId("benchmark-confirmation");
+    expect(confirmation).toHaveClass("border", "p-5", "sm:p-6", "gap-6");
     expect(within(confirmation).getByRole("heading", { name: "Ready to begin?" })).toBeInTheDocument();
     expect(within(confirmation).getByText(/Beginner Benchmark/)).toBeInTheDocument();
     expect(within(confirmation).getByRole("link", { name: "Begin Benchmark" })).toHaveAttribute(

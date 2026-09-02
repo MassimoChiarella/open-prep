@@ -198,7 +198,7 @@ function BenchmarkConfirmation({
   return (
     <section
       aria-labelledby="benchmark-confirmation-heading"
-      className="grid gap-4 border-y border-teal/40 bg-mint/40 py-5"
+      className="grid min-w-0 gap-6 border border-teal/40 bg-mint/40 p-5 sm:p-6"
       data-testid="benchmark-confirmation"
       id="benchmark-confirmation"
     >
