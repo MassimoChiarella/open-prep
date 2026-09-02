@@ -121,15 +121,17 @@ function BenchmarkOptionCard({
   return (
     <article
       className={[
-        "flex h-full min-w-0 flex-col border border-t-2 bg-white p-5 transition-colors",
+        "grid min-w-0 grid-rows-[1fr_auto_auto] gap-5 border border-t-2 bg-white p-5 transition-colors xl:row-span-4 xl:grid-rows-subgrid",
         isSelected ? "border-teal border-t-teal" : "border-ink/15 border-t-ink/25 hover:border-ink/30"
       ].join(" ")}
       data-testid={`benchmark-card-${benchmark.id}`}
     >
-      <h2 className="min-w-0 text-xl font-semibold text-ink [overflow-wrap:anywhere]">{t(benchmark.title)}</h2>
-      <p className="mt-2 min-w-0 text-sm leading-6 text-ink/65 [overflow-wrap:anywhere] xl:min-h-[4.5rem]">{t(benchmark.description)}</p>
+      <div className="min-w-0">
+        <h2 className="min-w-0 text-xl font-semibold text-ink [overflow-wrap:anywhere]">{t(benchmark.title)}</h2>
+        <p className="mt-2 min-w-0 text-sm leading-6 text-ink/65 [overflow-wrap:anywhere]">{t(benchmark.description)}</p>
+      </div>
 
-      <dl className="mb-5 mt-5 grid grid-cols-1 gap-3 text-sm min-[360px]:grid-cols-2">
+      <dl className="grid grid-cols-1 gap-3 text-sm min-[360px]:grid-cols-2 xl:row-span-2 xl:grid-rows-subgrid">
         <BenchmarkStat label={t("Difficulty")} value={t(formatLabel(benchmark.difficulty))} />
         <BenchmarkStat label={t("Time")} value={formatDuration(benchmark.settings.totalSessionSeconds ?? 0)} />
         <BenchmarkStat
@@ -147,7 +149,7 @@ function BenchmarkOptionCard({
             : t("Select {title}", { title: t(benchmark.title) })
         }
         className={[
-          "mt-auto inline-flex min-h-11 items-center justify-center rounded-md px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2",
+          "inline-flex min-h-11 items-center justify-center rounded-md px-4 text-sm font-semibold transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2",
           isSelected ? "bg-ink text-white" : "border border-ink/30 text-ink hover:border-ink hover:bg-paper"
         ].join(" ")}
         href={buildBenchmarkSelectionHref(benchmark.id, questionPackId)}

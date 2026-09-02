@@ -32,11 +32,12 @@ describe("BenchmarkSelectionView", () => {
     expect(screen.getByTestId("benchmark-card-beginner")).toHaveClass("border-teal");
     expect(
       within(screen.getByTestId("benchmark-card-beginner")).getByText("Difficulty").closest("dl")
-    ).toHaveClass("grid-cols-1", "min-[360px]:grid-cols-2");
+    ).toHaveClass("grid-cols-1", "min-[360px]:grid-cols-2", "xl:row-span-2", "xl:grid-rows-subgrid");
 
     for (const benchmark of benchmarkTests) {
       const card = screen.getByTestId(`benchmark-card-${benchmark.id}`);
 
+      expect(card).toHaveClass("xl:row-span-4", "xl:grid-rows-subgrid");
       expect(within(card).getByRole("heading", { name: benchmark.title })).toBeInTheDocument();
       expect(within(card).getByText("Difficulty")).toBeInTheDocument();
       expect(within(card).getByText("Time")).toBeInTheDocument();

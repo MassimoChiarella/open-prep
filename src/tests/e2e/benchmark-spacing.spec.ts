@@ -70,6 +70,65 @@ test("the spaced benchmark panel preserves timing selection and starting a run",
     .toBe("time_and_a_half");
 });
 
+for (const locale of ["en", "de", "ar"]) {
+  test(`@browser-smoke benchmark metric rows align with unequal ${locale} copy and fit narrow screens`, async ({ page }) => {
+    await page.setViewportSize({ height: 900, width: 1280 });
+    await page.addInitScript((language) => {
+      localStorage.setItem("consulting_math_locale_preference", language);
+    }, locale);
+    await page.goto("/benchmark");
+    await expect(page.locator("html")).toHaveAttribute("lang", locale);
+    await expect(page.locator("html")).toHaveAttribute("dir", locale === "ar" ? "rtl" : "ltr");
+    const cards = page.getByTestId(/^benchmark-card-/);
+    await expect(cards).toHaveCount(4);
+    await page.evaluate(async () => { await document.fonts.ready; });
+
+    for (const copy of ["original", "longer"]) {
+      if (copy === "longer") {
+        // Stress wrapping with the existing localized copy; do not change app fixtures.
+        await cards.evaluateAll((elements) => {
+          const heading = elements[0].querySelector("h2");
+          const description = elements[elements.length - 1].querySelector("p");
+          if (heading === null || description === null) throw new Error("Missing benchmark copy.");
+          heading.textContent = Array(3).fill(heading.textContent).join(" ");
+          description.textContent = Array(4).fill(description.textContent).join(" ");
+        });
+      }
+
+      const metrics = await cards.evaluateAll((elements) => {
+        // Sample every card in one frame, relative to their shared container.
+        const origin = elements[0].parentElement!.getBoundingClientRect().top;
+        return elements.map((element) => Array.from(element.querySelectorAll("dl > div"), (metric) => {
+          const bounds = metric.getBoundingClientRect();
+          return { top: bounds.top - origin, bottom: bounds.bottom - origin };
+        }));
+      });
+      for (const cardMetrics of metrics) expect(cardMetrics).toHaveLength(4);
+      for (let metric = 0; metric < 4; metric += 1) {
+        for (const edge of ["top", "bottom"] as const) {
+          const positions = metrics.map((cardMetrics) => cardMetrics[metric][edge]);
+          expect(Math.max(...positions) - Math.min(...positions), `${copy} metric ${metric} ${edge}`)
+            .toBeLessThanOrEqual(1);
+        }
+      }
+    }
+
+    await page.setViewportSize({ height: 900, width: 320 });
+    const containment = await cards.evaluateAll((elements) => ({
+      pageFits: document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+      cardsFit: elements.every((element) => {
+        const card = element.getBoundingClientRect();
+        return element.scrollWidth <= element.clientWidth &&
+          Array.from(element.querySelectorAll("dl > div")).every((metric) => {
+            const bounds = metric.getBoundingClientRect();
+            return bounds.left >= card.left && bounds.right <= card.right;
+          });
+      })
+    }));
+    expect(containment).toEqual({ pageFits: true, cardsFit: true });
+  });
+}
+
 async function insetsOf(locator: Locator) {
   return locator.evaluate((element) => {
     const panel = element.closest('[data-testid="benchmark-confirmation"]');
