@@ -115,9 +115,15 @@ support policy only; it is not a second execution-evidence ledger.
 - [ ] Content corrections and withdrawals follow
   `COMMUNITY_PACK_LIFECYCLE.md`; withdrawal does not remotely delete a user's
   installed local copy.
-- [ ] Runtime inspection confirms no AI/LLM SDK, external API, account,
-  analytics, telemetry, synchronization, remote grading, remote recommendation,
-  remote content, or server dependency was introduced.
+- [ ] Runtime inspection confirms no AI/LLM SDK, external practice API,
+  account, synchronization, remote grading, remote recommendation, remote
+  content, or server dependency was introduced. The only analytics or telemetry
+  exception is the authorized production Vercel Web Analytics integration.
+- [ ] Analytics runs only on `https://openprep.app`, reports page views only for
+  allowlisted static routes, removes query strings and fragments from reported
+  page URLs, and drops custom events. Do Not Track, offline operation, and
+  unavailable analytics preserve practice and local saving; analytics does not
+  read local learner stores or enter service-worker caches.
 
 ## Accessibility And Manual Evidence
 
@@ -182,9 +188,12 @@ and offline restart.
   above, including old-cache cleanup, browser-process restart, and retained
   IndexedDB data. The deployed-origin smoke does not substitute for this gate.
 - [ ] The deployed-origin smoke finds no unexpected cross-origin request or
-  same-origin write request in its exercised routes. Separate synthetic
-  workflow evidence confirms answers, progress, packs, drafts, and personal
-  text are not transmitted; do not infer that broader claim from two routes.
+  same-origin write request in its exercised routes. Its sole write exception
+  is `POST /_vercel/insights/view` on `https://openprep.app` with a validated
+  pageview payload and a reported page URL without query strings or fragments.
+  Separate synthetic workflow evidence confirms answers, progress, packs,
+  drafts, and personal text are not transmitted; do not infer that broader
+  claim from two routes.
 - [ ] Security changes and dependency exceptions are documented without public
   exploit details; unresolved vulnerabilities follow `SECURITY.md`.
 

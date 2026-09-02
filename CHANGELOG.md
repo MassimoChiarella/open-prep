@@ -13,6 +13,10 @@ approved and tagged.
 
 - Verified Vercel prebuilt deployment preparation with generated security
   headers, static routes, offline cache rules, and deployment instructions.
+- Production-only Vercel Web Analytics for allowlisted static page views, with
+  query strings and fragments removed from reported page URLs, custom events
+  disabled, and Do Not Track and offline operation respected. Learner records
+  and content remain local.
 
 ### Changed
 
@@ -44,7 +48,7 @@ this record was created. Replace `Pending` with the release date only after the
   exhibits, market sizing, case skills, behavioral preparation, benchmarks,
   progress review, and content packs.
 - Installable static PWA behavior with same-origin offline caching and no
-  account, analytics, AI, grading, recommendation, or synchronization service.
+  account, AI, grading, recommendation, or synchronization service.
 - Local content-pack creation, validation, import, export, installation, and
   repository-reviewed static catalog infrastructure. No community pack is
   published in the initial catalog yet.

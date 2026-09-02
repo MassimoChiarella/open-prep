@@ -23,7 +23,8 @@ npm run dev
 
 ## Project Standards
 
-- Do not add runtime services for AI, grading, question generation, recommendations, analytics, content, or progress synchronization.
+- Do not add runtime services for AI, grading, question generation, recommendations, content, or progress synchronization.
+- The only analytics exception is the existing Vercel Web Analytics integration on `https://openprep.app`: page views for allowlisted static routes with query strings and fragments removed from reported page URLs. Keep custom events disabled, respect Do Not Track and offline operation, and never read or transmit learner records or content for analytics. Do not add other analytics or telemetry.
 - Keep user progress and imported content in browser-local storage.
 - Use strict TypeScript and pure functions for parsing, generation, validation, scoring, and recommendations where practical.
 - Add focused tests when changing shared logic or user-facing workflows.

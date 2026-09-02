@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from "next";
 
 import { LocalizedAppShell } from "@/components/LocalizedAppShell";
+// eslint-disable-next-line no-restricted-imports -- Authorized, production-only pageview integration.
+import { WebAnalytics } from "@/components/WebAnalytics";
 import { ServiceWorkerRegistration } from "@/features/offline/ServiceWorkerRegistration";
 import { themeInitializationScript } from "@/features/theme/theme";
 
@@ -69,6 +71,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="font-sans antialiased">
         <LocalizedAppShell>{children}</LocalizedAppShell>
         <ServiceWorkerRegistration />
+        <WebAnalytics />
       </body>
     </html>
   );

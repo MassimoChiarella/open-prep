@@ -2,7 +2,9 @@
 
 Status: Frozen implementation contract for complete backup and shared-device clearing
 
-Open Prep has no account, server synchronization, telemetry, or external learner-data service. The data below remains in the current browser profile unless the user exports a cleartext file. Browser-local does not mean permanent or encrypted: browser, operating-system, and storage policies may evict or clear data even after a persistence request, and another person with access to the same browser profile may be able to read it.
+Open Prep has no account, server synchronization, or external learner-data service. The data below remains in the current browser profile unless the user exports a cleartext file. Browser-local does not mean permanent or encrypted: browser, operating-system, and storage policies may evict or clear data even after a persistence request, and another person with access to the same browser profile may be able to read it.
+
+Production-only Vercel Web Analytics reports static page views with query strings and fragments removed from the reported page URL, along with standard visitor metadata. It does not read or transmit the local records inventoried below. See the [privacy disclosure in README.md](README.md#privacy-and-local-data).
 
 ## IndexedDB
 

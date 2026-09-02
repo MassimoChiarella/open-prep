@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import type { Browser, Page, Request as PlaywrightRequest } from "@playwright/test";
 
+import { sanitizeAnalyticsEvent, webAnalyticsOrigin, webAnalyticsViewPath } from "../src/lib/webAnalytics.ts";
 import { createSecurityHeaders } from "./security-headers.mts";
 
 export interface DeploymentReleaseIdentity {
@@ -24,6 +25,7 @@ export interface PostDeploymentSmokeResult extends DeploymentReleaseIdentity {
 
 export interface RuntimeRequestDescription {
   method: string;
+  postData?: string | null;
   url: string;
 }
 
@@ -306,12 +308,41 @@ export function findRuntimeRequestViolations(
     if ((url.protocol === "http:" || url.protocol === "https:") && url.origin !== origin) {
       violations.add(`external origin ${url.origin}`);
     }
-    if (method !== "GET" && method !== "HEAD") {
+    if (method !== "GET" && method !== "HEAD" && !(
+      method === "POST" && origin === webAnalyticsOrigin && isSanitizedAnalyticsPageview(request)
+    )) {
       violations.add(`${method} request to ${url.origin === "null" ? url.protocol : url.origin}`);
     }
   }
 
   return [...violations].sort();
+}
+
+function isSanitizedAnalyticsPageview(request: Readonly<RuntimeRequestDescription>): boolean {
+  if (request.url !== `${webAnalyticsOrigin}${webAnalyticsViewPath}` || typeof request.postData !== "string") {
+    return false;
+  }
+  try {
+    const payload = requireRecord(JSON.parse(request.postData), "Analytics pageview");
+    if (
+      Object.keys(payload).some((key) => !["o", "sv", "sdkn", "sdkv", "ts", "r"].includes(key)) ||
+      typeof payload.o !== "string" ||
+      sanitizeAnalyticsEvent({ type: "pageview", url: payload.o })?.url !== payload.o ||
+      payload.sv !== "0.1.3" ||
+      payload.sdkn !== "@vercel/analytics" ||
+      payload.sdkv !== "2.0.1" ||
+      typeof payload.ts !== "number" || !Number.isSafeInteger(payload.ts) || payload.ts <= 0
+    ) {
+      return false;
+    }
+    if (payload.r !== undefined) {
+      if (typeof payload.r !== "string") return false;
+      if (payload.r !== "" && !["http:", "https:"].includes(new URL(payload.r).protocol)) return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export async function runPostDeploymentSmoke(
@@ -396,7 +427,7 @@ async function runChromiumSmoke(
   const networkViolations = new Set();
   const recordRequest = (request: PlaywrightRequest): void => {
     for (const violation of findRuntimeRequestViolations([
-      { method: request.method(), url: request.url() }
+      { method: request.method(), postData: request.postData(), url: request.url() }
     ], origin)) {
       networkViolations.add(violation);
     }
@@ -405,7 +436,7 @@ async function runChromiumSmoke(
   await context.route("**/*", async (route) => {
     const request = route.request();
     const violations = findRuntimeRequestViolations([
-      { method: request.method(), url: request.url() }
+      { method: request.method(), postData: request.postData(), url: request.url() }
     ], origin);
     if (violations.length > 0) {
       violations.forEach((value) => networkViolations.add(value));

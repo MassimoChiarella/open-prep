@@ -32,6 +32,7 @@
     "e2e:cross-browser": "playwright test --grep @browser-smoke --project=chromium --project=firefox-smoke --project=webkit-smoke --project=backup-portability"
   },
   "dependencies": {
+    "@vercel/analytics": "2.0.1",
     "next": "^16.2.7",
     "react": "18.3.1",
     "react-dom": "18.3.1",

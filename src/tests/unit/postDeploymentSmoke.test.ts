@@ -16,6 +16,19 @@ import {
 } from "../../../scripts/post-deployment-smoke.mts";
 
 const origin = "https://prep.example";
+const analyticsOrigin = "https://openprep.app";
+const analyticsPayload = {
+  o: `${analyticsOrigin}/drills/`,
+  sv: "0.1.3",
+  sdkn: "@vercel/analytics",
+  sdkv: "2.0.1",
+  ts: 1_788_321_600_000
+};
+const analyticsRequest = {
+  method: "POST",
+  postData: JSON.stringify(analyticsPayload),
+  url: `${analyticsOrigin}/_vercel/insights/view`
+};
 const version = "1.2.3";
 const cacheId = `math-drill-offline-v${version}-${"a".repeat(16)}`;
 const scriptHash = `'sha256-${"A".repeat(43)}='`;
@@ -182,6 +195,98 @@ describe("post-deployment smoke contract", () => {
       "external origin https://telemetry.example"
     ]);
     expect(JSON.stringify(violations)).not.toContain("private");
+  });
+
+  it("allows sanitized production pageviews with an optional HTTP referrer", () => {
+    for (const payload of [
+      analyticsPayload,
+      { ...analyticsPayload, r: "" },
+      { ...analyticsPayload, r: "https://search.example/results?q=consulting" },
+      { ...analyticsPayload, r: "http://example.com/" }
+    ]) {
+      expect(findRuntimeRequestViolations([
+        { ...analyticsRequest, postData: JSON.stringify(payload) }
+      ], analyticsOrigin)).toEqual([]);
+    }
+  });
+
+  it("limits the analytics exception to the exact production POST endpoint", () => {
+    for (const request of [
+      { ...analyticsRequest, method: "PUT" },
+      { ...analyticsRequest, url: `${analyticsOrigin}/_vercel/insights/event` },
+      { ...analyticsRequest, url: `${analyticsRequest.url}/` },
+      { ...analyticsRequest, url: `${analyticsRequest.url}?private=answer` },
+      { ...analyticsRequest, url: `${analyticsRequest.url}#private` },
+      { ...analyticsRequest, url: `${analyticsRequest.url}?` },
+      { ...analyticsRequest, url: `${analyticsRequest.url}#` },
+      { ...analyticsRequest, url: "https://person:secret@openprep.app/_vercel/insights/view" },
+      { ...analyticsRequest, url: "http://openprep.app/_vercel/insights/view" },
+      { ...analyticsRequest, url: `${origin}/_vercel/insights/view` },
+      { ...analyticsRequest, url: "https://www.openprep.app/_vercel/insights/view" }
+    ]) {
+      expect(findRuntimeRequestViolations([request], analyticsOrigin), request.url).not.toEqual([]);
+    }
+    expect(findRuntimeRequestViolations([analyticsRequest], origin)).toEqual([
+      "POST request to https://openprep.app",
+      "external origin https://openprep.app"
+    ]);
+  });
+
+  it("rejects pageview URLs containing private data or non-public routes", () => {
+    for (const url of [
+      `${analyticsOrigin}/drills/?answer=private`,
+      `${analyticsOrigin}/drills/#private`,
+      `${analyticsOrigin}/private-answer/`,
+      `${analyticsOrigin}/drills`,
+      "https://person:secret@openprep.app/drills/",
+      "http://openprep.app/drills/",
+      `${origin}/drills/`,
+      "/drills/"
+    ]) {
+      const violations = findRuntimeRequestViolations([
+        { ...analyticsRequest, postData: JSON.stringify({ ...analyticsPayload, o: url }) }
+      ], analyticsOrigin);
+      expect(violations, url).toEqual(["POST request to https://openprep.app"]);
+    }
+  });
+
+  it("rejects custom event data, flags, unknown fields, and invalid pageview metadata", () => {
+    for (const payload of [
+      null, [], {}, "pageview",
+      { ...analyticsPayload, o: 42 },
+      { ...analyticsPayload, en: "answer" },
+      { ...analyticsPayload, ed: { answer: "private" } },
+      { ...analyticsPayload, f: {} },
+      { ...analyticsPayload, dp: "/drills/" },
+      { ...analyticsPayload, extra: "private" },
+      { ...analyticsPayload, sv: "other" },
+      { ...analyticsPayload, sdkn: "@vercel/analytics/next" },
+      { ...analyticsPayload, sdkv: 2 },
+      { ...analyticsPayload, ts: "1788321600000" },
+      { ...analyticsPayload, ts: 0 },
+      { ...analyticsPayload, ts: 1.5 },
+      { ...analyticsPayload, ts: Number.MAX_SAFE_INTEGER + 1 },
+      { ...analyticsPayload, r: null },
+      { ...analyticsPayload, r: "relative/path" },
+      { ...analyticsPayload, r: "javascript:alert(1)" },
+      { ...analyticsPayload, r: "data:text/plain,private" }
+    ]) {
+      expect(findRuntimeRequestViolations([
+        { ...analyticsRequest, postData: JSON.stringify(payload) }
+      ], analyticsOrigin)).toEqual(["POST request to https://openprep.app"]);
+    }
+    for (const key of Object.keys(analyticsPayload)) {
+      const payload: Record<string, unknown> = { ...analyticsPayload };
+      delete payload[key];
+      expect(findRuntimeRequestViolations([
+        { ...analyticsRequest, postData: JSON.stringify(payload) }
+      ], analyticsOrigin), key).toEqual(["POST request to https://openprep.app"]);
+    }
+    for (const postData of [undefined, null, "", "{invalid"]) {
+      expect(findRuntimeRequestViolations([
+        { ...analyticsRequest, postData }
+      ], analyticsOrigin)).toEqual(["POST request to https://openprep.app"]);
+    }
   });
 
   it("fails without exactly one explicit origin before starting network or browser work", () => {

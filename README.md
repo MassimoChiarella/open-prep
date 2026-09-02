@@ -143,6 +143,11 @@ official release gates are complete, deploy the verified output with
 `vercel deploy --prebuilt --prod` and repeat the smoke check on that hostname.
 Preview deployment does not complete the official release checklist.
 
+Production uses the free Vercel Hobby Web Analytics allowance, currently
+50,000 events per month shared across the team's projects. Collection pauses
+at the plan limit without overage charges; no paid analytics add-on is enabled.
+See [Vercel's Web Analytics pricing](https://vercel.com/docs/analytics/limits-and-pricing).
+
 ## Privacy And Local Data
 
 Practice history is stored in IndexedDB for the current browser profile and deployed origin. The app does not upload answers, scores, settings, or recommendations.
@@ -151,7 +156,9 @@ Local data is specific to the browser, browser profile, device, and site origin.
 
 Settings offers a Standard Progress Export and a more complete, scope-controlled Complete Backup. Both downloads are unencrypted cleartext JSON outside the app's control and cannot be recalled. Use them intentionally when moving data between browsers or deployments, and protect or delete downloaded copies as appropriate.
 
-The hosting provider receives ordinary requests for the app's static files. The application does not include analytics, telemetry, external grading, external question generation, external recommendations, or external content APIs.
+The hosting provider receives ordinary requests for the app's static files. On `https://openprep.app` only, Vercel Web Analytics also receives page views for allowlisted static routes. The reported page URL excludes all query strings and fragments, and custom events are discarded. The analytics integration does not read IndexedDB or localStorage, or send answers, scores, settings, progress, drafts, or imported content.
+
+Vercel may collect referral information, browser, device, country, and visitor metrics as described in its [Web Analytics privacy documentation](https://vercel.com/docs/analytics/privacy-policy). Analytics respects Do Not Track, is skipped offline, and is excluded from service-worker caches. Analytics availability does not affect practice or local saving. The application does not use external grading, question-generation, recommendation, or content APIs.
 
 ## Offline And Installation
 
