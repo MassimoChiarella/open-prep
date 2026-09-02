@@ -65,9 +65,9 @@ const manifest = {
     { purpose: "any", sizes: "any", src: "/icons/app-icon.svg", type: "image/svg+xml" }
   ],
   id: "/",
-  name: "Open Prep",
+  name: "OpenPrep",
   scope: "/",
-  short_name: "Open Prep",
+  short_name: "OpenPrep",
   start_url: "/"
 };
 

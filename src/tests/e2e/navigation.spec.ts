@@ -28,7 +28,7 @@ test("core routes expose distinct document titles", async ({ page }) => {
 
   for (const [path, title] of routes) {
     await page.goto(path);
-    await expect(page).toHaveTitle(`${title} | Open Prep`);
+    await expect(page).toHaveTitle(`${title} | OpenPrep`);
     titles.push(await page.title());
   }
 

@@ -38,7 +38,7 @@ function AppChrome({ children }: { children: ReactNode }) {
                 {t("Consulting interview preparation")}
               </p>
               <p className="text-lg font-semibold leading-6 tracking-tight text-ink sm:mt-0.5 sm:text-xl sm:leading-7">
-                Open Prep
+                OpenPrep
               </p>
             </div>
             <div className="flex min-w-0 items-center justify-between gap-2 sm:ml-auto sm:flex-wrap sm:justify-end">

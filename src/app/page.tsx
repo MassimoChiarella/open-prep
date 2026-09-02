@@ -4,7 +4,7 @@ import { DashboardProgressView } from "@/features/progress/ProgressViews";
 
 export const metadata: Metadata = {
   title: {
-    absolute: "Dashboard | Open Prep"
+    absolute: "Dashboard | OpenPrep"
   }
 };
 

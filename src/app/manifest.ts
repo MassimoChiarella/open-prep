@@ -5,8 +5,8 @@ export const dynamic = "force-static";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Open Prep",
-    short_name: "Open Prep",
+    name: "OpenPrep",
+    short_name: "OpenPrep",
     description: "Open-source, accessible, local-first consulting interview preparation with offline support.",
     start_url: "/",
     scope: "/",

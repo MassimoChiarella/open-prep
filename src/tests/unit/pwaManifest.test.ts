@@ -10,8 +10,8 @@ describe("PWA install metadata", () => {
   it("defines an installable local-first app manifest", () => {
     expect(manifest()).toMatchObject({
       id: "/",
-      name: "Open Prep",
-      short_name: "Open Prep",
+      name: "OpenPrep",
+      short_name: "OpenPrep",
       description: "Open-source, accessible, local-first consulting interview preparation with offline support.",
       start_url: "/",
       scope: "/",
@@ -50,13 +50,13 @@ describe("PWA install metadata", () => {
 
   it("exposes manifest, icons, and theme color from app metadata", () => {
     expect(metadata).toMatchObject({
-      applicationName: "Open Prep",
+      applicationName: "OpenPrep",
       description: "Open-source, accessible, local-first consulting interview preparation with offline support.",
       manifest: "/manifest.webmanifest",
       appleWebApp: {
         capable: true,
         statusBarStyle: "default",
-        title: "Open Prep"
+        title: "OpenPrep"
       },
       formatDetection: {
         telephone: false

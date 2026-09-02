@@ -8,16 +8,16 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: {
-    default: "Open Prep",
-    template: "%s | Open Prep"
+    default: "OpenPrep",
+    template: "%s | OpenPrep"
   },
-  applicationName: "Open Prep",
+  applicationName: "OpenPrep",
   description: "Open-source, accessible, local-first consulting interview preparation with offline support.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
     statusBarStyle: "default",
-    title: "Open Prep"
+    title: "OpenPrep"
   },
   formatDetection: {
     telephone: false

@@ -29,7 +29,8 @@ export interface RuntimeRequestDescription {
 
 type HeaderSource = Headers | Readonly<Record<string, string | null | undefined>>;
 
-const PRODUCT_NAME = "Open Prep";
+const RELEASE_PRODUCT = "Open Prep";
+const PRODUCT_NAME = "OpenPrep";
 const RELEASE_MARKER_PATH = "/open-prep-release.json";
 const MANIFEST_PATH = "/manifest.webmanifest";
 const SERVICE_WORKER_PATH = "/sw.js";
@@ -75,7 +76,7 @@ export function validateDeploymentOrigin(value: string): string {
     throw new Error("Deployment origin must not contain a query or fragment.");
   }
   if (url.pathname !== "/") {
-    throw new Error("Open Prep must be deployed at the origin root; remove the path from the origin.");
+    throw new Error("OpenPrep must be deployed at the origin root; remove the path from the origin.");
   }
 
   return url.origin;
@@ -86,7 +87,7 @@ export function validateReleaseMarker(value: unknown): Readonly<DeploymentReleas
   const source = requireRecord(marker.source, "Release marker source");
   const artifact = requireRecord(marker.artifact, "Release marker artifact");
 
-  if (marker.schemaVersion !== 1 || marker.product !== PRODUCT_NAME) {
+  if (marker.schemaVersion !== 1 || marker.product !== RELEASE_PRODUCT) {
     throw new Error("Release marker schema or product is not supported.");
   }
   if (typeof marker.version !== "string" || !SEMVER_PATTERN.test(marker.version)) {
@@ -124,7 +125,7 @@ export function validateReleaseMarker(value: unknown): Readonly<DeploymentReleas
 
   return Object.freeze({
     cacheId: artifact.cacheId,
-    product: PRODUCT_NAME,
+    product: RELEASE_PRODUCT,
     version: marker.version
   });
 }
@@ -419,7 +420,7 @@ async function runChromiumSmoke(
   let failure: unknown;
 
   try {
-    await openAppRoute(page, origin, "/", "Dashboard | Open Prep");
+    await openAppRoute(page, origin, "/", "Dashboard | OpenPrep");
     await waitForActiveServiceWorker(page);
 
     const worker = await page.evaluate(async (cacheId) => {
@@ -467,15 +468,15 @@ async function runChromiumSmoke(
     const savedValue = await page.evaluate((key) => localStorage.getItem(key), SYNTHETIC_STORAGE_KEY);
     if (savedValue !== SYNTHETIC_STORAGE_VALUE) throw new Error("Synthetic local save did not survive reload.");
 
-    await openAppRoute(page, origin, "/drills/", "Drills | Open Prep");
+    await openAppRoute(page, origin, "/drills/", "Drills | OpenPrep");
     await context.setOffline(true);
     await page.reload({ waitUntil: "domcontentloaded" });
-    await assertRenderedApp(page, origin, "/drills/", "Drills | Open Prep");
+    await assertRenderedApp(page, origin, "/drills/", "Drills | OpenPrep");
 
     await page.close();
     page = await context.newPage();
     configurePage(page);
-    await openAppRoute(page, origin, "/drills/", "Drills | Open Prep");
+    await openAppRoute(page, origin, "/drills/", "Drills | OpenPrep");
     const restartedValue = await page.evaluate((key) => localStorage.getItem(key), SYNTHETIC_STORAGE_KEY);
     if (restartedValue !== SYNTHETIC_STORAGE_VALUE) {
       throw new Error("Synthetic local save did not survive the offline page restart.");

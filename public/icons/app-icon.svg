@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
-  <title id="title">Open Prep app icon</title>
+  <title id="title">OpenPrep app icon</title>
   <desc id="desc">An open book with a structured upward path representing preparation and progress.</desc>
   <rect width="512" height="512" fill="#20211f"/>
   <path d="M76 118h126c28 0 50 22 50 50v226c-15-18-37-27-66-27H76z" fill="#f2f2ee"/>
