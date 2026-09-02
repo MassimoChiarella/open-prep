@@ -1,6 +1,7 @@
 "use client";
 
 import type { DownloadViewGroup } from "@/app/content-packs/downloads/page";
+import { ArrowIcon } from "@/components/ArrowIcon";
 import { badgeClass, buttonClass, cx, uiText } from "@/components/uiStyles";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
@@ -34,13 +35,12 @@ export function ContentPackDownloadsView({ groups, optionalGroups }: ContentPack
   return (
     <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
       <a className="w-fit text-sm font-semibold text-teal underline-offset-4 hover:underline" href="/content-packs/?view=resources">
-        <span aria-hidden="true">← </span>{t("Back to Content Packs")}
+        <span aria-hidden="true"><ArrowIcon direction="left" /> </span>{t("Back to Content Packs")}
       </a>
 
       <header className="grid min-w-0 overflow-hidden border-y border-ink/20 bg-white lg:grid-cols-12">
         <div className="grid min-w-0 gap-5 px-5 py-7 sm:px-7 sm:py-9 lg:col-span-7">
           <div className="flex items-center gap-3">
-            <span aria-hidden="true" className="font-mono text-xs font-semibold text-ink/45">01</span>
             <span aria-hidden="true" className="h-px w-8 bg-coral" />
             <p className="text-xs font-semibold uppercase tracking-[0.06em] text-teal">{t("Content packs")}</p>
           </div>
@@ -57,8 +57,8 @@ export function ContentPackDownloadsView({ groups, optionalGroups }: ContentPack
 
       <HumanAuthoringPath />
 
-      {groups.map((group, index) => (
-        <DownloadSection group={group} index={index + 3} key={group.id} />
+      {groups.map((group) => (
+        <DownloadSection group={group} key={group.id} />
       ))}
 
       <details className="group min-w-0 border-y border-ink/20 bg-white" data-testid="optional-external-tools">
@@ -67,8 +67,8 @@ export function ContentPackDownloadsView({ groups, optionalGroups }: ContentPack
         </summary>
         <div className="grid min-w-0 gap-7 border-t border-ink/15 px-5 py-6 sm:px-7">
           <p className={cx(uiText.body, "max-w-4xl")}>{t(externalToolTrustCopy)}</p>
-          {optionalGroups.map((group, index) => (
-            <DownloadSection group={group} index={index + groups.length + 3} key={group.id} />
+          {optionalGroups.map((group) => (
+            <DownloadSection group={group} key={group.id} />
           ))}
         </div>
       </details>
@@ -81,12 +81,9 @@ function HumanAuthoringPath() {
 
   return (
     <section aria-labelledby="human-authoring-path-heading" className="grid min-w-0 gap-5" data-testid="human-authoring-path">
-      <div className="grid gap-2 border-b border-ink/15 pb-4 sm:grid-cols-[2rem_minmax(0,1fr)] sm:gap-x-3">
-        <span aria-hidden="true" className="font-mono text-xs font-semibold text-coral sm:pt-2">02</span>
-        <div className="grid gap-2">
-          <h2 className="text-2xl font-semibold text-ink" id="human-authoring-path-heading">{t("Create a content pack")}</h2>
-          <p className={uiText.body}>{t("Use one human workflow across every supported content family.")}</p>
-        </div>
+      <div className="grid gap-2 border-b border-ink/15 pb-4">
+        <h2 className="text-2xl font-semibold text-ink" id="human-authoring-path-heading">{t("Create a content pack")}</h2>
+        <p className={uiText.body}>{t("Use one human workflow across every supported content family.")}</p>
       </div>
 
       <ol className="grid min-w-0 gap-px bg-ink/15 sm:grid-cols-2 lg:grid-cols-4">
@@ -113,20 +110,15 @@ function HumanAuthoringPath() {
   );
 }
 
-function DownloadSection({ group, index }: { group: DownloadViewGroup; index: number }) {
+function DownloadSection({ group }: { group: DownloadViewGroup }) {
   const { t } = useI18n();
   const headingId = `${group.id}-heading`;
 
   return (
     <section aria-labelledby={headingId} className="grid min-w-0 gap-4" data-download-group={group.id}>
-      <div className="grid gap-2 border-b border-ink/15 pb-4 sm:grid-cols-[2rem_minmax(0,1fr)] sm:gap-x-3">
-        <span aria-hidden="true" className="font-mono text-xs font-semibold text-coral sm:pt-2">
-          {String(index).padStart(2, "0")}
-        </span>
-        <div className="grid gap-2">
-          <h2 className="text-2xl font-semibold text-ink" id={headingId}>{t(group.title)}</h2>
-          <p className={uiText.body}>{t(group.description)}</p>
-        </div>
+      <div className="grid gap-2 border-b border-ink/15 pb-4">
+        <h2 className="text-2xl font-semibold text-ink" id={headingId}>{t(group.title)}</h2>
+        <p className={uiText.body}>{t(group.description)}</p>
       </div>
       <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {group.assets.map((asset) => {

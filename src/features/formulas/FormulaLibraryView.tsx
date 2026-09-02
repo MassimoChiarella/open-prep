@@ -184,17 +184,12 @@ export function FormulaLibraryView({ formulas }: FormulaLibraryViewProps) {
       </section>
 
       <section className="grid gap-6" data-testid="formula-groups">
-        {groupedFormulas.map((group, index) => (
+        {groupedFormulas.map((group) => (
           <section className="grid gap-3" data-testid={`formula-group-${group.id}`} key={group.id}>
             <div className="flex flex-wrap items-end justify-between gap-3 border-b border-ink/15 pb-3">
-              <div className="grid gap-1 sm:grid-cols-[2rem_minmax(0,1fr)] sm:gap-x-3">
-                <span aria-hidden="true" className="font-mono text-xs font-semibold text-coral sm:pt-1.5">
-                  {String(index + 2).padStart(2, "0")}
-                </span>
-                <div className="grid gap-1">
-                  <h2 className="text-xl font-semibold text-ink">{t(group.title)}</h2>
-                  <p className="text-sm leading-6 text-ink/65">{t(group.description)}</p>
-                </div>
+              <div className="grid gap-1">
+                <h2 className="text-xl font-semibold text-ink">{t(group.title)}</h2>
+                <p className="text-sm leading-6 text-ink/65">{t(group.description)}</p>
               </div>
               <span className="rounded-md bg-paper px-2.5 py-1 text-xs font-semibold uppercase tracking-wide text-ink/65">
                 {formatNumber(group.formulas.length)} {t(group.formulas.length === 1 ? "formula" : "formulas")}

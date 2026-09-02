@@ -25,9 +25,6 @@ export function PageHeader({ action, description, eyebrow, title }: PageHeaderPr
     <header className="grid min-w-0 overflow-hidden border-y border-ink/20 bg-white lg:grid-cols-12">
       <div className="grid min-w-0 gap-5 px-5 py-7 sm:px-7 sm:py-9 lg:col-span-7">
         <div className="flex items-center gap-3">
-          <span aria-hidden="true" className="font-mono text-xs font-semibold text-ink/45">
-            01
-          </span>
           <span aria-hidden="true" className="h-px w-8 bg-coral" />
           <p className={cx(uiText.eyebrow, "text-teal")}>{t(eyebrow)}</p>
         </div>

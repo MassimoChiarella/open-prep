@@ -53,10 +53,7 @@ export function BenchmarkSelectionView({
 
       <section aria-labelledby="benchmark-options-heading" className="grid gap-4">
         <div className="grid max-w-2xl gap-2 border-b border-ink/15 pb-4">
-          <div className="flex items-center gap-3">
-            <span aria-hidden="true" className="font-mono text-xs font-semibold text-ink/45">02</span>
-            <p className="text-xs font-semibold uppercase tracking-[0.06em] text-coral">{t("Benchmark Tests")}</p>
-          </div>
+          <p className="text-xs font-semibold uppercase tracking-[0.06em] text-coral">{t("Benchmark Tests")}</p>
           <h2 className="text-2xl font-semibold tracking-[-0.025em] text-ink" id="benchmark-options-heading">
             {t("Choose a benchmark")}
           </h2>

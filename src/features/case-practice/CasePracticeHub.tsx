@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { ArrowIcon } from "@/components/ArrowIcon";
 import { PageHeader } from "@/components/PageHeader";
 import { badgeClass, buttonClass, uiText } from "@/components/uiStyles";
 import { useI18n } from "@/features/i18n/I18nProvider";
@@ -115,9 +116,8 @@ export function CasePracticeHub({
               <p className={`${uiText.body} min-w-0 [overflow-wrap:anywhere]`}>{t(module.description)}</p>
               <Link className={buttonClass("secondary", "mt-auto max-w-full gap-3 whitespace-normal")} href={module.href}>
                 <span className="min-w-0 [overflow-wrap:anywhere]">{t("Open {module}", { module: t(module.label) })}</span>
-                <span aria-hidden="true" className="shrink-0">
-                  <span className="rtl:hidden">→</span>
-                  <span className="hidden rtl:inline">←</span>
+                <span aria-hidden="true" className="shrink-0 rtl:rotate-180">
+                  <ArrowIcon />
                 </span>
               </Link>
             </article>

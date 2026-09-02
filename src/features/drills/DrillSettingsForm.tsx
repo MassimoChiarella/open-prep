@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { ArrowIcon } from "@/components/ArrowIcon";
 import { PageHeader } from "@/components/PageHeader";
 import { starterQuestionTemplates } from "@/data/questionTemplates/starterTemplates";
 import { caseStyleQuestionTemplates } from "@/data/questionTemplates/caseStyleTemplates";
@@ -364,10 +365,7 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
 
         <section className="grid gap-5 border-y border-ink/20 py-6">
           <div className="grid max-w-2xl gap-2">
-            <div className="flex items-center gap-3">
-              <span aria-hidden="true" className="font-mono text-xs font-semibold text-ink/45">02</span>
-              <p className="text-xs font-semibold uppercase tracking-[0.06em] text-coral">{t("Quick Presets")}</p>
-            </div>
+            <p className="text-xs font-semibold uppercase tracking-[0.06em] text-coral">{t("Quick Presets")}</p>
             <h2 className="text-2xl font-semibold tracking-[-0.025em] text-ink">{t("Start fast")}</h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2" data-testid="quick-drill-presets">
@@ -379,9 +377,8 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
               >
                 <span aria-hidden="true" className="flex items-center justify-between font-mono text-xs font-semibold text-ink/65">
                   0{index + 1}
-                  <span className="text-base text-teal">
-                    <span className="rtl:hidden">→</span>
-                    <span className="hidden rtl:inline">←</span>
+                  <span className="text-base text-teal rtl:rotate-180">
+                    <ArrowIcon className="w-[1ch]" />
                   </span>
                 </span>
                 <span className="text-base font-semibold tracking-[-0.01em] text-ink">{t(preset.label)}</span>
@@ -400,10 +397,7 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
           disabled={persistenceStatus === "loading" || persistenceStatus === "saving"}
         >
           <div className="grid gap-2">
-            <div className="flex items-center gap-3">
-              <span aria-hidden="true" className="font-mono text-xs font-semibold text-ink/45">03</span>
-              <p className="text-xs font-semibold uppercase tracking-[0.06em] text-coral">{t("Advanced Options")}</p>
-            </div>
+            <p className="text-xs font-semibold uppercase tracking-[0.06em] text-coral">{t("Advanced Options")}</p>
             <h2 className="text-2xl font-semibold tracking-[-0.025em] text-ink">{t("Customize the drill")}</h2>
           </div>
 

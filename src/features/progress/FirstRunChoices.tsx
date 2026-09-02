@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useId } from "react";
 
+import { ArrowIcon } from "@/components/ArrowIcon";
 import { buttonClass, cx, uiText } from "@/components/uiStyles";
 import { useI18n } from "@/features/i18n/I18nProvider";
 
@@ -83,7 +84,7 @@ export function FirstRunChoices({ showContentPacksAction }: FirstRunChoicesProps
                   className="inline-flex h-7 w-7 shrink-0 items-center justify-center border border-teal/30 bg-mint/70 text-base text-teal transition-transform group-hover:border-teal group-hover:bg-white rtl:rotate-180"
                   data-testid="first-run-choice-arrow"
                 >
-                  &rarr;
+                  <ArrowIcon />
                 </span>
                 <span
                   className={cx(uiText.body, "col-span-full min-w-0 break-words [overflow-wrap:anywhere]")}

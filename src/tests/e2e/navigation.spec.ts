@@ -9,7 +9,7 @@ import {
   type AppStoreName
 } from "../../lib/storage/appStorageTypes";
 
-test("core routes expose distinct document titles", async ({ page }) => {
+test("core routes expose distinct document titles and unnumbered page headers", async ({ page }) => {
   const routes = [
     ["/", "Dashboard"],
     ["/drills", "Drills"],
@@ -29,6 +29,8 @@ test("core routes expose distinct document titles", async ({ page }) => {
   for (const [path, title] of routes) {
     await page.goto(path);
     await expect(page).toHaveTitle(`${title} | OpenPrep`);
+    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+    await expect(page.locator("main header").getByText(/^0\d$/)).toHaveCount(0);
     titles.push(await page.title());
   }
 

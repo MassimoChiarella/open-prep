@@ -64,11 +64,22 @@ describe("QuestioningPractice", () => {
     expect(screen.queryByRole("button", { name: "Move question 2 up" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("checkbox", { name: /Rank my questions/ }));
 
+    expect(screen.getByRole("button", { name: "Move question 1 up" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Move question 3 down" })).toBeDisabled();
+    for (const button of screen.getAllByRole("button", { name: /^Move question \d+ (up|down)$/ })) {
+      expect(button).toHaveClass("h-11", "min-w-11");
+      expect(button.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+      expect(button.querySelector("svg")).toHaveAttribute("focusable", "false");
+    }
+
     const inputs = screen.getAllByPlaceholderText("Type a question you would ask the interviewer");
     fireEvent.change(inputs[0], { target: { value: "First question" } });
     fireEvent.change(inputs[1], { target: { value: "Second question" } });
     fireEvent.click(screen.getByRole("button", { name: "Move question 2 up" }));
 
     expect(screen.getAllByPlaceholderText("Type a question you would ask the interviewer")[0]).toHaveValue("Second question");
+
+    fireEvent.click(screen.getByRole("button", { name: "Move question 1 down" }));
+    expect(screen.getAllByPlaceholderText("Type a question you would ask the interviewer")[0]).toHaveValue("First question");
   });
 });

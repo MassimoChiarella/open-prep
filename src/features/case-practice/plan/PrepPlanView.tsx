@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { type FormEvent, useEffect, useMemo, useState } from "react";
 
+import { ArrowIcon } from "@/components/ArrowIcon";
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
 import { LocalSaveNotice } from "@/components/LocalSaveNotice";
@@ -387,9 +388,8 @@ function WeeklyRoadmap({ roadmap }: { roadmap: WeeklyPrepRoadmap }) {
             <p className={uiText.body}>{t(item.description)}</p>
             <Link className={buttonClass("secondary", "mt-auto gap-3")} href={item.href}>
               <span>{t("Open {title}", { title: t(item.title) })}</span>
-              <span aria-hidden="true">
-                <span className="rtl:hidden">→</span>
-                <span className="hidden rtl:inline">←</span>
+              <span aria-hidden="true" className="rtl:rotate-180">
+                <ArrowIcon />
               </span>
             </Link>
           </li>

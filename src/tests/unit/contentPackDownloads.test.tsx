@@ -57,6 +57,20 @@ const expectedGroups = {
 } as const;
 
 describe("ContentPackDownloadsPage", () => {
+  it("removes page and section ordinals while retaining the seven numbered authoring steps", () => {
+    render(<ContentPackDownloadsPage />);
+
+    expect(screen.getByText("Content packs", { exact: true }).parentElement).toHaveTextContent(/^Content packs$/);
+
+    const steps = within(screen.getByTestId("human-authoring-path")).getAllByRole("listitem");
+    expect(steps).toHaveLength(7);
+    expect(screen.getAllByText(/^0[1-9]$/)).toHaveLength(steps.length);
+
+    for (const [index, step] of steps.entries()) {
+      expect(within(step).getByText(String(index + 1).padStart(2, "0"), { exact: true })).toBeInTheDocument();
+    }
+  });
+
   it("leads with the seven-step human workflow and canonical hub actions", () => {
     render(<ContentPackDownloadsPage />);
 
@@ -89,10 +103,13 @@ describe("ContentPackDownloadsPage", () => {
     render(<ContentPackDownloadsPage />);
     fireEvent.click(screen.getByText("Optional external-tool materials"));
 
-    expect(screen.getByRole("link", { name: "Back to Content Packs" })).toHaveAttribute(
+    const backLink = screen.getByRole("link", { name: "Back to Content Packs" });
+    expect(backLink).toHaveAttribute(
       "href",
       "/content-packs/?view=resources"
     );
+    expect(backLink.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(backLink.querySelector("svg")).toHaveAttribute("focusable", "false");
 
     for (const [groupName, expectedHrefs] of Object.entries(expectedGroups)) {
       const group = screen.getByRole("region", { name: groupName });

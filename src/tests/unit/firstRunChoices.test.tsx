@@ -109,7 +109,9 @@ describe("FirstRunChoices", () => {
 
     for (const arrow of screen.getAllByTestId("first-run-choice-arrow")) {
       expect(arrow).toHaveAttribute("aria-hidden", "true");
-      expect(arrow).toHaveClass("rtl:rotate-180");
+      expect(arrow).toHaveClass("h-7", "w-7", "rtl:rotate-180");
+      expect(arrow.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+      expect(arrow.querySelector("svg")).toHaveAttribute("focusable", "false");
       expect(arrow.closest("[dir='rtl']")).not.toBeNull();
     }
   });

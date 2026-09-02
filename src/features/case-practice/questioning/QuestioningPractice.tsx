@@ -2,6 +2,7 @@
 
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
+import { ArrowIcon } from "@/components/ArrowIcon";
 import { LocalSaveNotice } from "@/components/LocalSaveNotice";
 import { PageHeader } from "@/components/PageHeader";
 import { badgeClass, buttonClass, cx, uiInputs, uiText } from "@/components/uiStyles";
@@ -301,7 +302,7 @@ export function QuestioningResponseFields({
                     title={t("Move up")}
                     type="button"
                   >
-                    <span aria-hidden="true">↑</span>
+                    <span aria-hidden="true"><ArrowIcon direction="up" /></span>
                   </button>
                   <button
                     aria-label={t("Move question {number} down", { number: formatNumber(index + 1) })}
@@ -311,7 +312,7 @@ export function QuestioningResponseFields({
                     title={t("Move down")}
                     type="button"
                   >
-                    <span aria-hidden="true">↓</span>
+                    <span aria-hidden="true"><ArrowIcon direction="down" /></span>
                   </button>
                 </>
               ) : null}
