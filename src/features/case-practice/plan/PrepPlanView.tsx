@@ -188,9 +188,10 @@ export function PrepPlanView({
                   <select
                     className={uiInputs.base}
                     onChange={(event) => {
+                      const experienceLevel = event.currentTarget.value as PrepExperienceLevel;
                       setDraft((current) => ({
                         ...current,
-                        experienceLevel: event.currentTarget.value as PrepExperienceLevel
+                        experienceLevel
                       }));
                       setSaveStatus("idle");
                     }}
@@ -209,7 +210,8 @@ export function PrepPlanView({
                     className={uiInputs.base}
                     min={loadState.today}
                     onChange={(event) => {
-                      setDraft((current) => ({ ...current, interviewDate: event.currentTarget.value }));
+                      const interviewDate = event.currentTarget.value;
+                      setDraft((current) => ({ ...current, interviewDate }));
                       setSaveStatus("idle");
                     }}
                     type="date"
@@ -224,7 +226,8 @@ export function PrepPlanView({
                     className={uiInputs.base}
                     dir="auto"
                     onChange={(event) => {
-                      setDraft((current) => ({ ...current, targetFirms: event.currentTarget.value }));
+                      const targetFirms = event.currentTarget.value;
+                      setDraft((current) => ({ ...current, targetFirms }));
                       setSaveStatus("idle");
                     }}
                     placeholder={t("Firm A, Firm B")}
@@ -243,11 +246,10 @@ export function PrepPlanView({
                     max={maximumWeeklySessions}
                     min={minimumWeeklySessions}
                     onChange={(event) => {
+                      const value = event.currentTarget.valueAsNumber;
                       setDraft((current) => ({
                         ...current,
-                        weeklySessions: Number.isNaN(event.currentTarget.valueAsNumber)
-                          ? minimumWeeklySessions
-                          : event.currentTarget.valueAsNumber
+                        weeklySessions: Number.isNaN(value) ? minimumWeeklySessions : value
                       }));
                       setSaveStatus("idle");
                     }}

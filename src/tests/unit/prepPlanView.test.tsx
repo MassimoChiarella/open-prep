@@ -1,14 +1,15 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
+import { StrictMode } from "react";
 import { describe, expect, it } from "vitest";
 
 import { PrepPlanView } from "@/features/case-practice/plan/PrepPlanView";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("PrepPlanView", () => {
-  it("discloses shared-browser exposure beside profile fields without changing saves", async () => {
+  it("discloses shared-browser exposure and saves every edited profile field in StrictMode", async () => {
     const storage = new MemoryAppStorage();
 
-    render(<PrepPlanView storageFactory={() => storage} />);
+    render(<StrictMode><PrepPlanView storageFactory={() => storage} /></StrictMode>);
 
     await screen.findByRole("heading", { name: "Preparation profile" });
 
@@ -31,13 +32,22 @@ describe("PrepPlanView", () => {
     );
     expect(targetFirms).toHaveAttribute("dir", "auto");
 
-    fireEvent.change(targetFirms, { target: { value: "Long Firm Name" } });
-    expect(screen.getByText("Long Firm Name")).toHaveAttribute("dir", "auto");
+    fireEvent.change(screen.getByRole("combobox", { name: "Experience level" }), { target: { value: "advanced" } });
+    fireEvent.change(interviewDate, { target: { value: "2099-12-15" } });
+    fireEvent.change(screen.getByRole("spinbutton", { name: "Practice sessions per week" }), { target: { value: "8" } });
+    fireEvent.change(targetFirms, { target: { value: "Long Firm Name, Another Firm" } });
+    expect(screen.getByText("Long Firm Name, Another Firm")).toHaveAttribute("dir", "auto");
     fireEvent.click(screen.getByRole("button", { name: "Save Profile" }));
 
     expect(await screen.findByText("Your preparation profile and weekly target are saved.")).toBeInTheDocument();
     expect(storage.peekAll("practice_records")).toEqual([
-      expect.objectContaining({ kind: "prep_profile", targetFirms: ["Long Firm Name"] })
+      expect.objectContaining({
+        experienceLevel: "advanced",
+        interviewDate: "2099-12-15",
+        kind: "prep_profile",
+        targetFirms: ["Long Firm Name", "Another Firm"],
+        weeklySessions: 8
+      })
     ]);
   });
 });

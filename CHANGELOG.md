@@ -29,6 +29,8 @@ approved and tagged.
 - Wait for actual service-worker activation during hosted verification instead
   of advancing while asynchronous registration is still pending.
 - Exclude generated Vercel output and local tooling from source lint checks.
+- Capture preparation-profile input values before queued state updates, so
+  editing fields remains safe when React defers or replays those updates.
 
 ## [0.1.0] - Pending
 
