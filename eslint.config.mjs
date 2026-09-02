@@ -6,6 +6,8 @@ const eslintConfig = [
     ignores: [
       ".next/**",
       ".dist-verification/**",
+      ".runtime-cache/**",
+      ".vercel/**",
       "node_modules/**",
       "dist/**",
       "dist-desktop/**",
