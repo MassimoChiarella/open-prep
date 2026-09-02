@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check deployment promotion guards
+        run: ./.github/scripts/test-vercel-promotion.ps1
+
       - name: Install Chromium
         run: npx playwright install chromium
 
@@ -162,7 +165,23 @@ jobs:
         run: |
           $taskMain = gh api "repos/$env:GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha'
           if ($LASTEXITCODE -ne 0 -or $taskMain -cne $env:GITHUB_SHA) { throw 'Main changed while staging; this deployment will not be promoted.' }
-          vercel promote $env:DEPLOYMENT_ID --yes
+          # CLI promote resolves an account user that project-only tokens cannot read.
+          '{}' | vercel api "/v10/projects/${env:VERCEL_PROJECT_ID}/promote/${env:DEPLOYMENT_ID}?teamId=$env:VERCEL_ORG_ID" -X POST --input - --silent
+          if ($LASTEXITCODE -ne 0) { throw 'Vercel promotion request failed.' }
+          $taskPromotionDeadline = [DateTime]::UtcNow.AddMinutes(3)
+          while ($true) {
+            $taskProjectJson = vercel api "/v9/projects/${env:VERCEL_PROJECT_ID}?teamId=$env:VERCEL_ORG_ID&rollbackInfo=true" --raw
+            if ($LASTEXITCODE -ne 0) { throw 'Could not inspect Vercel promotion status.' }
+            $taskProject = ($taskProjectJson | Out-String) | ConvertFrom-Json
+            if ($taskProject.id -cne $env:VERCEL_PROJECT_ID) { throw 'Promotion status belongs to a different project.' }
+            $taskPromotion = $taskProject.lastAliasRequest
+            if ($taskPromotion.toDeploymentId -ceq $env:DEPLOYMENT_ID) {
+              if ($taskPromotion.jobStatus -ceq 'succeeded' -and $taskProject.targets.production.id -ceq $env:DEPLOYMENT_ID) { break }
+              if ($taskPromotion.jobStatus -cin @('failed', 'skipped')) { throw 'Vercel did not complete the requested promotion.' }
+            }
+            if ([DateTime]::UtcNow -ge $taskPromotionDeadline) { throw 'Timed out waiting for the verified deployment to become production.' }
+            Start-Sleep -Seconds 5
+          }
 
       - name: Verify the canonical production origin
         run: |
