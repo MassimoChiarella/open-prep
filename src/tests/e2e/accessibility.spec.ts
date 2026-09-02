@@ -30,6 +30,7 @@ const entryStateIds = [
   "exhibit:active",
   "exhibit-sprint:setup",
   "formulas:library",
+  "privacy:disclosure",
   "market-sizing:assumptions",
   "progress:empty",
   "settings:default",

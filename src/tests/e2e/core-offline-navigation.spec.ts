@@ -29,6 +29,7 @@ test(
 
     const installedPaths = await readOfflineCachePaths(page);
     expect(installedPaths).toContain(unvisitedCoreRoute);
+    expect(installedPaths).toContain("/privacy/");
     expect(installedPaths).not.toContain(catalogUrl);
     expect(installedPaths).not.toContain(authoringArtifactUrl);
     expect(installedPaths.some(isIndividualCommunityPack)).toBe(false);

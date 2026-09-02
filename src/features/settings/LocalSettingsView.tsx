@@ -626,6 +626,9 @@ export function LocalSettingsView({
           <p className="text-sm leading-6 text-ink/65">
             {t("No progress is sent to a server. Clearing browser storage or using reset removes local practice history.")}
           </p>
+          <Link className="inline-flex min-h-11 w-fit items-center text-sm font-semibold text-teal underline underline-offset-4" href="/privacy/">
+            {t("Privacy and analytics (English)")}
+          </Link>
           <section aria-labelledby="storage-durability-heading" className="grid gap-3 border-t border-ink/10 pt-5">
             <div>
               <h3 className={uiSectionTitleClass} id="storage-durability-heading">{t("Storage durability")}</h3>

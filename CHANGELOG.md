@@ -11,6 +11,8 @@ approved and tagged.
 
 ### Added
 
+- Public privacy and local-data guidance, available from Settings and offline,
+  including backup instructions for moving to openprep.app.
 - Verified Vercel prebuilt deployment preparation with generated security
   headers, static routes, offline cache rules, and deployment instructions.
 - Production-only Vercel Web Analytics for allowlisted static page views, with
@@ -30,6 +32,8 @@ approved and tagged.
 
 ### Fixed
 
+- Wait for the client-rendered builder before seeding browser-history checks,
+  preventing a CI race with Next.js hydration.
 - Wait for actual service-worker activation during hosted verification instead
   of advancing while asynchronous registration is still pending.
 - Exclude generated Vercel output and local tooling from source lint checks.

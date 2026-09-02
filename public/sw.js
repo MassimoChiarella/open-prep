@@ -77,6 +77,7 @@ const PRECACHED_URLS = [
   "/case-practice/synthesis/",
   "/content-packs/",
   "/content-packs/downloads/",
+  "/privacy/",
   "/settings/"
 ];
 

@@ -21,6 +21,7 @@ export const generatedAccessibilityRoutes = [
   { pageFile: "src/app/formulas/page.tsx", route: "/formulas" },
   { pageFile: "src/app/market-sizing/page.tsx", route: "/market-sizing" },
   { pageFile: "src/app/progress/page.tsx", route: "/progress" },
+  { pageFile: "src/app/privacy/page.tsx", route: "/privacy" },
   { pageFile: "src/app/settings/page.tsx", route: "/settings" }
 ] as const;
 
@@ -269,6 +270,7 @@ export const accessibilityRouteStates = [
   state("exhibit-sprint:complete", "/exhibits/sprint", "/exhibits/sprint", "exhibit-sprint", "complete", "complete-valid-flow", "Exhibit Sprint", "visual", ["all", "chart", "status", "timed"]),
 
   state("formulas:library", "/formulas", "/formulas", "formulas", "entry", "default-content", "Formula Library", "route", ["all"]),
+  state("privacy:disclosure", "/privacy", "/privacy", "privacy", "entry", "default-content", "Privacy and data", "route", ["all"]),
   state("formulas:filtered-detail", "/formulas", "/formulas", "formulas", "active", "filtered-formulas", "Formula Library", "interactive", ["all", "form"]),
 
   state("market-sizing:assumptions", "/market-sizing", "/market-sizing", "market-sizing", "entry", "default-content", "Guided Market Sizing", "critical", ["all", "form", "multistep"]),
