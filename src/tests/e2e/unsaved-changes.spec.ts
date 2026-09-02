@@ -4,6 +4,8 @@ const warning = "Leave this builder? Your unsaved changes will be lost.";
 
 test("dirty content-pack work survives a declined browser Back navigation", async ({ page }) => {
   await page.goto("/content-packs/?view=create");
+  // The client-rendered builder is ready after Next installs its history handlers.
+  await expect(page.getByTestId("question-pack-builder")).toBeVisible();
   await page.evaluate(() => {
     window.history.pushState({ draft: true }, "", "/content-packs/?view=create&draft=test");
   });
@@ -21,6 +23,7 @@ test("dirty content-pack work survives a declined browser Back navigation", asyn
 
 test("dirty content-pack work confirms browser Forward navigation", async ({ page }) => {
   await page.goto("/content-packs/?view=create");
+  await expect(page.getByTestId("question-pack-builder")).toBeVisible();
   await page.evaluate(() => {
     window.history.pushState({ destination: true }, "", "/progress/");
     window.history.back();
