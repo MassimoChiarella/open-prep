@@ -2,9 +2,15 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { render, screen } from "@testing-library/react";
+import { resolveAlternates, resolveRobots } from "next/dist/lib/metadata/resolvers/resolve-basics";
+import { resolveOpenGraph } from "next/dist/lib/metadata/resolvers/resolve-opengraph";
 import { describe, expect, it, vi } from "vitest";
 
+import { metadata as sessionMetadata } from "@/app/drills/session/layout";
 import { metadata } from "@/app/layout";
+import { metadata as progressMetadata } from "@/app/progress/page";
+import robots, { dynamic as robotsRendering } from "@/app/robots";
+import sitemap, { dynamic as sitemapRendering } from "@/app/sitemap";
 import { LocalizedAppShell, returnToNeutralRoute } from "@/components/LocalizedAppShell";
 import { coreMessages } from "@/features/i18n/messages/core";
 
@@ -25,6 +31,49 @@ describe("OpenPrep product identity", () => {
         template: "%s | OpenPrep"
       }
     });
+  });
+
+  it("resolves canonical and sharing URLs against each page instead of the homepage", async () => {
+    const context = { trailingSlash: true, isStaticMetadataRouteFile: false };
+    const metadataBase = metadata.metadataBase ? new URL(metadata.metadataBase) : null;
+    for (const pathname of ["/", "/drills/", "/case-practice/lessons/", "/content-packs/downloads/", "/progress/"]) {
+      const alternates = await resolveAlternates(
+        metadata.alternates, metadataBase, Promise.resolve(pathname), context
+      );
+      const openGraph = await resolveOpenGraph(
+        metadata.openGraph, metadataBase, Promise.resolve(pathname), context, null
+      );
+      expect(alternates?.canonical?.url, pathname).toBe(`https://openprep.app${pathname}`);
+      expect(openGraph?.url, pathname).toBe(`https://openprep.app${pathname}`);
+      const image = openGraph?.images?.[0];
+      const imageUrl = typeof image === "string" || image instanceof URL ? image : image?.url;
+      expect(String(imageUrl)).toBe("https://openprep.app/social/openprep-card.png");
+    }
+    expect(metadata.twitter).toMatchObject({ card: "summary_large_image" });
+  });
+
+  it("keeps public entry pages discoverable and private workspaces and sessions out of search", () => {
+    const urls = sitemap().map(({ url }) => url);
+    expect(sitemapRendering).toBe("force-static");
+    expect(robotsRendering).toBe("force-static");
+    expect(robots()).toEqual({
+      rules: { userAgent: "*", allow: "/" },
+      sitemap: "https://openprep.app/sitemap.xml"
+    });
+    expect(urls).toEqual(expect.arrayContaining([
+      "https://openprep.app/",
+      "https://openprep.app/drills/",
+      "https://openprep.app/case-practice/lessons/",
+      "https://openprep.app/privacy/"
+    ]));
+    expect(new Set(urls).size).toBe(urls.length);
+    for (const url of urls) {
+      expect(url).toMatch(/^https:\/\/openprep\.app\/(?:[a-z-]+\/)*$/u);
+      expect(url).not.toMatch(/\/(?:progress|settings|session|summary|sprint|fit|plan|brainstorming|questioning|structuring|synthesis|simulation)\//u);
+    }
+    for (const value of [progressMetadata, sessionMetadata]) {
+      expect(resolveRobots(value.robots)?.basic).toBe("noindex, follow");
+    }
   });
 
   it("renders the untranslated product name with a translated descriptor", () => {

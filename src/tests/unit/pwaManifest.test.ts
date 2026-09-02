@@ -99,7 +99,7 @@ describe("PWA install metadata", () => {
     });
   });
 
-  it("ships correctly sized PNG install artwork", () => {
+  it("ships correctly sized PNG install and social artwork", () => {
     const iconDirectory = path.join(process.cwd(), "public", "icons");
     const expectedSizes = {
       "app-icon-192.png": 192,
@@ -113,6 +113,10 @@ describe("PWA install metadata", () => {
       expect(existsSync(iconPath), filename).toBe(true);
       expect(readPngDimensions(iconPath), filename).toEqual({ height: size, width: size });
     }
+    expect(readPngDimensions(path.join(process.cwd(), "public", "social", "openprep-card.png"))).toEqual({
+      height: 630,
+      width: 1200
+    });
   });
 
   it("precaches every static app route", () => {

@@ -11,6 +11,8 @@ approved and tagged.
 
 ### Added
 
+- Canonical URLs, search indexing guidance, a public-route sitemap, and a
+  branded OpenPrep social-sharing image for the production domain.
 - Public privacy and local-data guidance, available from Settings and offline,
   including backup instructions for moving to openprep.app.
 - Verified Vercel prebuilt deployment preparation with generated security

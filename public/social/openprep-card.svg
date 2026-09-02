@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">OpenPrep — consulting interview preparation</title>
+  <desc id="desc">Practice for your consulting interview. Case practice, mental math, and market sizing. Free and open source, with offline support.</desc>
+  <rect width="1200" height="630" fill="#f2f2ee"/>
+  <rect width="1200" height="10" fill="#744732"/>
+  <svg x="76" y="64" width="88" height="88" viewBox="0 0 512 512">
+    <rect width="512" height="512" fill="#20211f"/>
+    <path d="M76 118h126c28 0 50 22 50 50v226c-15-18-37-27-66-27H76z" fill="#f2f2ee"/>
+    <path d="M436 118H310c-28 0-50 22-50 50v226c15-18 37-27 66-27h110z" fill="#f2f2ee"/>
+    <g fill="#20211f">
+      <path d="M112 180h104v18H112z"/>
+      <path d="M112 230h88v18h-88z"/>
+      <path d="M112 280h104v18H112z"/>
+    </g>
+    <path d="m300 306 38-50 34 18 34-82" fill="none" stroke="#b38b6d" stroke-linejoin="miter" stroke-width="18"/>
+    <g fill="#b38b6d">
+      <circle cx="300" cy="306" r="13"/>
+      <circle cx="338" cy="256" r="13"/>
+      <circle cx="372" cy="274" r="13"/>
+      <circle cx="406" cy="192" r="13"/>
+    </g>
+  </svg>
+  <text x="190" y="128" font-family="Arial, Helvetica, sans-serif" font-size="62" font-weight="700" letter-spacing="-2" fill="#20211f">OpenPrep</text>
+  <g font-family="Georgia, serif" font-size="78" fill="#20211f">
+    <text x="76" y="280">Practice for your</text>
+    <text x="76" y="372">consulting interview.</text>
+  </g>
+  <text x="80" y="437" font-family="Arial, Helvetica, sans-serif" font-size="28" fill="#3c423e">Case practice · Mental math · Market sizing</text>
+  <path d="M76 504H1124" stroke="#20211f" stroke-opacity=".22"/>
+  <text x="80" y="558" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#3c423e">Free and open source. Ready offline.</text>
+  <text x="1124" y="558" text-anchor="end" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#744732">openprep.app</text>
+</svg>

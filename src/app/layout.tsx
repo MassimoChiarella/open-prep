@@ -9,12 +9,27 @@ import { themeInitializationScript } from "@/features/theme/theme";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://openprep.app"),
+  // Next resolves ./ against each page's pathname, including nested routes.
+  alternates: { canonical: "./" },
   title: {
     default: "OpenPrep",
     template: "%s | OpenPrep"
   },
   applicationName: "OpenPrep",
   description: "Open-source, accessible, local-first consulting interview preparation with offline support.",
+  openGraph: {
+    type: "website",
+    siteName: "OpenPrep",
+    url: "./",
+    images: [{
+      url: "/social/openprep-card.png",
+      width: 1200,
+      height: 630,
+      alt: "OpenPrep — consulting interview preparation with offline support."
+    }]
+  },
+  twitter: { card: "summary_large_image" },
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     capable: true,
