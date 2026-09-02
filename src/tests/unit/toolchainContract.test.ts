@@ -29,6 +29,7 @@ describe("contributor and CI toolchain contract", () => {
     const workflow = readFileSync(path.join(root, ".github", "workflows", filename), "utf8");
     const versions = [...workflow.matchAll(/node-version:\s*([^\s#]+)/gu)].map((match) => match[1]);
 
-    expect(versions).toEqual(["24.19.0"]);
+    expect(versions.length).toBeGreaterThan(0);
+    for (const version of versions) expect(version).toBe("24.19.0");
   });
 });

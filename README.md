@@ -143,6 +143,23 @@ official release gates are complete, deploy the verified output with
 `vercel deploy --prebuilt --prod` and repeat the smoke check on that hostname.
 Preview deployment does not complete the official release checklist.
 
+GitHub Actions is ready to deploy successful pushes to `main` automatically,
+but deployment stays disabled unless repository variable `VERCEL_DEPLOY_ENABLED`
+is explicitly set to `true` after the deployment credential is configured.
+CI prepares and retains the exact output that passed the full verification and
+cross-browser suite. A separate production job downloads that same run's
+artifact, checks its commit and inventory, stages it without changing the live
+domain, and runs the hosted smoke check before promotion. It checks that the
+commit is still current on `main` before promotion and verifies `https://openprep.app/`
+afterward. Production deployments are serialized.
+
+Configure repository variables `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`, and a
+dedicated project-scoped repository secret `VERCEL_TOKEN`. The deployment job
+uses Vercel CLI `59.11.1`; it does not rebuild the app or need runtime environment
+variables. Keep native Vercel Git deployment disconnected so this CI gate owns
+production publishing. Automatic deployment does not publish a tagged GitHub
+release or complete its manual release gates.
+
 Production uses the free Vercel Hobby Web Analytics allowance, currently
 50,000 events per month shared across the team's projects. Collection pauses
 at the plan limit without overage charges; no paid analytics add-on is enabled.

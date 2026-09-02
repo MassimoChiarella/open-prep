@@ -82,12 +82,13 @@ describe("tagged release workflow", () => {
     expect(draftRelease).not.toContain("--latest");
   });
 
-  it("does not invent deployment and records the remaining host gate", () => {
-    expect(workflow).not.toMatch(/actions\/deploy-pages|cloudflare|netlify|vercel/iu);
-    expect(workflow).toContain("No origin-root static host or deployment credential is configured");
+  it("records the production host while retaining separate tagged-release gates", () => {
+    expect(workflow).not.toMatch(/actions\/deploy-pages|cloudflare|netlify|\bvercel\s+(?:deploy|promote)\b/iu);
+    expect(workflow).toContain("Production is hosted at https://openprep.app/.");
+    expect(workflow).toContain("Main-branch CI can deploy verified artifacts once its dedicated credential and enable flag are configured");
     expect(workflow).toContain("Release gates pending");
     expect(workflow).toContain("The draft remains unpublished");
-    expect(workflow).toContain("A draft release now holds the verified artifacts");
+    expect(workflow).toContain("This tagged draft remains unpublished until its hosted, accessibility, repository-setting, and other release gates are reviewed");
     expect(workflow).toContain("RELEASE_CHECKLIST.md");
     expect(workflow).not.toContain("Publish GitHub release");
     expect(workflow).not.toContain("publishes only the verified GitHub release");

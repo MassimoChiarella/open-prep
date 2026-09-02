@@ -11,6 +11,8 @@ approved and tagged.
 
 ### Added
 
+- Opt-in GitHub Actions production deployment of the exact verified static
+  artifact, with staged smoke checks, source-identity checks, and promotion.
 - Canonical URLs, search indexing guidance, a public-route sitemap, and a
   branded OpenPrep social-sharing image for the production domain.
 - Public privacy and local-data guidance, available from Settings and offline,

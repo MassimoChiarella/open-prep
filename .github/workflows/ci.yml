@@ -11,6 +11,8 @@ jobs:
   verify:
     runs-on: windows-latest
     timeout-minutes: 30
+    outputs:
+      vercel_artifact_name: vercel-output-${{ github.sha }}-${{ github.run_attempt }}
 
     steps:
       - name: Check out repository
@@ -37,6 +39,20 @@ jobs:
       - name: Run cross-browser smoke tests
         run: npm run e2e:cross-browser
 
+      - name: Prepare verified Vercel output
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.VERCEL_DEPLOY_ENABLED == 'true'
+        run: npm run vercel:prepare
+
+      - name: Retain verified Vercel output
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.VERCEL_DEPLOY_ENABLED == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: vercel-output-${{ github.sha }}-${{ github.run_attempt }}
+          path: .vercel/output/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Retain Playwright failure diagnostics
         if: failure()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -45,3 +61,114 @@ jobs:
           path: test-results/
           if-no-files-found: ignore
           retention-days: 14
+
+  deploy_production:
+    name: Deploy verified production artifact
+    needs: verify
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.VERCEL_DEPLOY_ENABLED == 'true'
+    runs-on: windows-latest
+    timeout-minutes: 20
+    concurrency:
+      group: open-prep-production
+      cancel-in-progress: false
+    permissions:
+      actions: read
+      contents: read
+    env:
+      VERCEL_ORG_ID: ${{ vars.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ vars.VERCEL_PROJECT_ID }}
+      VERCEL_TELEMETRY_DISABLED: '1'
+
+    steps:
+      - name: Check out the verified revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24.19.0
+          cache: npm
+
+      - name: Check project configuration and current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ($env:VERCEL_ORG_ID -notmatch '^team_[A-Za-z0-9]+$' -or $env:VERCEL_PROJECT_ID -notmatch '^prj_[A-Za-z0-9]+$') {
+            throw 'Configure VERCEL_ORG_ID and VERCEL_PROJECT_ID repository variables before deploying.'
+          }
+          $taskCheckout = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $taskCheckout -cne $env:GITHUB_SHA) { throw 'Checkout does not match the verified commit.' }
+          $taskMain = gh api "repos/$env:GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha'
+          if ($LASTEXITCODE -ne 0 -or $taskMain -cne $env:GITHUB_SHA) { throw 'This run is no longer the current main commit.' }
+
+      - name: Download this run's verified output
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_NAME: ${{ needs.verify.outputs.vercel_artifact_name }}
+        run: gh run download $env:GITHUB_RUN_ID --name $env:ARTIFACT_NAME --dir .vercel/output
+
+      - name: Validate the downloaded artifact identity
+        run: node scripts/prepare-web-build.mjs verify --output .vercel/output/static --commit $env:GITHUB_SHA --ref $env:GITHUB_REF --require-clean
+
+      - name: Install lockfile dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install chromium
+
+      - name: Install pinned Vercel CLI
+        run: npm install --global vercel@59.11.1
+
+      - name: Stage the verified production deployment
+        id: staged
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          if ([string]::IsNullOrWhiteSpace($env:VERCEL_TOKEN)) { throw 'Configure the project-scoped VERCEL_TOKEN repository secret before deploying.' }
+          $taskDeploymentUrl = (vercel deploy --prebuilt --prod --skip-domain --yes | Out-String).Trim()
+          if ($LASTEXITCODE -ne 0) { throw 'Vercel staging failed.' }
+          if ($taskDeploymentUrl -cnotmatch '^https://[a-z0-9][a-z0-9-]*\.vercel\.app/?$') { throw 'Vercel returned an unexpected deployment URL.' }
+          $taskDeploymentUrl = $taskDeploymentUrl.TrimEnd('/')
+          $taskDeploymentHost = ([Uri]$taskDeploymentUrl).Host
+          $taskDeploymentJson = vercel api "/v13/deployments/${taskDeploymentHost}?teamId=$env:VERCEL_ORG_ID" --raw
+          if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the staged deployment.' }
+          $taskDeployment = ($taskDeploymentJson | Out-String) | ConvertFrom-Json
+          if ($taskDeployment.projectId -cne $env:VERCEL_PROJECT_ID -or $taskDeployment.url -cne $taskDeploymentHost -or $taskDeployment.target -cne 'production' -or $taskDeployment.readyState -cne 'READY' -or $taskDeployment.id -cnotmatch '^dpl_[A-Za-z0-9]+$') {
+            throw 'The staged deployment does not match the intended production project.'
+          }
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Encoding utf8 -Value "url=$taskDeploymentUrl"
+          Add-Content -LiteralPath $env:GITHUB_OUTPUT -Encoding utf8 -Value ('id=' + $taskDeployment.id)
+
+      - name: Verify the staged artifact and hosted behavior
+        env:
+          DEPLOYMENT_URL: ${{ steps.staged.outputs.url }}
+        run: |
+          $taskLocalMarker = Get-Content -Raw -LiteralPath '.vercel/output/static/open-prep-release.json' | ConvertFrom-Json
+          $taskHostedMarker = Invoke-RestMethod -Uri ($env:DEPLOYMENT_URL + '/open-prep-release.json') -MaximumRedirection 0
+          if ($taskHostedMarker.source.commit -cne $env:GITHUB_SHA -or $taskHostedMarker.source.ref -cne $env:GITHUB_REF -or $taskHostedMarker.artifact.inventorySha256 -cne $taskLocalMarker.artifact.inventorySha256) {
+            throw 'The staged release marker does not match the verified artifact.'
+          }
+          npm run postdeploy:check -- $env:DEPLOYMENT_URL
+
+      - name: Promote only the current verified main commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          DEPLOYMENT_ID: ${{ steps.staged.outputs.id }}
+        run: |
+          $taskMain = gh api "repos/$env:GITHUB_REPOSITORY/git/ref/heads/main" --jq '.object.sha'
+          if ($LASTEXITCODE -ne 0 -or $taskMain -cne $env:GITHUB_SHA) { throw 'Main changed while staging; this deployment will not be promoted.' }
+          vercel promote $env:DEPLOYMENT_ID --yes
+
+      - name: Verify the canonical production origin
+        run: |
+          $taskLocalMarker = Get-Content -Raw -LiteralPath '.vercel/output/static/open-prep-release.json' | ConvertFrom-Json
+          $taskHostedMarker = Invoke-RestMethod -Uri 'https://openprep.app/open-prep-release.json' -MaximumRedirection 0
+          if ($taskHostedMarker.source.commit -cne $env:GITHUB_SHA -or $taskHostedMarker.source.ref -cne $env:GITHUB_REF -or $taskHostedMarker.artifact.inventorySha256 -cne $taskLocalMarker.artifact.inventorySha256) {
+            throw 'The canonical origin does not serve the verified artifact.'
+          }
+          npm run postdeploy:check -- https://openprep.app/

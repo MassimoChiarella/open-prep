@@ -115,9 +115,9 @@ jobs:
             --generate-notes \
             --draft
 
-      # No origin-root static host or deployment credential is configured in this repository.
+      # Main CI supports gated deployment; a tagged release retains its separate manual gates.
       - name: Record deployed-origin follow-up
         run: |
           echo "::warning title=Release gates pending::Verified artifacts were attached to a draft GitHub release. The draft remains unpublished until hosted, accessibility, repository-setting, and other release gates are reviewed."
           echo "### Deployed-origin follow-up" >> "$GITHUB_STEP_SUMMARY"
-          echo "No static host is configured. A draft release now holds the verified artifacts; it remains unpublished until hosted, accessibility, repository-setting, and other release gates are reviewed in RELEASE_CHECKLIST.md." >> "$GITHUB_STEP_SUMMARY"
+          echo "Production is hosted at https://openprep.app/. Main-branch CI can deploy verified artifacts once its dedicated credential and enable flag are configured. This tagged draft remains unpublished until its hosted, accessibility, repository-setting, and other release gates are reviewed in RELEASE_CHECKLIST.md." >> "$GITHUB_STEP_SUMMARY"
