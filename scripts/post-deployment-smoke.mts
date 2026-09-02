@@ -420,11 +420,7 @@ async function runChromiumSmoke(
 
   try {
     await openAppRoute(page, origin, "/", "Dashboard | Open Prep");
-    await page.waitForFunction(
-      async () => (await navigator.serviceWorker.getRegistration("/"))?.active !== undefined,
-      undefined,
-      { timeout: 20_000 }
-    );
+    await waitForActiveServiceWorker(page);
 
     const worker = await page.evaluate(async (cacheId) => {
       const registration = await navigator.serviceWorker.getRegistration("/");
@@ -499,6 +495,15 @@ async function runChromiumSmoke(
     throw new Error(`Unexpected runtime network request(s) were blocked: ${[...networkViolations].sort().join(", ")}.`);
   }
   if (failure !== undefined) throw failure;
+}
+
+export async function waitForActiveServiceWorker(page: Page): Promise<void> {
+  const { expect } = await import("@playwright/test");
+  // Poll the resolved state: waitForFunction treats an async predicate's Promise as truthy.
+  await expect.poll(
+    () => page.evaluate(async () => (await navigator.serviceWorker.getRegistration("/"))?.active?.state),
+    { timeout: 20_000 }
+  ).toBe("activated");
 }
 
 function configurePage(page: Page): void {

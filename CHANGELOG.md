@@ -19,6 +19,11 @@ approved and tagged.
 - Update Browserslist and PostCSS selector parser transitive dependencies to
   resolve the reported memory-exhaustion, custom-stats, and recursion advisories.
 
+### Fixed
+
+- Wait for actual service-worker activation during hosted verification instead
+  of advancing while asynchronous registration is still pending.
+
 ## [0.1.0] - Pending
 
 This is the pending first public release. No matching Git tag was present when

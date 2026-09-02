@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import path from "node:path";
+import type { Page } from "@playwright/test";
 
 import { describe, expect, it } from "vitest";
 
@@ -10,7 +11,8 @@ import {
   validateReleaseMarker,
   validateSecurityHeaders,
   validateServiceWorkerCacheControl,
-  validateServiceWorkerSource
+  validateServiceWorkerSource,
+  waitForActiveServiceWorker
 } from "../../../scripts/post-deployment-smoke.mts";
 
 const origin = "https://prep.example";
@@ -70,6 +72,18 @@ const manifest = {
 };
 
 describe("post-deployment smoke contract", () => {
+  it("waits for asynchronous registration and activation before checking the offline cache", async () => {
+    const states = [undefined, undefined, "activating", "activated"];
+    let calls = 0;
+    const page = {
+      evaluate: async () => states[calls++]
+    } as unknown as Page;
+
+    await waitForActiveServiceWorker(page);
+
+    expect(calls).toBe(4);
+  });
+
   it("accepts only an explicit credential-free HTTPS origin root", () => {
     expect(validateDeploymentOrigin(origin)).toBe(origin);
     expect(validateDeploymentOrigin(`${origin}/`)).toBe(origin);
