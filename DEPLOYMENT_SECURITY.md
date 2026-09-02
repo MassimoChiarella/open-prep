@@ -32,6 +32,10 @@ hosts, duplicate directives, or broad script allowances fail the check.
 - Publish the verified archive's single top-level directory at the origin root.
 - If the host supports `_headers`, deploy the generated file unchanged. On other
   hosts, configure the same names and values from that file.
+- For Vercel, run `npm run vercel:prepare` after the clean verified build and
+  publish with `vercel deploy --prebuilt`. The generated Build Output API routes
+  apply the exact `_headers` values; do not copy CSP hashes into a permanent
+  configuration file. Disable Vercel Toolbar in the deployment environments.
 - Keep `sw.js` revalidated rather than immutable. Hashed `_next/static/` assets
   may use long-lived immutable caching.
 - Serve correct MIME types and enable Brotli or gzip for compressible files.

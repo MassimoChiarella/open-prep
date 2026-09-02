@@ -9,7 +9,15 @@ approved and tagged.
 
 ## [Unreleased]
 
-No changes have been assigned to a release after `0.1.0`.
+### Added
+
+- Verified Vercel prebuilt deployment preparation with generated security
+  headers, static routes, offline cache rules, and deployment instructions.
+
+### Security
+
+- Update Browserslist and PostCSS selector parser transitive dependencies to
+  resolve the reported memory-exhaustion, custom-stats, and recursion advisories.
 
 ## [0.1.0] - Pending
 

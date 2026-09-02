@@ -21,6 +21,7 @@
     "perf:check": "node scripts/check-performance-budgets.mjs",
     "preview": "node scripts/serve-web-build.mjs",
     "postdeploy:check": "node scripts/post-deployment-smoke.mts",
+    "vercel:prepare": "node scripts/prepare-vercel-deployment.mts",
     "release:artifact": "npm run check && node scripts/package-release.mjs",
     "check": "npm run clean:web && npm run version:check && npm run actions:check && npm run authoring:check && npm run identity:check && npm run lint && npm run typecheck && npm run test && npm run build && npm run e2e",
     "lint": "eslint .",

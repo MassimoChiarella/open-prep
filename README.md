@@ -104,6 +104,45 @@ the complete private-data workflow remain separate release-checklist evidence.
 
 No runtime environment variables, API server, database, account system, or platform-specific launcher are required.
 
+### Vercel
+
+Use a prebuilt deployment so Vercel serves the same static files that passed
+verification. From a clean, committed checkout with the pinned Node/npm toolchain:
+
+```bash
+npm ci
+npm run check
+npm run vercel:prepare
+```
+
+The preparation command validates the clean release marker and current source,
+copies `out/` unchanged into `.vercel/output/static/`, and generates Vercel's
+Build Output API configuration from that build's exact security headers. It
+preserves trailing-slash routes, Next.js navigation payloads, the custom 404,
+and service-worker cache rules. It preserves an existing `.vercel/project.json`.
+Commit changes and rebuild before preparing another deployment; dirty or stale
+builds are rejected.
+
+With the Vercel CLI installed, sign in and link this directory to the intended
+Vercel project using `vercel login` and `vercel link`. Use the **Other** framework
+preset for this static, prebuilt deployment. Disable Vercel Toolbar for Preview
+and Production in the project's General settings: its injected external
+resources do not meet this app's same-origin security policy. Keep deployment
+credentials in the CLI's credential store or your CI secret store.
+
+```bash
+vercel deploy --prebuilt
+npm run postdeploy:check -- https://your-preview-host.vercel.app/
+```
+
+The smoke command requires a directly accessible HTTPS origin. If the preview
+uses Vercel Deployment Protection, provide an approved accessible validation
+deployment; the command does not bypass authentication. Select a stable
+production hostname before learners start saving progress there. Once all
+official release gates are complete, deploy the verified output with
+`vercel deploy --prebuilt --prod` and repeat the smoke check on that hostname.
+Preview deployment does not complete the official release checklist.
+
 ## Privacy And Local Data
 
 Practice history is stored in IndexedDB for the current browser profile and deployed origin. The app does not upload answers, scores, settings, or recommendations.
