@@ -14,6 +14,11 @@ approved and tagged.
 - Verified Vercel prebuilt deployment preparation with generated security
   headers, static routes, offline cache rules, and deployment instructions.
 
+### Changed
+
+- Load simulation and chart code with the simulation page instead of unrelated
+  case-practice pages, keeping all exercise stages ready before practice starts.
+
 ### Security
 
 - Update Browserslist and PostCSS selector parser transitive dependencies to

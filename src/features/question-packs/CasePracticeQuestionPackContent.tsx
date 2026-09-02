@@ -20,7 +20,7 @@ import {
 import { FitPracticeView } from "@/features/case-practice/fit/FitPracticeView";
 import { ConceptLessonsView } from "@/features/case-practice/lessons/ConceptLessonsView";
 import { QuestioningPractice } from "@/features/case-practice/questioning/QuestioningPractice";
-import { FullCaseSimulation } from "@/features/case-practice/simulation/FullCaseSimulation";
+import type { FullCaseSimulation } from "@/features/case-practice/simulation/FullCaseSimulation";
 import { StructuringPractice } from "@/features/case-practice/structuring/StructuringPractice";
 import { SynthesisPractice } from "@/features/case-practice/synthesis/SynthesisPractice";
 import { useI18n } from "@/features/i18n/I18nProvider";
@@ -29,7 +29,7 @@ import {
   QuestionPackContentBoundary,
   SpecializedPackState,
   useInstalledPack
-} from "@/features/question-packs/SpecializedQuestionPackContent";
+} from "@/features/question-packs/InstalledPackContent";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 import type { AppStorage, CasePracticeQuestionPackRecord } from "@/lib/storage/appStorageTypes";
 
@@ -43,12 +43,15 @@ export type CasePracticePackView =
   | "structuring"
   | "synthesis";
 
-interface CasePracticeQuestionPackContentProps {
+type CasePracticeViewProps =
+  | { view: Exclude<CasePracticePackView, "simulation">; SimulationComponent?: never }
+  | { view: "simulation"; SimulationComponent: typeof FullCaseSimulation };
+
+type CasePracticeQuestionPackContentProps = CasePracticeViewProps & {
   caseId?: string;
   packId?: string;
   storageFactory?: () => AppStorage;
-  view: CasePracticePackView;
-}
+};
 
 type ReadonlyCollection<T> = T extends (infer TItem)[] ? readonly TItem[] : T;
 type CasePracticeContent = {
@@ -67,23 +70,23 @@ const builtInContent: CasePracticeContent = {
   synthesisPrompts
 };
 
-export function CasePracticeQuestionPackPage({ view }: { view: CasePracticePackView }) {
+export function CasePracticeQuestionPackPage(props: CasePracticeViewProps) {
   const { t } = useI18n();
   return (
     <Suspense fallback={<LoadingState label={t("Loading case practice...")} />}>
-      <CasePracticeQueryContent view={view} />
+      <CasePracticeQueryContent {...props} />
     </Suspense>
   );
 }
 
-function CasePracticeQueryContent({ view }: { view: CasePracticePackView }) {
+function CasePracticeQueryContent(props: CasePracticeViewProps) {
   const searchParams = useSearchParams();
 
   return (
     <CasePracticeQuestionPackContent
+      {...props}
       caseId={searchParams.get("case")?.trim() || undefined}
       packId={searchParams.get("pack")?.trim() || undefined}
-      view={view}
     />
   );
 }
@@ -92,7 +95,8 @@ export function CasePracticeQuestionPackContent({
   caseId,
   packId,
   storageFactory = createIndexedDbAppStorage,
-  view
+  view,
+  SimulationComponent
 }: CasePracticeQuestionPackContentProps) {
   const state = useInstalledPack(packId, "case_practice", storageFactory);
 
@@ -209,7 +213,7 @@ export function CasePracticeQuestionPackContent({
 
     if (simulation !== undefined) {
       return renderPackContent(
-        <FullCaseSimulation
+        <SimulationComponent
           backHref={backHref}
           key={`${contentKey}:${simulation.id}`}
           simulation={simulation}
