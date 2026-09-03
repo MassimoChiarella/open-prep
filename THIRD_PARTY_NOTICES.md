@@ -4,6 +4,7 @@ This is a reviewed inventory of Open Prep's direct browser-runtime dependencies 
 
 | Package | Version | Reported license | Copyright notice | Project |
 | --- | --- | --- | --- | --- |
+| @vercel/analytics | 2.0.1 | MIT | Copyright (c) 2026 Vercel, Inc. | https://github.com/vercel/analytics |
 | Next.js | 16.3.3 | MIT | Copyright (c) 2025 Vercel, Inc. | https://github.com/vercel/next.js |
 | React | 18.3.1 | MIT | Copyright (c) Facebook, Inc. and its affiliates. | https://github.com/facebook/react |
 | React DOM | 18.3.1 | MIT | Copyright (c) Facebook, Inc. and its affiliates. | https://github.com/facebook/react |

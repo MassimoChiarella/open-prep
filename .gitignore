@@ -11,6 +11,11 @@ node_modules/
 *.pfx
 playwright/.auth/
 
+# Downloaded learner progress and private backups
+open-prep-complete-backup-*.json
+open-prep-progress-*.json
+math-drill-progress-*.json
+
 # Next.js and generated builds
 .next/
 out/

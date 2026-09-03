@@ -11,7 +11,7 @@ the cited repository states; they are not current records with older version num
 | --- | --- | --- |
 | `indexeddb-v7.json` | `4e8fe70c3eae1deb34f609ad8bf1e002b9745989` (`Initial public release`, 2026-08-29) | The immediate predecessor of database v8: ten `id`-keyed stores and no indexes. |
 | `progress-export-v3.json` | `4e8fe70c3eae1deb34f609ad8bf1e002b9745989` | Progress export schema v3: nine progress stores, no `privacyScope`, and all practice/private fields included. |
-| `progress-export-v4.json` | Current schema contract | Progress export schema v4 with `privacyScope: "standard"`. Standard export removes Fit stories while retaining preparation profiles and market-sizing notes for compatibility. |
+| `progress-export-v4.json` | Legacy-compatible schema v4 contract | A historical `privacyScope: "standard"` export that excludes Fit stories but retains preparation profiles and market-sizing notes. These older fields remain accepted on import. |
 
 Database v8 adds `completed_at_id` on `benchmark_results` with key path
 `["completedAt", "id"]` and `imported_at_id` on `question_packs` with key path
@@ -39,3 +39,7 @@ commits.
 The progress-export fixtures are unwrapped application export files so they can be
 passed directly to the import validator. Schema v3 is still accepted and normalized
 as a complete export; schema v4 remains the current progress-export envelope.
+
+Current Standard Progress Exports exclude Fit stories, preparation profiles, and
+market-sizing notes. The v4 fixture preserves older import-compatible content,
+not the privacy scope of newly generated Standard Progress Exports.

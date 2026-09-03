@@ -8,13 +8,13 @@ Local import checks structure and runtime safety; it does not prove factual trut
 
 ## Human authoring path
 
-1. **Choose.** Open [Create](/content-packs/?view=create) for a guided builder or download the editable example closest to your content.
+1. **Choose.** Open [Create](https://openprep.app/content-packs/?view=create) for a guided builder or download the editable example closest to your content.
 2. **Edit.** Replace the sample material in a plain-text or code editor. Keep JSON double quotes and commas; JSON does not allow comments or trailing commas. Give the pack and every item a stable, unique lowercase ID, and change `packVersion` when publishing an update.
-3. **Validate.** Open [Import](/content-packs/?view=import), choose the file, and run the canonical structural, semantic, formula, reference, and runtime-safety checks.
+3. **Validate.** Open [Import](https://openprep.app/content-packs/?view=import), choose the file, and run the canonical structural, semantic, formula, reference, and runtime-safety checks.
 4. **Review.** Independently check every fact, answer, formula, unit, explanation, rubric, source, accessibility choice, and right to distribute.
-5. **Test.** Install the pack locally, open it from [Installed](/content-packs/?view=installed), and complete the matching practice flow.
+5. **Test.** Install the pack locally, open it from [Installed](https://openprep.app/content-packs/?view=installed), and complete the matching practice flow.
 6. **License.** For catalog submission, choose one approved content license and record accurate rights, provenance, attribution, language, accessibility, and conflict evidence.
-7. **Submit.** Follow the content policy, lifecycle, and submission links in [Resources](/content-packs/?view=resources).
+7. **Submit.** Follow the content policy, lifecycle, and submission links in [Resources](https://openprep.app/content-packs/?view=resources).
 
 Importing the same pack `id` replaces its installed version after confirmation. A file may be at most 5 MiB (5,242,880 bytes), but that is an import ceiling rather than a content target. Prefer 10–25 ordinary questions or one full case per pack, then split larger curricula by topic or kind.
 

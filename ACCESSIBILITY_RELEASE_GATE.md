@@ -153,7 +153,7 @@ The state IDs, URLs, setup tokens, expected headings, phases, criterion tags, an
 | `/settings` | `settings:default`, `settings:local-data-expanded`, `settings:export-entry`, `settings:export-complete`, `settings:export-error`, `settings:import-entry`, `settings:import-invalid`, `settings:import-confirmation`, `settings:import-complete`, `settings:import-error`, `settings:reset-entry`, `settings:reset-confirmation`, `settings:reset-complete`, `settings:reset-error` | `critical` | Settings/data accessibility owner | TBD | TBD | Not run | Blocked |
 | Not found (`*`) | `not-found:unknown-route` | `critical` | Shell accessibility owner | TBD | TBD | Not run | Blocked |
 
-The static route inventory currently contains 23 `src/app/**/page.tsx` files plus the app-level not-found state. Adding, removing, or moving a page must fail the unit gate until this ledger and the TypeScript manifest are updated together.
+The static route inventory covers every `src/app/**/page.tsx` file plus the app-level not-found state. Adding, removing, or moving a page must fail the unit gate until this ledger and the TypeScript manifest are updated together.
 
 ## Manual Assistive-Technology Records
 
