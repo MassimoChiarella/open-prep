@@ -37,7 +37,7 @@ Repair from the top of the table. P1 means an urgent data-loss, broken-workflow,
 | BUG-27 | P2 | Clear-data controls retain an empty inventory after a successful import | Fixed (step 02) |
 | BUG-28 | P3 | Formula validation accepts malformed infix expressions | Fixed (step 04) |
 | BUG-29 | P3 | Decimal stepped ranges can omit valid upper endpoints | Fixed (step 08) |
-| BUG-30 | P3 | Identical unrecognized questions receive full distinctness credit | Open |
+| BUG-30 | P3 | Identical unrecognized questions receive full distinctness credit | Fixed (step 10) |
 
 ## Verification
 

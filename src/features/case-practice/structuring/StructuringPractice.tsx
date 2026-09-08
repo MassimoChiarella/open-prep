@@ -6,7 +6,7 @@ import { LocalSaveNotice } from "@/components/LocalSaveNotice";
 import { PageHeader } from "@/components/PageHeader";
 import { badgeClass, buttonClass, cx, uiInputs, uiText } from "@/components/uiStyles";
 import { structuringPrompts } from "@/data/casePractice/structuringPrompts";
-import { savePracticeAttempt } from "@/features/case-practice/practiceRecords";
+import { usePracticeAttemptSave } from "@/features/case-practice/usePracticeAttemptSave";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import {
   scoreCaseStructure,
@@ -14,24 +14,27 @@ import {
   type CaseStructuringScore
 } from "@/features/case-practice/structuring/structuringScoring";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
+import type { AppStorage } from "@/lib/storage/appStorageTypes";
 
 type SaveState = "idle" | "saving" | "saved" | "error";
 
 interface StructuringPracticeProps {
   backHref?: string;
   prompts?: readonly CaseStructuringPrompt[];
+  storageFactory?: () => AppStorage;
 }
 
 export function StructuringPractice({
   backHref = "/case-practice",
-  prompts = structuringPrompts
+  prompts = structuringPrompts,
+  storageFactory = createIndexedDbAppStorage
 }: StructuringPracticeProps = {}) {
   const { t } = useI18n();
   const [promptIndex, setPromptIndex] = useState(0);
   const [hypothesisId, setHypothesisId] = useState("");
   const [branchIds, setBranchIds] = useState<string[]>([]);
   const [result, setResult] = useState<CaseStructuringScore | null>(null);
-  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const { saveState, saveAttempt, retrySave, resetSave } = usePracticeAttemptSave(storageFactory);
   const startedAt = useRef(0);
   const prompt = prompts[promptIndex] ?? prompts[0];
 
@@ -44,7 +47,7 @@ export function StructuringPractice({
     setHypothesisId("");
     setBranchIds([]);
     setResult(null);
-    setSaveState("idle");
+    resetSave();
     startedAt.current = Date.now();
   }
 
@@ -56,30 +59,18 @@ export function StructuringPractice({
 
   async function submitStructure(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (hypothesisId === "" || branchIds.length === 0) return;
+    if (result !== null || hypothesisId === "" || branchIds.length === 0) return;
 
     const score = scoreCaseStructure(prompt, { hypothesisId, branchIds });
     setResult(score);
-    setSaveState("saving");
-
-    try {
-      const storage = createIndexedDbAppStorage();
-      try {
-        await savePracticeAttempt(storage, {
-          module: "structuring",
-          itemId: prompt.id,
-          completedAt: new Date().toISOString(),
-          score: score.totalScore,
-          maxScore: score.maxScore,
-          durationSeconds: Math.max(1, Math.round((Date.now() - startedAt.current) / 1_000))
-        });
-      } finally {
-        storage.close();
-      }
-      setSaveState("saved");
-    } catch {
-      setSaveState("error");
-    }
+    await saveAttempt({
+      module: "structuring",
+      itemId: prompt.id,
+      completedAt: new Date().toISOString(),
+      score: score.totalScore,
+      maxScore: score.maxScore,
+      durationSeconds: Math.max(1, Math.round((Date.now() - startedAt.current) / 1_000))
+    });
   }
 
   const canSubmit = hypothesisId !== "" && branchIds.length > 0;
@@ -148,6 +139,7 @@ export function StructuringPractice({
             promptIndex={promptIndex}
             result={result}
             saveState={saveState}
+            retrySave={() => void retrySave()}
             startPrompt={startPrompt}
           />
         )}
@@ -264,6 +256,7 @@ function StructuringResult({
   promptIndex,
   result,
   saveState,
+  retrySave,
   startPrompt
 }: {
   prompt: CaseStructuringPrompt;
@@ -271,6 +264,7 @@ function StructuringResult({
   promptIndex: number;
   result: CaseStructuringScore;
   saveState: SaveState;
+  retrySave: () => void;
   startPrompt: (index: number) => void;
 }) {
   const { formatNumber, t } = useI18n();
@@ -358,6 +352,7 @@ function StructuringResult({
       </div>
 
       <div className="flex flex-wrap gap-3">
+        {saveState === "error" ? <button className={buttonClass("primary")} onClick={retrySave} type="button">{t("Retry Save")}</button> : null}
         <button
           className={buttonClass("secondary", "disabled:cursor-not-allowed disabled:opacity-50")}
           disabled={saveState === "saving"}

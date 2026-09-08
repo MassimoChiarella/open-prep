@@ -5,7 +5,7 @@ import { useMemo, useRef, useState, type FormEvent } from "react";
 import { EmptyState } from "@/components/EmptyState";
 import { LocalSaveNotice } from "@/components/LocalSaveNotice";
 import { buttonClass, cx, uiInputs, uiText } from "@/components/uiStyles";
-import { savePracticeAttempt } from "@/features/case-practice/practiceRecords";
+import { usePracticeAttemptSave } from "@/features/case-practice/usePracticeAttemptSave";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import {
   SYNTHESIS_DIMENSIONS,
@@ -23,8 +23,6 @@ interface SynthesisPracticeProps {
   storageFactory?: () => AppStorage;
 }
 
-type SaveStatus = "error" | "idle" | "saved" | "saving";
-
 const dimensionLabels: Record<SynthesisDimension, string> = {
   recommendation: "Answer-first recommendation",
   evidence: "Strongest supporting evidence",
@@ -40,8 +38,13 @@ export function SynthesisPractice({
   const [selectedPromptId, setSelectedPromptId] = useState(() => prompts[0]?.id ?? "");
   const [response, setResponse] = useState<Partial<SynthesisResponse>>({});
   const [score, setScore] = useState<SynthesisScore>();
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const [statusMessage, setStatusMessage] = useState<string>();
+  const { saveState: saveStatus, saveAttempt, retrySave, resetSave } = usePracticeAttemptSave(storageFactory);
+  const [validationMessage, setStatusMessage] = useState<string>();
+  const statusMessage = score === undefined ? validationMessage : saveStatus === "saving"
+    ? t("Saving this attempt on your device...")
+    : saveStatus === "saved" ? t("Score {score}/{maxScore} saved on this device.", { score: formatNumber(score.totalScore), maxScore: formatNumber(score.maxScore) })
+    : saveStatus === "error" ? t("Score {score}/{maxScore} is ready, but this attempt could not be saved.", { score: formatNumber(score.totalScore), maxScore: formatNumber(score.maxScore) })
+    : undefined;
   const startedAtRef = useRef<number>();
   const prompt = useMemo(
     () => prompts.find((candidate) => candidate.id === selectedPromptId) ?? prompts[0],
@@ -64,7 +67,7 @@ export function SynthesisPractice({
     }
     setResponse({});
     setScore(undefined);
-    setSaveStatus("idle");
+    resetSave();
     setStatusMessage(undefined);
     startedAtRef.current = undefined;
   }
@@ -73,15 +76,15 @@ export function SynthesisPractice({
     startedAtRef.current ??= Date.now();
     setResponse((current) => ({ ...current, [dimension]: optionId }));
     setScore(undefined);
-    setSaveStatus("idle");
+    resetSave();
     setStatusMessage(undefined);
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>): Promise<void> {
     event.preventDefault();
+    if (score !== undefined || saveStatus === "saving") return;
 
     if (!isCompleteResponse(response)) {
-      setSaveStatus("error");
       setStatusMessage(t("Select one option in each section before scoring your response."));
       return;
     }
@@ -89,42 +92,15 @@ export function SynthesisPractice({
     const completedAt = new Date();
     const nextScore = scoreSynthesisResponse(prompt, response);
     setScore(nextScore);
-    setSaveStatus("saving");
-    setStatusMessage(t("Saving this attempt on your device..."));
-
-    try {
-      const storage = storageFactory();
-
-      try {
-        await savePracticeAttempt(storage, {
-          completedAt: completedAt.toISOString(),
-          durationSeconds: Math.max(
-            0,
-            Math.round((completedAt.getTime() - (startedAtRef.current ?? completedAt.getTime())) / 1000)
-          ),
-          itemId: prompt.id,
-          maxScore: nextScore.maxScore,
-          module: "synthesis",
-          score: nextScore.totalScore
-        });
-      } finally {
-        storage.close();
-      }
-
-      setSaveStatus("saved");
-      setStatusMessage(t("Score {score}/{maxScore} saved on this device.", {
-        score: formatNumber(nextScore.totalScore),
-        maxScore: formatNumber(nextScore.maxScore)
-      }));
-    } catch {
-      setSaveStatus("error");
-      setStatusMessage(
-        t("Score {score}/{maxScore} is ready, but this attempt could not be saved.", {
-          score: formatNumber(nextScore.totalScore),
-          maxScore: formatNumber(nextScore.maxScore)
-        })
-      );
-    }
+    setStatusMessage(undefined);
+    await saveAttempt({
+      completedAt: completedAt.toISOString(),
+      durationSeconds: Math.max(0, Math.round((completedAt.getTime() - (startedAtRef.current ?? completedAt.getTime())) / 1000)),
+      itemId: prompt.id,
+      maxScore: nextScore.maxScore,
+      module: "synthesis",
+      score: nextScore.totalScore
+    });
   }
 
   return (
@@ -178,6 +154,7 @@ export function SynthesisPractice({
           >
             {saveStatus === "saving" ? t("Saving...") : score === undefined ? t("Score Response") : t("Response Scored")}
           </button>
+          {saveStatus === "error" ? <button className={buttonClass("primary")} onClick={() => void retrySave()} type="button">{t("Retry Save")}</button> : null}
           <button
             className={buttonClass("secondary")}
             disabled={saveStatus === "saving"}
@@ -192,7 +169,7 @@ export function SynthesisPractice({
           <LocalSaveNotice
             detail={statusMessage}
             label={saveStatus === "error" ? t("Attempt Status") : undefined}
-            tone={saveStatus === "error" ? "error" : saveStatus === "saved" ? "success" : "neutral"}
+            tone={saveStatus === "error" || validationMessage !== undefined ? "error" : saveStatus === "saved" ? "success" : "neutral"}
           />
         ) : null}
       </form>

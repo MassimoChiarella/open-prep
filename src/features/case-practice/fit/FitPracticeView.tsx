@@ -19,9 +19,9 @@ import {
 import {
   deleteFitStory,
   loadFitStories,
-  saveFitStory,
-  savePracticeAttempt
+  saveFitStory
 } from "@/features/case-practice/practiceRecords";
+import { usePracticeAttemptSave } from "@/features/case-practice/usePracticeAttemptSave";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { TimingAccommodationControl } from "@/features/timing/TimingAccommodationControl";
 import {
@@ -73,7 +73,7 @@ export function FitPracticeView({
   const [activeDurationSeconds, setActiveDurationSeconds] = useState<number | null>();
   const [phase, setPhase] = useState<RehearsalPhase>("idle");
   const [completedCriteria, setCompletedCriteria] = useState<FitReviewCriterionId[]>([]);
-  const [reviewStatus, setReviewStatus] = useState<SaveStatus>("idle");
+  const { saveState: reviewStatus, saveAttempt, retrySave, resetSave } = usePracticeAttemptSave(storageFactory);
   const elapsedSecondsRef = useRef(0);
   const rehearsalStartedAt = useRef(0);
   const timingAccommodationTouched = useRef(false);
@@ -330,7 +330,7 @@ export function FitPracticeView({
     setActiveTimingAccommodation(undefined);
     setPhase("idle");
     setCompletedCriteria([]);
-    setReviewStatus("idle");
+    resetSave();
   }
 
   function startRehearsal() {
@@ -343,7 +343,7 @@ export function FitPracticeView({
     setActiveDurationSeconds(effectiveDurationSeconds);
     setActiveTimingAccommodation(timingAccommodation);
     setCompletedCriteria([]);
-    setReviewStatus("idle");
+    resetSave();
     setPhase("running");
 
     if (rememberTimingAccommodation) {
@@ -359,7 +359,7 @@ export function FitPracticeView({
     setCompletedCriteria((current) =>
       current.includes(id) ? current.filter((criterion) => criterion !== id) : [...current, id]
     );
-    setReviewStatus("idle");
+    resetSave();
   }
 
   function finishRehearsal() {
@@ -370,29 +370,17 @@ export function FitPracticeView({
   }
 
   async function saveReview() {
-    if (selectedPrompt === undefined || phase !== "review") return;
-
-    setReviewStatus("saving");
-    let storage: AppStorage | undefined;
-
-    try {
-      storage = storageFactory();
-      await savePracticeAttempt(storage, {
-        completedAt: new Date().toISOString(),
-        durationSeconds: elapsedSeconds,
-        itemId: selectedPrompt.id,
-        maxScore: reviewScore.maxScore,
-        module: "fit",
-        score: reviewScore.score,
-        timingAccommodation: activeTimingAccommodation ?? "standard"
-      });
-      setPhase("saved");
-      setReviewStatus("saved");
-    } catch {
-      setReviewStatus("error");
-    } finally {
-      storage?.close();
-    }
+    if (selectedPrompt === undefined || phase !== "review" || reviewStatus === "saving") return;
+    const saved = await saveAttempt({
+      completedAt: new Date().toISOString(),
+      durationSeconds: elapsedSeconds,
+      itemId: selectedPrompt.id,
+      maxScore: reviewScore.maxScore,
+      module: "fit",
+      score: reviewScore.score,
+      timingAccommodation: activeTimingAccommodation ?? "standard"
+    });
+    if (saved) setPhase("saved");
   }
 
   return (
@@ -598,7 +586,7 @@ export function FitPracticeView({
                 <input
                   checked={completedCriteria.includes(criterion.id)}
                   className="mt-1 h-4 w-4 shrink-0 accent-teal"
-                  disabled={phase === "saved"}
+                  disabled={phase === "saved" || reviewStatus === "saving"}
                   onChange={() => toggleCriterion(criterion.id)}
                   type="checkbox"
                 />
@@ -607,8 +595,11 @@ export function FitPracticeView({
             ))}
             <p className={uiText.dense}>{t("This records your checklist selections; it does not grade your story text.")}</p>
             {phase === "review" ? (
-              <button className={buttonClass("primary")} disabled={reviewStatus === "saving"} onClick={() => void saveReview()} type="button">
-                {reviewStatus === "saving" ? t("Saving...") : t("Save Self-Review")}
+              <button className={buttonClass("primary")} disabled={reviewStatus === "saving"} onClick={() => {
+                if (reviewStatus === "error") void retrySave().then((saved) => { if (saved) setPhase("saved"); });
+                else void saveReview();
+              }} type="button">
+                {reviewStatus === "saving" ? t("Saving...") : reviewStatus === "error" ? t("Retry Save") : t("Save Self-Review")}
               </button>
             ) : null}
             <ReviewStatusMessage score={reviewScore.score} status={reviewStatus} />

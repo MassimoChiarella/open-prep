@@ -58,6 +58,16 @@ const prompt: CaseQuestioningPrompt = {
 };
 
 describe("case questioning scoring", () => {
+  it("deduplicates identical normalized questions even without a recognized intent", () => {
+    const score = scoreCaseQuestioning(questioningPrompts[0], {
+      includeRanking: false,
+      questions: ["What is your name?", "  WHAT is your name?  ", "What is your name?"].map((text, index) => ({ id: `q${index + 1}`, text }))
+    });
+    expect(score.relevance.recognizedQuestionIds).toEqual([]);
+    expect(score.distinctness.duplicateQuestionIds).toEqual(["q2", "q3"]);
+    expect(score.distinctness.score).toBeLessThan(score.distinctness.maxScore);
+  });
+
   it("does not award rubric credit to isolated concept aliases", () => {
     const auditedPrompt = questioningPrompts[0];
     const score = scoreCaseQuestioning(auditedPrompt, {

@@ -12,10 +12,8 @@ import {
   statusMessageClass,
   uiText
 } from "@/components/uiStyles";
-import {
-  loadPracticeAttempts,
-  savePracticeAttempt
-} from "@/features/case-practice/practiceRecords";
+import { loadPracticeAttempts } from "@/features/case-practice/practiceRecords";
+import { usePracticeAttemptSave } from "@/features/case-practice/usePracticeAttemptSave";
 import {
   scoreConceptKnowledgeCheck,
   type ConceptCheckScore,
@@ -31,8 +29,6 @@ interface ConceptLessonsViewProps {
   lessons: readonly ConceptLesson[];
   storageFactory?: () => AppStorage;
 }
-
-type SaveStatus = "error" | "idle" | "saved" | "saving";
 
 const topicLabels: Record<ConceptLessonTopic, string> = {
   brainstorming: "Brainstorming",
@@ -52,8 +48,10 @@ export function ConceptLessonsView({
   const [activeLessonId, setActiveLessonId] = useState(() => lessons[0]?.id ?? "");
   const [answerId, setAnswerId] = useState<string>();
   const [result, setResult] = useState<ConceptCheckScore>();
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
-  const [saveMessage, setSaveMessage] = useState<string>();
+  const { saveState: saveStatus, saveAttempt, retrySave, resetSave } = usePracticeAttemptSave(storageFactory);
+  const [loadError, setLoadError] = useState<string>();
+  const saveMessage = saveStatus === "saved" ? t("This knowledge check was saved on this device.")
+    : saveStatus === "error" ? t("This result could not be saved on this device.") : loadError;
   const [masteredLessonIds, setMasteredLessonIds] = useState<ReadonlySet<string>>(
     () => new Set()
   );
@@ -75,18 +73,16 @@ export function ConceptLessonsView({
         const attempts = await loadPracticeAttempts(storage, "lessons");
 
         if (!cancelled) {
-          setMasteredLessonIds(
-            new Set(
-              attempts
+          setMasteredLessonIds((current) =>
+            new Set([...current, ...attempts
                 .filter((attempt) => attempt.score === attempt.maxScore)
                 .map((attempt) => attempt.itemId)
-            )
+            ])
           );
         }
       } catch {
         if (!cancelled) {
-          setSaveStatus("error");
-          setSaveMessage(t("Saved lesson progress could not be loaded on this device."));
+          setLoadError(t("Saved lesson progress could not be loaded on this device."));
         }
       } finally {
         storage?.close();
@@ -104,48 +100,33 @@ export function ConceptLessonsView({
     setActiveLessonId(lessonId);
     setAnswerId(undefined);
     setResult(undefined);
-    setSaveStatus("idle");
-    setSaveMessage(undefined);
+    resetSave();
+    setLoadError(undefined);
     startedAtRef.current = new Date().toISOString();
   }
 
   async function submitCheck() {
-    if (activeLesson === undefined || answerId === undefined) {
+    if (activeLesson === undefined || answerId === undefined || saveStatus === "saving") {
       return;
     }
 
     const nextResult = scoreConceptKnowledgeCheck(activeLesson.knowledgeCheck, answerId);
     const completedAt = new Date().toISOString();
     setResult(nextResult);
-    setSaveStatus("saving");
-    setSaveMessage(undefined);
-
-    if (nextResult.isCorrect) {
+    setLoadError(undefined);
+    const saved = await saveAttempt({
+      completedAt,
+      durationSeconds: Math.max(
+        0,
+        Math.round((Date.parse(completedAt) - Date.parse(startedAtRef.current)) / 1000)
+      ),
+      itemId: activeLesson.id,
+      maxScore: nextResult.maxScore,
+      module: "lessons",
+      score: nextResult.score
+    });
+    if (saved && nextResult.isCorrect) {
       setMasteredLessonIds((current) => new Set(current).add(activeLesson.id));
-    }
-
-    let storage: AppStorage | undefined;
-
-    try {
-      storage = storageFactory();
-      await savePracticeAttempt(storage, {
-        completedAt,
-        durationSeconds: Math.max(
-          0,
-          Math.round((Date.parse(completedAt) - Date.parse(startedAtRef.current)) / 1000)
-        ),
-        itemId: activeLesson.id,
-        maxScore: nextResult.maxScore,
-        module: "lessons",
-        score: nextResult.score
-      });
-      setSaveStatus("saved");
-      setSaveMessage(t("This knowledge check was saved on this device."));
-    } catch {
-      setSaveStatus("error");
-      setSaveMessage(t("This result could not be saved on this device."));
-    } finally {
-      storage?.close();
     }
   }
 
@@ -324,8 +305,8 @@ export function ConceptLessonsView({
                       onChange={() => {
                         setAnswerId(option.id);
                         setResult(undefined);
-                        setSaveStatus("idle");
-                        setSaveMessage(undefined);
+                        resetSave();
+                        setLoadError(undefined);
                       }}
                       type="radio"
                       value={option.id}
@@ -338,11 +319,19 @@ export function ConceptLessonsView({
 
             <button
               className={buttonClass("primary")}
-              disabled={answerId === undefined || saveStatus === "saving"}
+              disabled={answerId === undefined || saveStatus === "saving" || saveStatus === "error"}
               type="submit"
             >
               {saveStatus === "saving" ? t("Saving...") : result === undefined ? t("Check Answer") : t("Check Again")}
             </button>
+
+            {saveStatus === "error" ? (
+              <button className={buttonClass("primary")} onClick={() => {
+                void retrySave().then((saved) => {
+                  if (saved && result?.isCorrect) setMasteredLessonIds((current) => new Set(current).add(activeLesson.id));
+                });
+              }} type="button">{t("Retry Save")}</button>
+            ) : null}
 
             {result !== undefined ? (
               <div
@@ -359,7 +348,7 @@ export function ConceptLessonsView({
               <LocalSaveNotice
                 detail={saveMessage}
                 label={saveStatus === "error" ? t("Local save") : t("Saved on this device")}
-                tone={saveStatus === "error" ? "error" : "success"}
+                tone={saveStatus === "error" || loadError !== undefined ? "error" : "success"}
               />
             ) : null}
           </form>

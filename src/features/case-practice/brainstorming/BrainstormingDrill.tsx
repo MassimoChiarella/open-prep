@@ -13,19 +13,20 @@ import {
   type BrainstormingScore
 } from "@/features/case-practice/brainstorming/brainstormingScoring";
 import { useI18n } from "@/features/i18n/I18nProvider";
-import { savePracticeAttempt } from "@/features/case-practice/practiceRecords";
+import { usePracticeAttemptSave } from "@/features/case-practice/usePracticeAttemptSave";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
-
-type SaveStatus = "error" | "idle" | "saved" | "saving";
+import type { AppStorage } from "@/lib/storage/appStorageTypes";
 
 interface BrainstormingDrillProps {
   backHref?: string;
   prompts?: readonly BrainstormingPrompt[];
+  storageFactory?: () => AppStorage;
 }
 
 export function BrainstormingDrill({
   backHref = "/case-practice",
-  prompts = brainstormingPrompts
+  prompts = brainstormingPrompts,
+  storageFactory = createIndexedDbAppStorage
 }: BrainstormingDrillProps = {}) {
   const { formatNumber, t } = useI18n();
   const [promptId, setPromptId] = useState(prompts[0]?.id ?? "");
@@ -33,7 +34,7 @@ export function BrainstormingDrill({
   const [priorityIdeaIds, setPriorityIdeaIds] = useState<string[]>([]);
   const [note, setNote] = useState("");
   const [score, setScore] = useState<BrainstormingScore>();
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const { saveState: saveStatus, saveAttempt, retrySave, resetSave } = usePracticeAttemptSave(storageFactory);
   const startedAt = useRef<number>();
   const prompt = useMemo(
     () => prompts.find((candidate) => candidate.id === promptId) ?? prompts[0],
@@ -53,7 +54,7 @@ export function BrainstormingDrill({
     setPriorityIdeaIds([]);
     setNote("");
     setScore(undefined);
-    setSaveStatus("idle");
+    resetSave();
     startedAt.current = undefined;
   }
 
@@ -66,7 +67,7 @@ export function BrainstormingDrill({
       setPriorityIdeaIds((current) => current.filter((candidate) => candidate !== ideaId));
     }
     setScore(undefined);
-    setSaveStatus("idle");
+    resetSave();
   }
 
   function togglePriority(ideaId: string, checked: boolean) {
@@ -74,39 +75,23 @@ export function BrainstormingDrill({
       checked ? [...current, ideaId] : current.filter((candidate) => candidate !== ideaId)
     );
     setScore(undefined);
-    setSaveStatus("idle");
+    resetSave();
   }
 
   async function handleSubmit() {
+    if (score !== undefined || !selectionComplete || !prioritiesComplete) return;
     const result = scoreBrainstorming(prompt, { note, priorityIdeaIds, selectedIdeaIds });
     const completedAt = new Date().toISOString();
 
     setScore(result);
-    setSaveStatus("saving");
-
-    try {
-      const storage = createIndexedDbAppStorage();
-
-      try {
-        await savePracticeAttempt(storage, {
-          module: "brainstorming",
-          itemId: prompt.id,
-          completedAt,
-          score: result.totalScore,
-          maxScore: result.maxScore,
-          durationSeconds:
-            startedAt.current === undefined
-              ? 0
-              : Math.max(0, Math.round((Date.now() - startedAt.current) / 1000))
-        });
-      } finally {
-        storage.close();
-      }
-
-      setSaveStatus("saved");
-    } catch {
-      setSaveStatus("error");
-    }
+    await saveAttempt({
+      module: "brainstorming",
+      itemId: prompt.id,
+      completedAt,
+      score: result.totalScore,
+      maxScore: result.maxScore,
+      durationSeconds: startedAt.current === undefined ? 0 : Math.max(0, Math.round((Date.now() - startedAt.current) / 1000))
+    });
   }
 
   return (
@@ -172,7 +157,6 @@ export function BrainstormingDrill({
             dir="auto"
             onChange={(event) => {
               setNote(event.currentTarget.value);
-              setSaveStatus("idle");
             }}
             placeholder={t("Capture your reasoning for the two priorities")}
             value={note}
@@ -184,11 +168,12 @@ export function BrainstormingDrill({
           <button
             aria-describedby={`${prompt.id}-brainstorming-progress`}
             className={buttonClass("primary")}
-            disabled={!selectionComplete || !prioritiesComplete || saveStatus === "saving"}
+            disabled={!selectionComplete || !prioritiesComplete || saveStatus === "saving" || score !== undefined}
             type="submit"
           >
             {saveStatus === "saving" ? t("Saving...") : t("Score and Save")}
           </button>
+          {saveStatus === "error" ? <button className={buttonClass("primary")} onClick={() => void retrySave()} type="button">{t("Retry Save")}</button> : null}
           <button className={buttonClass("secondary")} onClick={() => reset()} type="button">
             {t("Reset")}
           </button>

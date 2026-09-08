@@ -418,10 +418,9 @@ function markDuplicates(
 ): CaseQuestioningMatch[] {
   return matches.map((match, index) => {
     const duplicateIndex = matches.findIndex((candidate, candidateIndex) => {
-      if (candidateIndex >= index || candidate.intentId !== match.intentId || match.intentId === undefined) {
-        return false;
-      }
+      if (candidateIndex >= index) return false;
       if (normalized[candidateIndex].normalized === normalized[index].normalized) return true;
+      if (candidate.intentId !== match.intentId || match.intentId === undefined) return false;
       const lexicalSimilarity = featureJaccard(
         features(normalized[candidateIndex], candidate.matchedConceptIds),
         features(normalized[index], match.matchedConceptIds)

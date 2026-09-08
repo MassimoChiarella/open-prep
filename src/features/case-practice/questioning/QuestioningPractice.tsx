@@ -7,7 +7,7 @@ import { LocalSaveNotice } from "@/components/LocalSaveNotice";
 import { PageHeader } from "@/components/PageHeader";
 import { badgeClass, buttonClass, cx, uiInputs, uiText } from "@/components/uiStyles";
 import { questioningPrompts } from "@/data/casePractice/questioningPrompts";
-import { savePracticeAttempt } from "@/features/case-practice/practiceRecords";
+import { usePracticeAttemptSave } from "@/features/case-practice/usePracticeAttemptSave";
 import {
   isCompleteCaseQuestion,
   scoreCaseQuestioning,
@@ -37,7 +37,7 @@ export function QuestioningPractice({
   const [questions, setQuestions] = useState<CaseQuestioningQuestion[]>(() => initialQuestions(prompts[0]));
   const [includeRanking, setIncludeRanking] = useState(false);
   const [result, setResult] = useState<CaseQuestioningScore | null>(null);
-  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const { saveState, saveAttempt, retrySave, resetSave } = usePracticeAttemptSave(storageFactory);
   const startedAt = useRef(0);
   const nextQuestionNumber = useRef((prompts[0]?.minimumQuestions ?? 0) + 1);
   const prompt = prompts[promptIndex] ?? prompts[0];
@@ -66,7 +66,7 @@ export function QuestioningPractice({
     setQuestions(initialQuestions(nextPrompt));
     setIncludeRanking(false);
     setResult(null);
-    setSaveState("idle");
+    resetSave();
     nextQuestionNumber.current = nextPrompt.minimumQuestions + 1;
     startedAt.current = Date.now();
   }
@@ -100,7 +100,7 @@ export function QuestioningPractice({
 
   async function submitQuestions(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (questions.some((question) => !isCompleteCaseQuestion(question.text, prompt.language))) return;
+    if (result !== null || questions.some((question) => !isCompleteCaseQuestion(question.text, prompt.language))) return;
 
     const score = scoreCaseQuestioning(prompt, {
       includeRanking,
@@ -110,26 +110,14 @@ export function QuestioningPractice({
       }))
     });
     setResult(score);
-    setSaveState("saving");
-
-    try {
-      const storage = storageFactory();
-      try {
-        await savePracticeAttempt(storage, {
-          module: "questioning",
-          itemId: prompt.id,
-          completedAt: new Date().toISOString(),
-          score: score.totalScore,
-          maxScore: score.maxScore,
-          durationSeconds: Math.max(1, Math.round((Date.now() - startedAt.current) / 1_000))
-        });
-      } finally {
-        storage.close();
-      }
-      setSaveState("saved");
-    } catch {
-      setSaveState("error");
-    }
+    await saveAttempt({
+      module: "questioning",
+      itemId: prompt.id,
+      completedAt: new Date().toISOString(),
+      score: score.totalScore,
+      maxScore: score.maxScore,
+      durationSeconds: Math.max(1, Math.round((Date.now() - startedAt.current) / 1_000))
+    });
   }
 
   const canSubmit = questions.every((question) => isCompleteCaseQuestion(question.text, prompt.language));
@@ -204,6 +192,7 @@ export function QuestioningPractice({
             promptIndex={promptIndex}
             result={result}
             saveState={saveState}
+            retrySave={() => void retrySave()}
             startPrompt={startPrompt}
           />
         )}
@@ -347,6 +336,7 @@ function QuestioningResult({
   promptIndex,
   result,
   saveState,
+  retrySave,
   startPrompt
 }: {
   prompt: CaseQuestioningPrompt;
@@ -354,6 +344,7 @@ function QuestioningResult({
   promptIndex: number;
   result: CaseQuestioningScore;
   saveState: SaveState;
+  retrySave: () => void;
   startPrompt: (index: number) => void;
 }) {
   const { formatNumber, formatPercent, t } = useI18n();
@@ -456,6 +447,7 @@ function QuestioningResult({
       </div>
 
       <div className="flex flex-wrap gap-3">
+        {saveState === "error" ? <button className={buttonClass("primary")} onClick={retrySave} type="button">{t("Retry Save")}</button> : null}
         <button className={buttonClass("secondary")} disabled={saveState === "saving"} onClick={() => startPrompt(promptIndex)} type="button">{t("Retry Case")}</button>
         <button className={buttonClass("primary")} disabled={saveState === "saving"} onClick={() => startPrompt((promptIndex + 1) % promptCount)} type="button">{t("Next Case")}</button>
       </div>
