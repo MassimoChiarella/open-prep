@@ -290,7 +290,9 @@ export function ActiveDrillSession({
           session: nextSession,
           question: queuedQuestion,
           rawInput: "",
-          timeTakenSeconds: queuedQuestion.id === question.id ? elapsedSeconds(questionStartedAt, Date.now()) : 0,
+          timeTakenSeconds: queuedQuestion.id === question.id
+            ? elapsedSeconds(questionStartedAt, Math.min(Date.now(), sessionStartedAtMs + (getTimeLimitSeconds(session.settings) ?? 0) * 1000))
+            : 0,
           timedOut: true
         });
         nextSession = submitted.session;
@@ -306,7 +308,8 @@ export function ActiveDrillSession({
       questionQueue,
       questionStartedAt,
       selectedUnit,
-      session
+      session,
+      sessionStartedAtMs
     ]
   );
 
@@ -321,7 +324,7 @@ export function ActiveDrillSession({
   }, [timerIsActive]);
 
   useEffect(() => {
-    if (!timerIsActive || !timer.isExpired || currentQuestion === undefined) {
+    if (!draftLoaded || !timerIsActive || !timer.isExpired || currentQuestion === undefined) {
       return;
     }
 
@@ -336,6 +339,7 @@ export function ActiveDrillSession({
     return () => window.clearTimeout(timeoutId);
   }, [
     currentQuestion,
+    draftLoaded,
     recordCurrentQuestionTimeout,
     recordSessionTimeout,
     session.settings.timeMode,
@@ -356,8 +360,16 @@ export function ActiveDrillSession({
       void loadInProgressDrillSession(storage, draftKey)
         .then((draft) => {
           if (!cancelled && draft !== undefined && sessionRef.current.responses.length === 0) {
-            setSession(draft.session);
+            setSession(isDrillSessionComplete(draft.session)
+              ? completeDrillSession({
+                  session: draft.session,
+                  questions: draft.questions,
+                  endedAt: draft.session.responses.at(-1)?.submittedAt
+                })
+              : draft.session);
             setQuestionQueue(draft.questions);
+            setQuestionStartedAt(Number.isFinite(draft.questionStartedAtMs) ? draft.questionStartedAtMs! : Date.now());
+            setNowMs(Date.now());
           }
         })
         .catch(() => undefined)
@@ -377,7 +389,7 @@ export function ActiveDrillSession({
   }, [draftKey, storageFactory]);
 
   useEffect(() => {
-    if (!draftLoaded || session.score !== undefined || session.responses.length === 0) {
+    if (!draftLoaded || session.score !== undefined) {
       return;
     }
 
@@ -386,13 +398,19 @@ export function ActiveDrillSession({
         const storage = storageFactory();
 
         try {
-          await persistInProgressDrillSession({ draftKey, questions: questionQueue, session, storage });
+          await persistInProgressDrillSession({
+            draftKey,
+            ...(feedback?.recorded === true ? {} : { questionStartedAtMs: questionStartedAt }),
+            questions: questionQueue,
+            session,
+            storage
+          });
         } finally {
           storage.close();
         }
       })
       .catch(() => undefined);
-  }, [draftKey, draftLoaded, questionQueue, session, storageFactory]);
+  }, [draftKey, draftLoaded, feedback?.recorded, questionStartedAt, questionQueue, session, storageFactory]);
 
   useEffect(() => {
     if (completedSession?.score === undefined || completedSummary === undefined) {
@@ -502,7 +520,7 @@ export function ActiveDrillSession({
       return;
     }
 
-    const timeTakenSeconds = submissionTimer.elapsedSeconds;
+    const timeTakenSeconds = elapsedSeconds(questionStartedAt, submittedAtMs);
     const interviewMath = isInterviewMathQuestion(currentQuestion, interviewMathMode)
       ? createInterviewMathSubmission(equationOptionId, interpretationOptionId, session.settings)
       : undefined;
@@ -568,7 +586,7 @@ export function ActiveDrillSession({
       question: currentQuestion,
       rawInput: "",
       selectedUnit: submittedUnit,
-      timeTakenSeconds: skipTimer.elapsedSeconds
+      timeTakenSeconds: elapsedSeconds(questionStartedAt, skippedAtMs)
     });
 
     recordSubmission(submitted, currentQuestion, "", submittedUnit);

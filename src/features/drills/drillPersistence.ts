@@ -21,6 +21,7 @@ export interface PersistCompletedDrillSessionOptions {
 
 export interface PersistInProgressDrillSessionOptions {
   draftKey: string;
+  questionStartedAtMs?: number;
   questions: readonly Question[];
   session: DrillSession;
   storage: AppStorage;
@@ -38,7 +39,7 @@ export function buildDrillDraftKey(
 export async function loadInProgressDrillSession(
   storage: AppStorage,
   draftKey: string
-): Promise<{ questions: Question[]; session: DrillSession } | undefined> {
+): Promise<{ questions: Question[]; session: DrillSession; questionStartedAtMs?: number } | undefined> {
   const draft = (await storage.getAll("drill_sessions"))
     .sort(sortStoredSessionsDescending)
     .find(
@@ -54,6 +55,9 @@ export async function loadInProgressDrillSession(
   }
 
   return {
+    ...(draft.activeQuestionStartedAt === undefined ? {} : {
+      questionStartedAtMs: Date.parse(draft.activeQuestionStartedAt)
+    }),
     questions: draft.questions,
     session: {
       id: draft.id,
@@ -77,6 +81,9 @@ export async function persistInProgressDrillSession(
   await options.storage.put("drill_sessions", {
     ...options.session,
     draftKey: options.draftKey,
+    ...(options.questionStartedAtMs === undefined ? {} : {
+      activeQuestionStartedAt: new Date(options.questionStartedAtMs).toISOString()
+    }),
     questions: options.questions.map((question) => ({ ...question })),
     updatedAt: options.updatedAt ?? new Date().toISOString()
   });
@@ -84,6 +91,10 @@ export async function persistInProgressDrillSession(
 
 export async function persistCompletedDrillSession(options: PersistCompletedDrillSessionOptions): Promise<void> {
   assertCompletedSessionReferences(options.session, options.questions);
+
+  // The completion transaction includes responses and review bookkeeping. A later
+  // benchmark/summary failure may retry saving, but must not advance reviews twice.
+  if ((await options.storage.get("drill_sessions", options.session.id))?.score !== undefined) return;
 
   const persistedAt = options.updatedAt ?? new Date().toISOString();
   const storedSession = createStoredDrillSession(options.session, options.questions, persistedAt);

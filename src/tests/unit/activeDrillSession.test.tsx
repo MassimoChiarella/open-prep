@@ -90,7 +90,7 @@ describe("ActiveDrillSession", () => {
     expect(screen.queryByText("Timed out")).not.toBeInTheDocument();
   });
 
-  it("accepts the final second but rejects an answer at the exact deadline", () => {
+  it("accepts the final second but rejects an answer at the exact deadline", async () => {
     vi.useFakeTimers();
     const startedAt = new Date("2026-06-02T00:00:00.000Z");
     vi.setSystemTime(startedAt);
@@ -145,6 +145,8 @@ describe("ActiveDrillSession", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Submit" }));
     act(() => vi.advanceTimersByTime(0));
+    await act(async () => {});
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
 
     expect(screen.getByTestId("active-feedback-panel")).toHaveTextContent("Timeout");
     expect(screen.getByTestId("active-feedback-panel")).not.toHaveTextContent("Correct.");

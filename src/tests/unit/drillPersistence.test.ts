@@ -22,6 +22,21 @@ import type { MistakeNotebookRecord } from "@/lib/storage/appStorageTypes";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("drill persistence", () => {
+  it("does not advance review bookkeeping twice when a completed save is retried", async () => {
+    const storage = new MemoryAppStorage();
+    const completed = createCompletedSession("idempotent", undefined, undefined, "0");
+    const mistake = createStoredMistakeNotebookRecords(completed.session, completed.questions)[0];
+    await storage.put("mistake_notebook", mistake);
+    await storage.put("retry_schedules", createRetryScheduleRecord(mistake));
+    const retry = createRetryCompletedSession(mistake, "0");
+    await persistCompletedDrillSession({ ...retry, storage });
+    const once = await storage.getAll("retry_schedules");
+    await persistCompletedDrillSession({ ...retry, storage });
+    expect((await storage.get("mistake_notebook", mistake.id))?.retryCount).toBe(1);
+    expect(await storage.getAll("retry_schedules")).toEqual(once);
+    expect(await storage.getAll("responses")).toHaveLength(1);
+  });
+
   it("restores only the matching in-progress drill draft", async () => {
     const storage = new MemoryAppStorage();
     const created = createDrillSession({

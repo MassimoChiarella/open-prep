@@ -15,7 +15,7 @@ Independent implementation can run in parallel. Each completed batch is reviewed
 | 03 | Fit Story editing, save consistency, rehearsal timing | Complete |
 | 04 | Numeric parser, units, formula grammar and precedence | Complete |
 | 05 | Offline upgrade readiness and complete asset precaching | Pending |
-| 06 | Drill completion recovery, per-answer timing and resumed deadlines | Pending |
+| 06 | Drill completion recovery, per-answer timing and resumed deadlines | Complete |
 | 07 | Exhibit evidence, answer precision, scoring and stale-save protection | Pending |
 | 08 | Question generation, content units, formula links and ROI wording | Pending |
 | 09 | Recoverable large backups, pack-version drafts and storage failure recovery | Pending |
@@ -133,4 +133,5 @@ All 30 BUG IDs and six IMP IDs must have an implemented outcome and verification
 
 | Fit practice | BUG-04, BUG-12, BUG-17: stable fields, protected pending saves, elapsed-time rehearsal clock | 23 focused Fit tests passed; root diff review | `12750ef` |
 | Numeric contracts | BUG-14, BUG-21, BUG-22, BUG-28: currency scale metadata, locale grouping, operator grammar and precedence | 109 focused tests and strict TypeScript passed; root diff review | `f4cdb9a` |
-| Local data safety | BUG-01, BUG-02, BUG-09, BUG-10, BUG-27 plus adapter recovery: stale read guards, private preservation, atomic resets, invalidation and fresh inventories | 55 focused tests and strict TypeScript passed; root diff review | `fix: protect local data during import and reset` |
+| Local data safety | BUG-01, BUG-02, BUG-09, BUG-10, BUG-27 plus adapter recovery: stale read guards, private preservation, atomic resets, invalidation and fresh inventories | 55 focused tests and strict TypeScript passed; root diff review | `207916c` |
+| Drill recovery | BUG-05, BUG-13, BUG-16: recover final answers, preserve active deadlines, separate solve times, make completion retries idempotent | 40 focused tests passed, including clock jumps, final-answer reload and repeated review persistence | `fix: recover drills and preserve answer timing` |

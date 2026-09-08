@@ -12,7 +12,7 @@ Repair from the top of the table. P1 means an urgent data-loss, broken-workflow,
 | BUG-02 | P1 | Standard export/import deletes private records excluded from the export | Fixed (step 02) |
 | BUG-03 | P1 | Applying an update can break offline reopening | Open |
 | BUG-04 | P1 | Fit Story textareas lose focus after every character | Fixed (step 03) |
-| BUG-05 | P1 | Reloading after the final answer strands a completed drill | Open |
+| BUG-05 | P1 | Reloading after the final answer strands a completed drill | Fixed (step 06) |
 | BUG-06 | P1 | Nine built-in exhibit questions hide required input figures | Open |
 | BUG-07 | P1 | Decimal multiplication rejects both the exact answer and its explanation | Open |
 | BUG-08 | P1 | A built-in four-percentage-point gap is graded as 0.04 and displayed as zero | Open |
@@ -20,10 +20,10 @@ Repair from the top of the table. P1 means an urgent data-loss, broken-workflow,
 | BUG-10 | P2 | Reset and restore leave stale views able to resurrect or overwrite records | Fixed (step 02) |
 | BUG-11 | P2 | Growing practice history exceeds the app's own backup/import limits | Open |
 | BUG-12 | P2 | A completed Fit save discards newer edits | Fixed (step 03) |
-| BUG-13 | P2 | Session timers inflate per-question times and distort benchmark scoring | Open |
+| BUG-13 | P2 | Session timers inflate per-question times and distort benchmark scoring | Fixed (step 06) |
 | BUG-14 | P2 | Interview Math rejects the monetary scale syntax its prompt requests | Fixed (step 04) |
 | BUG-15 | P2 | Exact imported exhibits hide precision and reject the displayed answer | Open |
-| BUG-16 | P2 | Reloading a drill resets its per-question time allowance | Open |
+| BUG-16 | P2 | Reloading a drill resets its per-question time allowance | Fixed (step 06) |
 | BUG-17 | P2 | Fit rehearsal timers undercount time during throttling or sleep | Fixed (step 03) |
 | BUG-18 | P2 | Direct pack practice resumes questions from an obsolete pack version | Open |
 | BUG-19 | P2 | Mixed Daily Workouts record beginner work as expert personal bests | Open |
