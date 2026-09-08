@@ -46,4 +46,24 @@ export interface FitStoryRecord {
   updatedAt: string;
 }
 
-export type PracticeRecord = FitStoryRecord | PracticeAttemptRecord | PrepProfileRecord;
+export interface FullCaseDraftRecord {
+  id: string;
+  kind: "full_case_draft";
+  simulationId: string;
+  contentKey: string;
+  updatedAt: string;
+  startedAt: string;
+  completedAt?: string;
+  locale: string;
+  stage: number;
+  questions: Array<{ id: string; text: string }>;
+  includeQuestionRanking: boolean;
+  hypothesisId: string;
+  branchIds: string[];
+  calculationInput: string;
+  ideaIds: string[];
+  priorityIdeaIds: string[];
+  synthesis: Partial<import("@/features/case-practice/synthesis/synthesisScoring").SynthesisResponse>;
+}
+
+export type PracticeRecord = FitStoryRecord | PracticeAttemptRecord | PrepProfileRecord | FullCaseDraftRecord;

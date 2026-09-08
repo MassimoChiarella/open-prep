@@ -99,4 +99,16 @@ describe("IndexedDB connection recovery", () => {
     expect(database.transaction).not.toHaveBeenCalled();
     storage.close();
   });
+
+  it("does not resurrect a pending write after its owning view closes the connection", async () => {
+    const { factory, requests } = openHarness();
+    const storage = createIndexedDbAppStorage({ indexedDB: factory });
+    const pending = storage.put("responses", { id: "old-response" } as never);
+    const rejected = expect(pending).rejects.toThrow("Storage connection is closed");
+    storage.close();
+    const database = databaseStub();
+    succeed(requests[0], database);
+    await rejected;
+    expect(database.transaction).not.toHaveBeenCalled();
+  });
 });

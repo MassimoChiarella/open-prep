@@ -87,6 +87,7 @@ describe("personal data clear", () => {
     const result = await clearPersonalData(storage);
 
     expect(preview).toEqual({
+      fullCaseDrafts: 0,
       fitStories: 1,
       marketSizingNotes: 2,
       preparationProfiles: 1,
@@ -128,6 +129,7 @@ describe("personal data clear", () => {
     const storage = new TrackingStorage();
 
     expect(await previewPersonalDataClear(storage)).toEqual({
+      fullCaseDrafts: 0,
       fitStories: 0,
       marketSizingNotes: 0,
       preparationProfiles: 0,
@@ -141,6 +143,7 @@ describe("personal data clear", () => {
     });
 
     expect(await clearPersonalData(storage)).toEqual({
+      fullCaseDrafts: 0,
       fitStories: 0,
       marketSizingNotes: 1,
       preparationProfiles: 0,
@@ -159,6 +162,7 @@ describe("personal data clear", () => {
     const result = await clearPersonalData(storage);
 
     expect(result).toEqual({
+      fullCaseDrafts: 0,
       fitStories: 0,
       marketSizingNotes: 0,
       preparationProfiles: 0,

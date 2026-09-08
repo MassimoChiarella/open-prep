@@ -1,12 +1,17 @@
-import { preservePrivateData, privatePreservationStoreNames } from "@/features/settings/privateDataPreservation";
+import { isPrivatePracticeRecord, preservePrivateData, privatePreservationStoreNames } from "@/features/settings/privateDataPreservation";
 import {
   createCompleteBackup,
   serializeCompleteBackup,
-  validateCompleteBackupPayload,
+  type CompleteBackupSections,
   type CompleteBackupCreationOptions,
   type CompleteBackupPreferences,
   type CompleteBackupV1
 } from "@/features/settings/completeBackup";
+import {
+  createCompleteBackupSet,
+  validateCompleteBackupSet,
+  type CompleteBackupFile
+} from "@/features/settings/completeBackupSet";
 import { completeBackupStoreNames, localPreferenceKeys } from "@/features/settings/localDataInventory";
 import { publishLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import {
@@ -27,10 +32,11 @@ export interface CompleteBackupStorageCreationOptions extends Omit<CompleteBacku
 export interface CompleteBackupRestoreOptions {
   preferenceStorage?: PreferenceWriter;
   sourceBytes?: number;
+  sourceSizes?: readonly number[];
 }
 
 export interface CompleteBackupRestoreResult {
-  backup: CompleteBackupV1;
+  backup: Pick<CompleteBackupV1, "exportedAt" | "selectedScopes" | "sections">;
   preferences: {
     failedKeys: string[];
     status: "not_selected" | "partial" | "restored";
@@ -46,8 +52,6 @@ export interface CompleteBackupSummary {
   schemaVersion: number;
 }
 
-
-
 export async function createCompleteBackupFromStorage(
   storage: AppStorage,
   options: CompleteBackupStorageCreationOptions = {}
@@ -62,18 +66,57 @@ export async function createCompleteBackupFromStorage(
   });
 }
 
+export async function createCompleteBackupFilesFromStorage(
+  storage: AppStorage,
+  options: CompleteBackupStorageCreationOptions = {}
+): Promise<CompleteBackupFile[]> {
+  const { preferenceStorage = getLocalStorage(), ...creationOptions } = options;
+  const snapshot = await storage.getSnapshot(completeBackupStoreNames);
+  return createCompleteBackupSet(snapshot, {
+    ...creationOptions,
+    ...(creationOptions.selectedOptionalScopes?.includes("preferences")
+      ? { preferences: readPreferences(preferenceStorage) }
+      : {})
+  });
+}
+
 export async function restoreCompleteBackup(
   storage: AppStorage,
   payload: unknown,
   options: CompleteBackupRestoreOptions = {}
 ): Promise<CompleteBackupRestoreResult> {
-  const validation = await validateCompleteBackupPayload(payload, { sourceBytes: options.sourceBytes });
+  return restoreCompleteBackupFiles(storage, [payload], {
+    ...options,
+    ...(options.sourceBytes === undefined ? {} : { sourceSizes: [options.sourceBytes] })
+  });
+}
+
+export async function restoreCompleteBackupFiles(
+  storage: AppStorage,
+  payloads: readonly unknown[],
+  options: CompleteBackupRestoreOptions = {}
+): Promise<CompleteBackupRestoreResult> {
+  const validation = await validateCompleteBackupSet(payloads, options.sourceSizes);
 
   if (validation.status === "invalid") {
     throw new Error(validation.errors[0] ?? "Complete backup is invalid.");
   }
 
-  const backup = structuredClone(validation.backup);
+  const first = validation.backups[0];
+  const sections: CompleteBackupSections = {
+    ...first.sections,
+    progress: {
+      ...first.sections.progress,
+      stores: Object.fromEntries(progressStoreNames.map((storeName) => [
+        storeName,
+        validation.backups.flatMap((part) => part.sections.progress.stores[storeName] as unknown[])
+      ])) as CompleteBackupSections["progress"]["stores"]
+    },
+    ...(first.selectedScopes.includes("packs")
+      ? { packs: validation.backups.flatMap((part) => part.sections.packs ?? []) }
+      : {})
+  };
+  const backup = { exportedAt: first.exportedAt, selectedScopes: first.selectedScopes, sections };
   const includesPrivateText = backup.selectedScopes.includes("private_text");
   const existingPrivateData = includesPrivateText
     ? undefined
@@ -120,7 +163,7 @@ export function createCompleteBackupSummary(
     packCount: backup.sections.packs?.length ?? 0,
     preferencesIncluded: backup.selectedScopes.includes("preferences"),
     privateEntryCount: backup.selectedScopes.includes("private_text")
-      ? progress.practice_records.filter((record) => record.kind === "fit_story" || record.kind === "prep_profile").length +
+      ? progress.practice_records.filter((record) => isPrivatePracticeRecord(record)).length +
         progress.market_sizing_attempts.filter((record) => Object.hasOwn(record, "note")).length
       : 0,
     progressRecordCount: progressStoreNames.reduce((total, storeName) => total + progress[storeName].length, 0),
@@ -142,7 +185,6 @@ function appendReplacement<TStore extends AppStoreName>(
     operations.push({ storeName, type: "put", value } as AppStorageMutation);
   }
 }
-
 
 function readPreferences(storage: PreferenceReader | undefined): Partial<Record<keyof CompleteBackupPreferences, unknown>> {
   return Object.fromEntries(localPreferenceKeys.map((key) => [key, storage?.getItem(key)]));

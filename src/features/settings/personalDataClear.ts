@@ -1,3 +1,4 @@
+import { isPrivatePracticeRecord } from "@/features/settings/privateDataPreservation";
 import {
   type AppStorage,
   type AppStorageMutation,
@@ -8,6 +9,7 @@ const personalDataStoreNames = ["practice_records", "market_sizing_attempts"] as
 
 export interface PersonalDataClearPreview {
   fitStories: number;
+  fullCaseDrafts: number;
   marketSizingNotes: number;
   preparationProfiles: number;
   totalItems: number;
@@ -27,7 +29,7 @@ export async function clearPersonalData(
   const operations: AppStorageMutation[] = [];
 
   for (const record of snapshot.practice_records) {
-    if (record.kind === "fit_story" || record.kind === "prep_profile") {
+    if (isPrivatePracticeRecord(record)) {
       operations.push({ key: record.id, storeName: "practice_records", type: "delete" });
     }
   }
@@ -46,6 +48,7 @@ export async function clearPersonalData(
 export function countPersonalData(
   snapshot: AppStorageSnapshot<typeof personalDataStoreNames>
 ): PersonalDataClearPreview {
+  const fullCaseDrafts = snapshot.practice_records.filter((record) => record.kind === "full_case_draft").length;
   const fitStories = snapshot.practice_records.filter((record) => record.kind === "fit_story").length;
   const preparationProfiles = snapshot.practice_records.filter(
     (record) => record.kind === "prep_profile"
@@ -56,8 +59,9 @@ export function countPersonalData(
 
   return {
     fitStories,
+    fullCaseDrafts,
     marketSizingNotes,
     preparationProfiles,
-    totalItems: fitStories + preparationProfiles + marketSizingNotes
+    totalItems: fitStories + fullCaseDrafts + preparationProfiles + marketSizingNotes
   };
 }

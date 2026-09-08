@@ -298,6 +298,7 @@ export function createWholeProductActivityAccumulator(
       return;
     }
 
+    if (record.kind !== "attempt") return;
     const details = caseModuleDetails[record.module];
     const timestamp = normalizeTimestamp(record.completedAt);
     if (details === undefined || timestamp === undefined) return;

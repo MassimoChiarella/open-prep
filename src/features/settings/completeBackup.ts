@@ -1,3 +1,4 @@
+import { isPrivatePracticeRecord } from "@/features/settings/privateDataPreservation";
 import { isLocalePreference, localePreferenceStorageKey, type LocalePreference } from "@/features/i18n/i18n";
 import { validateQuestionPackPayload } from "@/features/question-packs/questionPack";
 import {
@@ -234,7 +235,7 @@ function createProgressSection(
 
   if (!includePrivateText) {
     stores.practice_records = stores.practice_records.filter(
-      (record) => record.kind !== "fit_story" && record.kind !== "prep_profile"
+      (record) => !isPrivatePracticeRecord(record)
     );
     stores.market_sizing_attempts = stores.market_sizing_attempts.map(({ note: _note, ...record }) => record);
   }
@@ -390,8 +391,8 @@ function validateProgressSection(
     addError('Complete backup progress privacyScope must match the "private_text" selection.');
   }
   if (!includesPrivateText) {
-    if (progress.stores.practice_records.some((record) => record.kind === "fit_story" || record.kind === "prep_profile")) {
-      addError("Complete backup without private text must not contain Fit stories or a preparation profile.");
+    if (progress.stores.practice_records.some((record) => isPrivatePracticeRecord(record))) {
+      addError("Complete backup without private text must not contain private practice records.");
     }
     if (progress.stores.market_sizing_attempts.some((record) => hasOwn(record, "note"))) {
       addError("Complete backup without private text must not contain market-sizing notes.");

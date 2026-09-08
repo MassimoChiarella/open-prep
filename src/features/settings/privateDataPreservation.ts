@@ -12,7 +12,7 @@ export function preservePrivateData(
 ): LocalProgressExportStores {
   const practiceRecords = new Map(imported.practice_records.map((record) => [record.id, record]));
   for (const record of existing.practice_records) {
-    if (record.kind === "fit_story" || record.kind === "prep_profile") practiceRecords.set(record.id, record);
+    if (isPrivatePracticeRecord(record)) practiceRecords.set(record.id, record);
   }
 
   const marketSizingAttempts = new Map(imported.market_sizing_attempts.map((record) => [record.id, record]));
@@ -29,3 +29,7 @@ export function preservePrivateData(
   };
 }
 
+
+export function isPrivatePracticeRecord(record: { kind: string }): boolean {
+  return ["fit_story", "prep_profile", "full_case_draft"].includes(record.kind);
+}

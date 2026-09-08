@@ -3,7 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDrillSettings } from "@/features/drills/drillSettings";
 import { localePreferenceStorageKey } from "@/features/i18n/i18n";
-import { createCompleteBackupFromStorage } from "@/features/settings/completeBackupStorage";
+import { createCompleteBackupFromStorage, createCompleteBackupFilesFromStorage } from "@/features/settings/completeBackupStorage";
+import { serializeCompleteBackupFile } from "@/features/settings/completeBackupSet";
 import { createLocalProgressExport, serializeLocalProgressExport } from "@/features/settings/localProgressExport";
 import { createUserSettingsRecord } from "@/features/settings/settingsPersistence";
 import { LocalSettingsView } from "@/features/settings/LocalSettingsView";
@@ -95,7 +96,7 @@ describe("LocalSettingsView", () => {
     );
 
     expect(localData).toHaveTextContent(
-      "Private stories, preparation profiles, notes, preferences, and installed packs are excluded."
+      "Private stories, preparation profiles, full-case drafts, notes, preferences, and installed packs are excluded."
     );
     expect(within(localData).getByRole("heading", { name: "Complete Backup" })).toBeInTheDocument();
     expect(importConfirmation).toBeDisabled();
@@ -218,7 +219,7 @@ describe("LocalSettingsView", () => {
 
     render(<LocalSettingsView storageFactory={() => storage} />);
     const localData = openDisclosure("settings-local-data");
-    fireEvent.click(within(localData).getByLabelText("Include private stories, preparation profile, and notes"));
+    fireEvent.click(within(localData).getByLabelText("Include private stories, preparation profile, full-case drafts, and notes"));
     fireEvent.click(within(localData).getByLabelText("Include installed content packs"));
     fireEvent.click(within(localData).getByLabelText("Include locale, theme, timing, and question-pool preferences"));
     fireEvent.click(within(localData).getByRole("button", { name: "Prepare Complete Backup" }));
@@ -336,7 +337,7 @@ describe("LocalSettingsView", () => {
     let release!: () => void;
     const gate = new Promise<void>((resolve) => { release = resolve; });
     vi.spyOn(storage, "getSnapshot").mockImplementation(async (stores) => { await gate; return original(stores); });
-    const scope = within(localData).getByLabelText("Include private stories, preparation profile, and notes");
+    const scope = within(localData).getByLabelText("Include private stories, preparation profile, full-case drafts, and notes");
     fireEvent.click(scope);
     fireEvent.click(within(localData).getByRole("button", { name: "Prepare Complete Backup" }));
     fireEvent.click(scope);
@@ -358,6 +359,46 @@ describe("LocalSettingsView", () => {
     expect(await within(localData).findByText("Incompatible or invalid backup")).toBeInTheDocument();
     expect(localData).toHaveTextContent("Complete backup must contain valid JSON.");
     expect(within(localData).queryByRole("button", { name: "Restore Selected Sections" })).not.toBeInTheDocument();
+  });
+
+  it("downloads numbered parts explicitly and requires the complete set before restoring", async () => {
+    const source = new MemoryAppStorage();
+    for (let index = 0; index < 5_001; index += 1) {
+      await source.put("responses", {
+        id: `r-${index}`, sessionId: "s-1", questionId: `q-${index}`, rawInput: "1", isCorrect: true,
+        errorTypes: ["none"], timeTakenSeconds: 1, submittedAt: "2026-09-07T12:00:00.000Z"
+      });
+    }
+    const sourceView = render(<LocalSettingsView storageFactory={() => source} />);
+    openDisclosure("settings-local-data");
+    fireEvent.click(screen.getByRole("button", { name: "Prepare Complete Backup" }));
+    const firstDownload = await screen.findByRole("button", { name: "Download Part 1 of 2" });
+    expect(firstDownload).toBeDisabled();
+    fireEvent.click(screen.getByLabelText("I understand this download contains the selected cleartext data."));
+    fireEvent.click(firstDownload);
+    expect(screen.queryByText("Complete backup downloaded.")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Download Part 2 of 2" }));
+    expect(await screen.findByText("Complete backup downloaded.")).toBeInTheDocument();
+    expect(HTMLAnchorElement.prototype.click).toHaveBeenCalledTimes(2);
+    sourceView.unmount();
+
+    const files = (await createCompleteBackupFilesFromStorage(source)).map((file, index) =>
+      testFile(serializeCompleteBackupFile(file), `part-${index + 1}.json`));
+    const target = new MemoryAppStorage();
+    render(<LocalSettingsView storageFactory={() => target} />);
+    openDisclosure("settings-local-data");
+    const input = screen.getByLabelText("Choose a complete backup file");
+    expect(input).toHaveAttribute("multiple");
+    fireEvent.change(input, { target: { files: [files[0]] } });
+    expect(await screen.findByText("Select every numbered part from the same backup set exactly once.")).toBeInTheDocument();
+    expect(await target.count("responses")).toBe(0);
+    fireEvent.change(input, { target: { files: files.reverse() } });
+    const preview = await screen.findByTestId("complete-backup-restore-preview");
+    expect(preview).toHaveTextContent("5,001 records");
+    fireEvent.click(within(preview).getByLabelText("I understand the selected sections will be replaced on this device."));
+    fireEvent.click(within(preview).getByRole("button", { name: "Restore Selected Sections" }));
+    await screen.findByText("Complete backup restored.");
+    expect(await target.count("responses")).toBe(5_001);
   });
 });
 

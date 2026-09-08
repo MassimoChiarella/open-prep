@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type ChangeEvent, useEffect, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { LocalSaveNotice } from "@/components/LocalSaveNotice";
 import { PageHeader } from "@/components/PageHeader";
@@ -11,15 +11,17 @@ import { useI18n } from "@/features/i18n/I18nProvider";
 import { QuestionPackPoolSettings } from "@/features/question-packs/QuestionPackPoolSettings";
 import { questionPackPoolPreferenceStorageKey } from "@/features/question-packs/questionPackPoolPreference";
 import {
-  serializeCompleteBackup,
-  validateCompleteBackupPayload,
-  type CompleteBackupV1
-} from "@/features/settings/completeBackup";
+  backupFromFile,
+  buildCompleteBackupPartFileName,
+  completeBackupSetLimits,
+  serializeCompleteBackupFile,
+  validateCompleteBackupSet,
+  type CompleteBackupFile
+} from "@/features/settings/completeBackupSet";
 import {
-  buildCompleteBackupFileName,
-  createCompleteBackupFromStorage,
+  createCompleteBackupFilesFromStorage,
   createCompleteBackupSummary,
-  restoreCompleteBackup,
+  restoreCompleteBackupFiles,
   type CompleteBackupSummary
 } from "@/features/settings/completeBackupStorage";
 import {
@@ -73,8 +75,8 @@ type AllClearStatus = "cleared" | "clearing" | "error" | "loading" | "partial_in
 type ConnectionState = ReturnType<typeof getCurrentConnectionState>;
 
 interface PendingCompleteRestore {
-  backup: CompleteBackupV1;
-  sourceBytes: number;
+  files: CompleteBackupFile[];
+  sourceSizes: number[];
 }
 
 const settingsPanelClass =
@@ -121,7 +123,9 @@ export function LocalSettingsView({
   const [personalClearStatus, setPersonalClearStatus] = useState<PersonalClearStatus>("loading");
   const [persistenceStatus, setPersistenceStatus] = useState<PersistenceUiStatus>("checking");
   const [preferenceRestoreFailures, setPreferenceRestoreFailures] = useState<string[]>([]);
-  const [preparedCompleteBackup, setPreparedCompleteBackup] = useState<CompleteBackupV1>();
+  const [preparedCompleteBackup, setPreparedCompleteBackup] = useState<CompleteBackupFile[]>();
+  const [downloadedBackupParts, setDownloadedBackupParts] = useState<number[]>([]);
+  const [completeExportError, setCompleteExportError] = useState<string>();
   const [questionPackPoolOpened, setQuestionPackPoolOpened] = useState(false);
   const [questionPackPoolRevision, setQuestionPackPoolRevision] = useState(0);
   const [savedSettings, setSavedSettings] = useState<DrillSettings | undefined>();
@@ -257,6 +261,7 @@ export function LocalSettingsView({
     setPreparedCompleteBackup(undefined);
     setCompleteExportConfirmed(false);
     setCompleteExportStatus("idle");
+    setCompleteExportError(undefined);
     setInventoryRevision((current) => current + 1);
   }
 
@@ -325,38 +330,45 @@ export function LocalSettingsView({
     const request = ++preparationRequest.current;
     setCompleteExportConfirmed(false);
     setCompleteExportStatus("preparing");
+    setCompleteExportError(undefined);
+    setDownloadedBackupParts([]);
     setPreparedCompleteBackup(undefined);
     let storage: AppStorage | undefined;
 
     try {
       storage = storageFactory();
-      const backup = await createCompleteBackupFromStorage(storage, {
+      const backup = await createCompleteBackupFilesFromStorage(storage, {
         selectedOptionalScopes: selectedCompleteBackupScopes()
       });
       if (request !== preparationRequest.current) return;
       setPreparedCompleteBackup(backup);
       setCompleteExportStatus("prepared");
-    } catch {
-      if (request === preparationRequest.current) setCompleteExportStatus("error");
+    } catch (error) {
+      if (request === preparationRequest.current) {
+        setCompleteExportStatus("error");
+        setCompleteExportError(error instanceof Error ? error.message : undefined);
+      }
     } finally {
       storage?.close();
     }
   }
 
-  function handleDownloadCompleteBackup() {
+  function handleDownloadCompleteBackup(index: number) {
     if (preparedCompleteBackup === undefined || !completeExportConfirmed) return;
 
     downloadJson(
-      serializeCompleteBackup(preparedCompleteBackup),
-      buildCompleteBackupFileName(preparedCompleteBackup.exportedAt)
+      serializeCompleteBackupFile(preparedCompleteBackup[index]),
+      buildCompleteBackupPartFileName(preparedCompleteBackup[index])
     );
-    setCompleteExportStatus("downloaded");
+    const downloaded = [...new Set([...downloadedBackupParts, index])];
+    setDownloadedBackupParts(downloaded);
+    if (downloaded.length === preparedCompleteBackup.length) setCompleteExportStatus("downloaded");
   }
 
   async function handleCompleteBackupFile(event: ChangeEvent<HTMLInputElement>) {
     if (completeRestoreStatus === "restoring") return;
     const request = ++restoreRequest.current;
-    const file = event.currentTarget.files?.[0];
+    const files = Array.from(event.currentTarget.files ?? []);
 
     setCompleteRestoreConfirmed(false);
     setCompleteRestoreErrors([]);
@@ -364,19 +376,26 @@ export function LocalSettingsView({
     setPreferenceRestoreFailures([]);
     setCompleteRestoreStatus("idle");
 
-    if (file === undefined) {
+    if (files.length === 0) {
       setCompleteRestoreStatus("idle");
       return;
     }
-    if (file.size > completeBackupLimits.maxFileBytes) {
-      setCompleteRestoreErrors([`Complete backup must be ${completeBackupLimits.maxFileBytes} bytes or smaller.`]);
+    if (files.some((file) => file.size > completeBackupLimits.maxFileBytes) ||
+      files.length > completeBackupSetLimits.maxParts ||
+      files.reduce((bytes, file) => bytes + file.size, 0) > completeBackupSetLimits.maxBytes) {
+      setCompleteRestoreErrors(["Select at most 64 backup files, no larger than 40 MiB each or 128 MiB together."]);
       setCompleteRestoreStatus("invalid");
       return;
     }
 
     try {
-      const parsed: unknown = JSON.parse(await file.text());
-      const validation = await validateCompleteBackupPayload(parsed, { sourceBytes: file.size });
+      const parsed: unknown[] = [];
+      for (const file of files) {
+        parsed.push(JSON.parse(await file.text()));
+        if (request !== restoreRequest.current) return;
+      }
+      const sourceSizes = files.map((file) => file.size);
+      const validation = await validateCompleteBackupSet(parsed, sourceSizes);
       if (request !== restoreRequest.current) return;
 
       if (validation.status === "invalid") {
@@ -385,7 +404,7 @@ export function LocalSettingsView({
         return;
       }
 
-      setPendingCompleteRestore({ backup: validation.backup, sourceBytes: file.size });
+      setPendingCompleteRestore({ files: validation.files, sourceSizes });
       setCompleteRestoreStatus("ready");
     } catch {
       if (request !== restoreRequest.current) return;
@@ -403,8 +422,8 @@ export function LocalSettingsView({
 
     try {
       storage = storageFactory();
-      const result = await restoreCompleteBackup(storage, pendingCompleteRestore.backup, {
-        sourceBytes: pendingCompleteRestore.sourceBytes
+      const result = await restoreCompleteBackupFiles(storage, pendingCompleteRestore.files, {
+        sourceSizes: pendingCompleteRestore.sourceSizes
       });
       setSavedSettings(result.backup.sections.progress.stores.user_settings[0]?.settings);
       setCompleteRestoreConfirmed(false);
@@ -446,13 +465,13 @@ export function LocalSettingsView({
       const cleared = await clearPersonalData(storage);
       const delivery = publishLocalDataInvalidation("personal_data_cleared");
       setPersonalClearConfirmed(false);
-      setPersonalClearPreview({ fitStories: 0, marketSizingNotes: 0, preparationProfiles: 0, totalItems: 0 });
+      setPersonalClearPreview({ fitStories: 0, fullCaseDrafts: 0, marketSizingNotes: 0, preparationProfiles: 0, totalItems: 0 });
       setPersonalClearStatus(delivery === "unavailable" ? "partial" : "cleared");
       setAllClearPreview((current) => current === undefined ? current : {
         ...current,
         indexedDbRecords: Math.max(
           0,
-          current.indexedDbRecords - cleared.fitStories - cleared.preparationProfiles
+          current.indexedDbRecords - cleared.fitStories - cleared.fullCaseDrafts - cleared.preparationProfiles
         ),
         personalItems: 0
       });
@@ -483,7 +502,7 @@ export function LocalSettingsView({
         preferencesAvailable: true
       });
       setPersonalClearConfirmed(false);
-      setPersonalClearPreview({ fitStories: 0, marketSizingNotes: 0, preparationProfiles: 0, totalItems: 0 });
+      setPersonalClearPreview({ fitStories: 0, fullCaseDrafts: 0, marketSizingNotes: 0, preparationProfiles: 0, totalItems: 0 });
       setPersonalClearStatus("ready");
       setPreparedCompleteBackup(undefined);
       setQuestionPackPoolRevision((current) => current + 1);
@@ -571,12 +590,12 @@ export function LocalSettingsView({
     }
   }
 
-  const preparedBackupSummary = preparedCompleteBackup === undefined
+  const preparedBackupSummary = useMemo(() => preparedCompleteBackup === undefined
     ? undefined
-    : createCompleteBackupSummary(preparedCompleteBackup);
-  const restoreBackupSummary = pendingCompleteRestore === undefined
+    : summarizeBackupFiles(preparedCompleteBackup), [preparedCompleteBackup]);
+  const restoreBackupSummary = useMemo(() => pendingCompleteRestore === undefined
     ? undefined
-    : createCompleteBackupSummary(pendingCompleteRestore.backup, pendingCompleteRestore.sourceBytes);
+    : summarizeBackupFiles(pendingCompleteRestore.files, pendingCompleteRestore.sourceSizes), [pendingCompleteRestore]);
   const allClearHasData = allClearPreview !== undefined && (
     allClearPreview.indexedDbRecords > 0 ||
     allClearPreview.preferenceCount > 0 ||
@@ -688,7 +707,7 @@ export function LocalSettingsView({
             <div>
               <h3 className={uiSectionTitleClass} id="standard-progress-export-heading">{t("Standard Progress Export")}</h3>
               <p className="mt-1 text-sm leading-6 text-ink/65">
-                {t("Exports practice progress only. Private stories, preparation profiles, notes, preferences, and installed packs are excluded.")}
+                {t("Exports practice progress only. Private stories, preparation profiles, full-case drafts, notes, preferences, and installed packs are excluded.")}
               </p>
             </div>
             <button
@@ -712,7 +731,7 @@ export function LocalSettingsView({
             <div className="grid gap-2 sm:grid-cols-3">
               <BackupScopeCheckbox
                 checked={includeBackupPrivateText}
-                label="Include private stories, preparation profile, and notes"
+                label="Include private stories, preparation profile, full-case drafts, and notes"
                 onChange={(checked) => updateCompleteBackupScope(() => setIncludeBackupPrivateText(checked))}
               />
               <BackupScopeCheckbox
@@ -750,17 +769,22 @@ export function LocalSettingsView({
                   />
                   {t("I understand this download contains the selected cleartext data.")}
                 </label>
-                <button
+                {preparedCompleteBackup!.length > 1 ? <p className="text-sm leading-6 text-ink/75">{t("Download every numbered part. Select all parts together when restoring this backup.")}</p> : null}
+                {preparedCompleteBackup!.map((_, index) => <button
+                  key={index}
                   className="inline-flex min-h-11 w-fit items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-white transition hover:bg-teal disabled:cursor-not-allowed disabled:bg-ink/30"
                   disabled={!completeExportConfirmed}
-                  onClick={handleDownloadCompleteBackup}
+                  onClick={() => handleDownloadCompleteBackup(index)}
                   type="button"
                 >
-                  {t("Download Complete Backup")}
-                </button>
+                  {preparedCompleteBackup!.length === 1 ? t("Download Complete Backup") : t("Download Part {part} of {count}", { part: index + 1, count: preparedCompleteBackup!.length })}
+                  {downloadedBackupParts.includes(index) ? ` — ${t("Downloaded")}` : ""}
+                </button>)}
               </div>
             )}
             <CompleteExportStatusMessage status={completeExportStatus} />
+            {completeExportStatus === "error" && completeExportError !== undefined ? <p role="alert" className="text-sm text-ink">{t(completeExportError)}</p> : null}
+            <p className="text-sm leading-6 text-ink/65">{t("Large backups use numbered files. A complete set supports up to 64 files and 128 MiB.")}</p>
           </section>
 
           <section aria-labelledby="restore-complete-backup-heading" className="grid gap-4 border-t border-ink/10 pt-5">
@@ -776,10 +800,12 @@ export function LocalSettingsView({
                 accept="application/json,.json"
                 className={fileInputClass}
                 disabled={completeRestoreStatus === "restoring"}
+                multiple
                 onChange={(event) => void handleCompleteBackupFile(event)}
                 type="file"
               />
             </label>
+            <p className="text-sm leading-6 text-ink/65">{t("For a numbered backup, select every part together. Nothing is replaced until the entire set is valid.")}</p>
             {restoreBackupSummary === undefined ? null : (
               <div className="grid gap-4 border-s-2 border-coral bg-coral/5 px-3 py-3" data-testid="complete-backup-restore-preview">
                 <LocalSaveNotice
@@ -815,6 +841,7 @@ export function LocalSettingsView({
           </section>
 
           <section aria-labelledby="import-progress-heading" className="grid gap-3 border-t border-ink/10 pt-5">
+            <p className="text-sm leading-6 text-ink/65">{t("If Standard Progress Export exceeds its limits, use Complete Backup to export the full history in numbered files.")}</p>
             <label className="grid gap-2 text-sm font-semibold text-ink/75">
               <span className={uiSectionTitleClass} id="import-progress-heading">{t("Import Local Progress")}</span>
               <input
@@ -932,13 +959,14 @@ export function LocalSettingsView({
             <div>
               <h3 className={uiSectionTitleClass} id="personal-data-clear-heading">{t("Personal Data")}</h3>
               <p className="mt-1 text-sm leading-6 text-ink/65">
-                {t("This removes saved Fit/PEI stories, preparation profiles, and market-sizing note text. Practice attempts, scores, installed packs, and preferences remain.")}
+                {t("This removes saved Fit/PEI stories, preparation profiles, full-case drafts, and market-sizing note text. Practice attempts, scores, installed packs, and preferences remain.")}
               </p>
             </div>
             {personalClearPreview === undefined ? null : (
               <dl className="grid gap-3 sm:grid-cols-3">
                 <SettingsStat label={t("Fit stories")} value={formatNumber(personalClearPreview.fitStories)} />
                 <SettingsStat label={t("Preparation profiles")} value={formatNumber(personalClearPreview.preparationProfiles)} />
+                <SettingsStat label={t("Full-case drafts")} value={formatNumber(personalClearPreview.fullCaseDrafts)} />
                 <SettingsStat label={t("Saved notes")} value={formatNumber(personalClearPreview.marketSizingNotes)} />
               </dl>
             )}
@@ -1237,6 +1265,19 @@ const preferenceLabelByStorageKey: Readonly<Record<string, string>> = {
   [themePreferenceStorageKey]: "Theme",
   [timingAccommodationPreferenceKey]: "Timing"
 };
+
+function summarizeBackupFiles(files: CompleteBackupFile[], sizes?: number[]): CompleteBackupSummary {
+  const summaries = files.map((file, index) => createCompleteBackupSummary(
+    backupFromFile(file), sizes?.[index] ?? new TextEncoder().encode(serializeCompleteBackupFile(file)).byteLength
+  ));
+  return summaries.reduce((summary, part) => ({
+    ...summary,
+    fileBytes: summary.fileBytes + part.fileBytes,
+    packCount: summary.packCount + part.packCount,
+    privateEntryCount: summary.privateEntryCount + part.privateEntryCount,
+    progressRecordCount: summary.progressRecordCount + part.progressRecordCount
+  }), { ...summaries[0], fileBytes: 0, packCount: 0, privateEntryCount: 0, progressRecordCount: 0 });
+}
 
 function SettingsStat({ label, value }: { label: string; value: string }) {
   const { t } = useI18n();

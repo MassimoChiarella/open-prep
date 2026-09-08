@@ -11,6 +11,7 @@ import {
   type CreatedQuestionPackDrillSession
 } from "@/features/question-packs/questionPack";
 import type { Difficulty } from "@/lib/domain";
+import { buildQuestionPackPoolDraftScope } from "@/features/question-packs/questionPackPoolPreference";
 import type { AppStorage, QuestionPackRecord } from "@/lib/storage/appStorageTypes";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 
@@ -102,6 +103,7 @@ export function QuestionPackDrillSessionLoader({
     return (
       <div className="contents" dir="auto" lang={state.pack.catalogProvenance?.language}>
         <ActiveDrillSession
+          draftKeyScope={buildQuestionPackPoolDraftScope({ mode: "selected_only", selectedPackIds: [state.pack.id] }, [state.pack])}
           initialSession={state.created.session}
           interviewMathMode={interviewMathMode}
           questions={state.created.questions}

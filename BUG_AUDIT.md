@@ -18,14 +18,14 @@ Repair from the top of the table. P1 means an urgent data-loss, broken-workflow,
 | BUG-08 | P1 | A built-in four-percentage-point gap is graded as 0.04 and displayed as zero | Fixed (step 07) |
 | BUG-09 | P2 | Backup preparation can retain private text after the scope is unchecked | Fixed (step 02) |
 | BUG-10 | P2 | Reset and restore leave stale views able to resurrect or overwrite records | Fixed (step 02) |
-| BUG-11 | P2 | Growing practice history exceeds the app's own backup/import limits | Open |
+| BUG-11 | P2 | Growing practice history exceeds the app's own backup/import limits | Fixed (step 09) |
 | BUG-12 | P2 | A completed Fit save discards newer edits | Fixed (step 03) |
 | BUG-13 | P2 | Session timers inflate per-question times and distort benchmark scoring | Fixed (step 06) |
 | BUG-14 | P2 | Interview Math rejects the monetary scale syntax its prompt requests | Fixed (step 04) |
 | BUG-15 | P2 | Exact imported exhibits hide precision and reject the displayed answer | Fixed (step 07) |
 | BUG-16 | P2 | Reloading a drill resets its per-question time allowance | Fixed (step 06) |
 | BUG-17 | P2 | Fit rehearsal timers undercount time during throttling or sleep | Fixed (step 03) |
-| BUG-18 | P2 | Direct pack practice resumes questions from an obsolete pack version | Open |
+| BUG-18 | P2 | Direct pack practice resumes questions from an obsolete pack version | Fixed (step 09) |
 | BUG-19 | P2 | Mixed Daily Workouts record beginner work as expert personal bests | Open |
 | BUG-20 | P2 | Beginner percentage-point drills accept the wrong percentage unit | Fixed (step 08) |
 | BUG-21 | P2 | Hindi grouping and Arabic formatted negatives fail numeric parsing | Fixed (step 04) |

@@ -33,6 +33,7 @@ export function createIndexedDbAppStorage(options: IndexedDbAppStorageOptions = 
 class IndexedDbAppStorage implements AppStorage {
   private databasePromise: Promise<IDBDatabase> | undefined;
   private invalidated = false;
+  private closedForWrites = false;
   private readonly writes = new Set<IDBTransaction>();
   private readonly unsubscribe: () => void;
 
@@ -234,6 +235,7 @@ class IndexedDbAppStorage implements AppStorage {
   }
 
   close(): void {
+    this.closedForWrites = true;
     this.unsubscribe();
     if (this.databasePromise === undefined) {
       return;
@@ -291,6 +293,7 @@ class IndexedDbAppStorage implements AppStorage {
 
   private assertWritable(): void {
     if (this.invalidated) throw new Error("Local data changed. Reload before saving new work.");
+    if (this.closedForWrites) throw new Error("Storage connection is closed. Open a new connection before saving.");
   }
 
   private trackWrite(transaction: IDBTransaction): void {

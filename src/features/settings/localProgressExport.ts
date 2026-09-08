@@ -1,5 +1,6 @@
-import { preservePrivateData, privatePreservationStoreNames } from "@/features/settings/privateDataPreservation";
+import { isPrivatePracticeRecord, preservePrivateData, privatePreservationStoreNames } from "@/features/settings/privateDataPreservation";
 import { publishLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
+import { isFullCaseDraftRecord } from "@/features/case-practice/simulation/fullCaseDraft";
 import {
   appDatabaseName,
   progressStoreNames,
@@ -67,18 +68,25 @@ export async function createLocalProgressExport(
 
   if (privacyScope === "standard") {
     stores.practice_records = stores.practice_records.filter(
-      (record) => record.kind !== "fit_story" && record.kind !== "prep_profile"
+      (record) => !isPrivatePracticeRecord(record)
     );
     stores.market_sizing_attempts = stores.market_sizing_attempts.map(({ note: _note, ...record }) => record);
   }
 
-  return {
+  const exported: LocalProgressExportV1 = {
     app: localProgressExportAppId,
     exportedAt,
     privacyScope,
     schemaVersion: localProgressExportSchemaVersion,
     stores
   };
+  const validation = validateLocalProgressImportPayload(exported, {
+    sourceBytes: new TextEncoder().encode(serializeLocalProgressExport(exported)).byteLength
+  });
+  if (validation.status === "invalid") {
+    throw new Error("Standard export exceeds its limits or contains invalid records. Use Complete Backup for larger histories.");
+  }
+  return exported;
 }
 
 export async function replaceLocalProgressWithImport(
@@ -423,6 +431,8 @@ function isPracticeRecord(value: Record<string, unknown>): boolean {
   if (!isNonEmptyString(value.id)) {
     return false;
   }
+
+  if (value.kind === "full_case_draft") return isFullCaseDraftRecord(value);
 
   if (value.kind === "attempt") {
     return isOneOf(value.module, practiceModules) && isNonEmptyString(value.itemId) &&
