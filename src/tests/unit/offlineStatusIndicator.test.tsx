@@ -6,6 +6,7 @@ import {
   getCurrentConnectionState,
   hasControllingServiceWorker,
   OfflineStatusIndicator,
+  serviceWorkerRetryEventName,
   serviceWorkerStatusEventName,
   verifyOriginReachability
 } from "@/features/offline/OfflineStatusIndicator";
@@ -108,6 +109,20 @@ describe("OfflineStatusIndicator", () => {
     fireEvent(window, new CustomEvent(serviceWorkerStatusEventName, { detail: "update-ready" }));
     expect(screen.getByRole("status")).toHaveTextContent("Update ready");
     expect(screen.getByRole("status")).toHaveAccessibleName(/close every app tab/i);
+  });
+
+  it("offers a retry after an update failure", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
+    const retry = vi.fn();
+    window.addEventListener(serviceWorkerRetryEventName, retry);
+    render(<I18nProvider><OfflineStatusIndicator /></I18nProvider>);
+    await waitFor(() => expect(screen.getByRole("status")).toHaveTextContent("Online"));
+
+    fireEvent(window, new CustomEvent(serviceWorkerStatusEventName, { detail: "update-failed" }));
+    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+
+    expect(retry).toHaveBeenCalledOnce();
+    window.removeEventListener(serviceWorkerRetryEventName, retry);
   });
 });
 

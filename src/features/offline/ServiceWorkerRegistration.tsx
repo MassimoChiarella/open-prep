@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 
 import {
+  serviceWorkerRetryEventName,
   serviceWorkerStatusEventName,
   type ServiceWorkerUpdateState
 } from "@/features/offline/OfflineStatusIndicator";
@@ -31,18 +32,27 @@ export function ServiceWorkerRegistration() {
       installing?.addEventListener("statechange", handleWorkerStateChange);
     };
 
-    void navigator.serviceWorker.register("/sw.js", { scope: "/" }).then((registered) => {
-      if (!current) return;
-      registration = registered;
-      if (registered.waiting !== null) notify("update-ready");
-      registered.addEventListener("updatefound", handleUpdateFound);
-      if (registered.installing !== null) handleUpdateFound();
-    }).catch(() => notify("update-failed"));
+    const register = () => {
+      installing?.removeEventListener("statechange", handleWorkerStateChange);
+      registration?.removeEventListener("updatefound", handleUpdateFound);
+      installing = undefined;
+      void navigator.serviceWorker.register("/sw.js", { scope: "/" }).then((registered) => {
+        if (!current) return;
+        registration = registered;
+        if (registered.waiting !== null) notify("update-ready");
+        registered.addEventListener("updatefound", handleUpdateFound);
+        if (registered.installing !== null) handleUpdateFound();
+      }).catch(() => notify("update-failed"));
+    };
+
+    register();
+    window.addEventListener(serviceWorkerRetryEventName, register);
 
     return () => {
       current = false;
       installing?.removeEventListener("statechange", handleWorkerStateChange);
       registration?.removeEventListener("updatefound", handleUpdateFound);
+      window.removeEventListener(serviceWorkerRetryEventName, register);
     };
   }, []);
 

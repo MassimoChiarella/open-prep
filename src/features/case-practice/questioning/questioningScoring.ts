@@ -373,7 +373,12 @@ function matchConcepts(
   return concepts
     .filter((concept) =>
       concept.normalizedAliases.some((aliasTokens) => {
-        return aliasTokens.length > 0 && aliasTokens.every((token) => hasSimilarToken(question.contentTokens, token));
+        return aliasTokens.length > 0 && (
+          aliasTokens.every((token) => hasSimilarToken(question.contentTokens, token)) ||
+          (aliasTokens.length === 1 &&
+            question.contentTokens.length === 1 &&
+            question.normalized.includes(aliasTokens[0]))
+        );
       })
     )
     .map((concept) => concept.id);

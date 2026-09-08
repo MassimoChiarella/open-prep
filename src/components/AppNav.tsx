@@ -51,7 +51,7 @@ export function AppNav() {
           className="inline-flex min-h-11 items-center justify-center rounded-md border border-ink/50 bg-white px-4 text-sm font-semibold text-ink transition hover:bg-mint motion-reduce:transform-none active:scale-[0.98]"
           data-testid="focused-task-exit"
           href={focusedTask.exitHref}
-          onClick={(event) => confirmFocusedTaskExit(event, t("Leave this active session? Submitted progress is saved on this device."))}
+          onClick={(event) => confirmFocusedTaskExit(event, t)}
         >
           {t(focusedTask.exitLabel)}
         </Link>
@@ -142,7 +142,15 @@ function isActive(pathname: string, href: string): boolean {
   return href === "/" ? pathname === href : pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function confirmFocusedTaskExit(event: MouseEvent<HTMLAnchorElement>, message: string): void {
+function confirmFocusedTaskExit(
+  event: MouseEvent<HTMLAnchorElement>,
+  t: ReturnType<typeof useI18n>["t"]
+): void {
+  const message = t(
+    document.querySelector('[data-drill-save-state="error"]') === null
+      ? "Leave this active session? Submitted progress is saved on this device."
+      : "Leave this active session? Some recent progress could not be saved on this device."
+  );
   if (!window.confirm(message)) {
     event.preventDefault();
   }

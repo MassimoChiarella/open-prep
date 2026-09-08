@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { AppNav } from "@/components/AppNav";
 
@@ -13,6 +13,8 @@ describe("AppNav", () => {
   beforeEach(() => {
     pathname = "/";
   });
+
+  afterEach(() => vi.restoreAllMocks());
 
   it("exposes Content Packs in desktop navigation and mobile More", () => {
     render(<AppNav />);
@@ -30,5 +32,29 @@ describe("AppNav", () => {
       expect(link).toHaveAttribute("aria-current", "page");
     }
     expect(screen.getByLabelText("More destinations: Content Packs")).toBeInTheDocument();
+  });
+
+  it("warns truthfully when an active drill could not save recent progress", () => {
+    pathname = "/drills/session";
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<><AppNav /><div data-drill-save-state="error" /></>);
+
+    fireEvent.click(screen.getByTestId("focused-task-exit"));
+
+    expect(confirm).toHaveBeenCalledWith(
+      "Leave this active session? Some recent progress could not be saved on this device."
+    );
+  });
+
+  it("warns truthfully when active drill progress could not be saved", () => {
+    pathname = "/drills/session";
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    render(<><AppNav /><main data-drill-save-state="error" /></>);
+
+    fireEvent.click(screen.getByTestId("focused-task-exit"));
+
+    expect(confirm).toHaveBeenCalledWith(
+      "Leave this active session? Some recent progress could not be saved on this device."
+    );
   });
 });

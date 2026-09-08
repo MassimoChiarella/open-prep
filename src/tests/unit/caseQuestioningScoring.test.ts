@@ -109,6 +109,42 @@ describe("case questioning scoring", () => {
     expect(isCompleteCaseQuestion("?!", "en")).toBe(false);
   });
 
+  it("matches concepts inside languages that do not separate words with spaces", () => {
+    const chinesePrompt: CaseQuestioningPrompt = {
+      concepts: [
+        { aliases: ["价格"], id: "price", label: "价格" },
+        { aliases: ["上涨"], id: "increase", label: "上涨" }
+      ],
+      id: "chinese-price",
+      industry: "零售",
+      intents: [{
+        feedback: "确认价格变化。",
+        id: "price-change",
+        label: "价格变化",
+        priority: true,
+        referenceQuestions: ["价格是否上涨了？"],
+        requiredConceptGroups: [["price"], ["increase"]],
+        weight: 1
+      }],
+      language: "zh-Hans",
+      maximumQuestions: 1,
+      minimumQuestions: 1,
+      mode: "clarifying",
+      objective: "了解价格变化。",
+      situation: "一家零售商的利润下降。",
+      title: "价格变化"
+    };
+
+    const score = scoreCaseQuestioning(chinesePrompt, {
+      includeRanking: false,
+      questions: [{ id: "q1", text: "价格是否上涨了？" }]
+    });
+
+    expect(score.matches[0]?.matchedConceptIds).toEqual(["price", "increase"]);
+    expect(score.matches[0]?.intentId).toBe("price-change");
+    expect(score.relevance.unrecognizedQuestionIds).toEqual([]);
+  });
+
   it("accepts the 300-character boundary and rejects longer direct submissions", () => {
     const exactBoundary = `${"Did sales change because of price or volume? "}${"evidence ".repeat(40)}`.slice(0, 300);
     const submission = {

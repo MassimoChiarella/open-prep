@@ -131,6 +131,7 @@ export function ActiveDrillSession({
   const [saveStatus, setSaveStatus] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [saveAttempt, setSaveAttempt] = useState(0);
   const [draftLoaded, setDraftLoaded] = useState(false);
+  const [draftSaveFailed, setDraftSaveFailed] = useState(false);
   const [retryQuestionIds, setRetryQuestionIds] = useState<Set<string>>(() => new Set());
   const [showHint, setShowHint] = useState(false);
   const [scratchpad, setScratchpad] = useState("");
@@ -372,14 +373,19 @@ export function ActiveDrillSession({
             setNowMs(Date.now());
           }
         })
-        .catch(() => undefined)
+        .catch(() => {
+          if (!cancelled) setDraftSaveFailed(true);
+        })
         .finally(() => {
           storage.close();
           if (!cancelled) setDraftLoaded(true);
         });
     } catch {
       void Promise.resolve().then(() => {
-        if (!cancelled) setDraftLoaded(true);
+        if (!cancelled) {
+          setDraftLoaded(true);
+          setDraftSaveFailed(true);
+        }
       });
     }
 
@@ -398,6 +404,7 @@ export function ActiveDrillSession({
       // Subscribe this queued write to data invalidation before an earlier save settles.
       storage = storageFactory();
     } catch {
+      setDraftSaveFailed(true);
       return;
     }
 
@@ -411,11 +418,12 @@ export function ActiveDrillSession({
             session,
             storage
           });
+          setDraftSaveFailed(false);
         } finally {
           storage.close();
         }
       })
-      .catch(() => undefined);
+      .catch(() => setDraftSaveFailed(true));
   }, [draftKey, draftLoaded, feedback?.recorded, questionStartedAt, questionQueue, session, storageFactory]);
 
   useEffect(() => {
@@ -652,7 +660,10 @@ export function ActiveDrillSession({
 
   if (completedSummary !== undefined) {
     return (
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+      <main
+        className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8"
+        data-drill-save-state={saveStatus === "error" || draftSaveFailed ? "error" : "saved"}
+      >
         <SessionHeader
           eyebrow={t(sessionEyebrow)}
           lockedModeSummary={lockedModeSummary.map((item) => ({ label: t(item.label), value: t(item.value) }))}
@@ -683,7 +694,10 @@ export function ActiveDrillSession({
 
   if (displayedQuestion === undefined) {
     return (
-      <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
+    <main
+      className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8"
+      data-drill-save-state={draftSaveFailed ? "error" : "saved"}
+    >
         <SessionHeader
           eyebrow={t(sessionEyebrow)}
           lockedModeSummary={lockedModeSummary.map((item) => ({ label: t(item.label), value: t(item.value) }))}
@@ -732,7 +746,10 @@ export function ActiveDrillSession({
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
+    <main
+      className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-6 px-4 py-6 sm:px-6 sm:py-8 lg:px-8"
+      data-drill-save-state={draftSaveFailed ? "error" : "saved"}
+    >
       <SessionHeader
         eyebrow={t(sessionEyebrow)}
         lockedModeSummary={lockedModeSummary.map((item) => ({ label: t(item.label), value: t(item.value) }))}

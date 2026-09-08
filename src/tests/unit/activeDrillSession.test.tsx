@@ -532,6 +532,21 @@ describe("ActiveDrillSession", () => {
 
     expect(screen.getByTestId("active-feedback-panel")).toHaveTextContent("required components are correct");
   });
+
+  it("exposes unavailable draft storage to the exit navigation", async () => {
+    const created = createDrillSession({ seed: "draft-unavailable", settings: { questionCount: 1 } });
+    render(
+      <ActiveDrillSession
+        initialSession={created.session}
+        questions={created.questions}
+        storageFactory={() => {
+          throw new Error("IndexedDB unavailable");
+        }}
+      />
+    );
+
+    await waitFor(() => expect(screen.getByRole("main")).toHaveAttribute("data-drill-save-state", "error"));
+  });
 });
 
 class FailOnceStorage extends MemoryAppStorage {

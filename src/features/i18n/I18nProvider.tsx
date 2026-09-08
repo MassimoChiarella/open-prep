@@ -51,6 +51,10 @@ const localeLoaders = {
   "zh-Hans": () => import("@/features/i18n/locales/zh-Hans"),
   "zh-Hant": () => import("@/features/i18n/locales/zh-Hant")
 } satisfies Record<Exclude<Locale, "en">, () => Promise<{ default: Messages }>>;
+
+async function loadLocaleMessages(locale: Exclude<Locale, "en">): Promise<Messages> {
+  return (await localeLoaders[locale]()).default;
+}
 const I18nContext = createContext<I18nContextValue>({
   formatDate: (value, options) =>
     new Intl.DateTimeFormat(fallbackLocale, options).format(value instanceof Date ? value : new Date(value)),
@@ -64,14 +68,22 @@ const I18nContext = createContext<I18nContextValue>({
   t: (message, variables) => translate(fallbackCatalog, fallbackLocale, message, variables)
 });
 
-export function I18nProvider({ children }: { children: ReactNode }) {
+export function I18nProvider({
+  children,
+  loadLocale = loadLocaleMessages
+}: {
+  children: ReactNode;
+  loadLocale?: (locale: Exclude<Locale, "en">) => Promise<Messages>;
+}) {
   const [preference, setPreferenceState] = useState<LocalePreference>("auto");
   const [locale, setLocale] = useState<Locale>("en");
   const [requestedLocale, setRequestedLocale] = useState<Locale>("en");
+  const [localeRequestVersion, setLocaleRequestVersion] = useState(0);
   const [messages, setMessages] = useState<PartialMessageCatalog>(fallbackCatalog);
   const [initialized, setInitialized] = useState(false);
   const requestLocale = useCallback((nextLocale: Locale) => {
     setRequestedLocale(nextLocale);
+    setLocaleRequestVersion((version) => version + 1);
     if (nextLocale === "en") {
       setMessages(fallbackCatalog);
       setLocale("en");
@@ -96,7 +108,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       return undefined;
     }
 
-    void localeLoaders[requestedLocale]().then(({ default: localizedMessages }) => {
+    void loadLocale(requestedLocale).then((localizedMessages) => {
       if (!current) return;
       setMessages({ en: englishMessages, [requestedLocale]: localizedMessages });
       setLocale(requestedLocale);
@@ -104,12 +116,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
       if (!current) return;
       setMessages(fallbackCatalog);
       setLocale("en");
+      setPreferenceState((currentPreference) =>
+        currentPreference === requestedLocale ? "auto" : currentPreference
+      );
     });
 
     return () => {
       current = false;
     };
-  }, [requestedLocale]);
+  }, [loadLocale, localeRequestVersion, requestedLocale]);
 
   useEffect(() => {
     document.documentElement.lang = locale;

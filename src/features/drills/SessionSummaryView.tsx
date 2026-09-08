@@ -10,10 +10,9 @@ import {
   getTimeLimitSeconds,
   timingAccommodationLabel
 } from "@/features/drills/drillTimer";
-import type { DrillSettings, ErrorBreakdown, ErrorType, UnitType } from "@/lib/domain";
-import { formatNumber } from "@/lib/format";
+import type { DrillSettings, ErrorBreakdown, ErrorType, SkillCategory, UnitType } from "@/lib/domain";
 
-import { buildDrillSettingsQuery } from "@/features/drills/drillSettingsOptions";
+import { buildDrillSettingsQuery, categoryOptions } from "@/features/drills/drillSettingsOptions";
 import { deriveWeaknessDrillSettings, rankWeaknesses } from "@/features/progress/weaknessAnalysis";
 import type { SessionSummarySnapshot } from "@/features/drills/sessionSummary";
 import { useI18n } from "@/features/i18n/I18nProvider";
@@ -42,7 +41,7 @@ export function SessionSummaryView({ newBestLabels = [], repeatAction, snapshot 
     score.correctCount === 0 || !isStandardPersonalBestEligible(snapshot.settings.timingAccommodation)
       ? []
       : Array.from(new Set(newBestLabels));
-  const guidance = createSessionGuidance(snapshot);
+  const guidance = createSessionGuidance(snapshot, t, formatLocaleNumber);
 
   return (
     <section className="grid gap-7 border border-ink/15 border-t-2 border-t-coral bg-white p-4 sm:p-6">
@@ -202,12 +201,14 @@ function QuestionReviewCard({
       </div>
 
       <dl className="mt-3 grid gap-2 sm:grid-cols-3">
-        <ReviewStat label={t("Your Answer")} value={formatRawAnswer(result.rawInput, result.selectedUnit)} />
+        <ReviewStat label={t("Your Answer")} value={formatRawAnswer(result.rawInput, result.selectedUnit, t)} />
         <ReviewStat
           label={t("Correct Answer")}
           value={formatAnswerWithUnit(
             result.correctValue,
-            result.interviewMath?.expectedUnit ?? result.answerUnit
+            result.interviewMath?.expectedUnit ?? result.answerUnit,
+            formatLocaleNumber,
+            t
           )}
         />
         <ReviewStat label={t("Time")} value={formatDuration(result.timeTakenSeconds)} />
@@ -253,7 +254,7 @@ function QuestionReviewCard({
       </details>
       {!result.isCorrect ? (
         <p className="mt-2 rounded bg-white/80 px-3 py-2 text-xs font-semibold capitalize text-ink/70">
-          {t("Errors:")} {t(formatErrorTypes(result.errorTypes))}
+          {t("Errors:")} {formatErrorTypes(result.errorTypes, t)}
         </p>
       ) : null}
       {strategyTip !== undefined ? (
@@ -265,7 +266,11 @@ function QuestionReviewCard({
   );
 }
 
-function createSessionGuidance(snapshot: SessionSummarySnapshot) {
+function createSessionGuidance(
+  snapshot: SessionSummarySnapshot,
+  t: ReturnType<typeof useI18n>["t"],
+  formatLocaleNumber: ReturnType<typeof useI18n>["formatNumber"]
+) {
   const responses = snapshot.questionResults.flatMap((result, index) =>
     result.category === undefined
       ? []
@@ -290,18 +295,28 @@ function createSessionGuidance(snapshot: SessionSummarySnapshot) {
     .map((item) => ({
       accuracy: item.accuracy,
       averageTimeSeconds: item.averageTimeSeconds,
-      label: formatLabel(item.category),
+      label: t(formatCategoryLabel(item.category)),
       reason:
         item.accuracy < 0.85
-          ? `${item.correctCount} of ${item.attemptCount} answers were correct in this session.`
-          : `Accuracy was strong, but the ${item.averageTimeSeconds.toFixed(1)}s average pace can improve.`
+          ? t("{correct} of {count} answers were correct in this session.", {
+              correct: formatLocaleNumber(item.correctCount),
+              count: formatLocaleNumber(item.attemptCount)
+            })
+          : t("Accuracy was strong, but the {seconds}s average pace can improve.", {
+              seconds: formatLocaleNumber(item.averageTimeSeconds, {
+                maximumFractionDigits: 1,
+                minimumFractionDigits: 1
+              })
+            })
     }));
   const settings = deriveWeaknessDrillSettings(responses);
-  const focusLabel = ranked[0] === undefined ? "Practice" : formatLabel(ranked[0].category);
+  const focusLabel = ranked[0] === undefined ? t("Practice") : t(formatCategoryLabel(ranked[0].category));
 
   return {
     recommendationHref: settings === undefined ? "/drills" : `/drills/session?${buildDrillSettingsQuery(settings)}`,
-    recommendationText: weaknesses.length === 0 ? `Reinforce ${focusLabel}` : `Practice ${focusLabel}`,
+    recommendationText: weaknesses.length === 0
+      ? t("Reinforce {focus}", { focus: focusLabel })
+      : t("Practice {focus}", { focus: focusLabel }),
     weaknesses
   };
 }
@@ -352,7 +367,7 @@ function CategoryBreakdown({ items }: { items: SessionSummarySnapshot["score"]["
           {items.map((item) => (
             <li className="grid gap-2 border-b border-ink/15 bg-paper/70 px-3 py-3 text-sm last:border-b-0" key={item.category}>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className="font-semibold capitalize text-ink">{t(formatLabel(item.category))}</span>
+                <span className="font-semibold text-ink">{t(formatCategoryLabel(item.category))}</span>
                 <span className="font-semibold text-ink">{formatPercent(item.accuracy)}</span>
               </div>
               <div className="h-2 overflow-hidden rounded-full bg-white" aria-hidden="true">
@@ -385,7 +400,7 @@ function ErrorBreakdownList({ items, totalErrors }: { items: ErrorBreakdown[]; t
             return (
               <li className="grid gap-2 border-b border-ink/15 bg-paper/70 px-3 py-3 text-sm last:border-b-0" key={item.errorType}>
                 <div className="flex flex-wrap items-center justify-between gap-3">
-                  <span className="font-semibold capitalize text-ink">{t(formatLabel(item.errorType))}</span>
+                  <span className="font-semibold text-ink">{t(errorTypeDescription(item.errorType))}</span>
                   <span className="font-semibold text-ink">{formatLocaleNumber(item.count)}</span>
                 </div>
                 <div className="h-2 overflow-hidden rounded-full bg-white" aria-hidden="true">
@@ -482,45 +497,73 @@ function buildRepeatDrillHref(snapshot: SessionSummarySnapshot): string {
   return `/drills/session?${buildDrillSettingsQuery(snapshot.settings)}${mode}&repeat=${encodeURIComponent(snapshot.id)}`;
 }
 
-function formatRawAnswer(rawInput: string, unit?: UnitType): string {
+function formatRawAnswer(
+  rawInput: string,
+  unit: UnitType | undefined,
+  t: ReturnType<typeof useI18n>["t"]
+): string {
   if (rawInput.trim() === "") {
-    return "nothing";
+    return t("No answer");
   }
 
-  return `"${rawInput}"${unit === undefined || unit === "none" ? "" : ` ${formatUnit(unit)}`}`;
+  return `"${rawInput}"${unit === undefined || unit === "none" ? "" : ` ${t(formatUnit(unit))}`}`;
 }
 
-function formatAnswerWithUnit(value: number, unit?: UnitType): string {
+function formatAnswerWithUnit(
+  value: number,
+  unit: UnitType | undefined,
+  formatLocaleNumber: ReturnType<typeof useI18n>["formatNumber"],
+  t: ReturnType<typeof useI18n>["t"]
+): string {
   if (unit === undefined || unit === "none") {
-    return formatNumber(value);
+    return formatLocaleNumber(value);
   }
 
   if (unit === "currency") {
-    return `$${formatNumber(value)}`;
+    return `$${formatLocaleNumber(value)}`;
   }
 
   if (unit === "percentage") {
-    return `${formatNumber(value * 100)}%`;
+    return `${formatLocaleNumber(value * 100)}%`;
   }
 
-  return `${formatNumber(value)} ${formatUnit(unit)}`;
+  return `${formatLocaleNumber(value)} ${t(formatUnit(unit))}`;
 }
 
 function formatUnit(unit: UnitType): string {
   const labels: Partial<Record<UnitType, string>> = {
     b: "B",
+    customers: "Customers",
+    days: "Days",
     k: "K",
     m: "M",
-    percentage: "%"
+    months: "Months",
+    percentage: "%",
+    percentage_points: "Percentage points",
+    stores: "Stores",
+    units: "Units",
+    users: "Users",
+    years: "Years"
   };
 
   return labels[unit] ?? unit.replaceAll("_", " ");
 }
 
-function formatErrorTypes(errorTypes: ErrorType[]): string {
+function formatErrorTypes(
+  errorTypes: ErrorType[],
+  t: ReturnType<typeof useI18n>["t"]
+): string {
   const visibleErrors = errorTypes.filter((errorType) => errorType !== "none");
 
-  return visibleErrors.length === 0 ? "none" : visibleErrors.map(formatLabel).join(", ");
+  return visibleErrors.length === 0
+    ? t("No errors recorded")
+    : visibleErrors.map((value) => t(errorTypeDescription(value))).join(", ");
+}
+
+function formatCategoryLabel(value: SkillCategory): string {
+  if (value === "market_sizing") return "Market Sizing";
+  if (value === "exhibit_math") return "Exhibits";
+  return categoryOptions.find((option) => option.value === value)?.label ?? formatLabel(value);
 }
 
 function formatLabel(value: string): string {

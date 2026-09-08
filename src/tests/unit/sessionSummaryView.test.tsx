@@ -15,6 +15,10 @@ describe("SessionSummaryView", () => {
 
     expect(screen.getByRole("heading", { name: "Resultados de la sesión" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Repetir ejercicio" })).toBeInTheDocument();
+    expect(screen.getAllByText("Aritmética").length).toBeGreaterThan(0);
+    expect(screen.getByText("1 de 2 respuestas fueron correctas en esta sesión.")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Practicar Aritmética" })).toBeInTheDocument();
+    expect(screen.queryByText(/answers were correct in this session/i)).not.toBeInTheDocument();
   });
 
   it("summarizes results, reviews misses, and repeats the same custom-pack drill", () => {
@@ -32,7 +36,7 @@ describe("SessionSummaryView", () => {
     expect(review).not.toBeNull();
     expect(within(review as HTMLElement).getByText("Answer saved as correct.")).toBeInTheDocument();
     expect(within(review as HTMLElement).getByText("Answer saved for review after the final attempt.")).toBeInTheDocument();
-    expect(within(review as HTMLElement).getByText("Errors: arithmetic error")).toBeInTheDocument();
+    expect(within(review as HTMLElement).getByText("Errors: Calculation mistake")).toBeInTheDocument();
 
     expect(screen.getByRole("link", { name: "Repeat Drill" })).toHaveAttribute(
       "href",

@@ -11,6 +11,7 @@ type VerifiedConnectionState = "checking" | "offline-ready" | "online" | "unreac
 type DisplayState = ServiceWorkerUpdateState | VerifiedConnectionState;
 
 export const serviceWorkerStatusEventName = "consulting-math-service-worker-status";
+export const serviceWorkerRetryEventName = "consulting-math-service-worker-retry";
 
 export function getCurrentConnectionState(navigatorLike: Pick<Navigator, "onLine"> | undefined = globalThis.navigator): ConnectionState {
   return navigatorLike?.onLine === false ? "offline" : "online";
@@ -102,6 +103,11 @@ export function OfflineStatusIndicator() {
   const tone = statusTone(state);
   const label = statusLabel(state);
 
+  const retryUpdate = () => {
+    setUpdateState(undefined);
+    window.dispatchEvent(new Event(serviceWorkerRetryEventName));
+  };
+
   return (
     <div
       aria-label={t(statusDescription(state))}
@@ -120,6 +126,15 @@ export function OfflineStatusIndicator() {
         className={cx("h-2.5 w-2.5 rounded-full", uiStatusDots[tone])}
       />
       {t(label)}
+      {state === "update-failed" ? (
+        <button
+          className="font-semibold underline underline-offset-2"
+          onClick={retryUpdate}
+          type="button"
+        >
+          {t("Retry")}
+        </button>
+      ) : null}
     </div>
   );
 }

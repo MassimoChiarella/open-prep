@@ -1,7 +1,10 @@
 import { render, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { serviceWorkerStatusEventName } from "@/features/offline/OfflineStatusIndicator";
+import {
+  serviceWorkerRetryEventName,
+  serviceWorkerStatusEventName
+} from "@/features/offline/OfflineStatusIndicator";
 import { ServiceWorkerRegistration as ServiceWorkerRegistrationComponent } from "@/features/offline/ServiceWorkerRegistration";
 
 afterEach(() => {
@@ -33,5 +36,25 @@ describe("ServiceWorkerRegistration", () => {
 
     view.unmount();
     window.removeEventListener(serviceWorkerStatusEventName, listener);
+  });
+
+  it("retries registration after a transient failure", async () => {
+    vi.stubEnv("NODE_ENV", "production");
+    const registration = Object.assign(new EventTarget(), {
+      installing: null,
+      waiting: null
+    }) as ServiceWorkerRegistration;
+    const register = vi.fn()
+      .mockRejectedValueOnce(new Error("temporary failure"))
+      .mockResolvedValueOnce(registration);
+    Object.defineProperty(window.navigator, "serviceWorker", {
+      configurable: true,
+      value: { controller: {}, register }
+    });
+    render(<ServiceWorkerRegistrationComponent />);
+
+    await waitFor(() => expect(register).toHaveBeenCalledOnce());
+    window.dispatchEvent(new Event(serviceWorkerRetryEventName));
+    await waitFor(() => expect(register).toHaveBeenCalledTimes(2));
   });
 });
