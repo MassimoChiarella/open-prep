@@ -16,7 +16,7 @@ Independent implementation can run in parallel. Each completed batch is reviewed
 | 04 | Numeric parser, units, formula grammar and precedence | Complete |
 | 05 | Offline upgrade readiness and complete asset precaching | Pending |
 | 06 | Drill completion recovery, per-answer timing and resumed deadlines | Complete |
-| 07 | Exhibit evidence, answer precision, scoring and stale-save protection | Pending |
+| 07 | Exhibit evidence, answer precision, scoring and stale-save protection | Complete |
 | 08 | Question generation, content units, formula links and ROI wording | Complete |
 | 09 | Recoverable large backups, pack-version drafts and storage failure recovery | Pending |
 | 10 | Difficulty-correct personal bests and duplicate-question scoring | Pending |
@@ -135,4 +135,5 @@ All 30 BUG IDs and six IMP IDs must have an implemented outcome and verification
 | Numeric contracts | BUG-14, BUG-21, BUG-22, BUG-28: currency scale metadata, locale grouping, operator grammar and precedence | 109 focused tests and strict TypeScript passed; root diff review | `f4cdb9a` |
 | Local data safety | BUG-01, BUG-02, BUG-09, BUG-10, BUG-27 plus adapter recovery: stale read guards, private preservation, atomic resets, invalidation and fresh inventories | 55 focused tests and strict TypeScript passed; root diff review | `207916c` |
 | Drill recovery | BUG-05, BUG-13, BUG-16: recover final answers, preserve active deadlines, separate solve times, make completion retries idempotent | 40 focused tests passed, including clock jumps, final-answer reload and repeated review persistence | `ef15a1b` |
-| Question correctness | BUG-07, BUG-20, BUG-25, BUG-26, BUG-29, IMP-01: exact decimal arithmetic, coherent units, deduplicated expressions, stepped endpoints, correct practice links and ROI wording | 130 focused tests passed; independent arithmetic, evidence and locale expectations; root diff review | `fix: align generated questions with exact answers` |
+| Question correctness | BUG-07, BUG-20, BUG-25, BUG-26, BUG-29, IMP-01: exact decimal arithmetic, coherent units, deduplicated expressions, stepped endpoints, correct practice links and ROI wording | 130 focused tests passed; independent arithmetic, evidence and locale expectations; root diff review | `17593d9` |
+| Exhibits and sizing | BUG-06, BUG-08, BUG-15, BUG-23, BUG-24: complete visible evidence, precise values, correct point scale, bounded fractional scores and stale-save guards | 66 focused tests passed; 14 independent evidence/arithmetic checks; root diff review | `fix: expose exhibit evidence and correct scoring` |

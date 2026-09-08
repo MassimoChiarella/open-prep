@@ -62,7 +62,7 @@ describe("ExhibitChartRenderer", () => {
     expect(values).toHaveAttribute("role", "region");
     expect(values).toHaveAttribute("tabindex", "0");
     expect(within(values).getByText("SMB")).toBeInTheDocument();
-    expect(within(values).getByText("Recurring revenue: $18M")).toBeInTheDocument();
+    expect(within(values).getByText("Recurring revenue: $18,000,000")).toBeInTheDocument();
     expect(within(chart).getByText(barDataset.sourceNote!)).toBeInTheDocument();
     expect(container.querySelector("svg")).not.toBeNull();
   });
@@ -111,13 +111,13 @@ describe("ExhibitChartRenderer", () => {
     expect(within(chart).getByTestId("exhibit-chart-legend")).toHaveTextContent("Auto");
     expect(getExhibitChartSeries(pieDataset).map((series) => series.column.id)).toEqual(["claim_dollars"]);
     expect(within(within(chart).getByTestId("exhibit-chart-values")).getByText("Auto")).toBeInTheDocument();
-    expect(within(chart).getByText("Claim dollars: $32M")).toBeInTheDocument();
+    expect(within(chart).getByText("Claim dollars: $32,000,000")).toBeInTheDocument();
 
     const firstSlice = container.querySelector(".recharts-pie-sector");
     expect(firstSlice).not.toBeNull();
     fireEvent.mouseEnter(firstSlice!, { clientX: 360, clientY: 160 });
     expect(container.querySelector(".recharts-tooltip-wrapper")).toHaveTextContent("Auto");
-    expect(container.querySelector(".recharts-tooltip-wrapper")).toHaveTextContent("$32M");
+    expect(container.querySelector(".recharts-tooltip-wrapper")).toHaveTextContent("$32,000,000");
   });
 
   it("keeps practical precision in shared and waterfall tooltip routes", async () => {
@@ -128,7 +128,7 @@ describe("ExhibitChartRenderer", () => {
     expect(bar).not.toBeNull();
     fireEvent.mouseEnter(bar!, { clientX: 200, clientY: 160, pageX: 200, pageY: 160 });
     fireEvent.mouseMove(bar!, { clientX: 200, clientY: 160, pageX: 200, pageY: 160 });
-    await waitFor(() => expect(barRender.container.querySelector(".recharts-tooltip-wrapper")).toHaveTextContent("$1.35M"));
+    await waitFor(() => expect(barRender.container.querySelector(".recharts-tooltip-wrapper")).toHaveTextContent("$1,350,000"));
     barRender.unmount();
 
     const exactWaterfall = structuredClone(waterfallDataset) as ExhibitDataset;
@@ -143,7 +143,7 @@ describe("ExhibitChartRenderer", () => {
     expect(waterfall).not.toBeNull();
     fireEvent.mouseEnter(waterfall!, { clientX: 200, clientY: 160, pageX: 200, pageY: 160 });
     fireEvent.mouseMove(waterfall!, { clientX: 200, clientY: 160, pageX: 200, pageY: 160 });
-    await waitFor(() => expect(waterfallRender.container.querySelector(".recharts-tooltip-wrapper")).toHaveTextContent("$1.35M"));
+    await waitFor(() => expect(waterfallRender.container.querySelector(".recharts-tooltip-wrapper")).toHaveTextContent("$1,350,000"));
   });
 
   it("keeps v2 waterfall totals absolute without seeding or resetting the running total", () => {

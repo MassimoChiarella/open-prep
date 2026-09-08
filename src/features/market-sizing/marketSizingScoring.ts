@@ -222,5 +222,6 @@ function proportionalPoints(completed: number, total: number, maxPoints: number)
     return maxPoints;
   }
 
-  return Math.round((completed / total) * maxPoints);
+  const points = (completed / total) * maxPoints;
+  return Math.min(maxPoints, Math.max(0, Number.isInteger(maxPoints) ? Math.round(points) : points));
 }

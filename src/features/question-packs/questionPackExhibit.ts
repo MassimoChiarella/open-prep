@@ -417,10 +417,14 @@ function readChoices(value: unknown, path: string, errors: string[]): ExhibitCho
 function readAnswer(value: unknown, path: string, errors: string[]): AnswerSpec | undefined {
   const item = objectValue(value, path, errors);
   if (item === undefined) return undefined;
-  rejectUnknown(item, ["value", "unit", "tolerance", "errorChecks", "roundingRule"], path, errors);
+  rejectUnknown(item, ["value", "unit", "currency", "tolerance", "errorChecks", "roundingRule"], path, errors);
   const before = errors.length;
   const answerValue = finiteNumber(item.value, `${path}.value`, errors);
   const unit = enumValue(item.unit, units, `${path}.unit`, errors);
+  if (hasOwn(item, "currency") && typeof item.currency !== "boolean") errors.push(`${path}.currency must be a boolean.`);
+  if (item.currency === true && !["currency", "k", "m", "b"].includes(unit ?? "")) {
+    errors.push(`${path}.currency requires a currency or scale unit.`);
+  }
   const tolerance = hasOwn(item, "tolerance") ? readTolerance(item.tolerance, `${path}.tolerance`, errors) : undefined;
   const errorChecks = hasOwn(item, "errorChecks") ? readErrorChecks(item.errorChecks, `${path}.errorChecks`, errors) : undefined;
   const roundingRule = hasOwn(item, "roundingRule")
@@ -430,6 +434,7 @@ function readAnswer(value: unknown, path: string, errors: string[]): AnswerSpec 
   return {
     value: answerValue,
     unit,
+    ...(typeof item.currency === "boolean" ? { currency: item.currency } : {}),
     ...(tolerance === undefined ? {} : { tolerance }),
     ...(errorChecks === undefined ? {} : { errorChecks }),
     ...(roundingRule === undefined ? {} : { roundingRule })

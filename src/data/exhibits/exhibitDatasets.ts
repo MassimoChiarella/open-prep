@@ -840,9 +840,9 @@ export const exhibitDatasets = [
         expectedTimeSeconds: 40,
         tags: ["subtraction", "percentage_points"],
         answer: {
-          value: 0.04,
+          value: 4,
           unit: "percentage_points",
-          tolerance: { type: "absolute", value: 0.001 },
+          tolerance: { type: "absolute", value: 0.1 },
           roundingRule: "nearest_0_1"
         },
         explanation: {

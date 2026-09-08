@@ -4,6 +4,24 @@ import { validateExhibitQuestionPackPayload } from "@/features/question-packs/qu
 import { questionPackMaxFileBytes } from "@/features/question-packs/questionPackValidation";
 
 describe("validateExhibitQuestionPackPayload", () => {
+  it.each(["currency", "k", "m", "b"])("preserves explicit currency semantics with %s units", (unit) => {
+    const question = validNumericQuestion("revenue");
+    const result = validateExhibitQuestionPackPayload({ ...validPayload(), datasets: [{ ...validDataset(), questions: [
+      { ...question, answer: { ...question.answer, unit, currency: true } }
+    ] }] });
+    expect(result.status).toBe("valid");
+    if (result.status !== "valid") throw new Error(result.errors.join("\n"));
+    expect(result.pack.datasets[0].questions[0]).toMatchObject({ answer: { unit, currency: true } });
+  });
+
+  it.each([{ currency: "yes", unit: "currency" }, { currency: true, unit: "units" }])("rejects invalid currency semantics %s", (answer) => {
+    const question = validNumericQuestion("revenue");
+    const result = validateExhibitQuestionPackPayload({ ...validPayload(), datasets: [{ ...validDataset(), questions: [
+      { ...question, answer: { ...question.answer, ...answer } }
+    ] }] });
+    expect(expectInvalidErrors(result).some((error) => error.includes(".currency"))).toBe(true);
+  });
+
   it("sanitizes a complete v2 exhibit pack with numeric and multiple-choice questions", () => {
     const payload = {
       $schema: " ./question-pack-v2.schema.json ",

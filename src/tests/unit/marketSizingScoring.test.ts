@@ -7,6 +7,20 @@ import { scoreMarketSizingAttempt } from "@/features/market-sizing/marketSizingS
 const coffeeTemplate = marketSizingTemplates[0];
 
 describe("market sizing scoring", () => {
+  it.each([0.1, 0.6, 1.6])("caps fractional rubric dimensions at their authored %s points", (maxPoints) => {
+    const template = { ...coffeeTemplate, rubric: coffeeTemplate.rubric.map((dimension) => ({ ...dimension, maxPoints })) };
+    for (const stepValues of [validCoffeeStepValues(), { ...validCoffeeStepValues(), coffee_drinker_rate: "95%", sense_check: false }]) {
+      const evaluation = evaluateMarketSizingDraft({ template, stepValues, finalAnswer: "$2.628B" });
+      const score = scoreMarketSizingAttempt({ template, evaluation, stepValues, interpretationId: "plausible" });
+      expect(score.totalScore).toBeLessThanOrEqual(score.maxScore);
+      for (const dimension of score.breakdown) {
+        expect(dimension.awardedPoints).toBeGreaterThanOrEqual(0);
+        expect(dimension.awardedPoints).toBeLessThanOrEqual(dimension.maxPoints);
+      }
+      if (stepValues.sense_check) expect(score.totalScore).toBe(score.maxScore);
+    }
+  });
+
   it("awards full rubric points for a complete valid attempt", () => {
     const stepValues = validCoffeeStepValues();
     const evaluation = evaluateMarketSizingDraft({

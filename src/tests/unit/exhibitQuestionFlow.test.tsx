@@ -1,11 +1,32 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 
 import { exhibitDatasets } from "@/data/exhibits/exhibitDatasets";
 import { ExhibitQuestionFlow } from "@/features/exhibits/ExhibitQuestionFlow";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("ExhibitQuestionFlow", () => {
+  it.each(["dataset", "question", "answer", "clear"])("ignores a delayed save status after changing the %s", async (change) => {
+    const storage = new MemoryAppStorage();
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    const originalPut = storage.put.bind(storage);
+    vi.spyOn(storage, "put").mockImplementation(async (store, value) => { await pending; await originalPut(store, value); });
+    const datasets = [{ ...exhibitDatasets[0], questions: [...exhibitDatasets[0].questions, { ...exhibitDatasets[0].questions[0], id: "second-question" }] }, ...exhibitDatasets.slice(1)];
+    render(<ExhibitQuestionFlow datasets={datasets} storageFactory={() => storage} />);
+    fireEvent.change(screen.getByLabelText("Answer"), { target: { value: "$48384000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit Answer" }));
+    if (change === "dataset") fireEvent.change(screen.getByLabelText("Exhibit"), { target: { value: exhibitDatasets[1].id } });
+    if (change === "question") fireEvent.change(screen.getByLabelText("Question"), { target: { value: "second-question" } });
+    if (change === "answer") fireEvent.change(screen.getByLabelText("Answer"), { target: { value: "7" } });
+    if (change === "clear") fireEvent.click(screen.getByRole("button", { name: "Clear" }));
+    await act(async () => release());
+    expect(screen.queryByText("Correct. Attempt saved on this device.")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Answer")).toHaveValue(change === "answer" ? "7" : "");
+    expect(storage.peekAll("exhibit_attempts")).toHaveLength(1);
+    expect(storage.peekAll("exhibit_attempts")[0].exhibitId).toBe(exhibitDatasets[0].id);
+  });
+
   it("validates and persists a numeric exhibit answer", async () => {
     const storage = new MemoryAppStorage();
 
@@ -21,7 +42,7 @@ describe("ExhibitQuestionFlow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Submit Answer" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("Correct. Attempt saved on this device.");
-    expect(screen.getByTestId("exhibit-solution-panel")).toHaveTextContent("Correct answer: $48.38M");
+    expect(screen.getByTestId("exhibit-solution-panel")).toHaveTextContent("Correct answer: $48,384,000");
     expect(storage.peekAll("exhibit_attempts")).toEqual([
       expect.objectContaining({
         exhibitId: "exhibit_retail_formats_001",

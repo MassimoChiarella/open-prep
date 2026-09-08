@@ -11,15 +11,15 @@ const compactAxisCurrency = new Intl.NumberFormat("en-US", {
 
 const practicalCurrency = new Intl.NumberFormat("en-US", {
   currency: "USD",
-  maximumFractionDigits: 2,
+  maximumSignificantDigits: 21,
   minimumFractionDigits: 0,
-  notation: "compact",
   style: "currency"
 });
 
 const integerNumber = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const oneDecimalNumber = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
-const twoDecimalNumber = new Intl.NumberFormat("en-US", { maximumFractionDigits: 2 });
+const preciseNumber = new Intl.NumberFormat("en-US", { maximumSignificantDigits: 21 });
+const precisePercentage = new Intl.NumberFormat("en-US", { maximumSignificantDigits: 21, style: "percent" });
 
 export const exhibitUnitLabels: Record<UnitType, string> = {
   b: "B",
@@ -59,7 +59,9 @@ export function formatExhibitCellValue(value: ExhibitCellValue, column: ExhibitC
 }
 
 export function formatExhibitAxisValue(value: number, column: ExhibitColumn): string {
-  return column.valueType === "currency" ? compactAxisCurrency.format(value) : formatExhibitCellValue(value, column);
+  if (column.valueType === "currency") return compactAxisCurrency.format(value);
+  if (column.valueType === "percentage") return `${oneDecimalNumber.format(value * 100)}%`;
+  return column.valueType === "year" ? String(value) : oneDecimalNumber.format(value);
 }
 
 export function formatExhibitAnswerValue(value: number, unit: UnitType = "none"): string {
@@ -73,7 +75,7 @@ export function formatExhibitAnswerValue(value: number, unit: UnitType = "none")
 
   const label = exhibitUnitLabels[unit].toLowerCase();
 
-  return `${formatCompactNumber(value)}${label.length === 0 ? "" : ` ${label}`}`;
+  return `${formatNumber(value)}${label.length === 0 ? "" : ` ${label}`}`;
 }
 
 export function unitLabelForExhibitColumn(column: ExhibitColumn): string | undefined {
@@ -95,13 +97,9 @@ function formatCurrency(value: number): string {
 }
 
 function formatNumber(value: number): string {
-  return (Number.isInteger(value) ? integerNumber : twoDecimalNumber).format(value);
+  return (Number.isInteger(value) ? integerNumber : preciseNumber).format(value);
 }
 
 function formatPercentage(value: number): string {
-  return `${formatCompactNumber(value * 100)}%`;
-}
-
-function formatCompactNumber(value: number): string {
-  return (Number.isInteger(value) ? integerNumber : oneDecimalNumber).format(value);
+  return precisePercentage.format(value);
 }

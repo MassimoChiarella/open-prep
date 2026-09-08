@@ -79,7 +79,7 @@ export const ExhibitChartRenderer = memo(function ExhibitChartRenderer({ dataset
       </div>
 
       <ChartLegend chartData={chartData} dataset={dataset} series={series} />
-      <ChartValueList chartData={chartData} series={series} />
+      <ChartValueList chartData={chartData} dataset={dataset} />
       {dataset.sourceNote !== undefined ? (
         <p className="min-w-0 text-xs leading-5 text-ink/65 [overflow-wrap:anywhere]">{dataset.sourceNote}</p>
       ) : null}
@@ -339,10 +339,10 @@ function ChartLegend({
 
 function ChartValueList({
   chartData,
-  series
+  dataset
 }: {
   chartData: readonly ExhibitChartDatum[];
-  series: readonly ExhibitChartSeries[];
+  dataset: ExhibitDataset;
 }) {
   const { t } = useI18n();
 
@@ -355,14 +355,18 @@ function ChartValueList({
       tabIndex={0}
     >
       <dl className="grid auto-rows-fr gap-2 sm:grid-cols-2">
-        {chartData.map((datum) => (
-          <div className="min-w-0 border-s-2 border-ink/15 bg-paper px-3 py-2" key={datum.label}>
-            <dt className="min-w-0 text-sm font-semibold text-ink [overflow-wrap:anywhere]">{datum.label}</dt>
-            {series.map((item) => (
-              <dd className="mt-1 min-w-0 text-sm text-ink/70 [overflow-wrap:anywhere]" key={item.column.id}>
-                {item.column.label}: {formatExhibitCellValue(datum.values[item.column.id] ?? 0, item.column)}
-              </dd>
-            ))}
+        {dataset.rows.map((row, index) => (
+          <div className="min-w-0 border-s-2 border-ink/15 bg-paper px-3 py-2" key={row.id}>
+            <dt className="min-w-0 text-sm font-semibold text-ink [overflow-wrap:anywhere]">{chartData[index]?.label}</dt>
+            {dataset.columns.map((column) => {
+              const value = row.cells[column.id];
+              if (value === undefined || (column.role === "dimension" && String(value) === chartData[index]?.label)) return null;
+              return (
+                <dd className="mt-1 min-w-0 text-sm text-ink/70 [overflow-wrap:anywhere]" key={column.id}>
+                  {column.label}: {formatExhibitCellValue(value, column)}
+                </dd>
+              );
+            })}
           </div>
         ))}
       </dl>

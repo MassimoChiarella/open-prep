@@ -49,7 +49,7 @@ describe("ExhibitTableRenderer", () => {
     expect(screen.getByTestId("exhibit-table-cell-downtown_flagship-stores")).toHaveTextContent("8");
     expect(screen.getByTestId("exhibit-table-cell-downtown_flagship-stores")).toHaveClass("text-end");
     expect(screen.getByTestId("exhibit-table-cell-downtown_flagship-average_revenue")).toHaveTextContent(
-      "$12.5M"
+      "$12,500,000"
     );
     expect(screen.getByTestId("exhibit-table-cell-downtown_flagship-average_revenue")).toHaveClass("tabular-nums");
     expect(screen.getByTestId("exhibit-table-cell-downtown_flagship-gross_margin")).toHaveTextContent("38%");
@@ -65,8 +65,8 @@ describe("ExhibitTableRenderer", () => {
   });
 
   it("formats table cells by column value type", () => {
-    expect(formatExhibitCellValue(45_000_000, column("currency"))).toBe("$45M");
-    expect(formatExhibitCellValue(12_500_000, column("currency"))).toBe("$12.5M");
+    expect(formatExhibitCellValue(45_000_000, column("currency"))).toBe("$45,000,000");
+    expect(formatExhibitCellValue(12_500_000, column("currency"))).toBe("$12,500,000");
     expect(formatExhibitCellValue(0.457, column("percentage"))).toBe("45.7%");
     expect(formatExhibitCellValue(18_500, column("number"))).toBe("18,500");
     expect(formatExhibitCellValue(2024, column("year"))).toBe("2024");
@@ -74,9 +74,9 @@ describe("ExhibitTableRenderer", () => {
   });
 
   it("keeps practical currency values distinct while axis ticks remain compact", () => {
-    expect(formatExhibitCellValue(1_350_000, column("currency"))).toBe("$1.35M");
-    expect(formatExhibitCellValue(1_400_000, column("currency"))).toBe("$1.4M");
-    expect(formatExhibitAnswerValue(1_350_000, "currency")).toBe("$1.35M");
+    expect(formatExhibitCellValue(1_350_000, column("currency"))).toBe("$1,350,000");
+    expect(formatExhibitCellValue(1_400_000, column("currency"))).toBe("$1,400,000");
+    expect(formatExhibitAnswerValue(1_350_000, "currency")).toBe("$1,350,000");
     expect(formatExhibitAxisValue(1_350_000, column("currency"))).toBe("$1.4M");
   });
 });

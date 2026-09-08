@@ -69,7 +69,9 @@ function placeholderForAnswer(answer: AnswerSpec): string {
     return "$12.5M";
   }
 
-  if (answer.unit === "percentage" || answer.unit === "percentage_points") {
+  if (answer.unit === "percentage_points") return "4 pp";
+
+  if (answer.unit === "percentage") {
     return "45%";
   }
 

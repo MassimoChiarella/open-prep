@@ -38,6 +38,7 @@ export function ExhibitQuestionFlow({
   const { formatDuration, locale, t } = useI18n();
   const [selectedDatasetId, setSelectedDatasetId] = useState(() => datasets[0]?.id ?? "");
   const startedAtRef = useRef(new Date().toISOString());
+  const attemptRevision = useRef(0);
   const selectedDataset = useMemo(
     () => datasets.find((dataset) => dataset.id === selectedDatasetId) ?? datasets[0],
     [datasets, selectedDatasetId]
@@ -55,6 +56,7 @@ export function ExhibitQuestionFlow({
   const [solutionVisible, setSolutionVisible] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | undefined>();
   const resetAttemptState = useCallback(() => {
+    attemptRevision.current += 1;
     setAnswerDraft("");
     setAttemptStatus(undefined);
     setSaveStatus("idle");
@@ -178,6 +180,7 @@ export function ExhibitQuestionFlow({
           <ExhibitAnswerInput
             name={`exhibit-answer-${selectedQuestion.id}`}
             onChange={(value) => {
+              attemptRevision.current += 1;
               setAnswerDraft(value);
               setAttemptStatus(undefined);
               setSaveStatus("idle");
@@ -194,10 +197,12 @@ export function ExhibitQuestionFlow({
               className="inline-flex min-h-11 items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-white transition hover:bg-teal aria-disabled:cursor-wait aria-disabled:bg-ink/70 motion-reduce:transform-none active:scale-[0.98]"
               onClick={() => {
                 if (saveStatus === "saving") return;
+                const revision = ++attemptRevision.current;
                 void submitExhibitAttempt({
                   answerDraft,
                   dataset: selectedDataset,
                   locale,
+                  isCurrent: () => attemptRevision.current === revision,
                   question: selectedQuestion,
                   setAttemptStatus,
                   setSaveStatus,
@@ -322,6 +327,7 @@ async function submitExhibitAttempt({
   answerDraft,
   dataset,
   locale,
+  isCurrent,
   question,
   setAttemptStatus,
   setSaveStatus,
@@ -334,6 +340,7 @@ async function submitExhibitAttempt({
   answerDraft: string;
   dataset: ExhibitDataset;
   locale?: string;
+  isCurrent: () => boolean;
   question: ExhibitQuestionSpec;
   setAttemptStatus: (status: string | undefined) => void;
   setSaveStatus: (status: AttemptSaveStatus) => void;
@@ -373,6 +380,7 @@ async function submitExhibitAttempt({
       storage.close();
     }
 
+    if (!isCurrent()) return;
     setSaveStatus("saved");
     setAttemptStatus(
       validation.isCorrect
@@ -380,6 +388,7 @@ async function submitExhibitAttempt({
         : t("{feedback} Attempt saved on this device.", { feedback: t(validation.feedbackMessage) })
     );
   } catch {
+    if (!isCurrent()) return;
     setSaveStatus("error");
     setAttemptStatus(t("Answer checked, but the attempt could not be saved on this device."));
   }
