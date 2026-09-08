@@ -22,7 +22,7 @@ Independent implementation can run in parallel. Each completed batch is reviewed
 | 10 | Difficulty-correct personal bests and duplicate-question scoring | Complete |
 | 11 | Save-only retries, full-case local resume, prep-plan clarification | Complete |
 | 12 | Independent invariant tests and smaller browser smoke journeys | Complete |
-| 13 | Integrated verification, visual review and final repair ledger | In progress |
+| 13 | Integrated verification, visual review and final repair ledger | Complete |
 
 ### 01 — Establish the development record
 
@@ -146,4 +146,37 @@ All 30 BUG IDs and six IMP IDs must have an implemented outcome and verification
 | Final review: queued saves | BUG-10 hardening: subscribe queued drill draft/completion writes to invalidation before earlier saves settle; preserve ordinary navigation saves | Four regressions reproduced both stale-write failures before the fix; all 49 targeted tests, ESLint and TypeScript passed | `7d0d3c9` |
 | Final review: draft keyboard focus | IMP-03 hardening: focus the restored stage after Resume and an available control after Discard; preserve focus if the learner moves elsewhere while deletion waits | 17 draft lifecycle tests passed, including first-stage resume, delete failure/retry and delayed deletion; focused ESLint and combined TypeScript passed | `fcf00b3` |
 | Final review: expected rendering | Update the single mobile Formula Library baseline for clarified ROI wrapping and the exhibit assertion for full currency precision | All six visual groups passed in the isolated Chromium run; inspected ROI across four layouts and expanded English/Arabic dark Settings; corrected exhibit save journey passed | `6c0faac` |
-| Final review: content direction | Let authored case briefs, options and explanations select their own reading direction while translated controls retain the surrounding direction | 24 relevant component tests and ESLint passed; focused direction assertions protect authored content and surrounding RTL controls | `fix: preserve case content reading direction` |
+| Final review: content direction | Let authored case briefs, options and explanations select their own reading direction while translated controls retain the surrounding direction | 24 relevant component tests and ESLint passed; focused direction assertions protect authored content and surrounding RTL controls | `39cb9e2` |
+| Final verification record | Complete every plan step, pin historical audit links, document supported limits and preserve exact verification evidence | All static/build gates passed; 1,232 unit/component tests; 178 Chromium plus 103 Firefox/WebKit/backup tests passed with zero retries | `docs: complete audit remediation validation` |
+
+## Verification method and limits
+
+### Final results on `39cb9e2`
+
+| Check | Result |
+|---|---|
+| Version, Action pins, authoring bundles, product identity | Passed; 518 text files checked for identity |
+| ESLint and strict TypeScript | Passed |
+| Unit and component suite | 160 files / 1,232 tests passed |
+| Catalog and generated locales | Passed |
+| Production export and artifact integrity | Passed; 224 files, clean source identity |
+| Largest JavaScript chunk | 394.2 / 500 KiB |
+| Largest route JavaScript, Brotli | 402.9 / 480 KiB |
+| Complete offline install | 4,809.8 / 6,144 KiB; 185 files |
+| Complete Chromium suite | 178 / 178 passed in 5.6 minutes, zero retries |
+| Firefox, WebKit and backup portability | 103 / 103 passed in 3.8 minutes: 51 Firefox, 51 WebKit and one Chromium-to-Firefox/WebKit backup transfer; zero retries |
+| Additional visual/keyboard review | ROI at mobile/tablet/desktop/dark; expanded English/Arabic dark backup controls; full-case English/German/Arabic narrow layouts, resume/discard focus and final RTL punctuation passed |
+
+### Isolation and preserved evidence
+
+The final implementation is pinned at `39cb9e2` in a detached verification checkout. It uses the same installed dependency versions, Node 24.19.0/npm 11.17.0, the checked-in test suites and the verified static server. Ignored Playwright configs change only checkout paths, evidence directories and local ports (3017/3018), retaining the normal worker counts, assertion/test time limits and zero retries. All fixtures and output resolve inside that checkout. This prevents another active task's build cleanup from removing the files under test.
+
+Earlier attempts are retained as evidence rather than reported as clean passes. An initial catalog check encountered a Vite module-transport timeout; the standalone check and subsequent isolated build passed. Shared-output browser runs were stopped after another task removed `out/`, producing missing-page failures. A five-second pre-hydration stall in the shared run also failed once. The isolated run then exposed a stale exhibit assertion expecting compact currency; that assertion now checks the repaired exact display, and its complete answer/save journey passed. The single updated screenshot is the mobile Formula Library: corrected ROI wording adds one natural line. All six visual groups passed after that reviewed update.
+
+Final local logs: `.runtime-cache/remediation-complete-gates.log`, `.runtime-cache/remediation-complete-chromium.log`, and `.runtime-cache/remediation-complete-cross.log`. Browser artifacts use the corresponding `remediation-complete-*-results` folders. Additional reviewed screenshots and geometry reports are in `.runtime-cache/practice-audit/roi-settings-visual/` and `.runtime-cache/practice-audit/full-case-draft-final-visual/`. These ignored files contain synthetic local test data; the tracked plan and commit ledger are the durable record.
+
+All 30 audited bugs and six improvements are implemented and verified. The final documentation commit changes only the audit and this ledger; application code, tests and build inputs remain at the verified implementation commit above. The development branch contains 19 incremental commits from the audit baseline, each pushed to GitHub.
+
+### Practical limits
+
+Remaining practical limits are explicit: complete backups support at most 64 files / 128 MiB per set, with 40 MiB per file and existing individual-record bounds; creating/restoring a set still uses an in-memory snapshot. The complete offline asset generation is larger than the old incomplete cache, so its measured install budget is 6 MiB; route and individual-chunk budgets remain unchanged. Automated coverage does not replace human screen-reader or OS-level PWA installation checks, browser-eviction testing, final-host checks, or exhaustive enumeration of every generated question. No deployment, merge, runtime service or dependency was added by this remediation.
