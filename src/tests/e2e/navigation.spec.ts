@@ -351,7 +351,7 @@ test("exhibit drills render local data and persist an answer", { tag: "@browser-
   await page.keyboard.press("ArrowRight");
   await expect.poll(() => tableRegion.evaluate((element) => element.scrollLeft)).toBeGreaterThan(0);
 
-  await expect(page.getByTestId("exhibit-table-cell-downtown_flagship-average_revenue")).toHaveText("$12.5M");
+  await expect(page.getByTestId("exhibit-table-cell-downtown_flagship-average_revenue")).toHaveText("$12,500,000");
   await page.getByLabel("Answer", { exact: true }).fill("$48.4M");
   await page.getByRole("button", { name: "Submit Answer" }).click();
   await expect(page.getByText("Correct. Attempt saved on this device.")).toBeVisible();
