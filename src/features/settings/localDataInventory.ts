@@ -24,7 +24,7 @@ export const completeBackupLimits = {
 
 export const localDataInvalidationChannel = "open-prep-local-data" as const;
 export const localDataInvalidationFallbackKey = "open_prep_local_data_invalidation" as const;
-export const localDataInvalidationKinds = ["personal_data_cleared", "all_data_cleared"] as const;
+export const localDataInvalidationKinds = ["personal_data_cleared", "all_data_cleared", "progress_replaced"] as const;
 
 export type LocalDataInvalidationKind = (typeof localDataInvalidationKinds)[number];
 export type CompleteBackupOptionalScope = "packs" | "preferences" | "private_text";

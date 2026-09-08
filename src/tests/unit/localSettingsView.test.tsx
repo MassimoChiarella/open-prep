@@ -1,9 +1,11 @@
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { createDrillSettings } from "@/features/drills/drillSettings";
 import { localePreferenceStorageKey } from "@/features/i18n/i18n";
 import { createCompleteBackupFromStorage } from "@/features/settings/completeBackupStorage";
+import { createLocalProgressExport, serializeLocalProgressExport } from "@/features/settings/localProgressExport";
+import { createUserSettingsRecord } from "@/features/settings/settingsPersistence";
 import { LocalSettingsView } from "@/features/settings/LocalSettingsView";
 import { themePreferenceStorageKey } from "@/features/theme/theme";
 import { timingAccommodationPreferenceKey } from "@/features/timing/timingAccommodationPreference";
@@ -274,6 +276,74 @@ describe("LocalSettingsView", () => {
     expect(window.localStorage.getItem(localePreferenceStorageKey)).toBe("fr");
     expect(window.localStorage.getItem(themePreferenceStorageKey)).toBe("dark");
     expect(window.localStorage.getItem(timingAccommodationPreferenceKey)).toBe("double_time");
+  });
+
+  it("ignores obsolete standard file reads and refreshes clear-data inventories", async () => {
+    const storage = new MemoryAppStorage();
+    const older = await createLocalProgressExport(storage, "2026-09-07T12:00:00.000Z");
+    const newer = structuredClone(older);
+    older.stores.user_settings.push(createUserSettingsRecord(createDrillSettings({ questionCount: 2 }), older.exportedAt));
+    newer.stores.user_settings.push(createUserSettingsRecord(createDrillSettings({ questionCount: 3 }), newer.exportedAt));
+    let resolveOld!: (text: string) => void;
+    const oldFile = { size: 1000, text: () => new Promise<string>((resolve) => { resolveOld = resolve; }) };
+    render(<LocalSettingsView storageFactory={() => storage} />);
+    await screen.findByText(/Built-in defaults initialize/);
+    openDisclosure("settings-local-data");
+    openDisclosure("settings-reset");
+    const input = screen.getByLabelText("Import Local Progress", { selector: "input" });
+    fireEvent.change(input, { target: { files: [oldFile] } });
+    fireEvent.change(input, { target: { files: [testFile(serializeLocalProgressExport(newer), "new.json")] } });
+    await screen.findByText("Import file is valid. Confirm replacement to continue.");
+    const confirm = screen.getByLabelText("I understand this replaces local progress on this device.");
+    fireEvent.click(confirm);
+    await act(async () => resolveOld(serializeLocalProgressExport(older)));
+    fireEvent.click(screen.getByRole("button", { name: "Import And Replace" }));
+    await screen.findByText("Local progress import replaced data on this device.");
+    expect(await storage.get("user_settings", "default")).toMatchObject({ settings: { questionCount: 3 } });
+    await waitFor(() => expect(screen.getByLabelText("I understand this clears all saved app data from this browser.")).toBeEnabled());
+  });
+
+  it("ignores obsolete complete-backup file reads after a newer payload is confirmed", async () => {
+    const olderSource = new MemoryAppStorage();
+    const newerSource = new MemoryAppStorage();
+    await olderSource.put("user_settings", createUserSettingsRecord(createDrillSettings({ questionCount: 2 }), "2026-09-07T12:00:00.000Z"));
+    await newerSource.put("user_settings", createUserSettingsRecord(createDrillSettings({ questionCount: 3 }), "2026-09-07T12:00:00.000Z"));
+    const older = await createCompleteBackupFromStorage(olderSource);
+    const newer = await createCompleteBackupFromStorage(newerSource);
+    let resolveOld!: (text: string) => void;
+    const oldFile = { size: 1000, text: () => new Promise<string>((resolve) => { resolveOld = resolve; }) };
+    const target = new MemoryAppStorage();
+    render(<LocalSettingsView storageFactory={() => target} />);
+    openDisclosure("settings-local-data");
+    const input = screen.getByLabelText("Choose a complete backup file");
+    fireEvent.change(input, { target: { files: [oldFile] } });
+    fireEvent.change(input, { target: { files: [testFile(JSON.stringify(newer), "new.json")] } });
+    const preview = await screen.findByTestId("complete-backup-restore-preview");
+    fireEvent.click(within(preview).getByLabelText("I understand the selected sections will be replaced on this device."));
+    await act(async () => { resolveOld(JSON.stringify(older)); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    fireEvent.click(within(preview).getByRole("button", { name: "Restore Selected Sections" }));
+    await screen.findByText("Complete backup restored.");
+    expect(await target.get("user_settings", "default")).toMatchObject({ settings: { questionCount: 3 } });
+  });
+
+  it("discards a pending private backup when the selected scope changes", async () => {
+    const storage = new MemoryAppStorage();
+    await seedPersonalData(storage);
+    render(<LocalSettingsView storageFactory={() => storage} />);
+    await screen.findByText("These saved defaults initialize Drill Selection. Changing a drill affects only that launch until you choose Save as my defaults.");
+    const localData = openDisclosure("settings-local-data");
+    const original = storage.getSnapshot.bind(storage);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    vi.spyOn(storage, "getSnapshot").mockImplementation(async (stores) => { await gate; return original(stores); });
+    const scope = within(localData).getByLabelText("Include private stories, preparation profile, and notes");
+    fireEvent.click(scope);
+    fireEvent.click(within(localData).getByRole("button", { name: "Prepare Complete Backup" }));
+    fireEvent.click(scope);
+    await act(async () => { release(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(scope).not.toBeChecked();
+    expect(screen.queryByTestId("complete-backup-export-preview")).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Download Complete Backup" })).not.toBeInTheDocument();
   });
 
   it("rejects an invalid complete backup without enabling restore", async () => {

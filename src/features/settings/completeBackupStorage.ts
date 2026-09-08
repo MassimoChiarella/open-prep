@@ -1,3 +1,4 @@
+import { preservePrivateData, privatePreservationStoreNames } from "@/features/settings/privateDataPreservation";
 import {
   createCompleteBackup,
   serializeCompleteBackup,
@@ -7,6 +8,7 @@ import {
   type CompleteBackupV1
 } from "@/features/settings/completeBackup";
 import { completeBackupStoreNames, localPreferenceKeys } from "@/features/settings/localDataInventory";
+import { publishLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import {
   progressStoreNames,
   type AppStorage,
@@ -44,10 +46,7 @@ export interface CompleteBackupSummary {
   schemaVersion: number;
 }
 
-const privatePreservationStoreNames = [
-  "market_sizing_attempts",
-  "practice_records"
-] as const;
+
 
 export async function createCompleteBackupFromStorage(
   storage: AppStorage,
@@ -94,10 +93,12 @@ export async function restoreCompleteBackup(
   await storage.mutate(operations);
 
   if (!backup.selectedScopes.includes("preferences")) {
+    publishLocalDataInvalidation("progress_replaced");
     return { backup, preferences: { failedKeys: [], status: "not_selected" } };
   }
 
   const failedKeys = writePreferences(options.preferenceStorage ?? getLocalStorage(), backup.sections.preferences!);
+  publishLocalDataInvalidation("progress_replaced");
 
   return {
     backup,
@@ -142,28 +143,6 @@ function appendReplacement<TStore extends AppStoreName>(
   }
 }
 
-function preservePrivateData(
-  imported: CompleteBackupV1["sections"]["progress"]["stores"],
-  existing: AppStorageSnapshot<typeof privatePreservationStoreNames>
-): CompleteBackupV1["sections"]["progress"]["stores"] {
-  const practiceRecords = new Map(imported.practice_records.map((record) => [record.id, record]));
-  for (const record of existing.practice_records) {
-    if (record.kind === "fit_story" || record.kind === "prep_profile") practiceRecords.set(record.id, record);
-  }
-
-  const marketSizingAttempts = new Map(imported.market_sizing_attempts.map((record) => [record.id, record]));
-  for (const record of existing.market_sizing_attempts) {
-    if (!Object.hasOwn(record, "note")) continue;
-    const importedRecord = marketSizingAttempts.get(record.id);
-    marketSizingAttempts.set(record.id, importedRecord === undefined ? record : { ...importedRecord, note: record.note });
-  }
-
-  return {
-    ...imported,
-    market_sizing_attempts: [...marketSizingAttempts.values()],
-    practice_records: [...practiceRecords.values()]
-  };
-}
 
 function readPreferences(storage: PreferenceReader | undefined): Partial<Record<keyof CompleteBackupPreferences, unknown>> {
   return Object.fromEntries(localPreferenceKeys.map((key) => [key, storage?.getItem(key)]));

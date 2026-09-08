@@ -11,7 +11,7 @@ Independent implementation can run in parallel. Each completed batch is reviewed
 | Step | Scope | Status |
 |---|---|---|
 | 01 | Publish the portable audit and this plan | Complete |
-| 02 | Safe imports, private-data scope, reset/restore invalidation | Pending |
+| 02 | Safe imports, private-data scope, reset/restore invalidation | Complete |
 | 03 | Fit Story editing, save consistency, rehearsal timing | Complete |
 | 04 | Numeric parser, units, formula grammar and precedence | Complete |
 | 05 | Offline upgrade readiness and complete asset precaching | Pending |
@@ -132,4 +132,5 @@ All 30 BUG IDs and six IMP IDs must have an implemented outcome and verification
 | Planning | Portable audit and sequenced implementation plan | Baseline audit: 1,069 unit tests; 143 Chromium scenarios; all 37 additional browser scenarios passed at least once | `20c978f` |
 
 | Fit practice | BUG-04, BUG-12, BUG-17: stable fields, protected pending saves, elapsed-time rehearsal clock | 23 focused Fit tests passed; root diff review | `12750ef` |
-| Numeric contracts | BUG-14, BUG-21, BUG-22, BUG-28: currency scale metadata, locale grouping, operator grammar and precedence | 109 focused tests and strict TypeScript passed; root diff review | `fix: correct numeric units and formula parsing` |
+| Numeric contracts | BUG-14, BUG-21, BUG-22, BUG-28: currency scale metadata, locale grouping, operator grammar and precedence | 109 focused tests and strict TypeScript passed; root diff review | `f4cdb9a` |
+| Local data safety | BUG-01, BUG-02, BUG-09, BUG-10, BUG-27 plus adapter recovery: stale read guards, private preservation, atomic resets, invalidation and fresh inventories | 55 focused tests and strict TypeScript passed; root diff review | `fix: protect local data during import and reset` |

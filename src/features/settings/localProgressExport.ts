@@ -1,3 +1,5 @@
+import { preservePrivateData, privatePreservationStoreNames } from "@/features/settings/privateDataPreservation";
+import { publishLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import {
   appDatabaseName,
   progressStoreNames,
@@ -89,18 +91,22 @@ export async function replaceLocalProgressWithImport(
     throw new Error(validation.errors[0] ?? "Local progress import is invalid.");
   }
 
+  const imported = validation.exportData.privacyScope === "standard"
+    ? preservePrivateData(validation.exportData.stores, await storage.getSnapshot(privatePreservationStoreNames))
+    : validation.exportData.stores;
   const operations: AppStorageMutation[] = localProgressExportStoreNames.map((storeName) => ({
     storeName,
     type: "clear"
   }));
 
   for (const storeName of localProgressExportStoreNames) {
-    for (const record of validation.exportData.stores[storeName]) {
+    for (const record of imported[storeName]) {
       operations.push({ storeName, type: "put", value: record } as AppStorageMutation);
     }
   }
 
   await storage.mutate(operations);
+  publishLocalDataInvalidation("progress_replaced");
 }
 
 export function createLocalProgressImportSummary(exportData: LocalProgressExportV1): LocalProgressImportSummary {
@@ -260,6 +266,7 @@ function isStoredDrillSession(value: Record<string, unknown>): boolean {
   return (
     isNonEmptyString(value.id) &&
     isDateString(value.startedAt) &&
+    optional(value.activeQuestionStartedAt, isDateString) &&
     optional(value.endedAt, isDateString) &&
     isDrillSettings(value.settings) &&
     isArrayOf(value.questionIds, isNonEmptyString) &&
@@ -508,7 +515,7 @@ function isQuestion(value: unknown): boolean {
 }
 
 function isAnswerSpec(value: unknown): boolean {
-  return isRecord(value) && isFiniteNumber(value.value) && optional(value.unit, (unit) => isOneOf(unit, unitTypes)) &&
+  return isRecord(value) && isFiniteNumber(value.value) && optional(value.currency, isBoolean) && optional(value.unit, (unit) => isOneOf(unit, unitTypes)) &&
     optional(value.tolerance, isTolerance) && optional(value.roundingRule, (rule) => isOneOf(rule, roundingRules)) &&
     optional(value.errorChecks, isAnswerErrorChecks);
 }

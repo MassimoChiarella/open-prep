@@ -25,7 +25,7 @@ describe("local data inventory contract", () => {
     ]);
     expect(completeBackupLimits.maxQuestionPacks).toBe(200);
     expect(completeBackupLimits.maxFileBytes).toBe(40 * 1024 * 1024);
-    expect(localDataInvalidationKinds).toEqual(["personal_data_cleared", "all_data_cleared"]);
+    expect(localDataInvalidationKinds).toEqual(["personal_data_cleared", "all_data_cleared", "progress_replaced"]);
   });
 
   it("documents every store, preference, exclusion, backup scope, and clear scope", () => {

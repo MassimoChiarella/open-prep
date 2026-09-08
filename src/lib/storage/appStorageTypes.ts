@@ -167,6 +167,7 @@ export type QuestionPackRecord =
   ) & { catalogProvenance?: CommunityPackCatalogProvenance };
 
 export interface StoredDrillSession extends DrillSession {
+  activeQuestionStartedAt?: string;
   draftKey?: string;
   questions?: Question[];
   updatedAt: string;

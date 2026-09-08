@@ -104,6 +104,10 @@ describe("local progress export schema", () => {
       exportData: complete,
       status: "valid"
     });
+    await replaceLocalProgressWithImport(storage, standard);
+    expect(await storage.get("practice_records", story.id)).toEqual(story);
+    expect(await storage.get("practice_records", "prep-profile")).toMatchObject({ targetFirms: ["Firm A"] });
+    expect(await storage.get("market_sizing_attempts", "market-1")).toHaveProperty("note", "Private sizing note");
   });
 
   it("replaces existing local data with imported records", async () => {

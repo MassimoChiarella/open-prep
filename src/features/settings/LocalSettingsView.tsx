@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type ChangeEvent, useEffect, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 
 import { LocalSaveNotice } from "@/components/LocalSaveNotice";
 import { PageHeader } from "@/components/PageHeader";
@@ -127,6 +127,16 @@ export function LocalSettingsView({
   const [savedSettings, setSavedSettings] = useState<DrillSettings | undefined>();
   const [resetConfirmed, setResetConfirmed] = useState(false);
   const [status, setStatus] = useState<SettingsStatus>("loading");
+  const importRequest = useRef(0);
+  const restoreRequest = useRef(0);
+  const preparationRequest = useRef(0);
+  const [inventoryRevision, setInventoryRevision] = useState(0);
+
+  useEffect(() => () => {
+    importRequest.current += 1;
+    restoreRequest.current += 1;
+    preparationRequest.current += 1;
+  }, []);
 
   useEffect(() => {
     const openQuestionPoolSettings = () => {
@@ -238,7 +248,17 @@ export function LocalSettingsView({
     return () => {
       cancelled = true;
     };
-  }, [storageFactory]);
+  }, [storageFactory, inventoryRevision]);
+
+  function refreshInventory() {
+    setAllClearConfirmed(false);
+    setPersonalClearConfirmed(false);
+    preparationRequest.current += 1;
+    setPreparedCompleteBackup(undefined);
+    setCompleteExportConfirmed(false);
+    setCompleteExportStatus("idle");
+    setInventoryRevision((current) => current + 1);
+  }
 
   function handleReset() {
     setStatus("resetting");
@@ -251,6 +271,7 @@ export function LocalSettingsView({
           setSavedSettings(undefined);
           setResetConfirmed(false);
           setStatus("reset");
+          refreshInventory();
         })
         .catch(() => setStatus("error"))
         .finally(() => storage.close());
@@ -293,6 +314,7 @@ export function LocalSettingsView({
   }
 
   function updateCompleteBackupScope(update: () => void): void {
+    preparationRequest.current += 1;
     update();
     setCompleteExportConfirmed(false);
     setCompleteExportStatus("idle");
@@ -300,6 +322,7 @@ export function LocalSettingsView({
   }
 
   async function handlePrepareCompleteBackup() {
+    const request = ++preparationRequest.current;
     setCompleteExportConfirmed(false);
     setCompleteExportStatus("preparing");
     setPreparedCompleteBackup(undefined);
@@ -310,10 +333,11 @@ export function LocalSettingsView({
       const backup = await createCompleteBackupFromStorage(storage, {
         selectedOptionalScopes: selectedCompleteBackupScopes()
       });
+      if (request !== preparationRequest.current) return;
       setPreparedCompleteBackup(backup);
       setCompleteExportStatus("prepared");
     } catch {
-      setCompleteExportStatus("error");
+      if (request === preparationRequest.current) setCompleteExportStatus("error");
     } finally {
       storage?.close();
     }
@@ -330,12 +354,15 @@ export function LocalSettingsView({
   }
 
   async function handleCompleteBackupFile(event: ChangeEvent<HTMLInputElement>) {
+    if (completeRestoreStatus === "restoring") return;
+    const request = ++restoreRequest.current;
     const file = event.currentTarget.files?.[0];
 
     setCompleteRestoreConfirmed(false);
     setCompleteRestoreErrors([]);
     setPendingCompleteRestore(undefined);
     setPreferenceRestoreFailures([]);
+    setCompleteRestoreStatus("idle");
 
     if (file === undefined) {
       setCompleteRestoreStatus("idle");
@@ -350,6 +377,7 @@ export function LocalSettingsView({
     try {
       const parsed: unknown = JSON.parse(await file.text());
       const validation = await validateCompleteBackupPayload(parsed, { sourceBytes: file.size });
+      if (request !== restoreRequest.current) return;
 
       if (validation.status === "invalid") {
         setCompleteRestoreErrors(validation.errors);
@@ -360,6 +388,7 @@ export function LocalSettingsView({
       setPendingCompleteRestore({ backup: validation.backup, sourceBytes: file.size });
       setCompleteRestoreStatus("ready");
     } catch {
+      if (request !== restoreRequest.current) return;
       setCompleteRestoreErrors(["Complete backup must contain valid JSON."]);
       setCompleteRestoreStatus("invalid");
     }
@@ -381,6 +410,7 @@ export function LocalSettingsView({
       setCompleteRestoreConfirmed(false);
       setPreferenceRestoreFailures(result.preferences.failedKeys);
       setCompleteRestoreStatus(result.preferences.status === "partial" ? "partial" : "restored");
+      refreshInventory();
 
       if (
         result.backup.sections.preferences !== undefined ||
@@ -473,12 +503,15 @@ export function LocalSettingsView({
   }
 
   async function handleImportFile(event: ChangeEvent<HTMLInputElement>) {
+    if (importStatus === "importing") return;
+    const request = ++importRequest.current;
     const file = event.currentTarget.files?.[0];
 
     setImportConfirmed(false);
     setImportErrors([]);
     setImportSummary(undefined);
     setPendingImport(undefined);
+    setImportStatus("idle");
 
     if (file === undefined) {
       setImportStatus("idle");
@@ -493,6 +526,7 @@ export function LocalSettingsView({
 
     try {
       const text = await file.text();
+      if (request !== importRequest.current) return;
       const parsed: unknown = JSON.parse(text);
       const validation = validateLocalProgressImportPayload(parsed, { sourceBytes: file.size });
 
@@ -505,6 +539,7 @@ export function LocalSettingsView({
       setPendingImport(validation.exportData);
       setImportStatus("ready");
     } catch {
+      if (request !== importRequest.current) return;
       setImportErrors(["Import file must contain valid JSON."]);
       setImportStatus("invalid");
     }
@@ -528,6 +563,7 @@ export function LocalSettingsView({
       setSavedSettings(pendingImport.stores.user_settings[0]?.settings);
       setStatus("ready");
       setImportStatus("imported");
+      refreshInventory();
     } catch {
       setImportStatus("error");
     } finally {
@@ -739,6 +775,7 @@ export function LocalSettingsView({
               <input
                 accept="application/json,.json"
                 className={fileInputClass}
+                disabled={completeRestoreStatus === "restoring"}
                 onChange={(event) => void handleCompleteBackupFile(event)}
                 type="file"
               />
@@ -783,6 +820,7 @@ export function LocalSettingsView({
               <input
                 accept="application/json,.json"
                 className={fileInputClass}
+                disabled={importStatus === "importing"}
                 onChange={(event) => void handleImportFile(event)}
                 type="file"
               />

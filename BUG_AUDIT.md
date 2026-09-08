@@ -8,16 +8,16 @@ Repair from the top of the table. P1 means an urgent data-loss, broken-workflow,
 
 | Order | Priority | Issue | Status |
 |---|---|---|---|
-| BUG-01 | P1 | A stale file read can import the wrong backup after confirmation | Open |
-| BUG-02 | P1 | Standard export/import deletes private records excluded from the export | Open |
+| BUG-01 | P1 | A stale file read can import the wrong backup after confirmation | Fixed (step 02) |
+| BUG-02 | P1 | Standard export/import deletes private records excluded from the export | Fixed (step 02) |
 | BUG-03 | P1 | Applying an update can break offline reopening | Open |
 | BUG-04 | P1 | Fit Story textareas lose focus after every character | Fixed (step 03) |
 | BUG-05 | P1 | Reloading after the final answer strands a completed drill | Open |
 | BUG-06 | P1 | Nine built-in exhibit questions hide required input figures | Open |
 | BUG-07 | P1 | Decimal multiplication rejects both the exact answer and its explanation | Open |
 | BUG-08 | P1 | A built-in four-percentage-point gap is graded as 0.04 and displayed as zero | Open |
-| BUG-09 | P2 | Backup preparation can retain private text after the scope is unchecked | Open |
-| BUG-10 | P2 | Reset and restore leave stale views able to resurrect or overwrite records | Open |
+| BUG-09 | P2 | Backup preparation can retain private text after the scope is unchecked | Fixed (step 02) |
+| BUG-10 | P2 | Reset and restore leave stale views able to resurrect or overwrite records | Fixed (step 02) |
 | BUG-11 | P2 | Growing practice history exceeds the app's own backup/import limits | Open |
 | BUG-12 | P2 | A completed Fit save discards newer edits | Fixed (step 03) |
 | BUG-13 | P2 | Session timers inflate per-question times and distort benchmark scoring | Open |
@@ -34,7 +34,7 @@ Repair from the top of the table. P1 means an urgent data-loss, broken-workflow,
 | BUG-24 | P2 | A previous exhibit save labels a new unanswered exercise correct and saved | Open |
 | BUG-25 | P2 | CAGR and Rule of 72 practice links select unrelated skills | Open |
 | BUG-26 | P2 | Custom arithmetic can repeat an identical question in one session | Open |
-| BUG-27 | P2 | Clear-data controls retain an empty inventory after a successful import | Open |
+| BUG-27 | P2 | Clear-data controls retain an empty inventory after a successful import | Fixed (step 02) |
 | BUG-28 | P3 | Formula validation accepts malformed infix expressions | Fixed (step 04) |
 | BUG-29 | P3 | Decimal stepped ranges can omit valid upper endpoints | Open |
 | BUG-30 | P3 | Identical unrecognized questions receive full distinctness credit | Open |

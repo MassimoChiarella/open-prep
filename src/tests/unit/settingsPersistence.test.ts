@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
+import { subscribeToLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 
 import { createDrillSettings } from "@/features/drills/drillSettings";
 import {
@@ -42,6 +43,20 @@ describe("settings persistence", () => {
 
     expect(await storage.getAll("user_settings")).toEqual([]);
     expect(await storage.getAll("question_packs")).toEqual([questionPack]);
+  });
+
+  it("keeps all progress intact if a reset fails, and invalidates only after success", async () => {
+    const listener = vi.fn();
+    const unsubscribe = subscribeToLocalDataInvalidation(listener);
+    const storage = new MemoryAppStorage(4);
+    const settings = createUserSettingsRecord(createDrillSettings(), "2026-09-07T12:00:00.000Z");
+    await storage.put("user_settings", settings);
+    await expect(resetLocalData(storage)).rejects.toThrow("Injected atomic mutation failure");
+    expect(await storage.get("user_settings", "default")).toEqual(settings);
+    expect(listener).not.toHaveBeenCalled();
+    await resetLocalData(new MemoryAppStorage());
+    expect(listener).toHaveBeenCalledWith(expect.objectContaining({ kind: "progress_replaced" }));
+    unsubscribe();
   });
 });
 

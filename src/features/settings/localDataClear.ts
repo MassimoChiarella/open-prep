@@ -85,15 +85,6 @@ export async function clearAllSavedAppData(
     }
   }
 
-  if (failedKeys.length > 0) {
-    return {
-      database: "cleared",
-      invalidation: { status: "not_published" },
-      preferences: { failedKeys, status: "partial" },
-      status: "partial"
-    };
-  }
-
   const publisher = options.publishInvalidation ?? publishLocalDataInvalidation;
   try {
     const delivery = await publisher("all_data_cleared");
@@ -103,14 +94,14 @@ export async function clearAllSavedAppData(
         delivery,
         status: delivery === "unavailable" ? "unavailable" : "published"
       },
-      preferences: { failedKeys, status: "cleared" },
-      status: delivery === "unavailable" ? "partial" : "complete"
+      preferences: { failedKeys, status: failedKeys.length > 0 ? "partial" : "cleared" },
+      status: delivery === "unavailable" || failedKeys.length > 0 ? "partial" : "complete"
     };
   } catch {
     return {
       database: "cleared",
       invalidation: { status: "failed" },
-      preferences: { failedKeys, status: "cleared" },
+      preferences: { failedKeys, status: failedKeys.length > 0 ? "partial" : "cleared" },
       status: "partial"
     };
   }

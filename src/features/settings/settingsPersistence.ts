@@ -1,4 +1,5 @@
 import { createDrillSettings } from "@/features/drills/drillSettings";
+import { publishLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import type { DrillSettings } from "@/lib/domain";
 import {
   progressStoreNames,
@@ -23,7 +24,8 @@ export async function saveUserDrillSettings(
 }
 
 export async function resetLocalData(storage: AppStorage): Promise<void> {
-  await Promise.all(progressStoreNames.map((storeName) => storage.clear(storeName)));
+  await storage.mutate(progressStoreNames.map((storeName) => ({ storeName, type: "clear" })));
+  publishLocalDataInvalidation("progress_replaced");
 }
 
 export function createUserSettingsRecord(settings: DrillSettings, updatedAt: string): UserSettingsRecord {

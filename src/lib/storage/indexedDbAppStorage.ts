@@ -1,3 +1,4 @@
+import { subscribeToLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import {
   appDatabaseName,
   appDatabaseVersion,
@@ -31,8 +32,22 @@ export function createIndexedDbAppStorage(options: IndexedDbAppStorageOptions = 
 
 class IndexedDbAppStorage implements AppStorage {
   private databasePromise: Promise<IDBDatabase> | undefined;
+  private invalidated = false;
+  private readonly writes = new Set<IDBTransaction>();
+  private readonly unsubscribe: () => void;
 
-  constructor(private readonly indexedDbFactory: IDBFactory) {}
+  constructor(private readonly indexedDbFactory: IDBFactory) {
+    this.unsubscribe = subscribeToLocalDataInvalidation(() => {
+      this.invalidated = true;
+      for (const transaction of this.writes) {
+        try {
+          transaction.abort();
+        } catch {
+          // Completed transactions cannot write again.
+        }
+      }
+    });
+  }
 
   async get<TStore extends AppStoreName>(
     storeName: TStore,
@@ -181,9 +196,11 @@ class IndexedDbAppStorage implements AppStorage {
 
     const database = await this.openDatabase();
     const storeNames = [...new Set(operations.map((operation) => operation.storeName))];
+    this.assertWritable();
 
     await new Promise<void>((resolve, reject) => {
       const transaction = database.transaction(storeNames, "readwrite");
+      this.trackWrite(transaction);
 
       transaction.oncomplete = () => resolve();
       transaction.onerror = () => reject(transaction.error ?? new Error("IndexedDB mutation failed."));
@@ -217,11 +234,12 @@ class IndexedDbAppStorage implements AppStorage {
   }
 
   close(): void {
+    this.unsubscribe();
     if (this.databasePromise === undefined) {
       return;
     }
 
-    void this.databasePromise.then((database) => database.close());
+    void this.databasePromise.then((database) => database.close(), () => undefined);
     this.databasePromise = undefined;
   }
 
@@ -231,9 +249,11 @@ class IndexedDbAppStorage implements AppStorage {
     action: (store: IDBObjectStore) => IDBRequest<TResult>
   ): Promise<TResult> {
     const database = await this.openDatabase();
+    if (mode === "readwrite") this.assertWritable();
 
     return new Promise<TResult>((resolve, reject) => {
       const transaction = database.transaction(storeName, mode);
+      if (mode === "readwrite") this.trackWrite(transaction);
       let result: TResult;
 
       transaction.oncomplete = () => resolve(result);
@@ -256,15 +276,39 @@ class IndexedDbAppStorage implements AppStorage {
   }
 
   private openDatabase(): Promise<IDBDatabase> {
-    this.databasePromise ??= openIndexedDbDatabase(this.indexedDbFactory);
+    if (this.databasePromise === undefined) {
+      const pending = openIndexedDbDatabase(this.indexedDbFactory, () => {
+        if (this.databasePromise === pending) this.databasePromise = undefined;
+      });
+      this.databasePromise = pending;
+      void pending.catch(() => {
+        if (this.databasePromise === pending) this.databasePromise = undefined;
+      });
+    }
 
     return this.databasePromise;
   }
+
+  private assertWritable(): void {
+    if (this.invalidated) throw new Error("Local data changed. Reload before saving new work.");
+  }
+
+  private trackWrite(transaction: IDBTransaction): void {
+    this.writes.add(transaction);
+    const remove = () => this.writes.delete(transaction);
+    transaction.addEventListener("complete", remove, { once: true });
+    transaction.addEventListener("abort", remove, { once: true });
+  }
 }
 
-function openIndexedDbDatabase(indexedDbFactory: IDBFactory): Promise<IDBDatabase> {
+function openIndexedDbDatabase(indexedDbFactory: IDBFactory, onClosed: () => void): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDbFactory.open(appDatabaseName, appDatabaseVersion);
+    let rejected = false;
+    const fail = (error: Error | DOMException) => {
+      rejected = true;
+      reject(error);
+    };
 
     request.onupgradeneeded = () => {
       upgradeDatabase(request.result, request.transaction);
@@ -272,13 +316,20 @@ function openIndexedDbDatabase(indexedDbFactory: IDBFactory): Promise<IDBDatabas
     request.onsuccess = () => {
       const database = request.result;
 
+      if (rejected) {
+        database.close();
+        return;
+      }
+
       database.onversionchange = () => {
         database.close();
+        onClosed();
       };
+      database.onclose = onClosed;
       resolve(database);
     };
-    request.onerror = () => reject(request.error ?? new Error(`Unable to open IndexedDB database "${appDatabaseName}".`));
-    request.onblocked = () => reject(new Error(`IndexedDB database "${appDatabaseName}" is blocked by another tab.`));
+    request.onerror = () => fail(request.error ?? new Error(`Unable to open IndexedDB database "${appDatabaseName}".`));
+    request.onblocked = () => fail(new Error(`IndexedDB database "${appDatabaseName}" is blocked by another tab.`));
   });
 }
 

@@ -79,7 +79,7 @@ describe("clear all saved app data", () => {
     expect(publishInvalidation).not.toHaveBeenCalled();
   });
 
-  it("reports every failed preference removal and does not publish partial success", async () => {
+  it("reports every failed preference removal while invalidating stale app state", async () => {
     const storage = new MemoryAppStorage();
     const failedKey = localPreferenceKeys[1];
     const preferences = new TestPreferenceStorage(new Set([failedKey]));
@@ -97,10 +97,10 @@ describe("clear all saved app data", () => {
     expect(preferences.getItem(failedKey)).toBe(`value:${failedKey}`);
     expect(preferences.getItem(localPreferenceKeys[0])).toBeNull();
     expect(preferences.getItem(localPreferenceKeys[2])).toBeNull();
-    expect(publishInvalidation).not.toHaveBeenCalled();
+    expect(publishInvalidation).toHaveBeenCalledWith("all_data_cleared");
     expect(result).toEqual({
       database: "cleared",
-      invalidation: { status: "not_published" },
+      invalidation: { delivery: "storage", status: "published" },
       preferences: { failedKeys: [failedKey], status: "partial" },
       status: "partial"
     });
