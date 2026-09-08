@@ -21,7 +21,7 @@ Independent implementation can run in parallel. Each completed batch is reviewed
 | 09 | Recoverable large backups, pack-version drafts and storage failure recovery | Complete |
 | 10 | Difficulty-correct personal bests and duplicate-question scoring | Pending |
 | 11 | Save-only retries, full-case local resume, prep-plan clarification | Pending |
-| 12 | Independent invariant tests and smaller browser smoke journeys | Pending |
+| 12 | Independent invariant tests and smaller browser smoke journeys | Complete |
 | 13 | Integrated verification, visual review and final repair ledger | Pending |
 
 ### 01 — Establish the development record
@@ -139,4 +139,5 @@ All 30 BUG IDs and six IMP IDs must have an implemented outcome and verification
 | Exhibits and sizing | BUG-06, BUG-08, BUG-15, BUG-23, BUG-24: complete visible evidence, precise values, correct point scale, bounded fractional scores and stale-save guards | 66 focused tests passed; 14 independent evidence/arithmetic checks; root diff review | `684b6ad` |
 | Case save recovery | BUG-30 and IMP-02 (six case modules): duplicate text scoring and save-only retries with immutable attempts and stale-result protection | 51 focused tests passed; committed-but-rejected write simulations preserve IDs across retries; root diff review | `ef410d4` |
 | Backup recoverability | BUG-11, BUG-18: complete numbered backup sets, one atomic restore, versioned pack drafts, validated private full-case draft records | 77 focused backup/pack/settings tests plus 20 storage lifecycle tests passed; missing/mixed/corrupt files and rollback covered | `53f8f5f` |
-| Offline updates | BUG-03: generation-complete immutable precache, static/lazy assets and navigation payloads; synchronized authoring schema bundles | 27 unit/build tests, 2 Chromium upgrade/failure journeys, and 53 authoring tests passed; baseline inventory 4.615 MiB / 6 MiB | `fix: install complete offline asset generations` |
+| Offline updates | BUG-03: generation-complete immutable precache, static/lazy assets and navigation payloads; synchronized authoring schema bundles | 27 unit/build tests, 2 Chromium upgrade/failure journeys, and 53 authoring tests passed; baseline inventory 4.615 MiB / 6 MiB | `4ac8c10` |
+| Regression coverage | IMP-04, IMP-05: independent arithmetic/evidence/locale/race tests in repair batches; split long navigation and arrow smoke journeys | 70 isolated Firefox/WebKit scenarios passed first run in 2 minutes, unchanged 30-second limits and zero retries | `test: isolate browser smoke journeys by route` |

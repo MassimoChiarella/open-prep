@@ -75,89 +75,89 @@ test("new dashboard offers keyboard-reachable starting intents at 320px and in R
   expect(await horizontalOverflow(page)).toBeLessThanOrEqual(0);
 });
 
-test("routes expose their primary workflow action", { tag: "@browser-smoke" }, async ({ page }) => {
-  const routes = [
-    { action: "Start Practice", heading: "Dashboard", path: "/", role: "link" },
-    { action: "Start Drill", heading: "Drill Selection", path: "/drills", role: "link" },
-    {
-      action: "Submit",
-      heading: "Active Drill Session",
-      path: "/drills/session?categories=arithmetic&tags=addition&count=1",
-      role: "button"
-    },
-    { action: "Start Another Drill", heading: "Session Summary", path: "/drills/summary", role: "link" },
-    { action: "Start Formula Drill", heading: "Formula Library", path: "/formulas", role: "link" },
-    { action: "Start Baseline Drill", heading: "Progress Dashboard", path: "/progress", role: "link" },
-    { action: "Begin Benchmark", heading: "Benchmark your performance", path: "/benchmark", role: "link" },
-    {
-      action: "Submit",
-      heading: "Beginner Benchmark",
-      path: "/benchmark/session?benchmark=beginner",
-      role: "button"
-    },
-    { action: "Continue to Calculation", heading: "Guided Market Sizing", path: "/market-sizing", role: "button" },
-    { action: "Submit Answer", heading: "Exhibit Drills", path: "/exhibits", role: "button" },
-    { action: "Build Prep Plan", heading: "Case Practice", path: "/case-practice", role: "link" },
-    {
-      action: "Score Questions",
-      heading: "Questioning practice",
-      path: "/case-practice/questioning",
-      role: "button"
-    },
-    {
-      action: "Score Structure",
-      heading: "Case structuring",
-      path: "/case-practice/structuring",
-      role: "button"
-    },
-    {
-      action: "Score and Save",
-      heading: "Structured Brainstorming",
-      path: "/case-practice/brainstorming",
-      role: "button"
-    },
-    {
-      action: "Score Response",
-      heading: "Synthesis and Recommendation",
-      path: "/case-practice/synthesis",
-      role: "button"
-    },
-    {
-      action: "Check Answer",
-      heading: "Concept Lessons",
-      path: "/case-practice/lessons",
-      role: "button"
-    },
-    {
-      action: "Save Story",
-      heading: "Fit and Behavioral Practice",
-      path: "/case-practice/fit",
-      role: "button"
-    },
-    {
-      action: "Save Profile",
-      heading: "Weekly Prep Plan",
-      path: "/case-practice/plan",
-      role: "button"
-    },
-    {
-      action: "Continue to Structure",
-      heading: "Full Case Simulation",
-      path: "/case-practice/simulation",
-      role: "button"
-    },
-    { action: "Open Drill Setup", heading: "Local App Settings", path: "/settings", role: "link" },
-    { action: "Import", heading: "Content Packs", path: "/content-packs?view=discover", role: "link" },
-    {
-      action: "Back to Content Packs",
-      heading: "Download authoring resources",
-      path: "/content-packs/downloads",
-      role: "link"
-    },
-    { action: "Back to Dashboard", heading: "Page not found", path: "/missing-smoke-route", role: "link" }
-  ] as const;
+const primaryWorkflowRoutes = [
+  { action: "Start Practice", heading: "Dashboard", path: "/", role: "link" },
+  { action: "Start Drill", heading: "Drill Selection", path: "/drills", role: "link" },
+  {
+    action: "Submit",
+    heading: "Active Drill Session",
+    path: "/drills/session?categories=arithmetic&tags=addition&count=1",
+    role: "button"
+  },
+  { action: "Start Another Drill", heading: "Session Summary", path: "/drills/summary", role: "link" },
+  { action: "Start Formula Drill", heading: "Formula Library", path: "/formulas", role: "link" },
+  { action: "Start Baseline Drill", heading: "Progress Dashboard", path: "/progress", role: "link" },
+  { action: "Begin Benchmark", heading: "Benchmark your performance", path: "/benchmark", role: "link" },
+  {
+    action: "Submit",
+    heading: "Beginner Benchmark",
+    path: "/benchmark/session?benchmark=beginner",
+    role: "button"
+  },
+  { action: "Continue to Calculation", heading: "Guided Market Sizing", path: "/market-sizing", role: "button" },
+  { action: "Submit Answer", heading: "Exhibit Drills", path: "/exhibits", role: "button" },
+  { action: "Build Prep Plan", heading: "Case Practice", path: "/case-practice", role: "link" },
+  {
+    action: "Score Questions",
+    heading: "Questioning practice",
+    path: "/case-practice/questioning",
+    role: "button"
+  },
+  {
+    action: "Score Structure",
+    heading: "Case structuring",
+    path: "/case-practice/structuring",
+    role: "button"
+  },
+  {
+    action: "Score and Save",
+    heading: "Structured Brainstorming",
+    path: "/case-practice/brainstorming",
+    role: "button"
+  },
+  {
+    action: "Score Response",
+    heading: "Synthesis and Recommendation",
+    path: "/case-practice/synthesis",
+    role: "button"
+  },
+  {
+    action: "Check Answer",
+    heading: "Concept Lessons",
+    path: "/case-practice/lessons",
+    role: "button"
+  },
+  {
+    action: "Save Story",
+    heading: "Fit and Behavioral Practice",
+    path: "/case-practice/fit",
+    role: "button"
+  },
+  {
+    action: "Save Profile",
+    heading: "Weekly Prep Plan",
+    path: "/case-practice/plan",
+    role: "button"
+  },
+  {
+    action: "Continue to Structure",
+    heading: "Full Case Simulation",
+    path: "/case-practice/simulation",
+    role: "button"
+  },
+  { action: "Open Drill Setup", heading: "Local App Settings", path: "/settings", role: "link" },
+  { action: "Import", heading: "Content Packs", path: "/content-packs?view=discover", role: "link" },
+  {
+    action: "Back to Content Packs",
+    heading: "Download authoring resources",
+    path: "/content-packs/downloads",
+    role: "link"
+  },
+  { action: "Back to Dashboard", heading: "Page not found", path: "/missing-smoke-route", role: "link" }
+] as const;
 
-  for (const route of routes) {
+for (const route of primaryWorkflowRoutes) {
+  test(`primary workflow action is available on ${route.path}`, { tag: "@browser-smoke" }, async ({ page }) => {
     await page.goto(route.path);
     await expect(page.locator("main"), route.path).toHaveCount(1);
     await expect(page.getByRole("heading", { level: 1, name: route.heading }), route.path).toBeVisible();
@@ -175,8 +175,8 @@ test("routes expose their primary workflow action", { tag: "@browser-smoke" }, a
       : page.getByRole("link", { name: route.action });
 
     await expect(action.first(), route.path).toBeVisible();
-  }
-});
+  });
+}
 
 test("mobile More opens Content Packs and preserves its active state", async ({ page }) => {
   await page.setViewportSize({ height: 844, width: 390 });
