@@ -13,7 +13,31 @@ describe("ExhibitSprint", () => {
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.restoreAllMocks();
     window.localStorage.clear();
+  });
+
+  it("retries a saved sprint answer without adding another result or changing its timing", async () => {
+    const storage = new MemoryAppStorage();
+    const originalPut = storage.put.bind(storage);
+    const writes = vi.spyOn(storage, "put").mockImplementationOnce(async (store, record) => {
+      await originalPut(store, record);
+      throw new Error("Response lost after commit");
+    });
+    render(<ExhibitSprint datasets={exhibitDatasets} seed={0} storageFactory={() => storage} />);
+    fireEvent.click(screen.getByLabelText("3"));
+    fireEvent.click(screen.getByRole("button", { name: "Start Exhibit Sprint" }));
+    fireEvent.change(screen.getByLabelText("Answer"), { target: { value: "45.8%" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit Answer" }));
+    const retry = await screen.findByRole("button", { name: "Retry Save" });
+    const original = structuredClone(storage.peekAll("exhibit_attempts"));
+    fireEvent.click(retry);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Next Question" })).toBeEnabled());
+    expect(screen.queryByRole("button", { name: "Retry Save" })).not.toBeInTheDocument();
+    expect(writes.mock.calls[1]).toEqual(writes.mock.calls[0]);
+    expect(storage.peekAll("exhibit_attempts")).toEqual(original);
+    fireEvent.click(screen.getByRole("button", { name: "Next Question" }));
+    expect(screen.getByText("Question 2 of 3")).toBeInTheDocument();
   });
 
   it("selects three to five diverse questions deterministically", () => {

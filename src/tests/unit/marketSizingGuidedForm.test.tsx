@@ -1,12 +1,78 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { marketSizingTemplates } from "@/data/marketSizing/marketSizingTemplates";
+import { LanguageSelect } from "@/features/i18n/I18nProvider";
 import { MarketSizingGuidedForm } from "@/features/market-sizing/MarketSizingGuidedForm";
 import type { MarketSizingTemplate } from "@/features/market-sizing/marketSizingTypes";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
+import { renderWithI18n, resetI18nTestState } from "@/tests/renderWithStoredLocale";
+
+afterEach(resetI18nTestState);
 
 describe("MarketSizingGuidedForm", () => {
+  it("retries the same completed estimate after an uncertain save", async () => {
+    const storage = new MemoryAppStorage();
+    const originalPut = storage.put.bind(storage);
+    const writes = vi.spyOn(storage, "put").mockImplementationOnce(async (store, record) => {
+      await originalPut(store, record);
+      throw new Error("Response lost after commit");
+    });
+    render(<MarketSizingGuidedForm storageFactory={() => storage} templates={marketSizingTemplates} />);
+    submitCoffeeEstimate();
+    const retry = await screen.findByRole("button", { name: "Retry Save" });
+    const original = structuredClone(storage.peekAll("market_sizing_attempts"));
+    fireEvent.click(retry);
+    await screen.findByText("Score 100/100 saved on this device.");
+    expect(writes.mock.calls[1]).toEqual(writes.mock.calls[0]);
+    expect(storage.peekAll("market_sizing_attempts")).toEqual(original);
+  });
+
+  it("retries the original score after a locale change makes the current number format invalid", async () => {
+    const storage = new MemoryAppStorage();
+    const originalPut = storage.put.bind(storage);
+    const writes = vi.spyOn(storage, "put").mockImplementationOnce(async (store, record) => {
+      await originalPut(store, record);
+      throw new Error("Response lost after commit");
+    });
+    const locale = renderWithI18n(<><LanguageSelect /><MarketSizingGuidedForm storageFactory={() => storage} templates={marketSizingTemplates} /></>);
+    fireEvent.change(screen.getByLabelText("Language"), { target: { value: "en" } });
+    await locale.waitForLocale("en");
+    completeCoffeeAssumptions();
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Calculation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Final Answer" }));
+    fireEvent.change(screen.getByLabelText("Final answer (Currency)"), { target: { value: "$2,628,000,000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit Answer" }));
+    fireEvent.change(screen.getByLabelText("Interpretation"), { target: { value: "plausible" } });
+    fireEvent.click(screen.getByRole("button", { name: "Score Draft" }));
+    await screen.findByRole("button", { name: "Retry Save" });
+    const original = structuredClone(storage.peekAll("market_sizing_attempts"));
+    fireEvent.change(screen.getByLabelText("Language"), { target: { value: "fr" } });
+    await locale.waitForLocale("fr");
+    expect(within(screen.getByTestId("market-sizing-score")).getByText("100/100 pts")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Réessayer l’enregistrement" }));
+    await screen.findByText("Score de 100/100 enregistré sur cet appareil.");
+    expect(within(screen.getByTestId("market-sizing-score")).getByText("100/100 pts")).toBeInTheDocument();
+    expect(writes.mock.calls[1]).toEqual(writes.mock.calls[0]);
+    expect(storage.peekAll("market_sizing_attempts")).toEqual(original);
+  });
+
+  it.each(["prompt", "notes"])("ignores an old estimate save after changing %s", async (change) => {
+    const storage = new MemoryAppStorage();
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    const originalPut = storage.put.bind(storage);
+    vi.spyOn(storage, "put").mockImplementationOnce(async (store, record) => { await pending; await originalPut(store, record); });
+    render(<MarketSizingGuidedForm storageFactory={() => storage} templates={marketSizingTemplates} />);
+    submitCoffeeEstimate();
+    if (change === "prompt") fireEvent.change(screen.getByLabelText("Prompt"), { target: { value: marketSizingTemplates[1].id } });
+    else fireEvent.change(screen.getByLabelText("Notes"), { target: { value: "New estimate note" } });
+    await act(async () => release());
+    expect(screen.queryByText("Score 100/100 saved on this device.")).not.toBeInTheDocument();
+    expect(storage.peekAll("market_sizing_attempts")).toHaveLength(1);
+    if (change === "notes") expect(screen.getByLabelText("Notes")).toHaveValue("New estimate note");
+  });
+
   it("offers alternate practice when prompts are unavailable", () => {
     render(<MarketSizingGuidedForm templates={[]} />);
 
@@ -198,4 +264,14 @@ function completeCoffeeAssumptions(cupsPerDay = "1"): void {
   fireEvent.change(screen.getByLabelText("Purchase days per year"), { target: { value: "365" } });
   fireEvent.change(screen.getByLabelText("Average price per cup"), { target: { value: "$4" } });
   fireEvent.click(screen.getByLabelText("Sense-check completed"));
+}
+
+function submitCoffeeEstimate(): void {
+  completeCoffeeAssumptions();
+  fireEvent.click(screen.getByRole("button", { name: "Continue to Calculation" }));
+  fireEvent.click(screen.getByRole("button", { name: "Continue to Final Answer" }));
+  fireEvent.change(screen.getByLabelText("Final answer (Currency)"), { target: { value: "$2.628B" } });
+  fireEvent.click(screen.getByRole("button", { name: "Submit Answer" }));
+  fireEvent.change(screen.getByLabelText("Interpretation"), { target: { value: "plausible" } });
+  fireEvent.click(screen.getByRole("button", { name: "Score Draft" }));
 }

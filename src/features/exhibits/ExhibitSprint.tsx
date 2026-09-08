@@ -100,6 +100,8 @@ export function ExhibitSprint({
   const startedAtRef = useRef(new Date().toISOString());
   const questionStartedAtMsRef = useRef(0);
   const submissionLockRef = useRef(false);
+  const saveLockRef = useRef(false);
+  const retrySaveRef = useRef<() => Promise<void>>();
   const warningAnnouncedRef = useRef(false);
   const item = items[questionIndex];
 
@@ -146,33 +148,39 @@ export function ExhibitSprint({
         }
       ]);
 
-      try {
-        const storage = storageFactory();
-
+      const completedAt = new Date().toISOString();
+      const startedAt = startedAtRef.current;
+      const saveAttempt = async () => {
+        if (saveLockRef.current) return;
+        saveLockRef.current = true;
+        setFeedback(initialFeedback);
+        let storage: AppStorage | undefined;
         try {
+          storage = storageFactory();
           await persistExhibitAttempt({
+            completedAt,
             dataset: item.dataset,
             question: item.question,
             rawInput: answerDraft,
-            startedAt: startedAtRef.current,
+            startedAt,
             storage,
             timingAccommodation: activeTimingAccommodation,
             validation
           });
+          setFeedback({ ...initialFeedback, saveStatus: "saved" });
+        } catch {
+          setFeedback({
+            ...initialFeedback,
+            message: t("{feedback} The attempt could not be saved on this device.", { feedback: initialFeedback.message }),
+            saveStatus: "error"
+          });
         } finally {
-          storage.close();
+          storage?.close();
+          saveLockRef.current = false;
         }
-
-        setFeedback({ ...initialFeedback, saveStatus: "saved" });
-      } catch {
-        setFeedback({
-          ...initialFeedback,
-          message: t("{feedback} The attempt could not be saved on this device.", {
-            feedback: initialFeedback.message
-          }),
-          saveStatus: "error"
-        });
-      }
+      };
+      retrySaveRef.current = saveAttempt;
+      await saveAttempt();
     },
     [activeTimingAccommodation, answerDraft, feedback, item, locale, storageFactory, t]
   );
@@ -429,31 +437,41 @@ export function ExhibitSprint({
           )}
 
           {feedback !== undefined ? (
-            <button
-              className="inline-flex min-h-11 items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-white transition hover:bg-teal motion-reduce:transform-none active:scale-[0.98] disabled:opacity-60"
-              disabled={feedback.saveStatus === "saving"}
-              onClick={() => {
-                const nextIndex = questionIndex + 1;
+            <>
+              {feedback.saveStatus === "error" ? (
+                <button
+                  className="inline-flex min-h-11 items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-white transition hover:bg-teal"
+                  onClick={() => void retrySaveRef.current?.()}
+                  type="button"
+                >{t("Retry Save")}</button>
+              ) : null}
+              <button
+                className="inline-flex min-h-11 items-center justify-center rounded-md bg-ink px-4 text-sm font-semibold text-white transition hover:bg-teal motion-reduce:transform-none active:scale-[0.98] disabled:opacity-60"
+                disabled={feedback.saveStatus === "saving"}
+                onClick={() => {
+                  retrySaveRef.current = undefined;
+                  const nextIndex = questionIndex + 1;
 
-                if (nextIndex >= items.length) {
-                  setPhase("summary");
-                  return;
-                }
+                  if (nextIndex >= items.length) {
+                    setPhase("summary");
+                    return;
+                  }
 
-                setQuestionIndex(nextIndex);
-                setAnswerDraft("");
-                setFeedback(undefined);
-                setSecondsRemaining(effectiveQuestionSeconds(items[nextIndex], activeTimingAccommodation));
-                setTimerAnnouncement("");
-                submissionLockRef.current = false;
-                warningAnnouncedRef.current = false;
-                questionStartedAtMsRef.current = Date.now();
-                startedAtRef.current = new Date(questionStartedAtMsRef.current).toISOString();
-              }}
-              type="button"
-            >
-              {questionIndex + 1 === items.length ? t("View Summary") : t("Next Question")}
-            </button>
+                  setQuestionIndex(nextIndex);
+                  setAnswerDraft("");
+                  setFeedback(undefined);
+                  setSecondsRemaining(effectiveQuestionSeconds(items[nextIndex], activeTimingAccommodation));
+                  setTimerAnnouncement("");
+                  submissionLockRef.current = false;
+                  warningAnnouncedRef.current = false;
+                  questionStartedAtMsRef.current = Date.now();
+                  startedAtRef.current = new Date(questionStartedAtMsRef.current).toISOString();
+                }}
+                type="button"
+              >
+                {questionIndex + 1 === items.length ? t("View Summary") : t("Next Question")}
+              </button>
+            </>
           ) : null}
         </aside>
       </div>

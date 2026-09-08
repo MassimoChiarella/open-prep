@@ -7,8 +7,44 @@ import {
   type PersonalBestRecord,
 } from "@/features/progress/personalBests";
 import type { BenchmarkResultRecord, StoredDrillSession, StoredUserResponse } from "@/lib/storage/appStorageTypes";
+import type { Difficulty, Question } from "@/lib/domain";
 
 describe("personal bests", () => {
+  it("separates mixed Daily Workout performance and streaks by answered question difficulty", () => {
+    const first = {
+      ...session("mixed", "2026-06-01", [response("easy", true, 5), response("hard", false, 40)]),
+      settings: createDrillSettings({ difficulty: "expert" }),
+      questions: [question("easy", "beginner"), question("hard", "expert"), question("unanswered", "advanced")]
+    };
+    const second = {
+      ...session("easy-day", "2026-06-02", [response("easy", true, 10)]),
+      settings: createDrillSettings({ difficulty: "expert" }),
+      questions: [question("easy", "beginner")]
+    };
+    const bests = createPersonalBestRecords({ sessions: [first, second], timeZone: "UTC" });
+    expect(findBest(bests, "drill_category:business_math:expert:untimed:accuracy")).toMatchObject({ value: 0, sourceId: "mixed" });
+    expect(findBest(bests, "drill_skill:margin:beginner:untimed:average_time")).toMatchObject({ value: 5, sourceId: "mixed" });
+    expect(findBest(bests, "drill_skill:margin:expert:untimed:average_time")).toBeUndefined();
+    expect(findBest(bests, "drill_streak:beginner:untimed:streak")).toMatchObject({ value: 2, sourceId: "easy-day" });
+    expect(findBest(bests, "drill_streak:expert:untimed:streak")).toMatchObject({ value: 1, sourceId: "mixed" });
+    expect(bests.some((best) => best.difficulty === "advanced")).toBe(false);
+    expect(first.settings.difficulty).toBe("expert");
+  });
+
+  it("uses review snapshots and only falls back to settings for missing legacy snapshots", () => {
+    const review = {
+      ...session("review", "2026-06-01", [response("expert", true, 25), response("legacy", true, 15)]),
+      questions: [question("expert", "expert")]
+    };
+    const bests = createPersonalBestRecords({
+      sessions: [review],
+      responses: review.responses.map((answer) => storedResponse(review.id, answer))
+    });
+    expect(findBest(bests, "drill_skill:margin:expert:untimed:average_time")).toMatchObject({ value: 25 });
+    expect(findBest(bests, "drill_skill:margin:beginner:untimed:average_time")).toMatchObject({ value: 15 });
+    expect(findBest(bests, "drill_streak:expert:untimed:streak")).toMatchObject({ value: 1 });
+  });
+
   it("derives accuracy, fastest correct time, streak, and benchmark score bests from local attempts", () => {
     const first = session("session-1", "2026-06-01", [
       response("question-1", true, 20),
@@ -161,6 +197,13 @@ function session(id: string, date: string, responses: StoredDrillSession["respon
     settings: createDrillSettings({ categories: ["business_math"], difficulty: "beginner", questionCount: responses.length }),
     startedAt: `${date}T12:00:00.000Z`,
     updatedAt: `${date}T12:05:00.000Z`
+  };
+}
+
+function question(id: string, difficulty: Difficulty): Question {
+  return {
+    id, difficulty, category: "business_math", tags: ["margin"], type: "numeric", prompt: "What is the margin?",
+    answer: { value: 10 }, explanation: { short: "Divide profit by revenue.", steps: ["10 / 100 = 10%."] }
   };
 }
 

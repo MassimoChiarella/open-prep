@@ -39,6 +39,7 @@ export function ExhibitQuestionFlow({
   const [selectedDatasetId, setSelectedDatasetId] = useState(() => datasets[0]?.id ?? "");
   const startedAtRef = useRef(new Date().toISOString());
   const attemptRevision = useRef(0);
+  const completedAtRef = useRef<string>();
   const selectedDataset = useMemo(
     () => datasets.find((dataset) => dataset.id === selectedDatasetId) ?? datasets[0],
     [datasets, selectedDatasetId]
@@ -57,6 +58,7 @@ export function ExhibitQuestionFlow({
   const [validationResult, setValidationResult] = useState<ValidationResult | undefined>();
   const resetAttemptState = useCallback(() => {
     attemptRevision.current += 1;
+    completedAtRef.current = undefined;
     setAnswerDraft("");
     setAttemptStatus(undefined);
     setSaveStatus("idle");
@@ -181,6 +183,7 @@ export function ExhibitQuestionFlow({
             name={`exhibit-answer-${selectedQuestion.id}`}
             onChange={(value) => {
               attemptRevision.current += 1;
+              completedAtRef.current = undefined;
               setAnswerDraft(value);
               setAttemptStatus(undefined);
               setSaveStatus("idle");
@@ -198,12 +201,15 @@ export function ExhibitQuestionFlow({
               onClick={() => {
                 if (saveStatus === "saving") return;
                 const revision = ++attemptRevision.current;
+                completedAtRef.current ??= new Date().toISOString();
                 void submitExhibitAttempt({
                   answerDraft,
+                  completedAt: completedAtRef.current,
                   dataset: selectedDataset,
                   locale,
                   isCurrent: () => attemptRevision.current === revision,
                   question: selectedQuestion,
+                  previousValidation: validationResult,
                   setAttemptStatus,
                   setSaveStatus,
                   setSolutionVisible,
@@ -215,7 +221,7 @@ export function ExhibitQuestionFlow({
               }}
               type="button"
             >
-              {saveStatus === "saving" ? t("Saving...") : t("Submit Answer")}
+              {saveStatus === "saving" ? t("Saving...") : saveStatus === "error" && validationResult !== undefined ? t("Retry Save") : t("Submit Answer")}
             </button>
             <button
               className="inline-flex min-h-11 items-center justify-center rounded-md border border-ink/30 px-4 text-sm font-semibold text-ink transition hover:border-teal hover:bg-paper motion-reduce:transform-none active:scale-[0.98]"
@@ -325,10 +331,12 @@ function SolutionPanel({ question }: { question: ExhibitQuestionSpec }) {
 
 async function submitExhibitAttempt({
   answerDraft,
+  completedAt,
   dataset,
   locale,
   isCurrent,
   question,
+  previousValidation,
   setAttemptStatus,
   setSaveStatus,
   setSolutionVisible,
@@ -338,10 +346,12 @@ async function submitExhibitAttempt({
   t
 }: {
   answerDraft: string;
+  completedAt: string;
   dataset: ExhibitDataset;
   locale?: string;
   isCurrent: () => boolean;
   question: ExhibitQuestionSpec;
+  previousValidation?: ValidationResult;
   setAttemptStatus: (status: string | undefined) => void;
   setSaveStatus: (status: AttemptSaveStatus) => void;
   setSolutionVisible: (visible: boolean) => void;
@@ -358,7 +368,7 @@ async function submitExhibitAttempt({
     return;
   }
 
-  const validation = validateExhibitResponse(answerDraft, question, { locale });
+  const validation = previousValidation ?? validateExhibitResponse(answerDraft, question, { locale });
 
   setValidationResult(validation);
   setSolutionVisible(true);
@@ -369,6 +379,7 @@ async function submitExhibitAttempt({
 
     try {
       await persistExhibitAttempt({
+        completedAt,
         dataset,
         question,
         rawInput: answerDraft,

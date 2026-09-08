@@ -26,7 +26,7 @@ Repair from the top of the table. P1 means an urgent data-loss, broken-workflow,
 | BUG-16 | P2 | Reloading a drill resets its per-question time allowance | Fixed (step 06) |
 | BUG-17 | P2 | Fit rehearsal timers undercount time during throttling or sleep | Fixed (step 03) |
 | BUG-18 | P2 | Direct pack practice resumes questions from an obsolete pack version | Fixed (step 09) |
-| BUG-19 | P2 | Mixed Daily Workouts record beginner work as expert personal bests | Open |
+| BUG-19 | P2 | Mixed Daily Workouts record beginner work as expert personal bests | Fixed (step 10) |
 | BUG-20 | P2 | Beginner percentage-point drills accept the wrong percentage unit | Fixed (step 08) |
 | BUG-21 | P2 | Hindi grouping and Arabic formatted negatives fail numeric parsing | Fixed (step 04) |
 | BUG-22 | P2 | Unary minus has the wrong precedence relative to exponentiation | Fixed (step 04) |

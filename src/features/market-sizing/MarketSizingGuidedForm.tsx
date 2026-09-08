@@ -45,6 +45,8 @@ export function MarketSizingGuidedForm({
   const { formatNumber: formatLocaleNumber, locale, t } = useI18n();
   const [selectedTemplateId, setSelectedTemplateId] = useState(() => templates[0]?.id ?? "");
   const startedAtRef = useRef(new Date().toISOString());
+  const attemptRevision = useRef(0);
+  const pendingAttempt = useRef<Omit<Parameters<typeof persistReviewedAttempt>[0], "isCurrent">>();
   const selectedTemplate = useMemo(
     () => templates.find((template) => template.id === selectedTemplateId) ?? templates[0],
     [selectedTemplateId, templates]
@@ -53,6 +55,7 @@ export function MarketSizingGuidedForm({
   const [activeStage, setActiveStage] = useState<MarketSizingStage>(0);
   const [furthestStage, setFurthestStage] = useState<MarketSizingStage>(0);
   const [hasScored, setHasScored] = useState(false);
+  const [reviewedScore, setReviewedScore] = useState<MarketSizingAttemptScore>();
   const [reviewStatus, setReviewStatus] = useState<string | undefined>();
   const [saveStatus, setSaveStatus] = useState<AttemptSaveStatus>("idle");
   const stageHeadingRef = useRef<HTMLHeadingElement>(null);
@@ -121,6 +124,8 @@ export function MarketSizingGuidedForm({
   }
 
   function updateDraft(update: (current: MarketSizingDraft) => MarketSizingDraft) {
+    attemptRevision.current += 1;
+    pendingAttempt.current = undefined;
     setDraft(update);
     setHasScored(false);
     setReviewStatus(undefined);
@@ -129,6 +134,8 @@ export function MarketSizingGuidedForm({
 
   const handleTemplateChange = useCallback(
     (nextTemplateId: string) => {
+      attemptRevision.current += 1;
+      pendingAttempt.current = undefined;
       const nextTemplate = templates.find((template) => template.id === nextTemplateId);
 
       setSelectedTemplateId(nextTemplateId);
@@ -199,7 +206,9 @@ export function MarketSizingGuidedForm({
             }
 
             setHasScored(true);
-            void persistReviewedAttempt({
+            const revision = ++attemptRevision.current;
+            const attempt = saveStatus === "error" && pendingAttempt.current !== undefined ? pendingAttempt.current : {
+              completedAt: new Date().toISOString(),
               draft,
               evaluation,
               score,
@@ -209,7 +218,10 @@ export function MarketSizingGuidedForm({
               startedAt: startedAtRef.current,
               storageFactory,
               t
-            });
+            };
+            pendingAttempt.current = attempt;
+            setReviewedScore(attempt.score);
+            void persistReviewedAttempt({ ...attempt, t, isCurrent: () => revision === attemptRevision.current });
           }}
         >
           <MarketSizingFlowNav
@@ -421,7 +433,7 @@ export function MarketSizingGuidedForm({
                   className="inline-flex min-h-11 items-center justify-center rounded-md bg-teal px-4 text-sm font-semibold text-white transition hover:bg-ink aria-disabled:cursor-wait aria-disabled:bg-ink/70"
                   type="submit"
                 >
-                  {saveStatus === "saving" ? t("Saving...") : hasScored ? t("Score Again") : t("Score Draft")}
+                  {saveStatus === "saving" ? t("Saving...") : saveStatus === "error" ? t("Retry Save") : hasScored ? t("Score Again") : t("Score Draft")}
                 </button>
                 <button
                   className="inline-flex min-h-11 items-center justify-center rounded-md border border-ink/50 px-4 text-sm font-semibold text-ink transition hover:border-teal"
@@ -436,7 +448,7 @@ export function MarketSizingGuidedForm({
                   {t("Reset")}
                 </button>
               </div>
-              {hasScored ? <ScorePanel score={score} /> : null}
+              {hasScored ? <ScorePanel score={reviewedScore} /> : null}
               {reviewStatus !== undefined ? (
                 <LocalSaveNotice
                   detail={reviewStatus}
@@ -1157,6 +1169,7 @@ function scoreDimensionStatusClass(dimension: MarketSizingAttemptScore["breakdow
 }
 
 async function persistReviewedAttempt({
+  completedAt,
   draft,
   evaluation,
   score,
@@ -1165,8 +1178,11 @@ async function persistReviewedAttempt({
   setSaveStatus,
   startedAt,
   storageFactory,
-  t
+  t,
+  isCurrent
 }: {
+  completedAt: string;
+  isCurrent: () => boolean;
   draft: MarketSizingDraft;
   evaluation: MarketSizingEvaluation | undefined;
   score: MarketSizingAttemptScore | undefined;
@@ -1190,6 +1206,7 @@ async function persistReviewedAttempt({
 
     try {
       await persistMarketSizingAttempt({
+        completedAt,
         evaluation,
         finalAnswer: draft.finalAnswer,
         interpretationId: draft.interpretationId,
@@ -1204,12 +1221,14 @@ async function persistReviewedAttempt({
       storage.close();
     }
 
+    if (!isCurrent()) return;
     setReviewStatus(t("Score {score}/{max} saved on this device.", {
       score: score.totalScore,
       max: score.maxScore
     }));
     setSaveStatus("saved");
   } catch {
+    if (!isCurrent()) return;
     setReviewStatus(t("Could not save this market sizing attempt on this device."));
     setSaveStatus("error");
   }

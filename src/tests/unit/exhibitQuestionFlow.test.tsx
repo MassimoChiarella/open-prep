@@ -6,6 +6,24 @@ import { ExhibitQuestionFlow } from "@/features/exhibits/ExhibitQuestionFlow";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("ExhibitQuestionFlow", () => {
+  it("retries the same checked exhibit attempt after an uncertain save", async () => {
+    const storage = new MemoryAppStorage();
+    const originalPut = storage.put.bind(storage);
+    const writes = vi.spyOn(storage, "put").mockImplementationOnce(async (store, record) => {
+      await originalPut(store, record);
+      throw new Error("Response lost after commit");
+    });
+    render(<ExhibitQuestionFlow datasets={exhibitDatasets} storageFactory={() => storage} />);
+    fireEvent.change(screen.getByLabelText("Answer"), { target: { value: "$48384000" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit Answer" }));
+    const retry = await screen.findByRole("button", { name: "Retry Save" });
+    const original = structuredClone(storage.peekAll("exhibit_attempts"));
+    fireEvent.click(retry);
+    await screen.findByText("Correct. Attempt saved on this device.");
+    expect(writes.mock.calls[1]).toEqual(writes.mock.calls[0]);
+    expect(storage.peekAll("exhibit_attempts")).toEqual(original);
+  });
+
   it.each(["dataset", "question", "answer", "clear"])("ignores a delayed save status after changing the %s", async (change) => {
     const storage = new MemoryAppStorage();
     let release!: () => void;

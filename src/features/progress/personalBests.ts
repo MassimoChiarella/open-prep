@@ -57,12 +57,27 @@ export function createPersonalBestRecords(options: CreatePersonalBestRecordsOpti
   const completedSessions = options.sessions.filter(
     (session) => session.score !== undefined && isStandardComparisonEligible(session.settings.timingAccommodation)
   );
+  const comparisonSessions: StoredDrillSession[] = [];
 
   for (const session of completedSessions) {
-    addDrillBests(bests, session, collectSessionResponses(session, responsesById));
+    const difficultyByQuestionId = new Map((session.questions ?? []).map((question) => [question.id, question.difficulty]));
+    const responsesByDifficulty = new Map<Difficulty, StoredUserResponse[]>();
+    for (const response of collectSessionResponses(session, responsesById)) {
+      const difficulty = difficultyByQuestionId.get(response.questionId) ?? session.settings.difficulty;
+      const group = responsesByDifficulty.get(difficulty) ?? [];
+      group.push(response);
+      responsesByDifficulty.set(difficulty, group);
+    }
+    if (responsesByDifficulty.size === 0) comparisonSessions.push(session);
+    for (const [difficulty, responses] of responsesByDifficulty) {
+      // Comparison-only scopes preserve the difficulty of answered question snapshots.
+      const scope = { ...session, settings: { ...session.settings, difficulty } };
+      comparisonSessions.push(scope);
+      addDrillBests(bests, scope, responses);
+    }
   }
 
-  for (const best of createStreakBests(completedSessions, options.timeZone)) {
+  for (const best of createStreakBests(comparisonSessions, options.timeZone)) {
     addBest(bests, best);
   }
 
