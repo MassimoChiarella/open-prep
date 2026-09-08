@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { parseAnswer } from "@/lib/parser/parseAnswer";
+import { locales } from "@/features/i18n/i18n";
 
 describe("parseAnswer", () => {
   it("parses plain numbers and comma-separated numbers", () => {
@@ -102,6 +103,23 @@ describe("parseAnswer", () => {
       expect(parseAnswer(input).parseError, input).toBeDefined();
       expect(parseAnswer(input).value, input).toBeNull();
     }
+  });
+
+  it.each(locales)(
+    "round-trips supported locale %s number formatting", (locale) => {
+      for (const value of [123456, -1234, 1234567.89, -1234567.89]) {
+        expect(parseAnswer(new Intl.NumberFormat(locale).format(value), { locale }).value).toBe(value);
+      }
+    }
+  );
+
+  it("accepts numeric bidi affixes without joining separate numeric runs", () => {
+    for (const marker of ["\u061c", "\u200e", "\u200f"]) {
+      expect(parseAnswer(`${marker}-١٬٢٣٤${marker}`, { locale: "ar" }).value).toBe(-1234);
+      expect(parseAnswer(`1${marker}2`, { locale: "ar" }).parseError).toBeDefined();
+    }
+    expect(parseAnswer("1,234,56", { locale: "hi" }).parseError).toBeDefined();
+    expect(parseAnswer("1,234,567", { locale: "hi" }).parseError).toBeDefined();
   });
 
   it("never joins two numeric runs while normalizing supported affixes", () => {

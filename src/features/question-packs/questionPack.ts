@@ -800,13 +800,19 @@ function readAnswer(question: UnknownRecord, path: string, errors: string[]): An
 
   rejectUnknownProperties(
     answer,
-    new Set(["value", "unit", "tolerance", "errorChecks", "roundingRule"]),
+    new Set(["value", "unit", "currency", "tolerance", "errorChecks", "roundingRule"]),
     path,
     errors
   );
 
   const value = readFiniteNumberProperty(answer, "value", `${path}.value`, errors);
   const unit = readEnumProperty(answer, "unit", units, `${path}.unit`, errors);
+  if (hasOwn(answer, "currency") && typeof answer.currency !== "boolean") {
+    errors.push(`${path}.currency must be a boolean.`);
+  }
+  if (answer.currency === true && !["currency", "k", "m", "b"].includes(unit ?? "none")) {
+    errors.push(`${path}.currency requires a currency or k/m/b unit.`);
+  }
   const tolerance = hasOwn(answer, "tolerance")
     ? readTolerance(answer.tolerance, `${path}.tolerance`, errors)
     : undefined;
@@ -824,6 +830,7 @@ function readAnswer(question: UnknownRecord, path: string, errors: string[]): An
   return {
     value,
     unit,
+    ...(typeof answer.currency === "boolean" ? { currency: answer.currency } : {}),
     ...(tolerance === undefined ? {} : { tolerance }),
     ...(errorChecks === undefined ? {} : { errorChecks }),
     ...(roundingRule === undefined ? {} : { roundingRule })
@@ -1019,6 +1026,7 @@ function cloneAnswer(answer: AnswerSpec): AnswerSpec {
   return {
     value: answer.value,
     ...(answer.unit === undefined ? {} : { unit: answer.unit }),
+    ...(answer.currency === undefined ? {} : { currency: answer.currency }),
     ...(answer.tolerance === undefined ? {} : { tolerance: { ...answer.tolerance } }),
     ...(answer.errorChecks === undefined
       ? {}

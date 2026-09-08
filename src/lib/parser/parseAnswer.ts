@@ -18,6 +18,8 @@ export interface ParsedAnswer {
 interface NumberFormatPolicy {
   decimal: string;
   group: string;
+  primaryGroupSize: number;
+  secondaryGroupSize: number;
   legacyDecimalComma: boolean;
 }
 
@@ -175,12 +177,18 @@ function stripSingleAffix(input: string, prefix: RegExp, suffix: RegExp): string
 function numberFormatPolicy(locale: string | undefined): NumberFormatPolicy {
   const resolvedLocale = locale ?? "en-US";
   try {
-    const parts = new Intl.NumberFormat(resolvedLocale).formatToParts(12_345.6);
+    const parts = new Intl.NumberFormat(resolvedLocale).formatToParts(1_234_567_890_123.6);
     const decimal = normalizeLocalizedNumericCharacters(parts.find((part) => part.type === "decimal")?.value ?? ".");
     const group = normalizeLocalizedNumericCharacters(parts.find((part) => part.type === "group")?.value ?? ",");
-    return { decimal, group, legacyDecimalComma: locale === undefined };
+    const groups = parts.filter((part) => part.type === "integer");
+    return {
+      decimal, group,
+      primaryGroupSize: groups.at(-1)?.value.length ?? 3,
+      secondaryGroupSize: groups.at(-2)?.value.length ?? 3,
+      legacyDecimalComma: locale === undefined
+    };
   } catch {
-    return { decimal: ".", group: ",", legacyDecimalComma: locale === undefined };
+    return { decimal: ".", group: ",", primaryGroupSize: 3, secondaryGroupSize: 3, legacyDecimalComma: locale === undefined };
   }
 }
 
@@ -213,6 +221,7 @@ function parseLocalizedNumber(input: string, policy: NumberFormatPolicy): number
   if (policy.legacyDecimalComma && value.includes(".") && value.includes(",")) {
     const decimal = value.lastIndexOf(",") > value.lastIndexOf(".") ? "," : ".";
     return parseLocalizedNumber(value, {
+      ...policy,
       decimal,
       group: decimal === "," ? "." : ",",
       legacyDecimalComma: false
@@ -227,7 +236,7 @@ function parseLocalizedNumber(input: string, policy: NumberFormatPolicy): number
   if (decimalCount > 1) return undefined;
   if (decimalCount === 1) {
     [integerPart, fractionPart] = splitOnce(value, policy.decimal);
-  } else if (groupCount > 0 && !validGroupedInteger(value, policy.group)) {
+  } else if (groupCount > 0 && normalizeGroupedInteger(value, policy) === undefined) {
     if (policy.legacyDecimalComma && policy.group === "," && groupCount === 1) {
       [integerPart, fractionPart] = splitOnce(value, policy.group);
     } else {
@@ -235,7 +244,7 @@ function parseLocalizedNumber(input: string, policy: NumberFormatPolicy): number
     }
   }
 
-  const normalizedInteger = normalizeGroupedInteger(integerPart, policy.group);
+  const normalizedInteger = normalizeGroupedInteger(integerPart, policy);
   if (normalizedInteger === undefined) return undefined;
   if (fractionPart !== undefined && !/^\d+$/u.test(fractionPart)) return undefined;
   if (normalizedInteger.length === 0 && fractionPart === undefined) return undefined;
@@ -245,22 +254,23 @@ function parseLocalizedNumber(input: string, policy: NumberFormatPolicy): number
   return Number.isFinite(numericValue) ? numericValue : undefined;
 }
 
-function normalizeGroupedInteger(input: string, localeGroup: string): string | undefined {
+function normalizeGroupedInteger(input: string, policy: NumberFormatPolicy): string | undefined {
   if (input.length === 0) return "";
-  const candidateSeparators = Array.from(new Set([localeGroup, " ", "'", "’"].filter(Boolean)));
+  const candidateSeparators = Array.from(new Set([policy.group, " ", "'", "’"].filter(Boolean)));
   const usedSeparators = candidateSeparators.filter((separator) => input.includes(separator));
   if (usedSeparators.length === 0) return /^\d+$/u.test(input) ? input : undefined;
   if (usedSeparators.length > 1) return undefined;
 
   const groups = input.split(usedSeparators[0]);
-  if (groups.length < 2 || !/^\d{1,3}$/u.test(groups[0]) || groups.slice(1).some((group) => !/^\d{3}$/u.test(group))) {
+  if (
+    groups.length < 2 || groups.some((group) => !/^\d+$/u.test(group)) ||
+    groups[0].length > policy.secondaryGroupSize ||
+    groups.at(-1)?.length !== policy.primaryGroupSize ||
+    groups.slice(1, -1).some((group) => group.length !== policy.secondaryGroupSize)
+  ) {
     return undefined;
   }
   return groups.join("");
-}
-
-function validGroupedInteger(input: string, group: string): boolean {
-  return normalizeGroupedInteger(input, group) !== undefined;
 }
 
 function splitOnce(input: string, separator: string): [string, string] {
@@ -275,6 +285,7 @@ function countOccurrences(input: string, token: string): number {
 
 function normalizeLocalizedNumericCharacters(input: string): string {
   return input
+    .replace(/^[\u061c\u200e\u200f]+|[\u061c\u200e\u200f]+$/gu, "")
     .replace(/[\u00a0\u202f]/gu, " ")
     .replace(/[\u0660-\u0669]/gu, (digit) => String(digit.charCodeAt(0) - 0x0660))
     .replace(/[\u06f0-\u06f9]/gu, (digit) => String(digit.charCodeAt(0) - 0x06f0))

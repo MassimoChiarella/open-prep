@@ -89,6 +89,7 @@ export function generateQuestionFromTemplate(
     answer: {
       value: answerValue,
       unit: template.answerUnit,
+      ...(template.answerCurrency === undefined ? {} : { currency: template.answerCurrency }),
       tolerance: template.tolerance ?? {
         type: "absolute",
         value: template.answerUnit === "percentage"

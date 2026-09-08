@@ -50,6 +50,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
     },
     formula: { expression: "marketSizeMillions * marketShare / 100 * operatingMargin / 100" },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Company revenue equals market size x market share; operating profit equals company revenue x margin.",
@@ -85,6 +86,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
     },
     formula: { expression: "customersThousands * monthlyArpu * 12 * grossMargin / 100 / 1000" },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Annual revenue equals customers x monthly ARPU x 12; gross profit equals revenue x gross margin.",
@@ -123,6 +125,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
       expression: "dailyCapacityThousands * operatingDays * utilization / 100 * contributionPerUnit / 1000"
     },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Annual output equals daily capacity x operating days x utilization; contribution equals output x contribution per unit.",
@@ -158,6 +161,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
     },
     formula: { expression: "currentMarketMillions * (1 + growthRate / 100) * marketShare / 100" },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Grow the market first, then apply the company's expected market share.",
@@ -194,6 +198,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
     },
     formula: { expression: "stores * customersPerDay * operatingDays * averageBasket / 1000000" },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Annual transactions equal stores x customers per day x operating days; revenue equals transactions x basket size.",
@@ -229,6 +234,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
     },
     formula: { expression: "currentUnitsThousands * (1 + growthRate / 100) * pricePerUnit / 1000" },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Grow unit volume, then multiply next-year units by price.",
@@ -267,6 +273,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
       expression: "currentMarketMillions * (1 + growthRate / 100) * marketShare / 100 * operatingMargin / 100"
     },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Grow the market, apply company share, then apply operating margin.",
@@ -307,6 +314,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
       expression: "monthlyCapacityThousands * utilization / 100 * months * pricePerUnit * margin / 100 / 1000"
     },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Find utilized annual output, calculate revenue, then apply margin.",
@@ -346,6 +354,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
       expression: "customersThousands * (1 + growthRate / 100) * monthlyArpu * 12 * grossMargin / 100 / 1000"
     },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Grow customers, annualize subscription revenue, then apply gross margin.",
@@ -386,6 +395,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
       expression: "stores * transactionsPerDay * operatingDays * averageBasket * margin / 100 / 1000000"
     },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Calculate annual transactions, convert them to revenue, then apply margin.",
@@ -427,6 +437,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
       expression: "flightsPerDay * seatsPerFlight * loadFactor / 100 * operatingDays * averageFare * margin / 100 / 1000000"
     },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Calculate annual passengers, convert passengers to revenue, then apply margin.",
@@ -466,6 +477,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
       expression: "currentGmvMillions * (1 + growthRate / 100) * takeRate / 100 * margin / 100"
     },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Grow GMV, apply the take rate to find revenue, then apply operating margin.",
@@ -503,6 +515,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
     },
     formula: { expression: "stores * customersPerDay * operatingDays * averageBasket / 1000000" },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Annual revenue equals stores x daily customers x operating days x average basket.",
@@ -543,6 +556,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
         "accountsThousands * activeRate / 100 * transactionsPerMonth * 12 * feePerTransaction * margin / 100 / 1000"
     },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Find active accounts, annual transactions, fee revenue, and then operating profit.",
@@ -585,6 +599,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
         "policiesThousands * (1 + growthRate / 100) * annualPremium * (1 - claimsRatio / 100 - expenseRatio / 100) / 1000"
     },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Grow policies, calculate premiums, calculate claims and expenses, then subtract both costs.",
@@ -631,6 +646,7 @@ export const caseStyleQuestionTemplates: CaseStyleQuestionTemplate[] = [
         "clinics * roomsPerClinic * visitsPerRoomDay * utilization / 100 * operatingDays * revenuePerVisit * contributionMargin / 100 / 1000000 - fixedCostMillions"
     },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Setup: Find room capacity, utilized daily visits, annual visits, revenue, contribution, and profit after fixed cost.",

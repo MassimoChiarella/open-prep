@@ -38,6 +38,7 @@ export const growthQuestionTemplates: QuestionTemplate[] = [
     },
     formula: { expression: "startingRevenue * (1 + growthRate / 100) ^ years" },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Use final revenue = starting revenue x (1 + growth rate) ^ years.",
@@ -61,6 +62,7 @@ export const growthQuestionTemplates: QuestionTemplate[] = [
     },
     formula: { expression: "startingRevenue * (1 + firstRate / 100) * (1 + secondRate / 100)" },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "Apply each year's growth factor to the result from the prior year.",
@@ -85,6 +87,7 @@ export const growthQuestionTemplates: QuestionTemplate[] = [
     },
     formula: { expression: "startingRevenue * (1 + growthRate / 100) ^ years * margin / 100" },
     answerUnit: "m",
+    answerCurrency: true,
     explanationTemplate: {
       steps: [
         "First compound revenue, then apply the operating margin to the projected revenue.",

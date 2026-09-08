@@ -197,6 +197,7 @@ function readTemplate(value: unknown, path: string, errors: string[]): QuestionT
     "variables",
     "formula",
     "answerUnit",
+    "answerCurrency",
     "tolerance",
     "roundingRule",
     "explanationTemplate",
@@ -217,6 +218,12 @@ function readTemplate(value: unknown, path: string, errors: string[]): QuestionT
   const tolerance = hasOwn(item, "tolerance")
     ? readTolerance(item.tolerance, `${path}.tolerance`, errors)
     : undefined;
+  const answerCurrency = hasOwn(item, "answerCurrency")
+    ? booleanValue(item.answerCurrency, `${path}.answerCurrency`, errors)
+    : undefined;
+  if (answerCurrency === true && !["currency", "k", "m", "b"].includes(answerUnit ?? "none")) {
+    errors.push(`${path}.answerCurrency requires a currency or k/m/b answerUnit.`);
+  }
   const roundingRule = hasOwn(item, "roundingRule")
     ? enumValue(item.roundingRule, roundingRules, `${path}.roundingRule`, errors)
     : undefined;
@@ -246,6 +253,7 @@ function readTemplate(value: unknown, path: string, errors: string[]): QuestionT
     variables,
     formula,
     ...(answerUnit === undefined ? {} : { answerUnit }),
+    ...(answerCurrency === undefined ? {} : { answerCurrency }),
     ...(tolerance === undefined ? {} : { tolerance }),
     ...(roundingRule === undefined ? {} : { roundingRule }),
     explanationTemplate,

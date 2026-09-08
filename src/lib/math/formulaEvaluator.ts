@@ -31,8 +31,8 @@ const operatorPrecedence: Record<Operator, number> = {
   "*": 2,
   "/": 2,
   "^": 3,
-  "u+": 4,
-  "u-": 4
+  "u+": 3,
+  "u-": 3
 };
 
 const rightAssociativeOperators = new Set<Operator>(["^", "u+", "u-"]);
@@ -118,19 +118,24 @@ function tokenizeFormula(expression: string): Token[] {
 function toReversePolishNotation(tokens: Token[]): RpnToken[] {
   const output: RpnToken[] = [];
   const operators: Array<OperatorToken | ParenthesisToken> = [];
+  let expectsOperand = true;
 
   for (const token of tokens) {
     if (token.type === "number" || token.type === "identifier") {
+      if (!expectsOperand) throw new Error("Formula requires an operator between values.");
       output.push(token);
+      expectsOperand = false;
       continue;
     }
 
     if (token.type === "parenthesis") {
       if (token.value === "(") {
+        if (!expectsOperand) throw new Error("Formula requires an operator before parentheses.");
         operators.push(token);
         continue;
       }
 
+      if (expectsOperand) throw new Error("Formula requires a value before closing parentheses.");
       let foundOpeningParenthesis = false;
       while (operators.length > 0) {
         const operator = operators.pop();
@@ -150,6 +155,10 @@ function toReversePolishNotation(tokens: Token[]): RpnToken[] {
 
       continue;
     }
+
+    const isUnary = token.operator === "u+" || token.operator === "u-";
+    if (isUnary !== expectsOperand) throw new Error("Formula has an invalid operator sequence.");
+    expectsOperand = true;
 
     while (operators.length > 0) {
       const previousOperator = operators[operators.length - 1];
@@ -172,6 +181,8 @@ function toReversePolishNotation(tokens: Token[]): RpnToken[] {
 
     operators.push(token);
   }
+
+  if (expectsOperand) throw new Error("Formula requires a value after its final operator.");
 
   while (operators.length > 0) {
     const operator = operators.pop();

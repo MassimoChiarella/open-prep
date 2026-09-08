@@ -105,6 +105,7 @@ export interface ToleranceSpec {
 export interface AnswerSpec {
   value: number;
   unit?: UnitType;
+  currency?: boolean;
   tolerance?: ToleranceSpec;
   errorChecks?: AnswerErrorChecks;
   roundingRule?: RoundingRule;
@@ -295,6 +296,7 @@ export interface QuestionTemplate {
   variables: Record<string, VariableSpec>;
   formula: FormulaSpec;
   answerUnit?: UnitType;
+  answerCurrency?: boolean;
   tolerance?: ToleranceSpec;
   roundingRule?: RoundingRule;
   explanationTemplate: ExplanationTemplate;

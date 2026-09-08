@@ -16,6 +16,19 @@ describe("evaluateFormulaExpression", () => {
     expect(evaluateFormulaExpression("growth ^ years", { growth: 1.1, years: 2 })).toBeCloseTo(1.21);
   });
 
+  it.each([
+    ["-2^2", -4], ["(-2)^2", 4], ["2^-2", 0.25],
+    ["2^3^2", 512], ["-2^-2^2", -0.0625], ["3 * -2^2", -12]
+  ])("uses arithmetic precedence for %s", (expression, expected) => {
+    expect(evaluateFormulaExpression(expression, {})).toBe(expected);
+  });
+
+  it.each(["1 2 +", "1 + () 2", "()", "2(3)", "(2)3", "(2)(3)", "1 +", "*2", "1*/2", "1..2"])(
+    "rejects malformed infix expression %s during compilation", (expression) => {
+      expect(() => compileFormulaExpression(expression)).toThrow();
+    }
+  );
+
   it("reuses one compiled expression across representative variable sets", () => {
     const evaluate = compileFormulaExpression("price * volume - cost");
 

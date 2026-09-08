@@ -7,6 +7,17 @@ import type { Question } from "@/lib/domain";
 import { createSeededRandom } from "@/lib/random/seededRandom";
 
 describe("evaluateInterviewMath", () => {
+  it.each(caseStyleQuestionTemplates)("accepts the promised currency scale notation for $id", (template) => {
+    const question = generateQuestionFromTemplate(template, {
+      difficulty: template.difficulty[0], random: createSeededRandom("audit-money")
+    });
+    const result = evaluateInterviewMath({
+      equationOptionId: "equation-correct", interpretationOptionId: "interpretation-correct",
+      question, rawInput: `$${question.answer.value}M`, selectedUnit: "m"
+    });
+    expect(result.validation.isCorrect).toBe(true);
+    expect(result.interviewMath.score.total).toBe(100);
+  });
   it("awards full credit for a correct setup, calculation, unit, and interpretation", () => {
     const question = caseQuestion();
     const result = evaluateInterviewMath({

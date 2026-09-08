@@ -42,6 +42,29 @@ const publicQuestionPackAssets = [
 ] as const;
 
 describe("validateQuestionPackPayload", () => {
+  it.each(["1 2 +", "1 + () 2"])("rejects malformed generated formula %s", (expression) => {
+    expect(validateQuestionPackPayload(generatedPayload([
+      { ...validCaseTemplate(), formula: { expression } }
+    ])).status).toBe("invalid");
+  });
+
+  it("preserves and validates monetary answer metadata", () => {
+    const template = { ...validCaseTemplate(), answerCurrency: true };
+    const generated = validateQuestionPackPayload(generatedPayload([template]));
+    expect(generated.status).toBe("valid");
+    if (generated.status !== "invalid" && generated.pack.kind === "generated_template") {
+      expect(generated.pack.templates[0].answerCurrency).toBe(true);
+    }
+    expect(validateQuestionPackPayload(generatedPayload([{ ...template, answerCurrency: "yes" }])).status).toBe("invalid");
+    expect(validateQuestionPackPayload(generatedPayload([{ ...template, answerUnit: "users" }])).status).toBe("invalid");
+    const payload = validPayload();
+    payload.questions[0].answer = { value: 50, unit: "m", currency: true };
+    const fixed = validateQuestionPackPayload(payload);
+    expect(fixed.status).toBe("valid");
+    if (fixed.status !== "invalid" && fixed.pack.kind === "fixed_numeric") {
+      expect(toQuestionPackQuestions(fixed.pack)[0].answer.currency).toBe(true);
+    }
+  });
   it("accepts the public one-question starter", () => {
     const starter = JSON.parse(
       readFileSync(resolve(process.cwd(), "public/question-pack-starter.mathdrill.json"), "utf8")

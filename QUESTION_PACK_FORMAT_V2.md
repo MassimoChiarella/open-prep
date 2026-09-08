@@ -55,6 +55,8 @@ An optional `errorChecks` object may define `percentagePointValue` or `roundingT
 
 Categories are `arithmetic`, `percentages`, `fractions_decimals_ratios`, `growth_compounding`, `weighted_averages`, `business_math`, `case_math`, `market_sizing`, and `exhibit_math`. Difficulties are `beginner`, `intermediate`, `advanced`, and `expert`. The schema lists the supported tags and units. Explanations require a short summary and 1 to 10 steps, with an optional shortcut.
 
+Optional `answer.currency: true` marks a monetary answer whose unit is `currency`, `k`, `m`, or `b`. For example, `{ "value": 50, "unit": "m", "currency": true }` accepts `$50M` with Millions selected. Omission preserves nonmonetary scale semantics.
+
 ## Generated-template packs
 
 ### Template fields
@@ -71,6 +73,7 @@ Each template uses the existing deterministic `QuestionTemplate` shape:
 | `variables` | Yes | One to twenty named variable specifications. |
 | `formula` | Yes | Arithmetic expression that computes the answer. |
 | `answerUnit` | No | One supported unit value; omit it for no required unit. |
+| `answerCurrency` | No | Boolean. Set `true` for monetary answers whose unit is `currency`, `k`, `m`, or `b`, so typed currency symbols are compatible with the scale. |
 | `explanationTemplate` | Yes | One to ten generated explanation steps and an optional shortcut. |
 | `caseStyle` | No | Interview Math configuration described below. |
 

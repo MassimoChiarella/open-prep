@@ -21,21 +21,21 @@ Repair from the top of the table. P1 means an urgent data-loss, broken-workflow,
 | BUG-11 | P2 | Growing practice history exceeds the app's own backup/import limits | Open |
 | BUG-12 | P2 | A completed Fit save discards newer edits | Fixed (step 03) |
 | BUG-13 | P2 | Session timers inflate per-question times and distort benchmark scoring | Open |
-| BUG-14 | P2 | Interview Math rejects the monetary scale syntax its prompt requests | Open |
+| BUG-14 | P2 | Interview Math rejects the monetary scale syntax its prompt requests | Fixed (step 04) |
 | BUG-15 | P2 | Exact imported exhibits hide precision and reject the displayed answer | Open |
 | BUG-16 | P2 | Reloading a drill resets its per-question time allowance | Open |
 | BUG-17 | P2 | Fit rehearsal timers undercount time during throttling or sleep | Fixed (step 03) |
 | BUG-18 | P2 | Direct pack practice resumes questions from an obsolete pack version | Open |
 | BUG-19 | P2 | Mixed Daily Workouts record beginner work as expert personal bests | Open |
 | BUG-20 | P2 | Beginner percentage-point drills accept the wrong percentage unit | Open |
-| BUG-21 | P2 | Hindi grouping and Arabic formatted negatives fail numeric parsing | Open |
-| BUG-22 | P2 | Unary minus has the wrong precedence relative to exponentiation | Open |
+| BUG-21 | P2 | Hindi grouping and Arabic formatted negatives fail numeric parsing | Fixed (step 04) |
+| BUG-22 | P2 | Unary minus has the wrong precedence relative to exponentiation | Fixed (step 04) |
 | BUG-23 | P2 | Accepted fractional market-sizing rubrics can exceed their maximum score | Open |
 | BUG-24 | P2 | A previous exhibit save labels a new unanswered exercise correct and saved | Open |
 | BUG-25 | P2 | CAGR and Rule of 72 practice links select unrelated skills | Open |
 | BUG-26 | P2 | Custom arithmetic can repeat an identical question in one session | Open |
 | BUG-27 | P2 | Clear-data controls retain an empty inventory after a successful import | Open |
-| BUG-28 | P3 | Formula validation accepts malformed infix expressions | Open |
+| BUG-28 | P3 | Formula validation accepts malformed infix expressions | Fixed (step 04) |
 | BUG-29 | P3 | Decimal stepped ranges can omit valid upper endpoints | Open |
 | BUG-30 | P3 | Identical unrecognized questions receive full distinctness credit | Open |
 

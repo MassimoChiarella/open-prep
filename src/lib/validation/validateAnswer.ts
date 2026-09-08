@@ -56,7 +56,7 @@ export function validateAnswer(
   const numericMatch = matchingValue !== undefined;
   const legacyPercentageMatch =
     (answer.unit ?? "none") === "none" && parsedAnswer.isPercentageInput && numericMatch;
-  const unitStatus = getUnitStatus(answer.unit, parsedAnswer, options.selectedUnit, legacyPercentageMatch);
+  const unitStatus = getUnitStatus(answer, parsedAnswer, options.selectedUnit, legacyPercentageMatch);
   const unitError = unitStatus === "incompatible";
   const isCorrect = numericMatch && !unitError;
 
@@ -116,12 +116,12 @@ function isWithinTolerance(userValue: number, correctValue: number, tolerance?: 
 }
 
 function getUnitStatus(
-  expectedUnit: UnitType | undefined,
+  answer: AnswerSpec,
   parsedAnswer: ParsedAnswer,
   selectedUnit: UnitType | undefined,
   legacyPercentageMatch: boolean
 ): UnitValidationStatus {
-  const expected = expectedUnit ?? "none";
+  const expected = answer.unit ?? "none";
   const selected = selectedUnit === "none" ? undefined : selectedUnit;
   const typedUnit = parsedAnswer.unitHint;
   const typedScale = parsedAnswer.scaleHint;
@@ -132,7 +132,10 @@ function getUnitStatus(
   }
 
   if (isScaleUnit(expected)) {
-    if (typedUnit !== undefined || (selected !== undefined && !isScaleUnit(selected))) return "incompatible";
+    if (
+      (typedUnit !== undefined && !(typedUnit === "currency" && answer.currency === true)) ||
+      (selected !== undefined && !isScaleUnit(selected))
+    ) return "incompatible";
     if ((typedScale !== undefined && typedScale !== expected) || (selectedScale !== undefined && selectedScale !== expected)) {
       return "incompatible";
     }

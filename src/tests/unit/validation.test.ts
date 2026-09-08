@@ -107,6 +107,18 @@ describe("validateAnswer", () => {
     });
   });
 
+  it("accepts currency symbols only for explicitly monetary scaled answers", () => {
+    for (const unit of ["k", "m", "b"] as const) {
+      const answer = { value: 50, unit, currency: true };
+      expect(validateAnswer(`$50${unit}`, answer, { selectedUnit: unit }).isCorrect).toBe(true);
+      expect(validateAnswer(`50${unit}`, answer).isCorrect).toBe(true);
+      expect(validateAnswer(`$50${unit}`, { value: 50, unit }).unitStatus).toBe("incompatible");
+      expect(validateAnswer(`$50${unit}`, answer, { selectedUnit: "percentage" }).unitStatus).toBe("incompatible");
+      expect(validateAnswer("50%", answer, { selectedUnit: unit }).isCorrect).toBe(false);
+    }
+    expect(validateAnswer("$50K", { value: 0.05, unit: "m", currency: true }, { selectedUnit: "m" }).isCorrect).toBe(false);
+  });
+
   it("passes locale separator policy through validation", () => {
     expect(validateAnswer("1.234", { value: 1_234 }, { locale: "de" }).isCorrect).toBe(true);
     expect(validateAnswer("1.234", { value: 1_234 }, { locale: "en" }).isCorrect).toBe(false);
