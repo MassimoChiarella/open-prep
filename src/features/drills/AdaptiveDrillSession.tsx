@@ -13,6 +13,7 @@ import {
 import type { CreatedDrillSession } from "@/features/drills/sessionFactory";
 import { createWeaknessModeDrillSession } from "@/features/drills/weaknessMode";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { localDateKey } from "@/features/progress/localCalendar";
 import { createQuestionPackPoolSession } from "@/features/question-packs/questionPackPool";
 import {
   buildQuestionPackPoolDraftScope,
@@ -126,6 +127,7 @@ export function LocalDrillSessionLoader({
   if (state.status === "ready") {
     return (
       <ActiveDrillSession
+        key={state.created.session.id}
         draftKeyScope={state.created.draftKeyScope}
         initialSession={state.created.session}
         queueTitle={t(copy.queueTitle)}
@@ -176,12 +178,13 @@ function createLocalSession(
   }
 
   if (mode === "daily_workout") {
+    const workoutDate = localDateKey(startedAt) ?? startedAt.slice(0, 10);
     const created = createDailyWorkoutSession(
       { mistakes, responses, retrySchedules },
       {
         now: startedAt,
         questionCount,
-        seed: `daily-workout:${startedAt.slice(0, 10)}`,
+        seed: `daily-workout:${workoutDate}`,
         startedAt
       }
     );
@@ -193,7 +196,7 @@ function createLocalSession(
           normalizeDailyWorkoutCount(questionCount),
           preference,
           selectedPacks,
-          `daily-workout:${startedAt.slice(0, 10)}:fill`,
+          `daily-workout:${workoutDate}:fill`,
           startedAt
         );
   }

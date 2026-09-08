@@ -199,4 +199,21 @@ describe("submitAnswer", () => {
       })
     ).toThrow("Answer submission requires a non-negative finite timeTakenSeconds value.");
   });
+
+  it("rejects a second answer for the same question", () => {
+    const created = createDrillSession({ seed: "duplicate-answer", settings: { questionCount: 1 } });
+    const first = submitAnswer({
+      question: created.questions[0],
+      rawInput: String(created.questions[0].answer.value),
+      session: created.session,
+      timeTakenSeconds: 1
+    });
+
+    expect(() => submitAnswer({
+      question: created.questions[0],
+      rawInput: String(created.questions[0].answer.value),
+      session: first.session,
+      timeTakenSeconds: 2
+    })).toThrow(`Question "${created.questions[0].id}" already has an answer in session "${first.session.id}".`);
+  });
 });

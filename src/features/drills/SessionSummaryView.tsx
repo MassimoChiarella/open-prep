@@ -479,7 +479,7 @@ function errorTypeDescription(errorType: ErrorType): string {
 function buildRepeatDrillHref(snapshot: SessionSummarySnapshot): string {
   const mode = snapshot.settings.interviewMathMode ? "&mode=interview" : "";
 
-  return `/drills/session?${buildDrillSettingsQuery(snapshot.settings)}${mode}`;
+  return `/drills/session?${buildDrillSettingsQuery(snapshot.settings)}${mode}&repeat=${encodeURIComponent(snapshot.id)}`;
 }
 
 function formatRawAnswer(rawInput: string, unit?: UnitType): string {

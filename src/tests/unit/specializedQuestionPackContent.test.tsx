@@ -276,6 +276,36 @@ describe("specialized question-pack content", () => {
     expect(screen.getByText(/excluded from Standard comparisons and personal bests/)).toBeInTheDocument();
   });
 
+  it("replaces the active questions when benchmark props change", async () => {
+    const storage = new MemoryAppStorage();
+    const storageFactory = () => storage;
+    const beginner = benchmarkTests[0];
+    const advanced = benchmarkTests[2];
+    const view = render(
+      <QuestionPackBenchmarkSession
+        benchmarkId={beginner.id}
+        builtInBenchmarks={benchmarkTests}
+        storageFactory={storageFactory}
+      />
+    );
+
+    expect(await screen.findByRole("heading", { name: beginner.title })).toBeInTheDocument();
+    expect(screen.getByTestId("active-question-prompt")).toHaveTextContent(beginner.questions[0].prompt);
+
+    view.rerender(
+      <QuestionPackBenchmarkSession
+        key={advanced.id}
+        benchmarkId={advanced.id}
+        builtInBenchmarks={benchmarkTests}
+        storageFactory={storageFactory}
+      />
+    );
+
+    expect(await screen.findByRole("heading", { name: advanced.title })).toBeInTheDocument();
+    expect(screen.getByTestId("active-question-prompt")).toHaveTextContent(advanced.questions[0].prompt);
+    expect(screen.queryByText(beginner.questions[0].prompt)).not.toBeInTheDocument();
+  });
+
   it("shows a clear error instead of falling back when a selected pack has the wrong kind", async () => {
     const storage = new MemoryAppStorage();
     const pack = readValidPack("question-pack-exhibit-example.mathdrill.json");

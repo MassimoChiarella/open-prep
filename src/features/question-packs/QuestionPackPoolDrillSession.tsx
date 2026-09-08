@@ -144,6 +144,7 @@ export function QuestionPackPoolDrillSession({
     return (
       <div className="contents" dir={state.language === undefined ? undefined : "auto"} lang={state.language}>
         <ActiveDrillSession
+          key={state.created.session.id}
           draftKeyScope={state.draftKeyScope}
           initialSession={state.created.session}
           interviewMathMode={state.interviewMathMode}

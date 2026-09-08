@@ -252,6 +252,7 @@ export function QuestionPackBenchmarkSession({
   return (
     <QuestionPackContentBoundary pack={boundaryPack}>
       <ActiveDrillSession
+        key={created.session.id}
         benchmarkId={benchmark.id}
         initialSession={created.session}
         lockedModeSummary={[

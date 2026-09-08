@@ -72,6 +72,10 @@ function validateSubmissionInput(input: SubmitAnswerInput): void {
     throw new Error(`Question "${input.question.id}" does not belong to session "${input.session.id}".`);
   }
 
+  if (input.session.responses.some((response) => response.questionId === input.question.id)) {
+    throw new Error(`Question "${input.question.id}" already has an answer in session "${input.session.id}".`);
+  }
+
   if (!Number.isFinite(input.timeTakenSeconds) || input.timeTakenSeconds < 0) {
     throw new Error("Answer submission requires a non-negative finite timeTakenSeconds value.");
   }

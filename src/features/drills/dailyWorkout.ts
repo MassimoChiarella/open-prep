@@ -5,6 +5,7 @@ import {
 } from "@/features/drills/mistakeRetry";
 import { createDrillSession, type CreatedDrillSession } from "@/features/drills/sessionFactory";
 import { deriveWeaknessDrillSettings } from "@/features/progress/weaknessAnalysis";
+import { localDateKey } from "@/features/progress/localCalendar";
 import type { Difficulty, Question, SkillCategory, SkillTag } from "@/lib/domain";
 import type {
   MistakeNotebookRecord,
@@ -37,6 +38,7 @@ export interface CreateDailyWorkoutSessionOptions {
   seed?: string | number;
   sessionId?: string;
   startedAt?: string;
+  timeZone?: string;
 }
 
 export function buildDailyWorkoutHref(questionCount = defaultQuestionCount): string {
@@ -54,7 +56,8 @@ export function createDailyWorkoutSession(
 ): CreatedDrillSession {
   const questionCount = normalizeQuestionCount(options.questionCount);
   const startedAt = options.startedAt ?? new Date().toISOString();
-  const seed = options.seed ?? `daily-workout:${startedAt.slice(0, 10)}`;
+  const workoutDate = localDateKey(startedAt, options.timeZone) ?? startedAt.slice(0, 10);
+  const seed = options.seed ?? `daily-workout:${workoutDate}`;
   const dueQuestions = selectDueMistakes(
     data.mistakes,
     data.retrySchedules,

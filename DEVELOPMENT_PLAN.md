@@ -192,7 +192,7 @@ This phase closes the issues discovered after the completed 30-item audit. It pr
 | Step | Scope | Status |
 |---|---|---|
 | 14 | Publish the hardening plan and acceptance ledger | Complete |
-| 15 | Drill identity, repeat behavior and local-day correctness | Planned |
+| 15 | Drill identity, repeat behavior and local-day correctness | In progress |
 | 16 | Multilingual scoring, localized summaries and recoverable UI state | Planned |
 | 17 | Storage write coalescing, bounded reads and restore responsiveness | Planned |
 | 18 | Release-server isolation, service-worker retry and Node preflight | Planned |

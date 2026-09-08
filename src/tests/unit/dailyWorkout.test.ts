@@ -137,6 +137,21 @@ describe("Daily Workout", () => {
     expect(created.questions).toHaveLength(10);
     expect(created.questions.every((question) => !question.id.startsWith("retry-"))).toBe(true);
   });
+
+  it("uses the learner's local calendar day for the default workout identity", () => {
+    const data = { mistakes: [], responses: [], retrySchedules: [] };
+    const beforeLocalMidnight = createDailyWorkoutSession(data, {
+      startedAt: "2026-08-09T03:30:00.000Z",
+      timeZone: "America/Toronto"
+    });
+    const afterLocalMidnight = createDailyWorkoutSession(data, {
+      startedAt: "2026-08-09T04:30:00.000Z",
+      timeZone: "America/Toronto"
+    });
+
+    expect(beforeLocalMidnight.session.id).toContain("2026-08-08");
+    expect(afterLocalMidnight.session.id).toContain("2026-08-09");
+  });
 });
 
 function deterministicOptions() {

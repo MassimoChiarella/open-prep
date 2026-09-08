@@ -36,7 +36,7 @@ describe("SessionSummaryView", () => {
 
     expect(screen.getByRole("link", { name: "Repeat Drill" })).toHaveAttribute(
       "href",
-      `/drills/session?${buildDrillSettingsQuery(snapshot.settings)}`
+      `/drills/session?${buildDrillSettingsQuery(snapshot.settings)}&repeat=summary-view-test`
     );
   });
 

@@ -103,6 +103,7 @@ export function QuestionPackDrillSessionLoader({
     return (
       <div className="contents" dir="auto" lang={state.pack.catalogProvenance?.language}>
         <ActiveDrillSession
+          key={state.created.session.id}
           draftKeyScope={buildQuestionPackPoolDraftScope({ mode: "selected_only", selectedPackIds: [state.pack.id] }, [state.pack])}
           initialSession={state.created.session}
           interviewMathMode={interviewMathMode}

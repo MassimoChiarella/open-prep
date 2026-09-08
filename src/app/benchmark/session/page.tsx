@@ -21,8 +21,10 @@ export default function BenchmarkSessionPage() {
 
 function BenchmarkSessionPageContent() {
   const searchParams = useSearchParams();
+  const queryKey = searchParams.toString();
   return (
     <QuestionPackBenchmarkSession
+      key={queryKey}
       benchmarkId={searchParams.get("benchmark") ?? undefined}
       builtInBenchmarks={benchmarkTests}
       packId={searchParams.get("pack") ?? undefined}

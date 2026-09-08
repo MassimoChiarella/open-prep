@@ -72,6 +72,7 @@ function DrillSessionPageContent() {
 
     return (
       <LocalDrillSessionLoader
+        key={queryKey}
         mode={source}
         questionCount={adaptiveCount.questionCount}
         warnings={adaptiveCount.warnings}
@@ -86,6 +87,7 @@ function DrillSessionPageContent() {
   if (source === questionPackSourceParam) {
     return (
       <QuestionPackDrillSessionLoader
+        key={queryKey}
         difficulty={parsed.settings.difficulty}
         packId={searchParams.get("pack") ?? undefined}
         questionCount={parsed.settings.questionCount}
@@ -97,6 +99,7 @@ function DrillSessionPageContent() {
   if (source === retryMissedSourceParam || source === reviewQueueSourceParam) {
     return (
       <LocalDrillSessionLoader
+        key={queryKey}
         mode={source === reviewQueueSourceParam ? "review_queue" : "retry_missed"}
         questionCount={parsed.settings.questionCount}
         warnings={parsed.warnings}
@@ -112,6 +115,7 @@ function DrillSessionPageContent() {
 
   return (
     <QuestionPackPoolDrillSession
+      key={queryKey}
       interviewMathMode={interviewMathMode}
       interviewMathRequested={requestedInterviewMathMode}
       queueTitle={sessionCopy.queueTitle}
