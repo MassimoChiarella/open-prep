@@ -75,6 +75,7 @@ export function FitPracticeView({
   const [completedCriteria, setCompletedCriteria] = useState<FitReviewCriterionId[]>([]);
   const [reviewStatus, setReviewStatus] = useState<SaveStatus>("idle");
   const elapsedSecondsRef = useRef(0);
+  const rehearsalStartedAt = useRef(0);
   const timingAccommodationTouched = useRef(false);
 
   const selectedStory = selectedStoryId === unsavedStoryId
@@ -148,7 +149,7 @@ export function FitPracticeView({
     if (phase !== "running" || activeDurationSeconds === undefined) return;
 
     const interval = window.setInterval(() => {
-      const nextElapsedSeconds = elapsedSecondsRef.current + 1;
+      const nextElapsedSeconds = Math.max(elapsedSecondsRef.current, Math.floor((Date.now() - rehearsalStartedAt.current) / 1_000));
 
       if (activeDurationSeconds !== null && nextElapsedSeconds >= activeDurationSeconds) {
         elapsedSecondsRef.current = activeDurationSeconds;
@@ -176,7 +177,7 @@ export function FitPracticeView({
 
   async function handleSaveStory(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!validateCurrentDraft()) return;
+    if (storyStatus === "saving" || !validateCurrentDraft()) return;
 
     setStoryStatus("saving");
     let storage: AppStorage | undefined;
@@ -217,6 +218,7 @@ export function FitPracticeView({
   }
 
   function handleStoryChange(update: Partial<FitStoryDraft>): void {
+    if (storyStatus === "saving") return;
     setDraft((current) => ({ ...current, ...update }));
     setValidationErrors((current) => {
       const next = { ...current };
@@ -290,6 +292,7 @@ export function FitPracticeView({
   }
 
   function chooseStory(storyId: string) {
+    if (storyStatus === "saving") return;
     const story = storyId === unsavedStoryId
       ? unsavedStory
       : stories.find((candidate) => candidate.id === storyId);
@@ -334,6 +337,7 @@ export function FitPracticeView({
     if (selectedStory === undefined || selectedPrompt === undefined) return;
 
     const effectiveDurationSeconds = getEffectiveDurationSeconds(durationSeconds, timingAccommodation);
+    rehearsalStartedAt.current = Date.now();
     elapsedSecondsRef.current = 0;
     setElapsedSeconds(0);
     setActiveDurationSeconds(effectiveDurationSeconds);
@@ -356,6 +360,13 @@ export function FitPracticeView({
       current.includes(id) ? current.filter((criterion) => criterion !== id) : [...current, id]
     );
     setReviewStatus("idle");
+  }
+
+  function finishRehearsal() {
+    const elapsed = Math.max(elapsedSecondsRef.current, Math.floor((Date.now() - rehearsalStartedAt.current) / 1_000));
+    elapsedSecondsRef.current = activeDurationSeconds == null ? elapsed : Math.min(elapsed, activeDurationSeconds);
+    setElapsedSeconds(elapsedSecondsRef.current);
+    setPhase("review");
   }
 
   async function saveReview() {
@@ -428,13 +439,13 @@ export function FitPracticeView({
                       <h4 className="mt-2 font-semibold text-ink">{story.title}</h4>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      <button className={buttonClass("secondary", "px-3")} onClick={() => editStory(story)} type="button">
+                      <button className={buttonClass("secondary", "px-3")} disabled={storyStatus === "saving"} onClick={() => editStory(story)} type="button">
                         {t("Edit")}
                       </button>
-                      <button className={buttonClass("secondary", "px-3")} onClick={() => chooseStory(story.id)} type="button">
+                      <button className={buttonClass("secondary", "px-3")} disabled={storyStatus === "saving"} onClick={() => chooseStory(story.id)} type="button">
                         {t("Rehearse")}
                       </button>
-                      <button className={buttonClass("danger", "px-3")} onClick={() => void removeStory(story)} type="button">
+                      <button className={buttonClass("danger", "px-3")} disabled={storyStatus === "saving"} onClick={() => void removeStory(story)} type="button">
                         {t("Delete")}
                       </button>
                     </div>
@@ -463,7 +474,7 @@ export function FitPracticeView({
           <Field label={t("Story")}>
             <select
               className={uiInputs.base}
-              disabled={phase === "running" || (stories.length === 0 && unsavedStory === undefined)}
+              disabled={storyStatus === "saving" || phase === "running" || (stories.length === 0 && unsavedStory === undefined)}
               onChange={(event) => chooseStory(event.currentTarget.value)}
               value={selectedStoryId}
             >
@@ -559,7 +570,7 @@ export function FitPracticeView({
 
         <div className="flex flex-wrap gap-3">
           {phase === "running" ? (
-            <button className={buttonClass("primary")} onClick={() => setPhase("review")} type="button">
+            <button className={buttonClass("primary")} onClick={finishRehearsal} type="button">
               {t("Finish Rehearsal")}
             </button>
           ) : (
@@ -665,84 +676,86 @@ function StoryForm({
   const { t } = useI18n();
   return (
     <form className="grid gap-4 border-y border-ink/10 py-5" noValidate onSubmit={onSubmit}>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h3 className={uiText.sectionTitle}>{editing ? t("Edit story") : t("Add a story")}</h3>
-        {editing || ephemeral ? (
-          <button className={buttonClass("secondary", "px-3")} onClick={onCancel} type="button">
-            {t("Cancel")}
-          </button>
-        ) : null}
-      </div>
-
-      {Object.keys(errors).length > 0 ? (
-        <div aria-live="polite" className={statusMessageClass("error")} role="alert">
-          <p className="text-sm font-semibold text-ink">{t("Complete every story field before continuing.")}</p>
+      <fieldset className="contents" disabled={saving}>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h3 className={uiText.sectionTitle}>{editing ? t("Edit story") : t("Add a story")}</h3>
+          {editing || ephemeral ? (
+            <button className={buttonClass("secondary", "px-3")} onClick={onCancel} type="button">
+              {t("Cancel")}
+            </button>
+          ) : null}
         </div>
-      ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field error={errors.title} id="fit-story-title" label={t("Story title")}>
-          <input
-            aria-describedby={errors.title === undefined ? undefined : "fit-story-title-error"}
-            aria-invalid={errors.title !== undefined}
-            className={uiInputs.base}
-            dir="auto"
-            id="fit-story-title"
-            maxLength={80}
-            onChange={(event) => onChange({ title: event.currentTarget.value })}
-            value={draft.title}
-          />
-        </Field>
-        <Field error={errors.competency} id="fit-story-competency" label={t("Competency")}>
-          <select
-            aria-describedby={errors.competency === undefined ? undefined : "fit-story-competency-error"}
-            aria-invalid={errors.competency !== undefined}
-            className={uiInputs.base}
-            id="fit-story-competency"
-            onChange={(event) => onChange({ competency: event.currentTarget.value as FitCompetency })}
-            value={draft.competency}
+        {Object.keys(errors).length > 0 ? (
+          <div aria-live="polite" className={statusMessageClass("error")} role="alert">
+            <p className="text-sm font-semibold text-ink">{t("Complete every story field before continuing.")}</p>
+          </div>
+        ) : null}
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field error={errors.title} id="fit-story-title" label={t("Story title")}>
+            <input
+              aria-describedby={errors.title === undefined ? undefined : "fit-story-title-error"}
+              aria-invalid={errors.title !== undefined}
+              className={uiInputs.base}
+              dir="auto"
+              id="fit-story-title"
+              maxLength={80}
+              onChange={(event) => onChange({ title: event.currentTarget.value })}
+              value={draft.title}
+            />
+          </Field>
+          <Field error={errors.competency} id="fit-story-competency" label={t("Competency")}>
+            <select
+              aria-describedby={errors.competency === undefined ? undefined : "fit-story-competency-error"}
+              aria-invalid={errors.competency !== undefined}
+              className={uiInputs.base}
+              id="fit-story-competency"
+              onChange={(event) => onChange({ competency: event.currentTarget.value as FitCompetency })}
+              value={draft.competency}
+            >
+              {(Object.entries(fitCompetencyLabels) as Array<[FitCompetency, string]>).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {t(label)}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          {storyTextArea("situation", t("Situation"))}
+          {storyTextArea("task", t("Task"))}
+          {storyTextArea("action", t("Action"))}
+          {storyTextArea("result", t("Result"))}
+        </div>
+        {storyTextArea("reflection", t("Reflection"))}
+
+        <p className={uiText.dense}>
+          {t("Story text is browser-local and unencrypted. Anyone with access to this browser profile can read saved stories.")} {" "}
+          <Link className="font-semibold text-teal underline underline-offset-2" href="/settings">
+            {t("Open Settings for backup and clear controls.")}
+          </Link>
+        </p>
+
+        <div className="flex flex-wrap gap-3">
+          <button className={buttonClass("primary")} disabled={saving} type="submit">
+            {saving ? t("Saving...") : editing ? t("Update Story") : t("Save Story")}
+          </button>
+          <button
+            className={buttonClass("secondary")}
+            disabled={saving}
+            onClick={onRehearseWithoutSaving}
+            type="button"
           >
-            {(Object.entries(fitCompetencyLabels) as Array<[FitCompetency, string]>).map(([value, label]) => (
-              <option key={value} value={value}>
-                {t(label)}
-              </option>
-            ))}
-          </select>
-        </Field>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
-        <StoryTextArea field="situation" label={t("Situation")} />
-        <StoryTextArea field="task" label={t("Task")} />
-        <StoryTextArea field="action" label={t("Action")} />
-        <StoryTextArea field="result" label={t("Result")} />
-      </div>
-      <StoryTextArea field="reflection" label={t("Reflection")} />
-
-      <p className={uiText.dense}>
-        {t("Story text is browser-local and unencrypted. Anyone with access to this browser profile can read saved stories.")} {" "}
-        <Link className="font-semibold text-teal underline underline-offset-2" href="/settings">
-          {t("Open Settings for backup and clear controls.")}
-        </Link>
-      </p>
-
-      <div className="flex flex-wrap gap-3">
-        <button className={buttonClass("primary")} disabled={saving} type="submit">
-          {saving ? t("Saving...") : editing ? t("Update Story") : t("Save Story")}
-        </button>
-        <button
-          className={buttonClass("secondary")}
-          disabled={saving}
-          onClick={onRehearseWithoutSaving}
-          type="button"
-        >
-          {t("Rehearse Without Saving")}
-        </button>
-      </div>
+            {t("Rehearse Without Saving")}
+          </button>
+        </div>
+      </fieldset>
     </form>
   );
 
-  function StoryTextArea({ field, label }: { field: keyof Omit<FitStoryDraft, "competency" | "title">; label: string }) {
+  function storyTextArea(field: keyof Omit<FitStoryDraft, "competency" | "title">, label: string) {
     const id = `fit-story-${field}`;
     return (
       <Field error={errors[field]} id={id} label={label}>

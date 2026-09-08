@@ -10,9 +10,9 @@ Independent implementation can run in parallel. Each completed batch is reviewed
 
 | Step | Scope | Status |
 |---|---|---|
-| 01 | Publish the portable audit and this plan | In progress |
+| 01 | Publish the portable audit and this plan | Complete |
 | 02 | Safe imports, private-data scope, reset/restore invalidation | Pending |
-| 03 | Fit Story editing, save consistency, rehearsal timing | Pending |
+| 03 | Fit Story editing, save consistency, rehearsal timing | Complete |
 | 04 | Numeric parser, units, formula grammar and precedence | Pending |
 | 05 | Offline upgrade readiness and complete asset precaching | Pending |
 | 06 | Drill completion recovery, per-answer timing and resumed deadlines | Pending |
@@ -129,4 +129,6 @@ All 30 BUG IDs and six IMP IDs must have an implemented outcome and verification
 
 | Batch | Changes and audit IDs | Validation | Commit |
 |---|---|---|---|
-| Planning | Portable audit and sequenced implementation plan | Baseline audit: 1,069 unit tests; 143 Chromium scenarios; all 37 additional browser scenarios passed at least once | This commit |
+| Planning | Portable audit and sequenced implementation plan | Baseline audit: 1,069 unit tests; 143 Chromium scenarios; all 37 additional browser scenarios passed at least once | `20c978f` |
+
+| Fit practice | BUG-04, BUG-12, BUG-17: stable fields, protected pending saves, elapsed-time rehearsal clock | 23 focused Fit tests passed; root diff review | `fix: preserve fit editing and rehearsal timing` |

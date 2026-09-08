@@ -12,6 +12,74 @@ afterEach(() => {
 });
 
 describe("FitPracticeView", () => {
+  it("keeps each story textarea focused throughout typing", async () => {
+    const storage = new MemoryAppStorage();
+    render(<FitPracticeView storageFactory={() => storage} />);
+    await waitFor(() => expect(screen.queryByText("Loading stories saved in this browser...")).not.toBeInTheDocument());
+    for (const label of ["Situation", "Task", "Action", "Result", "Reflection"]) {
+      const textarea = screen.getByLabelText(label);
+      textarea.focus();
+      for (const value of ["A", "An", "Answer"]) {
+        fireEvent.change(textarea, { target: { value } });
+        expect(screen.getByLabelText(label)).toBe(textarea);
+        expect(textarea).toHaveFocus();
+        expect(textarea).toHaveValue(value);
+      }
+    }
+  });
+
+  it("locks the story draft while a delayed save is in progress", async () => {
+    const storage = new MemoryAppStorage();
+    await seedStory(storage);
+    render(<FitPracticeView storageFactory={() => storage} />);
+    await waitFor(() => expect(screen.getByLabelText("Story")).toHaveValue("fit-story-saved"));
+    fillStoryDraft("Original story");
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    const originalPut = storage.put.bind(storage);
+    vi.spyOn(storage, "put").mockImplementation(async (store, value) => { await pending; await originalPut(store, value); });
+    fireEvent.click(screen.getByRole("button", { name: "Save Story" }));
+    for (const label of ["Story title", "Competency", "Situation", "Task", "Action", "Result", "Reflection"]) {
+      expect(screen.getByLabelText(label)).toBeDisabled();
+    }
+    expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Delete" })).toBeDisabled();
+    expect(screen.getByLabelText("Story")).toBeDisabled();
+    fireEvent.change(screen.getByLabelText("Story title"), { target: { value: "New edit" } });
+    expect(screen.getByLabelText("Story title")).toHaveValue("Original story");
+    await act(async () => release());
+    expect(storage.peekAll("practice_records").filter((record) => record.kind === "fit_story")).toHaveLength(2);
+    expect(screen.getByLabelText("Story title")).toHaveValue("");
+    expect(screen.getByLabelText("Story title")).not.toBeDisabled();
+  });
+
+  it.each(["standard", "untimed"])("accounts for clock jumps before finishing %s rehearsal", async (accommodation) => {
+    const storage = new MemoryAppStorage();
+    await seedStory(storage);
+    render(<FitPracticeView storageFactory={() => storage} />);
+    await waitFor(() => expect(screen.getByLabelText("Story")).toHaveValue("fit-story-saved"));
+    fireEvent.change(screen.getByLabelText("Answer time"), { target: { value: "90" } });
+    fireEvent.change(screen.getByLabelText("Timing choice"), { target: { value: accommodation } });
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-09-01T00:00:00Z"));
+    fireEvent.click(screen.getByRole("button", { name: "Start Rehearsal" }));
+    vi.setSystemTime(new Date("2026-09-01T00:02:00Z"));
+    if (accommodation === "standard") {
+      act(() => vi.advanceTimersByTime(1_000));
+      expect(screen.queryByRole("button", { name: "Finish Rehearsal" })).not.toBeInTheDocument();
+      expect(screen.getByRole("timer", { name: "0 seconds remaining" })).toBeInTheDocument();
+    } else {
+      fireEvent.click(screen.getByRole("button", { name: "Finish Rehearsal" }));
+      expect(screen.getByRole("timer", { name: "120 seconds elapsed" })).toBeInTheDocument();
+    }
+    vi.useRealTimers();
+    fireEvent.click(screen.getByRole("button", { name: "Save Self-Review" }));
+    await screen.findByText("Self-review saved locally: 0/6.");
+    expect(storage.peekAll("practice_records").find((record) => record.kind === "attempt")).toMatchObject({
+      durationSeconds: accommodation === "standard" ? 90 : 120
+    });
+  });
+
   it("describes invalid fields and focuses the first error", async () => {
     const storage = new MemoryAppStorage();
     vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {
