@@ -180,3 +180,83 @@ All 30 audited bugs and six improvements are implemented and verified. The final
 ### Practical limits
 
 Remaining practical limits are explicit: complete backups support at most 64 files / 128 MiB per set, with 40 MiB per file and existing individual-record bounds; creating/restoring a set still uses an in-memory snapshot. The complete offline asset generation is larger than the old incomplete cache, so its measured install budget is 6 MiB; route and individual-chunk budgets remain unchanged. Automated coverage does not replace human screen-reader or OS-level PWA installation checks, browser-eviction testing, final-host checks, or exhaustive enumeration of every generated question. No deployment, merge, runtime service or dependency was added by this remediation.
+
+# Post-audit hardening plan
+
+Baseline: `bc7e9ee`. Development branch: `codex/audit-remediation`.
+
+This phase closes the issues discovered after the completed 30-item audit. It preserves the local-only runtime, deterministic content, installable PWA, static hosting model, existing dependencies and backward-compatible stored data.
+
+## Delivery sequence
+
+| Step | Scope | Status |
+|---|---|---|
+| 14 | Publish the hardening plan and acceptance ledger | Complete |
+| 15 | Drill identity, repeat behavior and local-day correctness | Planned |
+| 16 | Multilingual scoring, localized summaries and recoverable UI state | Planned |
+| 17 | Storage write coalescing, bounded reads and restore responsiveness | Planned |
+| 18 | Release-server isolation, service-worker retry and Node preflight | Planned |
+| 19 | Integrated verification and completion record | Planned |
+
+### 14 — Establish the hardening record
+
+- Assign stable IDs `HARD-01` through `HARD-14` to the new findings.
+- Record dependencies, test expectations and incremental commit boundaries before application edits.
+- Push this planning commit independently.
+
+### 15 — Keep each drill session internally consistent
+
+- `HARD-02`: remount asynchronous and active session loaders whenever the complete drill query identity changes, including adaptive, benchmark and direct-pack routes.
+- `HARD-03`: give Repeat Drill a fresh local nonce while preserving the completed drill settings and mode.
+- `HARD-10`: reject a second answer for the same question in the shared submission domain function.
+- `HARD-11`: derive Daily Workout identity from the learner's local calendar date while retaining ISO timestamps for persisted events.
+- Verify same-route navigation, canonical repeat links, duplicate submissions and local-midnight boundaries.
+
+### 16 — Make language and recovery behavior truthful
+
+- `HARD-04`: match questioning concepts in languages without whitespace by supporting normalized substring aliases while preserving existing token/fuzzy matching.
+- `HARD-05`: track drill draft persistence failures and describe exit behavior truthfully instead of promising unavailable storage.
+- `HARD-08`: pass summary-generated labels, reasons, recommendations, units and empty-answer/error copy through localization.
+- `HARD-12`: clear a failed locale-load attempt so selecting the same locale can retry.
+- `HARD-13`: expose service-worker registration retry after a transient failure without adding background services.
+- Verify CJK scoring, translated summary output, failed-draft messaging, locale retry and service-worker recovery.
+
+### 17 — Bound local persistence work
+
+- `HARD-06`: coalesce full-case draft autosaves so rapid edits persist the newest snapshot without opening one adapter per keystroke; flush pending work before lifecycle completion.
+- `HARD-07`: add indexed reads for response history needed by draft lookup, latest-session and personal-best/recommendation flows; avoid repeated lifetime `getAll()` calls where a bounded query is sufficient.
+- `HARD-09`: parse multipart backup files incrementally, yield between large batches and restore bounded batches while preserving all-or-nothing recovery semantics.
+- Verify delayed writes, newest-draft persistence, large synthetic histories, corrupt/mixed backup rejection and rollback.
+
+### 18 — Make local release checks deterministic
+
+- `HARD-01`: allocate an isolated Playwright port and never attach release tests to an unrelated existing server.
+- `HARD-14`: add a dependency-free runtime preflight with actionable Node/npm errors and ensure Playwright's child server uses the current Node executable.
+- Preserve explicit preview behavior on port 3000 and existing CI contracts.
+- Verify wrong-server rejection, dynamic-port startup, supported runtime success and unsupported-runtime diagnostics.
+
+### 19 — Verify and publish completion
+
+- Run focused tests after every implementation batch and the complete lint, strict TypeScript, unit, build and Chromium suites at the end.
+- Run Firefox/WebKit smoke and backup portability checks when installed browsers are available.
+- Review the combined diff for local privacy, static-hosting compatibility, accessibility and accidental dependency growth.
+- Mark every hardening ID complete with commit and test evidence; push the final documentation commit.
+
+## Hardening acceptance ledger
+
+| ID | Finding | Acceptance criterion | Status |
+|---|---|---|---|
+| HARD-01 | Local release tests can reuse a stale or unrelated build | Every Playwright invocation owns a fresh verified build server on its allocated port | Planned |
+| HARD-02 | Same-route changes mix old questions with new metadata | Query changes create one coherent loader/session identity before interaction resumes | Planned |
+| HARD-03 | Repeat Drill is a no-op on a canonical URL | Repeat starts a fresh session even when settings are unchanged | Planned |
+| HARD-04 | CJK/unspaced questioning aliases do not receive concept credit | Exact normalized authored aliases match with or without word boundaries | Planned |
+| HARD-05 | Exit copy claims failed drafts were saved | Exit messaging reflects the latest persistence result | Planned |
+| HARD-06 | Full-case drafts enqueue one adapter/write per keystroke | Rapid edits coalesce and the newest valid snapshot is recoverable | Planned |
+| HARD-07 | Routine drill operations scan lifetime response history | Bounded/indexed operations replace avoidable full-store reads | Planned |
+| HARD-08 | Session guidance bypasses localization | All user-visible summary copy uses locale-aware formatting and translation | Planned |
+| HARD-09 | Maximum backup restore monopolizes the main thread | Large restores yield/batch without weakening validation or atomic rollback | Planned |
+| HARD-10 | Domain submission accepts duplicate question answers | A duplicate submission fails before scoring or persistence | Planned |
+| HARD-11 | Daily Workout rotates at UTC rather than local midnight | The daily seed and generated identity use the learner's local date | Planned |
+| HARD-12 | A failed locale chunk cannot retry | A later selection of the same locale triggers a new load | Planned |
+| HARD-13 | Service-worker registration failure is sticky | The user can retry and recover without reloading the page | Planned |
+| HARD-14 | Unsupported Node can reach opaque tool failures | Repository commands fail early with an actionable pinned-runtime message | Planned |
