@@ -23,6 +23,31 @@ async function draft(): Promise<FullCaseDraftRecord> {
 }
 
 describe("full-case private drafts", () => {
+  it.each([0, 1])("focuses the restored heading when resuming stage %s", async (stage) => {
+    const storage = new MemoryAppStorage();
+    await storage.put("practice_records", { ...await draft(), stage });
+    render(<FullCaseSimulation storageFactory={() => storage} />);
+    const resume = await screen.findByRole("button", { name: "Resume draft" });
+    resume.focus();
+    fireEvent.click(resume);
+    expect(document.getElementById(stage === 0 ? "questioning-stage-heading" : "structure-stage-heading")).toHaveFocus();
+  });
+
+  it("returns focus to the retry after failed deletion and to opt-in after successful discard", async () => {
+    const storage = new MemoryAppStorage();
+    await storage.put("practice_records", await draft());
+    render(<FullCaseSimulation storageFactory={() => storage} />);
+    const discard = await screen.findByRole("button", { name: "Discard draft" });
+    vi.spyOn(storage, "delete").mockRejectedValueOnce(new Error("Temporary storage failure"));
+    discard.focus();
+    fireEvent.click(discard);
+    await screen.findByText("The local draft could not be read or updated. Keep this page open to preserve your current work.");
+    expect(discard).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Resume draft" })).toBeDisabled();
+    fireEvent.click(discard);
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: "Save a private draft on this device so I can resume this case." })).toHaveFocus());
+  });
+
   it.each([false, true])("does not resurrect a discarded draft during pending deletion (resumed=%s)", async (resume) => {
     const storage = new MemoryAppStorage();
     const saved = await draft();
@@ -42,9 +67,12 @@ describe("full-case private drafts", () => {
       : screen.getByRole("button", { name: "Discard draft" }));
     if (!resume) expect(resumeButton).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "Save a private draft on this device so I can resume this case." })).toBeDisabled();
-    fireEvent.change(screen.getAllByPlaceholderText("Type a question you would ask the interviewer")[0], { target: { value: "New text during deletion" } });
+    const question = screen.getAllByPlaceholderText("Type a question you would ask the interviewer")[0];
+    question.focus();
+    fireEvent.change(question, { target: { value: "New text during deletion" } });
     await act(async () => { release(); await pending; });
     expect(await storage.get("practice_records", saved.id)).toBeUndefined();
+    expect(question).toHaveFocus();
   });
 
   it("allows a failed private-draft deletion to be retried", async () => {

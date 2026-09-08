@@ -91,10 +91,12 @@ function FullCaseSession({
   const { saveState, saveAttempt, retrySave, resetSave } = usePracticeAttemptSave(storageFactory);
   const [draftEnabled, setDraftEnabled] = useState(false);
   const [pendingDraft, setPendingDraft] = useState<FullCaseDraftRecord>();
+  const [resumeFocusRequest, setResumeFocusRequest] = useState(0);
   const [contentKey, setContentKey] = useState<string>();
   const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error" | "incompatible">("idle");
   const [draftDeleting, setDraftDeleting] = useState(false);
   const [draftDeleteFailed, setDraftDeleteFailed] = useState(false);
+  const draftFocusReturn = useRef<HTMLElement | null>(null);
   const [attemptLocale, setAttemptLocale] = useState<string>(locale);
   const draftRevision = useRef(0);
   const runRevision = useRef(0);
@@ -186,6 +188,7 @@ function FullCaseSession({
 
   async function discardDraft(): Promise<void> {
     if (draftDeleting) return;
+    draftFocusReturn.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setDraftDeleting(true);
     setDraftEnabled(false);
     const lifecycle = lifecycleRevision.current;
@@ -208,6 +211,7 @@ function FullCaseSession({
     startedAtRef.current = Date.parse(draft.startedAt);
     nextQuestionNumberRef.current = Math.max(0, ...draft.questions.map((question) => Number(question.id.split("-").at(-1)) || 0)) + 1;
     setPendingDraft(undefined); setDraftEnabled(true);
+    setResumeFocusRequest((current) => current + 1);
     if (draft.completedAt !== undefined && isSynthesisComplete(draft.synthesis)) {
       const score = scoreFullCaseSimulation(simulation, {
         structure: { hypothesisId: draft.hypothesisId, branchIds: draft.branchIds },
@@ -236,7 +240,18 @@ function FullCaseSession({
 
     target?.focus();
     target?.scrollIntoView({ block: "start" });
-  }, [currentStage, result, stage]);
+  }, [currentStage, result, resumeFocusRequest, stage]);
+
+  useEffect(() => {
+    if (draftDeleting || draftFocusReturn.current === null) return;
+    const previous = draftFocusReturn.current;
+    draftFocusReturn.current = null;
+    if (document.activeElement !== document.body && document.activeElement !== previous) return;
+    const target = previous.isConnected && !previous.matches(":disabled")
+      ? previous
+      : document.getElementById("full-case-discard-draft") ?? document.getElementById("full-case-draft-opt-in");
+    target?.focus();
+  }, [draftDeleting]);
 
   function markStarted(): void {
     startedAtRef.current ||= Date.now();
@@ -421,7 +436,7 @@ function FullCaseSession({
 
       <section aria-label={t("Local case draft")} className="grid gap-3 border border-ink/15 bg-white p-4">
         <label className="flex items-start gap-3 text-sm text-ink">
-          <input type="checkbox" checked={draftEnabled} disabled={contentKey === undefined || pendingDraft !== undefined || draftDeleting || draftDeleteFailed || draftStatus === "incompatible" || result !== undefined}
+          <input id="full-case-draft-opt-in" type="checkbox" checked={draftEnabled} disabled={contentKey === undefined || pendingDraft !== undefined || draftDeleting || draftDeleteFailed || draftStatus === "incompatible" || result !== undefined}
             onChange={(event) => {
               if (event.currentTarget.checked) { markStarted(); setDraftEnabled(true); }
               else void discardDraft();
@@ -432,18 +447,18 @@ function FullCaseSession({
           <div className="flex flex-wrap items-center gap-3">
             <p className={uiText.body}>{t("A saved case draft is available.")}</p>
             <button className={buttonClass("primary")} disabled={draftDeleting || draftDeleteFailed} type="button" onClick={() => void resumeDraft()}>{t("Resume draft")}</button>
-            <button className={buttonClass("secondary")} disabled={draftDeleting} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button>
+            <button id="full-case-discard-draft" className={buttonClass("secondary")} disabled={draftDeleting} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button>
           </div>
         ) : null}
         {draftStatus === "incompatible" ? (
           <div className="grid gap-2">
             <p className={uiText.body}>{t("The saved draft uses different case content or is invalid. Discard it to save a new draft.")}</p>
-            <button className={buttonClass("secondary")} disabled={draftDeleting} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button>
+            <button id="full-case-discard-draft" className={buttonClass("secondary")} disabled={draftDeleting} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button>
           </div>
         ) : null}
         {draftStatus === "saved" ? <p role="status" className={uiText.body}>{t("Private draft saved on this device.")}</p> : null}
         {draftStatus === "error" ? <LocalSaveNotice label={t("Not Saved")} tone="error" detail={t("The local draft could not be read or updated. Keep this page open to preserve your current work.")} /> : null}
-        {draftDeleteFailed && pendingDraft === undefined ? <button className={buttonClass("secondary")} disabled={draftDeleting} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button> : null}
+        {draftDeleteFailed && pendingDraft === undefined ? <button id="full-case-discard-draft" className={buttonClass("secondary")} disabled={draftDeleting} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button> : null}
       </section>
 
       {result === undefined ? (
