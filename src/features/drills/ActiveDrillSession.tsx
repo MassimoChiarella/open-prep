@@ -393,10 +393,16 @@ export function ActiveDrillSession({
       return;
     }
 
+    let storage: AppStorage;
+    try {
+      // Subscribe this queued write to data invalidation before an earlier save settles.
+      storage = storageFactory();
+    } catch {
+      return;
+    }
+
     draftSavePromise.current = draftSavePromise.current
       .then(async () => {
-        const storage = storageFactory();
-
         try {
           await persistInProgressDrillSession({
             draftKey,
@@ -429,10 +435,9 @@ export function ActiveDrillSession({
     setSaveStatus("saving");
 
     try {
+      const storage = storageFactory();
       void draftSavePromise.current
         .then(async () => {
-          const storage = storageFactory();
-
           try {
             await persistCompletedDrillSession({
               questions: questionQueue,
