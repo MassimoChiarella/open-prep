@@ -20,7 +20,7 @@ Independent implementation can run in parallel. Each completed batch is reviewed
 | 08 | Question generation, content units, formula links and ROI wording | Complete |
 | 09 | Recoverable large backups, pack-version drafts and storage failure recovery | Complete |
 | 10 | Difficulty-correct personal bests and duplicate-question scoring | Complete |
-| 11 | Save-only retries, full-case local resume, prep-plan clarification | Pending |
+| 11 | Save-only retries, full-case local resume, prep-plan clarification | Complete |
 | 12 | Independent invariant tests and smaller browser smoke journeys | Complete |
 | 13 | Integrated verification, visual review and final repair ledger | Pending |
 
@@ -141,4 +141,5 @@ All 30 BUG IDs and six IMP IDs must have an implemented outcome and verification
 | Backup recoverability | BUG-11, BUG-18: complete numbered backup sets, one atomic restore, versioned pack drafts, validated private full-case draft records | 77 focused backup/pack/settings tests plus 20 storage lifecycle tests passed; missing/mixed/corrupt files and rollback covered | `53f8f5f` |
 | Offline updates | BUG-03: generation-complete immutable precache, static/lazy assets and navigation payloads; synchronized authoring schema bundles | 27 unit/build tests, 2 Chromium upgrade/failure journeys, and 53 authoring tests passed; baseline inventory 4.615 MiB / 6 MiB | `4ac8c10` |
 | Regression coverage | IMP-04, IMP-05: independent arithmetic/evidence/locale/race tests in repair batches; split long navigation and arrow smoke journeys | 70 isolated Firefox/WebKit scenarios passed first run in 2 minutes, unchanged 30-second limits and zero retries | `78ac94a` |
-| Progress and remaining retries | BUG-19 and remaining IMP-02: mixed-question difficulty bests, exhibit/Sprint/sizing save-only retries, stable reviewed scoring across locale changes | 41 focused practice tests and locale-change retry regression passed; root diff review | `fix: attribute progress and preserve retry results` |
+| Progress and remaining retries | BUG-19 and remaining IMP-02: mixed-question difficulty bests, exhibit/Sprint/sizing save-only retries, stable reviewed scoring across locale changes | 41 focused practice tests and locale-change retry regression passed; root diff review | `fb1fc3a` |
+| Full-case resume and language coverage | IMP-02, IMP-03, IMP-06: optional private case drafts, explicit resume/discard, stable completed-save retry, locale capture and clear reference-note copy; all new strings translated | 40 full-case/activity/catalog tests passed; independent delayed deletion, remount, reset, invalidation and locale regressions; ESLint/typecheck passed | `feat: resume private full-case drafts locally` |

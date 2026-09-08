@@ -236,7 +236,7 @@ export function PrepPlanView({
                     value={draft.targetFirms}
                   />
                   <span className={uiText.dense} id="target-firms-help">
-                    {t("Separate firm names with commas.")}
+                      {t("Separate firm names with commas. These are reference notes and do not change your practice priorities.")}
                   </span>
                 </label>
 

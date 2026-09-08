@@ -16,6 +16,8 @@ import ptMessages from "@/features/i18n/locales/pt";
 import zhHansMessages from "@/features/i18n/locales/zh-Hans";
 import zhHantMessages from "@/features/i18n/locales/zh-Hant";
 import { experienceQualityDynamicKeys } from "@/features/i18n/messages/experienceQuality";
+import { remediationDynamicKeys } from "@/features/i18n/messages/remediation";
+import { appStoreNames } from "@/lib/storage/appStorageTypes";
 
 const sourceRoot = path.resolve(process.cwd(), "src");
 const runtimeMessages: Record<Locale, Messages> = {
@@ -89,7 +91,7 @@ describe("application translation catalog", () => {
   });
 
   it("covers registered dynamic UI keys that a literal t() scan cannot discover", () => {
-    const dynamicUiKeys = [...experienceQualityDynamicKeys, ...timingAccommodationDynamicKeys];
+    const dynamicUiKeys = [...experienceQualityDynamicKeys, ...timingAccommodationDynamicKeys, ...remediationDynamicKeys];
     const missing = Object.fromEntries(
       translatedLocales.map((locale) => [
         locale,
@@ -98,6 +100,17 @@ describe("application translation catalog", () => {
     );
 
     expect(missing).toEqual(Object.fromEntries(translatedLocales.map((locale) => [locale, []])));
+  });
+
+  it("covers multipart backup errors for every storage collection", () => {
+    for (const store of appStoreNames) {
+      const key = `Backup parts contain duplicate records in "${store}".`;
+      expect(remediationDynamicKeys).toContain(key);
+      for (const locale of translatedLocales) {
+        expect(runtimeMessages[locale][key], `${locale}: ${key}`).toContain(store);
+        expect(runtimeMessages[locale][key]).not.toBe(key);
+      }
+    }
   });
 
   it("detects a missing registered dynamic option fixture", () => {

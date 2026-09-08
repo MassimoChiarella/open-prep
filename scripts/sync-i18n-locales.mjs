@@ -20,7 +20,8 @@ const catalogOrder = [
   "questioning.ts",
   "experienceQuality.ts",
   "releaseGateGlobal.ts",
-  "releaseGateLatin.ts"
+  "releaseGateLatin.ts",
+  "remediation.ts"
 ];
 
 const availableFiles = new Set(await readdir(messagesDirectory));

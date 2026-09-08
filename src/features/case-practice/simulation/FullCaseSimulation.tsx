@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LocalSaveNotice } from "@/components/LocalSaveNotice";
 import { PageHeader } from "@/components/PageHeader";
@@ -9,7 +9,9 @@ import {
   brightCartFullCase
 } from "@/data/casePractice/fullCaseSimulations";
 import { BrainstormingResponseFields } from "@/features/case-practice/brainstorming/BrainstormingDrill";
-import { savePracticeAttempt } from "@/features/case-practice/practiceRecords";
+import type { FullCaseDraftRecord } from "@/features/case-practice/practiceTypes";
+import { usePracticeAttemptSave, type PracticeAttemptSaveState } from "@/features/case-practice/usePracticeAttemptSave";
+import { canResumeFullCaseDraft, fullCaseContentKey, fullCaseDraftId, isFullCaseDraftRecord } from "@/features/case-practice/simulation/fullCaseDraft";
 import { QuestioningResponseFields } from "@/features/case-practice/questioning/QuestioningPractice";
 import type { CaseQuestioningQuestion } from "@/features/case-practice/questioning/questioningScoring";
 import {
@@ -29,6 +31,7 @@ import { ExhibitChartRenderer } from "@/features/exhibits/ExhibitChartRenderer";
 import { isExhibitChartDataset } from "@/features/exhibits/exhibitChartData";
 import { ExhibitTableRenderer } from "@/features/exhibits/ExhibitTableRenderer";
 import { useI18n } from "@/features/i18n/I18nProvider";
+import { subscribeToLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import { formatLabel } from "@/lib/format";
 import type { AppStorage } from "@/lib/storage/appStorageTypes";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
@@ -38,8 +41,6 @@ interface FullCaseSimulationProps {
   simulation?: FullCaseSimulationSpec;
   storageFactory?: () => AppStorage;
 }
-
-type SaveState = "error" | "idle" | "saved" | "saving";
 
 type FullCaseStageId = "brainstorming" | "calculation" | "questioning" | "structure" | "synthesis";
 
@@ -59,11 +60,22 @@ const stageHeadingIds: Record<FullCaseStageId, string> = {
   synthesis: "synthesis-stage-heading"
 };
 
-export function FullCaseSimulation({
+// Serialize pending writes across a same-case remount, including an explicit
+// deletion requested just before navigation. Only unsettled operations are kept.
+const pendingDraftWrites = new Map<string, Promise<void>>();
+
+export function FullCaseSimulation(props: FullCaseSimulationProps) {
+  const simulation = props.simulation ?? brightCartFullCase;
+  return <FullCaseSession key={JSON.stringify(simulation)} {...props} simulation={simulation} />;
+}
+
+function FullCaseSession({
   backHref = "/case-practice",
-  simulation = brightCartFullCase,
-  storageFactory = createIndexedDbAppStorage
+  simulation: initialSimulation = brightCartFullCase,
+  storageFactory: initialStorageFactory = createIndexedDbAppStorage
 }: FullCaseSimulationProps) {
+  const [simulation] = useState(initialSimulation);
+  const [storageFactory] = useState(() => initialStorageFactory);
   const { locale, t } = useI18n();
   const stages = simulation.questioning === undefined ? fullCaseStages.slice(1) : fullCaseStages;
   const [stage, setStage] = useState(0);
@@ -76,11 +88,142 @@ export function FullCaseSimulation({
   const [priorityIdeaIds, setPriorityIdeaIds] = useState<string[]>([]);
   const [synthesis, setSynthesis] = useState<Partial<SynthesisResponse>>({});
   const [result, setResult] = useState<FullCaseScore>();
-  const [saveState, setSaveState] = useState<SaveState>("idle");
+  const { saveState, saveAttempt, retrySave, resetSave } = usePracticeAttemptSave(storageFactory);
+  const [draftEnabled, setDraftEnabled] = useState(false);
+  const [pendingDraft, setPendingDraft] = useState<FullCaseDraftRecord>();
+  const [contentKey, setContentKey] = useState<string>();
+  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error" | "incompatible">("idle");
+  const [draftDeleting, setDraftDeleting] = useState(false);
+  const [draftDeleteFailed, setDraftDeleteFailed] = useState(false);
+  const [attemptLocale, setAttemptLocale] = useState<string>(locale);
+  const draftRevision = useRef(0);
+  const runRevision = useRef(0);
+  const lifecycleRevision = useRef(0);
+  const dataRevision = useRef(0);
   const startedAtRef = useRef(0);
   const nextQuestionNumberRef = useRef((simulation.questioning?.minimumQuestions ?? 0) + 1);
   const calculationQuestion = getFullCaseCalculationQuestion(simulation);
   const currentStage = stages[stage];
+
+  useEffect(() => {
+    let cancelled = false;
+    const invalidate = () => {
+      cancelled = true;
+      lifecycleRevision.current += 1;
+      draftRevision.current += 1;
+    };
+    const unsubscribe = subscribeToLocalDataInvalidation(() => {
+      dataRevision.current += 1;
+      invalidate();
+    });
+    void (async () => {
+      const key = await fullCaseContentKey(simulation);
+      const storage = storageFactory();
+      try {
+        await pendingDraftWrites.get(fullCaseDraftId(simulation.id))?.catch(() => undefined);
+        const saved = await storage.get("practice_records", fullCaseDraftId(simulation.id));
+        if (cancelled) return;
+        setContentKey(key);
+        if (saved !== undefined) {
+          if (canResumeFullCaseDraft(saved, simulation, key)) setPendingDraft(saved);
+          else setDraftStatus("incompatible");
+        }
+      } finally { storage.close(); }
+    })().catch(() => { if (!cancelled) setDraftStatus("error"); });
+    return () => { unsubscribe(); invalidate(); };
+  }, [simulation, storageFactory]);
+
+  const queueDraftWrite = useCallback((draft?: FullCaseDraftRecord): Promise<void> => {
+    const revision = ++draftRevision.current;
+    const data = dataRevision.current;
+    const run = runRevision.current;
+    const id = fullCaseDraftId(simulation.id);
+    let storage: AppStorage | undefined;
+    let storageError: unknown;
+    // Subscribe to data invalidation now, before waiting on an older operation.
+    try { storage = storageFactory(); } catch (error) { storageError = error; }
+    const pending = (pendingDraftWrites.get(id) ?? Promise.resolve()).catch(() => undefined).then(async () => {
+      if (draft !== undefined && (data !== dataRevision.current || run !== runRevision.current)) throw new Error("The draft is no longer active.");
+      if (revision === draftRevision.current) setDraftStatus("saving");
+      if (storage === undefined) throw storageError;
+      if (draft === undefined) await storage.delete("practice_records", id);
+      else {
+        if (!isFullCaseDraftRecord(draft)) throw new Error("Full-case draft exceeds supported limits.");
+        await storage.put("practice_records", draft);
+      }
+    }).finally(() => { storage?.close(); });
+    pendingDraftWrites.set(id, pending);
+    const clearPending = () => { if (pendingDraftWrites.get(id) === pending) pendingDraftWrites.delete(id); };
+    void pending.then(clearPending, clearPending);
+    void pending.then(() => {
+      if (revision === draftRevision.current) {
+        setDraftStatus(draft === undefined ? "idle" : "saved");
+        if (draft === undefined) setDraftDeleteFailed(false);
+      }
+    }, () => {
+      if (revision === draftRevision.current) {
+        setDraftStatus("error");
+        if (draft === undefined) setDraftDeleteFailed(true);
+      }
+    });
+    return pending;
+  }, [simulation.id, storageFactory]);
+
+  const draftSnapshot = useCallback((completedAt?: string): FullCaseDraftRecord => ({
+    id: fullCaseDraftId(simulation.id), kind: "full_case_draft", simulationId: simulation.id,
+    contentKey: contentKey!, updatedAt: new Date().toISOString(),
+    startedAt: new Date(startedAtRef.current || Date.now()).toISOString(),
+    ...(completedAt === undefined ? {} : { completedAt }), locale: attemptLocale, stage,
+    questions: questions.map(({ id, text }) => ({ id, text })), includeQuestionRanking,
+    hypothesisId, branchIds, calculationInput, ideaIds, priorityIdeaIds, synthesis
+  }), [attemptLocale, branchIds, calculationInput, contentKey, hypothesisId, ideaIds, includeQuestionRanking, priorityIdeaIds, questions, simulation.id, stage, synthesis]);
+
+  useEffect(() => {
+    if (draftEnabled && contentKey !== undefined && pendingDraft === undefined && result === undefined) {
+      void queueDraftWrite(draftSnapshot()).catch(() => undefined);
+    }
+  }, [contentKey, draftEnabled, draftSnapshot, pendingDraft, queueDraftWrite, result]);
+
+  async function discardDraft(): Promise<void> {
+    if (draftDeleting) return;
+    setDraftDeleting(true);
+    setDraftEnabled(false);
+    const lifecycle = lifecycleRevision.current;
+    try {
+      await queueDraftWrite();
+      if (lifecycle === lifecycleRevision.current) setPendingDraft(undefined);
+    } catch { /* The notice retains the failed deletion for a retry. */ }
+    finally { if (lifecycle === lifecycleRevision.current) setDraftDeleting(false); }
+  }
+
+  async function resumeDraft(): Promise<void> {
+    if (pendingDraft === undefined || draftDeleting || draftDeleteFailed) return;
+    const run = runRevision.current;
+    const lifecycle = lifecycleRevision.current;
+    const draft = pendingDraft;
+    setStage(draft.stage); setQuestions(draft.questions); setIncludeQuestionRanking(draft.includeQuestionRanking);
+    setHypothesisId(draft.hypothesisId); setBranchIds(draft.branchIds); setCalculationInput(draft.calculationInput);
+    setIdeaIds(draft.ideaIds); setPriorityIdeaIds(draft.priorityIdeaIds); setSynthesis(draft.synthesis);
+    setAttemptLocale(draft.locale);
+    startedAtRef.current = Date.parse(draft.startedAt);
+    nextQuestionNumberRef.current = Math.max(0, ...draft.questions.map((question) => Number(question.id.split("-").at(-1)) || 0)) + 1;
+    setPendingDraft(undefined); setDraftEnabled(true);
+    if (draft.completedAt !== undefined && isSynthesisComplete(draft.synthesis)) {
+      const score = scoreFullCaseSimulation(simulation, {
+        structure: { hypothesisId: draft.hypothesisId, branchIds: draft.branchIds },
+        calculationInput: draft.calculationInput,
+        brainstorming: { selectedIdeaIds: draft.ideaIds, priorityIdeaIds: draft.priorityIdeaIds },
+        ...(simulation.questioning === undefined ? {} : { questioning: {
+          includeRanking: draft.includeQuestionRanking,
+          questions: draft.questions.map((question, index) => ({ ...question, ...(draft.includeQuestionRanking ? { rank: index + 1 } : {}) }))
+        } }), synthesis: draft.synthesis
+      }, draft.locale);
+      setResult(score);
+      if (await persistCaseScore(score, new Date(draft.completedAt)) && run === runRevision.current && lifecycle === lifecycleRevision.current) {
+        await queueDraftWrite().catch(() => undefined);
+      }
+    }
+  }
 
   useEffect(() => {
     if (startedAtRef.current === 0) return;
@@ -177,6 +320,8 @@ export function FullCaseSimulation({
 
   async function completeCase(): Promise<void> {
     if (!isSynthesisComplete(synthesis) || !canContinueStage(stages.length - 1)) return;
+    const run = runRevision.current;
+    const lifecycle = lifecycleRevision.current;
 
     const completedAt = new Date();
     const score = scoreFullCaseSimulation(simulation, {
@@ -195,14 +340,19 @@ export function FullCaseSimulation({
             }
           }),
       synthesis
-    }, locale);
+    }, attemptLocale);
     setResult(score);
-    setSaveState("saving");
+    if (draftEnabled && contentKey !== undefined) {
+      await queueDraftWrite(draftSnapshot(completedAt.toISOString())).catch(() => undefined);
+    }
+    if (run !== runRevision.current || lifecycle !== lifecycleRevision.current) return;
+    if (await persistCaseScore(score, completedAt)) {
+      if (draftEnabled && run === runRevision.current && lifecycle === lifecycleRevision.current) await queueDraftWrite().catch(() => undefined);
+    }
+  }
 
-    try {
-      const storage = storageFactory();
-      try {
-        await savePracticeAttempt(storage, {
+  function persistCaseScore(score: FullCaseScore, completedAt: Date): Promise<boolean> {
+    return saveAttempt({
           module: "full_case",
           itemId: simulation.id,
           completedAt: completedAt.toISOString(),
@@ -212,17 +362,11 @@ export function FullCaseSimulation({
             1,
             Math.round((completedAt.getTime() - (startedAtRef.current || completedAt.getTime())) / 1_000)
           )
-        });
-      } finally {
-        storage.close();
-      }
-      setSaveState("saved");
-    } catch {
-      setSaveState("error");
-    }
+    });
   }
 
   function resetCase(): void {
+    runRevision.current += 1;
     setStage(0);
     setQuestions(initialQuestions(simulation));
     setIncludeQuestionRanking(false);
@@ -233,7 +377,10 @@ export function FullCaseSimulation({
     setPriorityIdeaIds([]);
     setSynthesis({});
     setResult(undefined);
-    setSaveState("idle");
+    resetSave();
+    if (draftEnabled) void queueDraftWrite().catch(() => undefined);
+    setDraftEnabled(false);
+    setAttemptLocale(locale);
     nextQuestionNumberRef.current = (simulation.questioning?.minimumQuestions ?? 0) + 1;
     startedAtRef.current = 0;
   }
@@ -272,6 +419,33 @@ export function FullCaseSimulation({
         <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{simulation.situation}</p>
       </section>
 
+      <section aria-label={t("Local case draft")} className="grid gap-3 border border-ink/15 bg-white p-4">
+        <label className="flex items-start gap-3 text-sm text-ink">
+          <input type="checkbox" checked={draftEnabled} disabled={contentKey === undefined || pendingDraft !== undefined || draftDeleting || draftDeleteFailed || draftStatus === "incompatible" || result !== undefined}
+            onChange={(event) => {
+              if (event.currentTarget.checked) { markStarted(); setDraftEnabled(true); }
+              else void discardDraft();
+            }} />
+          {t("Save a private draft on this device so I can resume this case.")}
+        </label>
+        {pendingDraft !== undefined ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <p className={uiText.body}>{t("A saved case draft is available.")}</p>
+            <button className={buttonClass("primary")} disabled={draftDeleting || draftDeleteFailed} type="button" onClick={() => void resumeDraft()}>{t("Resume draft")}</button>
+            <button className={buttonClass("secondary")} disabled={draftDeleting} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button>
+          </div>
+        ) : null}
+        {draftStatus === "incompatible" ? (
+          <div className="grid gap-2">
+            <p className={uiText.body}>{t("The saved draft uses different case content or is invalid. Discard it to save a new draft.")}</p>
+            <button className={buttonClass("secondary")} disabled={draftDeleting} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button>
+          </div>
+        ) : null}
+        {draftStatus === "saved" ? <p role="status" className={uiText.body}>{t("Private draft saved on this device.")}</p> : null}
+        {draftStatus === "error" ? <LocalSaveNotice label={t("Not Saved")} tone="error" detail={t("The local draft could not be read or updated. Keep this page open to preserve your current work.")} /> : null}
+        {draftDeleteFailed && pendingDraft === undefined ? <button className={buttonClass("secondary")} disabled={draftDeleting} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button> : null}
+      </section>
+
       {result === undefined ? (
         <>
           <StageProgress stage={stage} stages={stages} />
@@ -308,6 +482,7 @@ export function FullCaseSimulation({
               input={calculationInput}
               onChange={(value) => {
                 markStarted();
+                setAttemptLocale(locale);
                 setCalculationInput(value);
               }}
               simulation={simulation}
@@ -360,6 +535,13 @@ export function FullCaseSimulation({
         <FullCaseReview
           calculationQuestion={calculationQuestion}
           onReset={resetCase}
+          onRetry={() => {
+            const run = runRevision.current;
+            const lifecycle = lifecycleRevision.current;
+            void retrySave().then((saved) => {
+              if (saved && draftEnabled && run === runRevision.current && lifecycle === lifecycleRevision.current) void queueDraftWrite().catch(() => undefined);
+            });
+          }}
           result={result}
           saveState={saveState}
           simulation={simulation}
@@ -598,14 +780,16 @@ function SynthesisStage({
 function FullCaseReview({
   calculationQuestion,
   onReset,
+  onRetry,
   result,
   saveState,
   simulation
 }: {
   calculationQuestion: ReturnType<typeof getFullCaseCalculationQuestion>;
   onReset: () => void;
+  onRetry: () => void;
   result: FullCaseScore;
-  saveState: SaveState;
+  saveState: PracticeAttemptSaveState;
   simulation: FullCaseSimulationSpec;
 }) {
   const { formatNumber, t } = useI18n();
@@ -643,11 +827,14 @@ function FullCaseReview({
         <LocalSaveNotice detail={t("This full-case result is available to your local preparation roadmap.")} />
       ) : null}
       {saveState === "error" ? (
+        <>
         <LocalSaveNotice
           detail={t("Your score is still visible, but this case could not be saved locally.")}
           label={t("Not Saved")}
           tone="error"
         />
+        <button className={buttonClass("secondary")} onClick={onRetry} type="button">{t("Retry local save")}</button>
+        </>
       ) : null}
 
       <div className="grid min-w-0 gap-4 lg:grid-cols-2">
