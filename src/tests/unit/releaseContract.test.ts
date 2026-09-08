@@ -100,6 +100,11 @@ describe("release output freshness", () => {
     const outputDirectory = await seedStaticOutput(path.join(projectDirectory, "out"));
     const statePath = path.join(projectDirectory, ".next", "open-prep-build-state.json");
     await writeFile(path.join(projectDirectory, "package.json"), JSON.stringify({ version: source.version }));
+    await writeFile(path.join(outputDirectory, "_next/static/chunks/lazy.js"), "const lazy = true;");
+    await writeFile(path.join(outputDirectory, "_next/static/chunks/app.css"), "body { color: black; }");
+    await writeFile(path.join(outputDirectory, "__next._full.txt"), "navigation payload");
+    await writeFile(path.join(outputDirectory, "index.txt"), "root navigation payload");
+    await writeFile(path.join(outputDirectory, "authoring.md"), "optional download");
     await writeFile(path.join(outputDirectory, "sw.js"), [
       'const CACHE_VERSION = "math-drill-offline-development";',
       "const RECOMMENDED_AUTHORING_ARTIFACT_URLS = [];",
@@ -111,6 +116,11 @@ describe("release output freshness", () => {
     const state = JSON.parse(await readFile(statePath, "utf8"));
     const generatedWorker = await readFile(path.join(outputDirectory, "sw.js"), "utf8");
     expect(generatedWorker).toContain(`const CACHE_VERSION = "${state.cacheId}";`);
+    for (const asset of ["_next/static/chunks/app.js", "_next/static/chunks/lazy.js", "_next/static/chunks/app.css", "__next._full.txt", "index.txt"]) {
+      expect(state.corePaths).toContain(asset);
+      expect(generatedWorker).toContain(`"/${asset}"`);
+    }
+    expect(state.corePaths).not.toContain("authoring.md");
     expect(await readFile(path.join(outputDirectory, "_headers"), "utf8")).toContain("Content-Security-Policy:");
 
     const finalized = runFinalizer(projectDirectory, "finalize", outputDirectory, statePath);

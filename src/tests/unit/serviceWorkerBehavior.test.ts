@@ -15,6 +15,33 @@ const currentReadyKey = `/__${cacheVersion}-ready`;
 const previousCacheName = "math-drill-offline-previous:static";
 
 describe("service worker cache lifecycle", () => {
+  it("keeps core HTML and navigation payloads aligned with their installed dependencies", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response("next release content"));
+    const harness = createHarness({ fetch: fetchMock, precacheDependencies: ["/drills/index.txt"] });
+    await harness.dispatchLifetimeEvent("install");
+    expect(await (await harness.dispatchFetch("/?new-release=2")).text()).toBe("cached /");
+    expect(await (await harness.dispatchFetch("/drills/index.txt?_rsc=next", "cors")).text()).toBe("cached /drills/index.txt");
+    expect(fetchMock).not.toHaveBeenCalled();
+    expect(await (await harness.match(currentCacheName, "/"))?.text()).toBe("cached /");
+  });
+
+  it("requires lazy dependencies before marking an update ready", async () => {
+    const lazyUrl = "/_next/static/chunks/lazy-exhibit.js";
+    const harness = createHarness({ precacheDependencies: [lazyUrl], failPrecacheUrl: lazyUrl });
+    await harness.put(previousCacheName, "/", new Response("working previous shell"));
+    await expect(harness.dispatchLifetimeEvent("install")).rejects.toThrow("precache failed");
+    expect(await harness.cacheNames()).toEqual([previousCacheName]);
+    expect(await (await harness.match(previousCacheName, "/"))?.text()).toBe("working previous shell");
+  });
+
+  it("serves a never-visited dependency from a newly activated offline generation", async () => {
+    const lazyUrl = "/_next/static/chunks/lazy-exhibit.js";
+    const harness = createHarness({ precacheDependencies: [lazyUrl], fetch: vi.fn().mockRejectedValue(new TypeError("offline")) });
+    await harness.dispatchLifetimeEvent("install");
+    await harness.dispatchLifetimeEvent("activate");
+    expect(await (await harness.dispatchFetch(lazyUrl, "cors")).text()).toBe(`cached ${lazyUrl}`);
+  });
+
   it("keeps the last complete cache when a new precache fails", async () => {
     const harness = createHarness({ failNewCacheAddAll: true });
     await harness.put(previousCacheName, "/", new Response("last known good"));
@@ -94,23 +121,24 @@ describe("service worker cache lifecycle", () => {
     }));
     const harness = createHarness({ fetch: fetchMock });
     await harness.dispatchLifetimeEvent("install");
+    await harness.put(currentCacheName, "/optional-page/", new Response("cached optional page"));
 
-    const responsePromise = harness.dispatchFetch("/");
+    const responsePromise = harness.dispatchFetch("/optional-page/");
     await Promise.resolve();
     rejectFetch?.(new TypeError("connection interrupted"));
 
     const response = await responsePromise;
-    expect(await response.text()).toBe("cached /");
+    expect(await response.text()).toBe("cached optional page");
     expect(fetchMock).toHaveBeenCalledOnce();
   });
 
   it("finishes a successful background cache write inside the fetch lifetime", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("updated shell"));
     const harness = createHarness({ fetch: fetchMock });
-    await harness.put(currentCacheName, "/", new Response("current shell"));
+    await harness.put(currentCacheName, "/optional-page/", new Response("current shell"));
 
-    const response = await harness.dispatchFetch("/");
-    const refreshed = await harness.match(currentCacheName, "/");
+    const response = await harness.dispatchFetch("/optional-page/");
+    const refreshed = await harness.match(currentCacheName, "/optional-page/");
 
     expect(await response.text()).toBe("current shell");
     expect(await refreshed?.text()).toBe("updated shell");
@@ -183,12 +211,14 @@ describe("service worker cache lifecycle", () => {
 
 interface HarnessOptions {
   failNewCacheAddAll?: boolean;
+  failPrecacheUrl?: string;
+  precacheDependencies?: string[];
   fetch?: typeof fetch;
 }
 
 function createHarness(options: HarnessOptions = {}) {
   const listeners = new Map<string, (event: MockEvent) => void>();
-  const cacheStorage = new MockCacheStorage(options.failNewCacheAddAll === true);
+  const cacheStorage = new MockCacheStorage(options.failNewCacheAddAll === true, options.failPrecacheUrl);
   const fetchMock = options.fetch ?? vi.fn(async (input: RequestInfo | URL) => {
     const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.href : input.url, appOrigin);
     return new Response(
@@ -213,7 +243,8 @@ function createHarness(options: HarnessOptions = {}) {
     TypeError,
     URL
   });
-  vm.runInContext(workerSource, context, { filename: "public/sw.js" });
+  const source = workerSource.replace("const PRECACHED_URLS = [", `const PRECACHED_URLS = [${(options.precacheDependencies ?? []).map((url) => `${JSON.stringify(url)},`).join("")}`);
+  vm.runInContext(source, context, { filename: "public/sw.js" });
 
   return {
     cacheNames: () => cacheStorage.keys(),
@@ -270,7 +301,7 @@ interface MockEvent {
 class MockCacheStorage {
   private readonly cachesByName = new Map<string, MockCache>();
 
-  constructor(private readonly failNewCacheAddAll: boolean) {}
+  constructor(private readonly failNewCacheAddAll: boolean, private readonly failPrecacheUrl?: string) {}
 
   async delete(name: string): Promise<boolean> {
     return this.cachesByName.delete(name);
@@ -284,7 +315,7 @@ class MockCacheStorage {
     const existing = this.cachesByName.get(name);
     if (existing !== undefined) return existing;
 
-    const cache = new MockCache(name === currentCacheName && this.failNewCacheAddAll);
+    const cache = new MockCache(name === currentCacheName && this.failNewCacheAddAll, this.failPrecacheUrl);
     this.cachesByName.set(name, cache);
     return cache;
   }
@@ -293,10 +324,10 @@ class MockCacheStorage {
 class MockCache {
   private readonly responses = new Map<string, Response>();
 
-  constructor(private readonly failAddAll: boolean) {}
+  constructor(private readonly failAddAll: boolean, private readonly failPrecacheUrl?: string) {}
 
   async addAll(urls: readonly string[]): Promise<void> {
-    if (this.failAddAll) {
+    if (this.failAddAll || (this.failPrecacheUrl !== undefined && urls.includes(this.failPrecacheUrl))) {
       await this.put(urls[0], new Response("partial"));
       throw new Error("precache failed");
     }

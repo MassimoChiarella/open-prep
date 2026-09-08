@@ -853,6 +853,10 @@ The schema and examples below are complete snapshots of the canonical public fil
           "$ref": "#/$defs/unit",
           "description": "When caseStyle is present, this must equal interviewMath.expectedUnit; omission is equivalent to none."
         },
+        "answerCurrency": {
+          "type": "boolean",
+          "description": "Set true with currency or k/m/b units to mark a monetary answer and accept its currency symbol."
+        },
         "tolerance": {
           "description": "Optional comparison policy. When omitted, generated answers accept rounding to two displayed decimal places: absolute tolerance 0.005 for ordinary display values and 0.00005 for canonical percentage fractions (0.005 percentage point).",
           "allOf": [
@@ -1225,6 +1229,10 @@ The schema and examples below are complete snapshots of the canonical public fil
         },
         "unit": {
           "$ref": "#/$defs/unit"
+        },
+        "currency": {
+          "type": "boolean",
+          "description": "Set true with currency or k/m/b units to mark a monetary answer and accept its currency symbol."
         },
         "tolerance": {
           "$ref": "#/$defs/tolerance"

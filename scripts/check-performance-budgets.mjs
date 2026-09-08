@@ -6,7 +6,8 @@ const outputDirectory = path.resolve("out");
 const limits = {
   largestJavaScriptBytes: 500 * 1024,
   routeJavaScriptBrotliBytes: 480 * 1024,
-  serviceWorkerPrecacheBytes: 1350 * 1024
+  // Covers HTML plus all static/lazy chunks and navigation payloads required for an offline update.
+  serviceWorkerPrecacheBytes: 6 * 1024 * 1024
 };
 
 await stat(outputDirectory).catch(() => {

@@ -181,6 +181,8 @@ Vercel may collect referral information, browser, device, country, and visitor m
 
 After a successful online visit, the service worker caches same-origin app routes and assets for offline use. Browsers that support installable web apps can add the app to the home screen or application launcher; this is optional.
 
+Each production build includes a complete offline dependency inventory: core pages, generated JavaScript and CSS (including lazy chunks), static media, and navigation payloads. An update finishes downloading that inventory before it can activate; a failed download keeps the previous app cache. Close all app tabs to activate a waiting update, then reopen. Authoring downloads and community packs remain cached only after use. The install precache has a 6 MiB uncompressed budget; chunk and route-transfer budgets are enforced separately.
+
 Offline behavior should be checked on the final HTTPS deployment because service-worker behavior is tied to the deployed origin.
 
 See [BROWSER_SUPPORT.md](BROWSER_SUPPORT.md) for the supported browser families,

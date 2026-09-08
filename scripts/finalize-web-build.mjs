@@ -25,12 +25,21 @@ if (command === "worker") {
   await writeStaticSecurityHeaders(outputDirectory);
   const workerPath = path.join(outputDirectory, "sw.js");
   const workerSource = await readFile(workerPath, "utf8");
-  const workerPolicySource = replaceCacheVersion(workerSource, CACHE_VERSION_PLACEHOLDER);
+  const inventory = await createArtifactInventory(outputDirectory);
+  const dependencyUrls = inventory
+    .filter((entry) => entry.path.startsWith("_next/static/") || (
+      entry.path.endsWith(".txt") && (entry.path.endsWith("index.txt") || entry.path.includes("__next."))
+    ))
+    .map((entry) => `/${entry.path}`);
+  const precacheUrls = [...new Set([...readCorePrecacheUrls(workerSource), ...dependencyUrls])].sort();
+  const generatedWorkerSource = workerSource.replace(
+    /const PRECACHED_URLS = \[[\s\S]*?\];/,
+    `const PRECACHED_URLS = ${JSON.stringify(precacheUrls, null, 2)};`
+  );
+  const workerPolicySource = replaceCacheVersion(generatedWorkerSource, CACHE_VERSION_PLACEHOLDER);
   const workerPolicySha256 = sha256(workerPolicySource);
-  const precacheUrls = readCorePrecacheUrls(workerSource);
   const corePaths = precacheUrls.map(publicUrlToArtifactPath);
   const source = readSourceIdentity();
-  const inventory = await createArtifactInventory(outputDirectory);
   const coreInventory = selectCorePrecacheInventory(inventory, corePaths);
   const cacheId = createCacheIdentity({
     commit: source.commit,
@@ -39,7 +48,7 @@ if (command === "worker") {
     workerPolicySha256
   });
 
-  await writeFile(workerPath, replaceCacheVersion(workerSource, cacheId), "utf8");
+  await writeFile(workerPath, replaceCacheVersion(generatedWorkerSource, cacheId), "utf8");
   const finalizedInventory = await createArtifactInventory(outputDirectory);
   const state = {
     schemaVersion: BUILD_STATE_SCHEMA_VERSION,

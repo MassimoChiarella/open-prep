@@ -10,7 +10,7 @@ Repair from the top of the table. P1 means an urgent data-loss, broken-workflow,
 |---|---|---|---|
 | BUG-01 | P1 | A stale file read can import the wrong backup after confirmation | Fixed (step 02) |
 | BUG-02 | P1 | Standard export/import deletes private records excluded from the export | Fixed (step 02) |
-| BUG-03 | P1 | Applying an update can break offline reopening | Open |
+| BUG-03 | P1 | Applying an update can break offline reopening | Fixed (step 05) |
 | BUG-04 | P1 | Fit Story textareas lose focus after every character | Fixed (step 03) |
 | BUG-05 | P1 | Reloading after the final answer strands a completed drill | Fixed (step 06) |
 | BUG-06 | P1 | Nine built-in exhibit questions hide required input figures | Fixed (step 07) |

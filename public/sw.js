@@ -46,6 +46,7 @@ const AUTHORING_ARTIFACT_URLS = [
 const COMMUNITY_PACK_CATALOG_URL = "/community-packs/catalog.v1.json";
 const COMMUNITY_PACK_PREFIX = "/community-packs/";
 
+// The production build appends every generated static asset and navigation payload before hashing this policy.
 const PRECACHED_URLS = [
   "/404.html",
   "/manifest.webmanifest",
@@ -101,6 +102,13 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   if (url.origin !== self.location.origin) {
+    return;
+  }
+
+  const cacheKey = normalizedCacheKey(request, request.mode === "navigate");
+  if (PRECACHED_URLS.includes(new URL(cacheKey).pathname)) {
+    // Keep this generation's documents aligned with the dependencies installed alongside them.
+    event.respondWith(cacheFirst(request, cacheKey));
     return;
   }
 

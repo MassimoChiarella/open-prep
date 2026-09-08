@@ -14,7 +14,7 @@ Independent implementation can run in parallel. Each completed batch is reviewed
 | 02 | Safe imports, private-data scope, reset/restore invalidation | Complete |
 | 03 | Fit Story editing, save consistency, rehearsal timing | Complete |
 | 04 | Numeric parser, units, formula grammar and precedence | Complete |
-| 05 | Offline upgrade readiness and complete asset precaching | Pending |
+| 05 | Offline upgrade readiness and complete asset precaching | Complete |
 | 06 | Drill completion recovery, per-answer timing and resumed deadlines | Complete |
 | 07 | Exhibit evidence, answer precision, scoring and stale-save protection | Complete |
 | 08 | Question generation, content units, formula links and ROI wording | Complete |
@@ -138,4 +138,5 @@ All 30 BUG IDs and six IMP IDs must have an implemented outcome and verification
 | Question correctness | BUG-07, BUG-20, BUG-25, BUG-26, BUG-29, IMP-01: exact decimal arithmetic, coherent units, deduplicated expressions, stepped endpoints, correct practice links and ROI wording | 130 focused tests passed; independent arithmetic, evidence and locale expectations; root diff review | `17593d9` |
 | Exhibits and sizing | BUG-06, BUG-08, BUG-15, BUG-23, BUG-24: complete visible evidence, precise values, correct point scale, bounded fractional scores and stale-save guards | 66 focused tests passed; 14 independent evidence/arithmetic checks; root diff review | `684b6ad` |
 | Case save recovery | BUG-30 and IMP-02 (six case modules): duplicate text scoring and save-only retries with immutable attempts and stale-result protection | 51 focused tests passed; committed-but-rejected write simulations preserve IDs across retries; root diff review | `ef410d4` |
-| Backup recoverability | BUG-11, BUG-18: complete numbered backup sets, one atomic restore, versioned pack drafts, validated private full-case draft records | 77 focused backup/pack/settings tests plus 20 storage lifecycle tests passed; missing/mixed/corrupt files and rollback covered | `feat: support complete multipart local backups` |
+| Backup recoverability | BUG-11, BUG-18: complete numbered backup sets, one atomic restore, versioned pack drafts, validated private full-case draft records | 77 focused backup/pack/settings tests plus 20 storage lifecycle tests passed; missing/mixed/corrupt files and rollback covered | `53f8f5f` |
+| Offline updates | BUG-03: generation-complete immutable precache, static/lazy assets and navigation payloads; synchronized authoring schema bundles | 27 unit/build tests, 2 Chromium upgrade/failure journeys, and 53 authoring tests passed; baseline inventory 4.615 MiB / 6 MiB | `fix: install complete offline asset generations` |
