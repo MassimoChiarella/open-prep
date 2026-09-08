@@ -66,7 +66,8 @@ test("local practice journey updates dashboard and progress, then reset returns 
   await page.locator("summary").filter({ hasText: "Reset local data" }).click();
   await page.getByLabel("I understand this clears local practice data on this device.").check();
   await page.getByRole("button", { name: "Reset Local Data" }).click();
-  await expect(page.getByText("Local data reset. Default preferences are active again.")).toBeVisible();
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
 
   const countsAfterReset = await readStoreCounts(page);
 

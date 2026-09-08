@@ -16,7 +16,8 @@ import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 const removeQuestionPackFromPoolPreference = vi.hoisted(() => vi.fn());
 
-vi.mock("@/features/question-packs/questionPackPoolPreference", () => ({
+vi.mock("@/features/question-packs/questionPackPoolPreference", async (importOriginal) => ({
+  ...await importOriginal<typeof import("@/features/question-packs/questionPackPoolPreference")>(),
   removeQuestionPackFromPoolPreference
 }));
 

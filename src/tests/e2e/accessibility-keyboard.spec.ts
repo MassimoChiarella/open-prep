@@ -398,9 +398,8 @@ test("a keyboard user protects storage and round-trips local backups", async ({ 
   await expectKeyboardFocus(restoreButton);
   await page.keyboard.press("Enter");
 
-  await expect(
-    page.getByRole("status").filter({ hasText: "Complete backup restored." })
-  ).toBeVisible();
+  await expect(page).toHaveURL("/");
+  await expect(page.getByRole("heading", { level: 1, name: "Dashboard" })).toBeVisible();
   expect(unexpectedTransmissions).toEqual([]);
 });
 

@@ -22,7 +22,7 @@ Independent implementation can run in parallel. Each completed batch is reviewed
 | 10 | Difficulty-correct personal bests and duplicate-question scoring | Complete |
 | 11 | Save-only retries, full-case local resume, prep-plan clarification | Complete |
 | 12 | Independent invariant tests and smaller browser smoke journeys | Complete |
-| 13 | Integrated verification, visual review and final repair ledger | Pending |
+| 13 | Integrated verification, visual review and final repair ledger | In progress |
 
 ### 01 — Establish the development record
 
@@ -130,7 +130,6 @@ All 30 BUG IDs and six IMP IDs must have an implemented outcome and verification
 | Batch | Changes and audit IDs | Validation | Commit |
 |---|---|---|---|
 | Planning | Portable audit and sequenced implementation plan | Baseline audit: 1,069 unit tests; 143 Chromium scenarios; all 37 additional browser scenarios passed at least once | `20c978f` |
-
 | Fit practice | BUG-04, BUG-12, BUG-17: stable fields, protected pending saves, elapsed-time rehearsal clock | 23 focused Fit tests passed; root diff review | `12750ef` |
 | Numeric contracts | BUG-14, BUG-21, BUG-22, BUG-28: currency scale metadata, locale grouping, operator grammar and precedence | 109 focused tests and strict TypeScript passed; root diff review | `f4cdb9a` |
 | Local data safety | BUG-01, BUG-02, BUG-09, BUG-10, BUG-27 plus adapter recovery: stale read guards, private preservation, atomic resets, invalidation and fresh inventories | 55 focused tests and strict TypeScript passed; root diff review | `207916c` |
@@ -142,4 +141,5 @@ All 30 BUG IDs and six IMP IDs must have an implemented outcome and verification
 | Offline updates | BUG-03: generation-complete immutable precache, static/lazy assets and navigation payloads; synchronized authoring schema bundles | 27 unit/build tests, 2 Chromium upgrade/failure journeys, and 53 authoring tests passed; baseline inventory 4.615 MiB / 6 MiB | `4ac8c10` |
 | Regression coverage | IMP-04, IMP-05: independent arithmetic/evidence/locale/race tests in repair batches; split long navigation and arrow smoke journeys | 70 isolated Firefox/WebKit scenarios passed first run in 2 minutes, unchanged 30-second limits and zero retries | `78ac94a` |
 | Progress and remaining retries | BUG-19 and remaining IMP-02: mixed-question difficulty bests, exhibit/Sprint/sizing save-only retries, stable reviewed scoring across locale changes | 41 focused practice tests and locale-change retry regression passed; root diff review | `fb1fc3a` |
-| Full-case resume and language coverage | IMP-02, IMP-03, IMP-06: optional private case drafts, explicit resume/discard, stable completed-save retry, locale capture and clear reference-note copy; all new strings translated | 40 full-case/activity/catalog tests passed; independent delayed deletion, remount, reset, invalidation and locale regressions; ESLint/typecheck passed | `feat: resume private full-case drafts locally` |
+| Full-case resume and language coverage | IMP-02, IMP-03, IMP-06: optional private case drafts, explicit resume/discard, stable completed-save retry, locale capture and clear reference-note copy; all new strings translated | 40 full-case/activity/catalog tests passed; independent delayed deletion, remount, reset, invalidation and locale regressions; ESLint/typecheck passed | `886d4b6` |
+| Integration fixtures | Keep partial mocks compatible with invalidation imports; verify neutral redirect after reset/restore | 34 targeted unit tests passed; fresh-build browser assertions run in step 13 | `test: align recovery integration checks` |

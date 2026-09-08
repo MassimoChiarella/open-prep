@@ -100,11 +100,14 @@ async function restoreAndVerify(browser: Browser, baseURL: string, backup: Buffe
     await preview.locator('input[type="checkbox"]').check();
     await preview.locator("button").click();
 
+    await expect(page).toHaveURL(new URL("/", baseURL).href);
+
     await expect.poll(() => page.evaluate(
       (keys) => keys.map((key) => window.localStorage.getItem(key)),
       preferenceKeys
     )).toEqual(expectedPreferences);
 
+    await page.goto(new URL("/settings/", baseURL).href);
     await page.reload();
     await expect(page.locator('select:has(option[value="fr"])')).toHaveValue("fr");
     await expect(page.locator('select:has(option[value="dark"])')).toHaveValue("dark");

@@ -42,7 +42,7 @@ describe("local data inventory contract", () => {
       "Clear All Saved App Data",
       "readable cleartext",
       "never backed up",
-      "failed mutation sends no success message"
+      "failed database mutation sends no success message"
     ]) expect(document).toContain(phrase);
   });
 });
