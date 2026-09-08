@@ -1,5 +1,6 @@
 import type { VariableSpec } from "@/lib/domain";
 import type { SeededRandom } from "@/lib/random/seededRandom";
+import { rangeStepCount } from "@/lib/math/steppedRange";
 
 export type ResolvedVariables = Record<string, number>;
 
@@ -34,7 +35,7 @@ function resolveVariable(name: string, spec: VariableSpec, random: SeededRandom)
     throw new Error(`Variable "${name}" step must be greater than zero.`);
   }
 
-  const stepCount = Math.floor((spec.max - spec.min) / step);
+  const stepCount = rangeStepCount(spec.min, spec.max, step);
   const value = spec.min + random.integer(0, stepCount) * step;
 
   return roundResolvedValue(value);

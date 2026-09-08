@@ -253,7 +253,7 @@ export const businessMathTemplates: QuestionTemplate[] = [
     category: "business_math",
     tags: ["roi"],
     difficulty: ["beginner"],
-    promptTemplate: "An investment of {investment} produces a gain of {gain}. What is ROI? Enter the percentage as a number or with %.",
+    promptTemplate: "An investment of {investment} produces total proceeds of {gain}, including the initial investment. What is ROI? Enter the percentage as a number or with %.",
     variables: {
       investment: { type: "currency", values: [100, 200, 500, 1_000] },
       gain: { type: "currency", values: [150, 300, 750, 1_500] }
@@ -269,7 +269,7 @@ export const businessMathTemplates: QuestionTemplate[] = [
     category: "business_math",
     tags: ["roi"],
     difficulty: ["beginner"],
-    promptTemplate: "A project costs {investment} and returns {returnAmount}. What is ROI? Enter the percentage as a number or with %.",
+    promptTemplate: "A project costs {investment} and returns {returnAmount} in total, including the initial investment. What is ROI? Enter the percentage as a number or with %.",
     variables: {
       investment: { type: "currency", values: [1_000, 2_000, 4_000, 5_000] },
       returnAmount: { type: "currency", values: [1_500, 3_000, 6_000, 10_000] }

@@ -5,8 +5,8 @@ export function formatLabel(value: string): string {
     .join(" ");
 }
 
-export function formatNumber(value: number): string {
-  return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, "");
+export function formatNumber(value: number, maximumFractionDigits = 2): string {
+  return Number.isInteger(value) ? String(value) : value.toFixed(maximumFractionDigits).replace(/\.?0+$/, "");
 }
 
 export function formatPercent(value: number): string {

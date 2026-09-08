@@ -45,6 +45,7 @@ const percentageToken = /%|\bpercent(?:age)?\b|\bporcentaje\b|\bpor\s+ciento\b|\
 const percentagePrefix = /^(?:百分之)\s*/u;
 const percentageSuffix = /\s*(?:%|percent(?:age)?|porcentaje|por\s+ciento|pour\s+cent|prozent|percentagem|por\s+cento|百分比|パーセント|بالمئة|في\s+المئة|प्रतिशत)$/iu;
 const scaleSuffix = /\s*(thousands?|millions?|billions?|[kmb])\s*$/iu;
+const physicalUnitSuffix = /\s*(percentage\s+points?|pp|customers?|users?|units?|years?|months?|days?|stores?)$/iu;
 
 export function parseAnswer(rawInput: string, options: ParseAnswerOptions = {}): ParsedAnswer {
   const raw = rawInput;
@@ -75,8 +76,18 @@ export function parseAnswer(rawInput: string, options: ParseAnswerOptions = {}):
     input = input.slice(1).trim();
   }
 
+  const physicalMatch = input.match(physicalUnitSuffix);
+  const physicalUnit = physicalMatch === null ? undefined : (
+    /^(?:pp|percentage\s+points?)$/u.test(physicalMatch[1])
+      ? "percentage_points"
+      : `${physicalMatch[1].replace(/s$/u, "")}s`
+  ) as UnitType | undefined;
+  if (physicalMatch !== null) input = input.slice(0, physicalMatch.index).trim();
   const hasCurrency = currencyToken.test(input);
   const hasPercent = percentageToken.test(input);
+  if (physicalUnit !== undefined && (hasCurrency || hasPercent)) {
+    return { ...baseResult, parseError: "Use only one answer unit." };
+  }
   if (hasCurrency && hasPercent) {
     return {
       ...baseResult,
@@ -115,7 +126,7 @@ export function parseAnswer(rawInput: string, options: ParseAnswerOptions = {}):
     if (scaleSuffix.test(input)) {
       return {
         ...baseResult,
-        unitHint: hasPercent ? "percentage" : hasCurrency ? "currency" : undefined,
+        unitHint: hasPercent ? "percentage" : hasCurrency ? "currency" : physicalUnit,
         isPercentageInput: hasPercent,
         parseError: "Use only one scale suffix or word."
       };
@@ -139,7 +150,7 @@ export function parseAnswer(rawInput: string, options: ParseAnswerOptions = {}):
   if (input.length === 0) {
     return {
       ...baseResult,
-      unitHint: hasPercent ? "percentage" : hasCurrency ? "currency" : undefined,
+      unitHint: hasPercent ? "percentage" : hasCurrency ? "currency" : physicalUnit,
       scaleHint,
       isPercentageInput: hasPercent,
       parseError: "Enter a numeric value."
@@ -150,7 +161,7 @@ export function parseAnswer(rawInput: string, options: ParseAnswerOptions = {}):
   if ("parseError" in parsedValue) {
     return {
       ...baseResult,
-      unitHint: hasPercent ? "percentage" : hasCurrency ? "currency" : undefined,
+      unitHint: hasPercent ? "percentage" : hasCurrency ? "currency" : physicalUnit,
       scaleHint,
       isPercentageInput: hasPercent,
       parseError: parsedValue.parseError
@@ -162,7 +173,7 @@ export function parseAnswer(rawInput: string, options: ParseAnswerOptions = {}):
   return {
     raw,
     value: hasPercent ? scaledValue / 100 : scaledValue,
-    unitHint: hasPercent ? "percentage" : hasCurrency ? "currency" : undefined,
+    unitHint: hasPercent ? "percentage" : hasCurrency ? "currency" : physicalUnit,
     scaleHint,
     isPercentageInput: hasPercent
   };

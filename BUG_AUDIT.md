@@ -14,7 +14,7 @@ Repair from the top of the table. P1 means an urgent data-loss, broken-workflow,
 | BUG-04 | P1 | Fit Story textareas lose focus after every character | Fixed (step 03) |
 | BUG-05 | P1 | Reloading after the final answer strands a completed drill | Fixed (step 06) |
 | BUG-06 | P1 | Nine built-in exhibit questions hide required input figures | Open |
-| BUG-07 | P1 | Decimal multiplication rejects both the exact answer and its explanation | Open |
+| BUG-07 | P1 | Decimal multiplication rejects both the exact answer and its explanation | Fixed (step 08) |
 | BUG-08 | P1 | A built-in four-percentage-point gap is graded as 0.04 and displayed as zero | Open |
 | BUG-09 | P2 | Backup preparation can retain private text after the scope is unchecked | Fixed (step 02) |
 | BUG-10 | P2 | Reset and restore leave stale views able to resurrect or overwrite records | Fixed (step 02) |
@@ -27,16 +27,16 @@ Repair from the top of the table. P1 means an urgent data-loss, broken-workflow,
 | BUG-17 | P2 | Fit rehearsal timers undercount time during throttling or sleep | Fixed (step 03) |
 | BUG-18 | P2 | Direct pack practice resumes questions from an obsolete pack version | Open |
 | BUG-19 | P2 | Mixed Daily Workouts record beginner work as expert personal bests | Open |
-| BUG-20 | P2 | Beginner percentage-point drills accept the wrong percentage unit | Open |
+| BUG-20 | P2 | Beginner percentage-point drills accept the wrong percentage unit | Fixed (step 08) |
 | BUG-21 | P2 | Hindi grouping and Arabic formatted negatives fail numeric parsing | Fixed (step 04) |
 | BUG-22 | P2 | Unary minus has the wrong precedence relative to exponentiation | Fixed (step 04) |
 | BUG-23 | P2 | Accepted fractional market-sizing rubrics can exceed their maximum score | Open |
 | BUG-24 | P2 | A previous exhibit save labels a new unanswered exercise correct and saved | Open |
-| BUG-25 | P2 | CAGR and Rule of 72 practice links select unrelated skills | Open |
-| BUG-26 | P2 | Custom arithmetic can repeat an identical question in one session | Open |
+| BUG-25 | P2 | CAGR and Rule of 72 practice links select unrelated skills | Fixed (step 08) |
+| BUG-26 | P2 | Custom arithmetic can repeat an identical question in one session | Fixed (step 08) |
 | BUG-27 | P2 | Clear-data controls retain an empty inventory after a successful import | Fixed (step 02) |
 | BUG-28 | P3 | Formula validation accepts malformed infix expressions | Fixed (step 04) |
-| BUG-29 | P3 | Decimal stepped ranges can omit valid upper endpoints | Open |
+| BUG-29 | P3 | Decimal stepped ranges can omit valid upper endpoints | Fixed (step 08) |
 | BUG-30 | P3 | Identical unrecognized questions receive full distinctness credit | Open |
 
 ## Verification

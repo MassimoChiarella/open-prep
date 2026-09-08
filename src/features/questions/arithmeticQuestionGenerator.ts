@@ -83,7 +83,7 @@ export function generateCustomArithmeticQuestion(
   const prompt = result.prompt ?? `What is ${renderedExpression}?`;
 
   return {
-    id: buildQuestionId(template.id, expression, answerUnit, buildVariantKey(settings)),
+    id: buildQuestionId(expression, answerUnit, buildVariantKey(settings)),
     type: "numeric",
     category: "arithmetic",
     tags: [operation],
@@ -98,7 +98,7 @@ export function generateCustomArithmeticQuestion(
       short: hint,
       steps: [
         hint,
-        result.explanation ?? `${renderedExpression} = ${formatNumber(result.displayedValue)}.`
+        result.explanation ?? `${renderedExpression} = ${String(result.displayedValue)}.`
       ],
       shortcut: shortcutFor(operation, divisionMode, expression.useParentheses)
     },
@@ -340,7 +340,9 @@ function resolveResult(
     };
   }
 
-  const rawValue = calculateExpression(expression);
+  const rawValue = expression.operators.includes("/")
+    ? calculateExpression(expression)
+    : calculateExactDecimalExpression(expression);
 
   if (operation === "division" && divisionMode === "approximate") {
     const displayedValue = roundForRule(rawValue, divisionRounding);
@@ -362,16 +364,47 @@ function resolveResult(
     };
   }
 
-  return { displayedValue: roundValue(rawValue) };
+  return { displayedValue: rawValue };
+}
+
+function calculateExactDecimalExpression(expression: ArithmeticExpression): number {
+  // A shared decimal scale keeps finite sums/products exact until the final Number conversion.
+  const parts = expression.values.map((value) => String(value).split("."));
+  const precision = parts.reduce((sum, [, fraction = ""]) => sum + fraction.length, 0);
+  const scale = 10n ** BigInt(precision);
+  const values = parts.map(([whole, fraction = ""]) =>
+    BigInt(whole + fraction) * 10n ** BigInt(precision - fraction.length)
+  );
+  const apply = (left: bigint, operator: OperatorSymbol, right: bigint): bigint => {
+    if (operator === "+") return left + right;
+    if (operator === "-") return left - right;
+    return left * right / scale;
+  };
+
+  let current = values[0];
+  let total = 0n;
+  for (let index = 0; index < expression.operators.length; index += 1) {
+    const operator = expression.operators[index];
+    const next = values[index + 1];
+    if (expression.useParentheses || operator === "*") {
+      current = apply(current, operator, next);
+    } else {
+      total += current;
+      current = operator === "+" ? next : -next;
+    }
+  }
+
+  const result = total + current;
+  if (precision === 0) return Number(result);
+  const digits = (result < 0n ? -result : result).toString().padStart(precision + 1, "0");
+  return Number(`${result < 0n ? "-" : ""}${digits.slice(0, -precision)}.${digits.slice(-precision)}`);
 }
 
 function calculateExpression(expression: ArithmeticExpression): number {
   if (expression.useParentheses) {
-    return roundValue(
-      expression.operators.reduce(
-        (result, operator, index) => applyOperator(result, operator, expression.values[index + 1]),
-        expression.values[0]
-      )
+    return expression.operators.reduce(
+      (result, operator, index) => applyOperator(result, operator, expression.values[index + 1]),
+      expression.values[0]
     );
   }
 
@@ -390,7 +423,7 @@ function calculateExpression(expression: ArithmeticExpression): number {
     }
   }
 
-  return roundValue(total + current);
+  return total + current;
 }
 
 function applyOperator(left: number, operator: OperatorSymbol, right: number): number {
@@ -482,7 +515,6 @@ function shortcutFor(
 }
 
 function buildQuestionId(
-  templateId: string,
   expression: ArithmeticExpression,
   unit: UnitType,
   variantKey: string
@@ -492,7 +524,7 @@ function buildQuestionId(
     .map((operator) => ({ "+": "add", "-": "sub", "*": "mul", "/": "div" })[operator])
     .join("-");
 
-  return `custom_${templateId}_${operatorKey}_${valueKey}_${unit}_${variantKey}`;
+  return `custom_${operatorKey}_${valueKey}_${unit}_${variantKey}`;
 }
 
 function buildVariantKey(settings: DrillSettings): string {

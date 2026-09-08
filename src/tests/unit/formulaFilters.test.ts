@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import { coreFormulas } from "@/data/formulaLibrary/coreFormulas";
+import { createDrillSession } from "@/features/drills/sessionFactory";
+import { parseDrillSettingsQuery } from "@/features/drills/drillSessionQuery";
 import {
   buildFormulaDrillHref,
   filterFormulas,
@@ -28,8 +30,16 @@ describe("formula library filters", () => {
     expect(cagrFormula).toBeDefined();
     expect(buildFormulaDrillHref(revenueFormula!)).toContain("categories=business_math");
     expect(buildFormulaDrillHref(revenueFormula!)).toContain("tags=revenue");
-    expect(buildFormulaDrillHref(cagrFormula!)).toContain("categories=percentages");
-    expect(buildFormulaDrillHref(cagrFormula!)).toContain("tags=percentage_change");
+    expect(buildFormulaDrillHref(cagrFormula!)).toContain("categories=growth_compounding");
+    expect(buildFormulaDrillHref(cagrFormula!)).toContain("tags=cagr");
+  });
+
+  it.each(["cagr", "rule_of_72"])("generates the requested growth skill from the %s link", (id) => {
+    const formula = coreFormulas.find((candidate) => candidate.id === id)!;
+    const params = new URL(buildFormulaDrillHref(formula), "https://example.test").searchParams;
+    const session = createDrillSession({ settings: parseDrillSettingsQuery(params).settings, seed: `formula-link:${id}` });
+    expect(session.questions).toHaveLength(5);
+    expect(session.questions.every((question) => question.category === "growth_compounding" && question.tags.includes(id as "cagr" | "rule_of_72"))).toBe(true);
   });
 
   it("returns only categories represented in formula data", () => {

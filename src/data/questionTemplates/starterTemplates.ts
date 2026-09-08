@@ -718,7 +718,7 @@ const percentageTemplates: QuestionTemplate[] = [
       newRate: { type: "percentage", values: [30, 35, 40, 50] }
     },
     formula: { expression: "newRate - oldRate" },
-    answerUnit: "none",
+    answerUnit: "percentage_points",
     explanationTemplate: {
       steps: ["Percentage points are a direct subtraction of rates.", "{newRate}% - {oldRate}% = {answer} percentage points."]
     }
@@ -734,7 +734,7 @@ const percentageTemplates: QuestionTemplate[] = [
       newRate: { type: "percentage", values: [10, 20, 30] }
     },
     formula: { expression: "oldRate - newRate" },
-    answerUnit: "none",
+    answerUnit: "percentage_points",
     explanationTemplate: {
       steps: ["Subtract the ending rate from the starting rate.", "{oldRate}% - {newRate}% = {answer} percentage points."]
     }

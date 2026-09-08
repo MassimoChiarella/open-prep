@@ -15,6 +15,7 @@ import type {
   VariableSpec
 } from "@/lib/domain";
 import { compileFormulaExpression } from "@/lib/math/formulaEvaluator";
+import { rangeStepCount } from "@/lib/math/steppedRange";
 import { createSeededRandom } from "@/lib/random/seededRandom";
 import type { GeneratedTemplateQuestionPackRecord } from "@/lib/storage/appStorageTypes";
 import {
@@ -362,7 +363,7 @@ function readVariable(value: unknown, path: string, errors: string[]): VariableS
       min !== undefined &&
       max !== undefined &&
       effectiveStep > 0 &&
-      Math.floor((max - min) / effectiveStep) + 1 > 10_001
+      rangeStepCount(min, max, effectiveStep) + 1 > 10_001
     ) {
       errors.push(`${path} range must contain at most 10001 values.`);
     }
@@ -618,7 +619,7 @@ function representativeVariableValues(spec: VariableSpec): number[] {
   const min = spec.min as number;
   const max = spec.max as number;
   const step = spec.step ?? (spec.type === "integer" ? 1 : 0.1);
-  const stepCount = Math.floor((max - min) / step);
+  const stepCount = rangeStepCount(min, max, step);
   const valueAt = (index: number) => Number((min + index * step).toFixed(12));
   const closestToZeroIndex = Math.max(0, Math.min(stepCount, Math.round(-min / step)));
 

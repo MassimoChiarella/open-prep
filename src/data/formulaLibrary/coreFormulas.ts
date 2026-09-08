@@ -59,9 +59,9 @@ export const coreFormulas: Formula[] = [
     id: "roi",
     name: "ROI",
     category: "business_math",
-    formulaText: "ROI = (Gain - Investment) / Investment",
+    formulaText: "ROI = (Total proceeds - Investment) / Investment",
     explanation: "ROI compares net gain with the original investment to estimate return efficiency.",
-    example: "A $150,000 gain on a $100,000 investment produces a 50% ROI.",
+    example: "Total proceeds of $150,000, including the initial $100,000 investment, produce a 50% ROI.",
     tags: ["roi"]
   },
   {

@@ -4,6 +4,13 @@ import { resolveTemplateVariables } from "@/features/questions/variableResolver"
 import { createSeededRandom } from "@/lib/random/seededRandom";
 
 describe("resolveTemplateVariables", () => {
+  it.each([
+    [0.1, 0.3, 0.1, 0.3], [-0.3, -0.1, 0.1, -0.1], [0.1, 0.29, 0.1, 0.2]
+  ])("includes only valid range endpoints %s to %s by %s", (min, max, step, expected) => {
+    const random = { ...createSeededRandom("audit-variable-range"), integer: (_minimum: number, maximum: number) => maximum };
+    expect(resolveTemplateVariables({ value: { type: "decimal", min, max, step } }, random).value).toBe(expected);
+  });
+
   it("resolves fixed value lists deterministically", () => {
     const variables = {
       volume: { type: "integer" as const, values: [10, 20, 30] },

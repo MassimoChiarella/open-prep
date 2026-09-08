@@ -1,5 +1,6 @@
 import type { CaseStyleSpec, Difficulty, DrillSettings, ExplanationSpec, Question, QuestionTemplate } from "@/lib/domain";
 import { evaluateFormulaExpression } from "@/lib/math/formulaEvaluator";
+import { rangeStepCount } from "@/lib/math/steppedRange";
 import { createSeededRandom, type SeededRandom } from "@/lib/random/seededRandom";
 
 import { getEligibleQuestionTemplates, pickQuestionTemplate } from "@/features/questions/templateSelection";
@@ -195,7 +196,7 @@ function countTemplateVariants(
       const count = variable.values === undefined
         ? variable.min === undefined || variable.max === undefined
           ? 0
-          : Math.floor((variable.max - variable.min) / (variable.step ?? (variable.type === "integer" ? 1 : 0.1))) + 1
+          : rangeStepCount(variable.min, variable.max, variable.step ?? (variable.type === "integer" ? 1 : 0.1)) + 1
         : new Set(variable.values).size;
 
       variants *= Math.max(0, count);

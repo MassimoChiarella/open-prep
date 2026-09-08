@@ -73,6 +73,18 @@ describe("parseAnswer", () => {
     expect(parseAnswer("(1,000)")).toMatchObject({ value: -1_000 });
   });
 
+  it("parses count and percentage-point unit suffixes without accepting mixed units", () => {
+    expect(parseAnswer("6,800 units")).toMatchObject({ value: 6800, unitHint: "units" });
+    expect(parseAnswer("4 percentage points")).toMatchObject({ value: 4, unitHint: "percentage_points" });
+    expect(parseAnswer("4 pp")).toMatchObject({ value: 4, unitHint: "percentage_points", isPercentageInput: false });
+    for (const unit of ["customer", "user", "unit", "year", "month", "day", "store"]) {
+      expect(parseAnswer(`1 ${unit}`)).toMatchObject({ value: 1, unitHint: `${unit}s` });
+    }
+    for (const malformed of ["4% pp", "$4 units", "1 year 2 years", "1 2 units", "4 pp pp"]) {
+      expect(parseAnswer(malformed).parseError, malformed).toBeDefined();
+    }
+  });
+
   it("accepts common international number and unit conventions", () => {
     expect(parseAnswer("12,5%")).toMatchObject({ value: 0.125, unitHint: "percentage" });
     expect(parseAnswer("1.234,56 €")).toMatchObject({ value: 1_234.56, unitHint: "currency" });

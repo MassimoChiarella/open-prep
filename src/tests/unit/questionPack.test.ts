@@ -42,6 +42,20 @@ const publicQuestionPackAssets = [
 ] as const;
 
 describe("validateQuestionPackPayload", () => {
+  it("validates formulas at the upper endpoint of decimal stepped ranges", () => {
+    const template = {
+      ...validCaseTemplate(), variables: { value: { type: "decimal", min: 0.1, max: 0.3, step: 0.1 } },
+      formula: { expression: "1 / (value - 0.3)" }, promptTemplate: "Calculate {value}.",
+      explanationTemplate: { steps: ["The answer is {answer}."] }, caseStyle: undefined
+    };
+    delete template.caseStyle;
+    const result = validateQuestionPackPayload(generatedPayload([template]));
+    expect(result.status).toBe("invalid");
+    expect(expectInvalidErrors(result)).toEqual(expect.arrayContaining([
+      expect.stringContaining("formula.expression fails for representative values (value=0.3)")
+    ]));
+  });
+
   it.each(["1 2 +", "1 + () 2"])("rejects malformed generated formula %s", (expression) => {
     expect(validateQuestionPackPayload(generatedPayload([
       { ...validCaseTemplate(), formula: { expression } }

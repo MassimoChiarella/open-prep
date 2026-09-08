@@ -4,8 +4,45 @@ import { starterQuestionTemplates } from "@/data/questionTemplates/starterTempla
 import { generateCustomArithmeticQuestion } from "@/features/questions/arithmeticQuestionGenerator";
 import type { DrillSettings, Question, SkillTag } from "@/lib/domain";
 import { createSeededRandom } from "@/lib/random/seededRandom";
+import { validateAnswer } from "@/lib/validation/validateAnswer";
 
 describe("operation-specific arithmetic controls", () => {
+  it.each([[false, 8.36], [true, 10.89]] as const)("keeps decimal mixed-operation precedence with parentheses=%s", (parentheses, expected) => {
+    let termIndex = 0;
+    let operatorIndex = 0;
+    const template = starterQuestionTemplates.find((candidate) => candidate.tags.includes("mixed_operations"))!;
+    const question = generateCustomArithmeticQuestion(template, settings({
+      tags: ["mixed_operations"], arithmeticMixedOperators: ["addition", "multiplication"],
+      arithmeticUseParentheses: parentheses, arithmeticTermCount: 3, arithmeticNumberFormat: "decimal"
+    }), {
+      ...createSeededRandom("mixed-decimal"),
+      integer: () => [11, 22, 33][termIndex++],
+      pick: <T>(items: readonly T[]) => items.length === 1 ? items[0] : items[operatorIndex++]
+    });
+    expect(question.answer.value).toBe(expected);
+    expect(validateAnswer(String(expected), question.answer).isCorrect).toBe(true);
+  });
+
+  it.each([
+    [[6.2, 9.9, 2.4, 8.3, 7.4], "9047.90304"],
+    [[1.01, 1.01, 1.01, 1.01, 1.01], "1.0510100501"],
+    [[9.99, 9.99, 9.99, 9.99, 9.99], "99500.9990004999"],
+    [[99.99, 99.99, 99.99, 99.99, 99.99], "9995000999.9000049999"],
+    [[-1.01, 1.01, 1.01, 1.01, 1.01], "-1.0510100501"]
+  ] as const)("retains decimal multiplication precision for %s", (operands, exactProduct) => {
+    let index = 0;
+    const template = starterQuestionTemplates.find((candidate) => candidate.tags.includes("multiplication"))!;
+    const question = generateCustomArithmeticQuestion(template, settings({
+      tags: ["multiplication"], difficulty: "advanced", arithmeticTermCount: 5,
+      arithmeticNumberFormat: "decimal", arithmeticOperandSize: "small"
+    }), { ...createSeededRandom("decimal-audit-1"), integer: () => Math.round(operands[index++] * 100) });
+    expect(question.answer.value).toBe(Number(exactProduct));
+    expect(validateAnswer(exactProduct, question.answer).isCorrect).toBe(true);
+    const displayed = question.explanation.steps[1].split(" = ")[1].replace(/\.$/u, "");
+    expect(validateAnswer(displayed, question.answer).isCorrect).toBe(true);
+    expect(validateAnswer(String(Number(exactProduct) + 1), question.answer).isCorrect).toBe(false);
+  });
+
   it("generates deterministic multiplication factors with the selected friendly multiple", () => {
     const drill = settings({
       arithmeticMultiplicationStyle: "multiple_25",

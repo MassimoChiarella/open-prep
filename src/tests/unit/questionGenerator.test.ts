@@ -12,6 +12,42 @@ import { createSeededRandom } from "@/lib/random/seededRandom";
 import { validateAnswer } from "@/lib/validation/validateAnswer";
 
 describe("question generation", () => {
+  it("deduplicates custom arithmetic by expression across starter templates", () => {
+    const settings = drillSettings({
+      categories: ["arithmetic"], difficulty: "beginner", questionCount: 10,
+      tags: ["multiplication"], arithmeticNumberFormat: "integer", arithmeticTermCount: 2,
+      arithmeticMultiplicationStyle: "single_digit"
+    });
+    for (let seed = 0; seed < 20; seed += 1) {
+      const questions = generateQuestionsFromTemplates(starterQuestionTemplates, settings, `audit-duplicates-${seed}`);
+      expect(new Set(questions.map((question) => question.prompt)).size).toBe(questions.length);
+    }
+    expect(getQuestionGenerationCapacity(starterQuestionTemplates, settings, 100)).toBe(64);
+  });
+
+  it("counts decimal range capacity consistently with generation", () => {
+    const template: QuestionTemplate = {
+      ...starterQuestionTemplates[0], variables: { a: { type: "decimal", min: 0.1, max: 0.3, step: 0.1 } },
+      formula: { expression: "a" }, promptTemplate: "What is {a}?", explanationTemplate: { steps: ["{answer}"] }
+    };
+    const settings = drillSettings({ categories: ["arithmetic"], difficulty: "beginner", questionCount: 3 });
+    expect(getQuestionGenerationCapacity([template], settings)).toBe(3);
+    expect(generateQuestionsFromTemplates([template], settings, "audit-range-capacity").map((question) => question.answer.value).sort()).toEqual([0.1, 0.2, 0.3]);
+  });
+
+  it("requires percentage-point answers for both beginner percentage-point templates", () => {
+    const templates = starterQuestionTemplates.filter((template) => /^percentage_points_beginner_/u.test(template.id));
+    expect(templates).toHaveLength(2);
+    for (const template of templates) {
+      const question = generateQuestionFromTemplate(template, { difficulty: "beginner", random: createSeededRandom("audit-points") });
+      expect(question.answer.unit).toBe("percentage_points");
+      for (const suffix of ["", " pp", " percentage points"]) {
+        expect(validateAnswer(`${question.answer.value}${suffix}`, question.answer).isCorrect).toBe(true);
+      }
+      expect(validateAnswer(`${question.answer.value}%`, question.answer).isCorrect).toBe(false);
+    }
+  });
+
   it("generates a numeric question from a template", () => {
     const question = generateQuestionFromTemplate(starterQuestionTemplates[0], {
       difficulty: "beginner",

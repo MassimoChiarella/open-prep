@@ -1628,12 +1628,12 @@ function formatRoundingRule(rule: RoundingRule, unit: UnitType | undefined): str
 
 function formatAnswerWithUnit(value: number, unit: UnitType | undefined): string {
   if (unit === undefined || unit === "none") {
-    return formatNumber(value);
+    return formatNumber(value, 12);
   }
 
-  if (unit === "currency") return `$${formatNumber(value)}`;
-  if (unit === "percentage") return `${formatNumber(value * 100)}%`;
-  return `${formatNumber(value)} ${formatUnit(unit)}`;
+  if (unit === "currency") return `$${formatNumber(value, 12)}`;
+  if (unit === "percentage") return `${formatNumber(value * 100, 12)}%`;
+  return `${formatNumber(value, 12)} ${formatUnit(unit)}`;
 }
 
 function formatUnit(unit: UnitType): string {

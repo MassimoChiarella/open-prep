@@ -1,6 +1,6 @@
 import { buildDrillSettingsQuery } from "@/features/drills/drillSettingsOptions";
 import { createDrillSettings } from "@/features/drills/drillSettings";
-import type { DrillSettings, Formula, SkillCategory, SkillTag } from "@/lib/domain";
+import type { Formula, SkillCategory } from "@/lib/domain";
 
 export interface FormulaFilterState {
   category: SkillCategory | "all";
@@ -17,11 +17,6 @@ const categoryLabels: Record<SkillCategory, string> = {
   case_math: "Case math",
   market_sizing: "Market sizing",
   exhibit_math: "Exhibit math"
-};
-
-const relatedDrillOverrides: Partial<Record<string, Pick<DrillSettings, "categories" | "tags">>> = {
-  cagr: { categories: ["percentages"], tags: ["percentage_change"] },
-  rule_of_72: { categories: ["percentages"], tags: ["percentage_of_number"] }
 };
 
 export function filterFormulas(formulas: readonly Formula[], filters: FormulaFilterState): Formula[] {
@@ -60,25 +55,16 @@ export function getFormulaCategoryLabel(category: SkillCategory): string {
 }
 
 export function buildFormulaDrillHref(formula: Formula): string {
-  const relatedDrill = relatedDrillOverrides[formula.id] ?? {
-    categories: [formula.category],
-    tags: getSupportedFormulaTags(formula.tags)
-  };
+  const formulaTag = formula.tags.find((tag) => tag === formula.id);
   const settings = createDrillSettings({
-    categories: relatedDrill.categories,
+    categories: [formula.category],
     difficulty: "beginner",
     feedbackMode: "instant",
     questionCount: 5,
-    tags: relatedDrill.tags
+    tags: formulaTag === undefined ? (formula.tags.length > 0 ? formula.tags : undefined) : [formulaTag]
   });
 
   return `/drills/session?${buildDrillSettingsQuery(settings)}`;
-}
-
-function getSupportedFormulaTags(tags: readonly SkillTag[]): SkillTag[] | undefined {
-  const supportedTags = tags.filter((tag) => !["cagr", "compound_growth", "rule_of_72", "simple_growth"].includes(tag));
-
-  return supportedTags.length > 0 ? supportedTags : undefined;
 }
 
 function normalize(value: string): string {
