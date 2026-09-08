@@ -216,7 +216,7 @@ export function SynthesisResponseFields({
                   type="radio"
                   value={option.id}
                 />
-                <span className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{option.label}</span>
+                <span className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")} dir="auto">{option.label}</span>
               </label>
             ))}
           </fieldset>

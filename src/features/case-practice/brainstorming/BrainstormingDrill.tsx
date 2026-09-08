@@ -221,7 +221,7 @@ export function BrainstormingResponseFields({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="grid gap-1">
           <h2 className="text-2xl font-semibold text-ink">{heading}</h2>
-          <p className={cx(uiText.body, "min-w-0 [overflow-wrap:anywhere]")} id={`${prompt.id}-brainstorming-progress`}>
+          <p className={cx(uiText.body, "min-w-0 [overflow-wrap:anywhere]")} dir="auto" id={`${prompt.id}-brainstorming-progress`}>
             {description}
           </p>
         </div>
@@ -245,7 +245,7 @@ export function BrainstormingResponseFields({
         {prompt.themes.map((theme) => (
           <div className="min-w-0 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6" key={theme.id}>
             <fieldset className="min-w-0">
-              <legend className="w-full max-w-full break-words text-base font-semibold text-ink [overflow-wrap:anywhere]">{theme.label}</legend>
+              <legend className="w-full max-w-full break-words text-base font-semibold text-ink [overflow-wrap:anywhere]" dir="auto">{theme.label}</legend>
               <div className="mt-2 divide-y divide-ink/10">
                 {theme.ideas.map((idea) => (
                   <IdeaChoice
@@ -300,7 +300,7 @@ function IdeaChoice({
           onChange={(event) => onIdeaChange(event.currentTarget.checked)}
           type="checkbox"
         />
-        <span className="min-w-0 [overflow-wrap:anywhere]">{idea.label}</span>
+        <span className="min-w-0 [overflow-wrap:anywhere]" dir="auto">{idea.label}</span>
       </label>
       <label className={cx("ml-7 flex min-h-8 items-center gap-2 text-xs font-semibold", priorityDisabled ? "text-ink/45" : "text-teal")}>
         <input

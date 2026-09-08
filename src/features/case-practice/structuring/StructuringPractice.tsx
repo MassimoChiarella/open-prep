@@ -193,7 +193,7 @@ export function StructuringResponseFields({
                   type="radio"
                   value={hypothesis.id}
                 />
-                <span className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{hypothesis.label}</span>
+                <span className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")} dir="auto">{hypothesis.label}</span>
               </label>
             );
           })}
@@ -238,8 +238,8 @@ export function StructuringResponseFields({
                   value={branch.id}
                 />
                 <span className="min-w-0">
-                  <span className="block min-w-0 text-sm font-semibold text-ink [overflow-wrap:anywhere]">{branch.label}</span>
-                  <span className="mt-1 block min-w-0 text-sm leading-6 text-ink/65 [overflow-wrap:anywhere]">{branch.description}</span>
+                  <span className="block min-w-0 text-sm font-semibold text-ink [overflow-wrap:anywhere]" dir="auto">{branch.label}</span>
+                  <span className="mt-1 block min-w-0 text-sm leading-6 text-ink/65 [overflow-wrap:anywhere]" dir="auto">{branch.description}</span>
                 </span>
               </label>
             );

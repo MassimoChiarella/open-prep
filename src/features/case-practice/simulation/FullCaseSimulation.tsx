@@ -427,11 +427,11 @@ function FullCaseSession({
         aria-labelledby="full-case-heading"
         className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
       >
-        <p className={cx(uiText.eyebrow, "min-w-0 text-teal [overflow-wrap:anywhere]")}>{simulation.client}</p>
-        <h2 className={uiText.sectionTitle} id="full-case-heading">
+        <p className={cx(uiText.eyebrow, "min-w-0 text-teal [overflow-wrap:anywhere]")} dir="auto">{simulation.client}</p>
+        <h2 className={uiText.sectionTitle} dir="auto" id="full-case-heading">
           {simulation.title}
         </h2>
-        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{simulation.situation}</p>
+        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")} dir="auto">{simulation.situation}</p>
       </section>
 
       <section aria-label={t("Local case draft")} className="grid gap-3 border border-ink/15 bg-white p-4">
@@ -623,7 +623,7 @@ function QuestioningStage({
         <h2 className={uiText.sectionTitle} id="questioning-stage-heading" tabIndex={-1}>
           {t("Clarify and diagnose")}
         </h2>
-        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{prompt.objective}</p>
+        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")} dir="auto">{prompt.objective}</p>
       </div>
       <QuestioningResponseFields
         includeRanking={includeRanking}
@@ -661,7 +661,7 @@ function StructureStage({
         <h2 className={uiText.sectionTitle} id="structure-stage-heading" tabIndex={-1}>
           {t("Open the case")}
         </h2>
-        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{prompt.objective}</p>
+        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")} dir="auto">{prompt.objective}</p>
       </div>
       <StructuringResponseFields
         branchIds={branchIds}
@@ -699,7 +699,7 @@ function CalculationStage({
         <ExhibitTableRenderer dataset={simulation.exhibit} />
       )}
       <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 border border-ink/15 border-t-2 border-t-teal bg-white p-5 sm:p-6">
-        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{question.prompt}</p>
+        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")} dir="auto">{question.prompt}</p>
         <label className={cx(uiText.controlLabel, "grid max-w-md gap-2")} htmlFor="full-case-calculation">
           {t("Your answer")}
           {question.answer.unit === undefined || question.answer.unit === "none"
@@ -770,7 +770,7 @@ function SynthesisStage({
         <h2 className={uiText.sectionTitle} id="synthesis-stage-heading" tabIndex={-1}>
           {t("Close the case")}
         </h2>
-        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{prompt.decision}</p>
+        <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")} dir="auto">{prompt.decision}</p>
       </div>
 
       <section
@@ -782,7 +782,7 @@ function SynthesisStage({
         </h3>
         <ul className={cx(uiText.body, "grid list-disc gap-2 pl-5")}>
           {prompt.facts.map((fact) => (
-            <li className="min-w-0 [overflow-wrap:anywhere]" key={fact}>{fact}</li>
+            <li className="min-w-0 [overflow-wrap:anywhere]" dir="auto" key={fact}>{fact}</li>
           ))}
         </ul>
       </section>
@@ -882,7 +882,7 @@ function FullCaseReview({
           <p className={uiText.bodyStrong}>{t(result.calculation.feedbackMessage)}</p>
           <ol className={cx(uiText.body, "grid list-decimal gap-2 pl-5")}>
             {calculationQuestion.explanation.steps.map((step) => (
-              <li className="min-w-0 [overflow-wrap:anywhere]" key={step}>{step}</li>
+              <li className="min-w-0 [overflow-wrap:anywhere]" dir="auto" key={step}>{step}</li>
             ))}
           </ol>
         </article>
@@ -902,7 +902,7 @@ function FullCaseReview({
 
         <article className="grid min-w-0 content-start gap-3 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6">
           <h3 className={uiText.sectionTitle}>{t("Model close")}</h3>
-          <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")}>{simulation.synthesis.modelClose}</p>
+          <p className={cx(uiText.bodyStrong, "min-w-0 [overflow-wrap:anywhere]")} dir="auto">{simulation.synthesis.modelClose}</p>
         </article>
       </div>
 
