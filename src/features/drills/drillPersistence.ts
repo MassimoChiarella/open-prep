@@ -3,14 +3,17 @@ import type { DrillSession, DrillSettings, Question } from "@/lib/domain";
 import type {
   AppStorage,
   AppStorageMutation,
+  AppStoreValue,
   MistakeNotebookRecord,
   MistakeNotebookSourceType,
   RetryScheduleRecord,
   StoredDrillSession,
   StoredUserResponse,
 } from "@/lib/storage/appStorageTypes";
+import { appStoreIndexNames } from "@/lib/storage/appStorageTypes";
 
 export const retryScheduleIntervalsDays = [1, 3, 7] as const;
+const historyPageSize = 500;
 
 export interface PersistCompletedDrillSessionOptions {
   questions: readonly Question[];
@@ -40,15 +43,24 @@ export async function loadInProgressDrillSession(
   storage: AppStorage,
   draftKey: string
 ): Promise<{ questions: Question[]; session: DrillSession; questionStartedAtMs?: number } | undefined> {
-  const draft = (await storage.getAll("drill_sessions"))
-    .sort(sortStoredSessionsDescending)
-    .find(
+  let afterKey: IDBValidKey | undefined;
+  let draft: (StoredDrillSession & { questions: Question[] }) | undefined;
+
+  do {
+    const page = await storage.getPage("drill_sessions", appStoreIndexNames.drill_sessions, {
+      ...(afterKey === undefined ? {} : { afterKey }),
+      direction: "prev",
+      limit: historyPageSize
+    });
+    draft = page.values.find(
       (session): session is StoredDrillSession & { questions: Question[] } =>
         session.draftKey === draftKey &&
         session.score === undefined &&
         Array.isArray(session.questions) &&
         session.questions.length > 0
     );
+    afterKey = page.continuationKey;
+  } while (draft === undefined && afterKey !== undefined);
 
   if (draft === undefined) {
     return undefined;
@@ -96,7 +108,7 @@ export async function persistCompletedDrillSession(options: PersistCompletedDril
   // benchmark/summary failure may retry saving, but must not advance reviews twice.
   if ((await options.storage.get("drill_sessions", options.session.id))?.score !== undefined) return;
 
-  const persistedAt = options.updatedAt ?? new Date().toISOString();
+  const persistedAt = options.updatedAt ?? options.session.endedAt ?? new Date().toISOString();
   const storedSession = createStoredDrillSession(options.session, options.questions, persistedAt);
   const storedResponses = createStoredUserResponses(options.session, options.questions);
   const mistakeRecords = createStoredMistakeNotebookRecords(options.session, options.questions);
@@ -180,19 +192,59 @@ export async function persistCompletedDrillSession(options: PersistCompletedDril
 export async function loadLatestStoredSessionSummarySnapshot(
   storage: AppStorage
 ): Promise<SessionSummarySnapshot | undefined> {
-  const completedSessions = (await storage.getAll("drill_sessions"))
-    .filter(hasCompletedSessionData)
-    .sort((first, second) => sortStoredSessionsDescending(first, second));
+  let afterKey: IDBValidKey | undefined;
 
-  for (const session of completedSessions) {
-    try {
-      return createSessionSummarySnapshot(session, session.questions);
-    } catch {
-      continue;
+  do {
+    const page = await storage.getPage("drill_sessions", appStoreIndexNames.drill_sessions, {
+      ...(afterKey === undefined ? {} : { afterKey }),
+      direction: "prev",
+      limit: historyPageSize
+    });
+    for (const session of page.values) {
+      if (!hasCompletedSessionData(session)) continue;
+      try {
+        return createSessionSummarySnapshot(session, session.questions);
+      } catch {
+        continue;
+      }
     }
-  }
+    afterKey = page.continuationKey;
+  } while (afterKey !== undefined);
 
   return undefined;
+}
+
+export async function loadStoredDrillSessionHistory(storage: AppStorage): Promise<StoredDrillSession[]> {
+  return loadIndexedHistory(storage, "drill_sessions", appStoreIndexNames.drill_sessions);
+}
+
+export async function loadStoredResponseHistory(
+  storage: AppStorage,
+  limit?: number
+): Promise<StoredUserResponse[]> {
+  return loadIndexedHistory(storage, "responses", appStoreIndexNames.responses, limit);
+}
+
+async function loadIndexedHistory<TStore extends "drill_sessions" | "responses">(
+  storage: AppStorage,
+  storeName: TStore,
+  indexName: (typeof appStoreIndexNames)[TStore],
+  limit?: number
+): Promise<AppStoreValue<TStore>[]> {
+  const values: AppStoreValue<TStore>[] = [];
+  let afterKey: IDBValidKey | undefined;
+
+  do {
+    const page = await storage.getPage(storeName, indexName, {
+      ...(afterKey === undefined ? {} : { afterKey }),
+      direction: "prev",
+      limit: Math.min(historyPageSize, (limit ?? Infinity) - values.length)
+    });
+    values.push(...page.values);
+    afterKey = values.length >= (limit ?? Infinity) ? undefined : page.continuationKey;
+  } while (afterKey !== undefined);
+
+  return values;
 }
 
 export async function loadStoredSessionSummarySnapshotById(
@@ -215,7 +267,7 @@ export async function loadStoredSessionSummarySnapshotById(
 export function createStoredDrillSession(
   session: DrillSession,
   questions: readonly Question[],
-  updatedAt = new Date().toISOString()
+  updatedAt = session.endedAt ?? new Date().toISOString()
 ): StoredDrillSession {
   if (session.score === undefined) {
     throw new Error("Only completed drill sessions can be persisted.");

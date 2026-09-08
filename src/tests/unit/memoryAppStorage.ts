@@ -6,6 +6,7 @@ import {
   type AppStorageMutation,
   type AppStoragePage,
   type AppStoragePageOptions,
+  type AppStorageReplacement,
   type AppStorageSnapshot,
   type AppIndexedStoreName,
   type AppStoreIndexName,
@@ -130,6 +131,17 @@ export class MemoryAppStorage implements AppStorage {
     }
   }
 
+  async replaceSnapshot(snapshot: AppStorageReplacement): Promise<void> {
+    const operations: AppStorageMutation[] = [];
+    for (const storeName of Object.keys(snapshot) as AppStoreName[]) {
+      operations.push({ storeName, type: "clear" } as AppStorageMutation);
+      for (const value of snapshot[storeName] ?? []) {
+        operations.push({ storeName, type: "put", value } as AppStorageMutation);
+      }
+    }
+    await this.mutate(operations);
+  }
+
   async clearAll(): Promise<void> {
     await this.mutate(appStoreNames.map((storeName) => ({ storeName, type: "clear" })));
   }
@@ -161,6 +173,14 @@ function indexKey<TStore extends AppIndexedStoreName>(
   if (storeName === "benchmark_results" && indexName === appStoreIndexNames.benchmark_results) {
     const result = value as AppStoreValue<"benchmark_results">;
     return [result.completedAt, result.id];
+  }
+  if (storeName === "drill_sessions" && indexName === appStoreIndexNames.drill_sessions) {
+    const session = value as AppStoreValue<"drill_sessions">;
+    return [session.updatedAt, session.id];
+  }
+  if (storeName === "responses" && indexName === appStoreIndexNames.responses) {
+    const response = value as AppStoreValue<"responses">;
+    return [response.submittedAt, response.id];
   }
   if (storeName === "question_packs" && indexName === appStoreIndexNames.question_packs) {
     const pack = value as AppStoreValue<"question_packs">;

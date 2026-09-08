@@ -5,6 +5,8 @@ import { FormEvent, type RefObject, useCallback, useEffect, useMemo, useRef, use
 import { LocalSaveNotice } from "@/components/LocalSaveNotice";
 import { submitAnswer } from "@/features/drills/answerSubmission";
 import {
+  loadStoredDrillSessionHistory,
+  loadStoredResponseHistory,
   buildDrillDraftKey,
   loadInProgressDrillSession,
   persistCompletedDrillSession,
@@ -465,8 +467,8 @@ export function ActiveDrillSession({
             }
 
             const [sessions, responses, benchmarkResults] = await Promise.all([
-              storage.getAll("drill_sessions"),
-              storage.getAll("responses"),
+              loadStoredDrillSessionHistory(storage),
+              loadStoredResponseHistory(storage),
               storage.getAll("benchmark_results")
             ]);
             const bests = findSourcePersonalBests(

@@ -7,6 +7,8 @@ import { LoadingState } from "@/components/LoadingState";
 import { buildBenchmarkSelectionHref } from "@/features/benchmarks/benchmarkSession";
 import {
   loadLatestStoredSessionSummarySnapshot,
+  loadStoredDrillSessionHistory,
+  loadStoredResponseHistory,
   loadStoredSessionSummarySnapshotById
 } from "@/features/drills/drillPersistence";
 import { SessionSummaryView } from "@/features/drills/SessionSummaryView";
@@ -56,8 +58,8 @@ export function StoredSessionSummaryLoader({
           }
 
           const [sessions, responses, benchmarkResults] = await Promise.all([
-            storage.getAll("drill_sessions"),
-            storage.getAll("responses"),
+            loadStoredDrillSessionHistory(storage),
+            loadStoredResponseHistory(storage),
             storage.getAll("benchmark_results")
           ]);
           const sourceIds = [

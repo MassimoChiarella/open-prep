@@ -26,9 +26,11 @@ import type {
 } from "@/lib/domain";
 
 export const appDatabaseName = "consulting_math_drill_tool";
-export const appDatabaseVersion = 8;
+export const appDatabaseVersion = 9;
 
 export const appStoreIndexNames = {
+  drill_sessions: "updated_at_id",
+  responses: "submitted_at_id",
   benchmark_results: "completed_at_id",
   question_packs: "imported_at_id"
 } as const;
@@ -309,6 +311,10 @@ export type AppStorageSnapshot<TStores extends readonly AppStoreName[]> = {
   [TStore in TStores[number]]: AppStoreValue<TStore>[];
 };
 
+export type AppStorageReplacement = {
+  [TStore in AppStoreName]?: AppStoreValue<TStore>[];
+};
+
 export interface AppStoragePageOptions {
   afterKey?: IDBValidKey;
   direction?: "next" | "prev";
@@ -345,6 +351,7 @@ export interface AppStorage {
   delete<TStore extends AppStoreName>(storeName: TStore, key: AppStoreKey<TStore>): Promise<void>;
   clear<TStore extends AppStoreName>(storeName: TStore): Promise<void>;
   mutate(operations: readonly AppStorageMutation[]): Promise<void>;
+  replaceSnapshot(snapshot: AppStorageReplacement): Promise<void>;
   clearAll(): Promise<void>;
   close(): void;
 }

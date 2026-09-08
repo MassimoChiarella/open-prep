@@ -16,6 +16,26 @@ beforeAll(() => Object.defineProperty(HTMLElement.prototype, "scrollIntoView", {
 afterEach(() => vi.restoreAllMocks());
 
 describe("full-case draft write lifecycle", () => {
+  it("coalesces rapid draft edits and persists the newest snapshot", async () => {
+    const storage = new MemoryAppStorage();
+    render(<FullCaseSimulation storageFactory={() => storage} />);
+    await waitFor(() => expect(screen.getByRole("checkbox", { name: optInLabel })).toBeEnabled());
+    fireEvent.click(screen.getByRole("checkbox", { name: optInLabel }));
+    await screen.findByText("Private draft saved on this device.");
+    const write = vi.spyOn(storage, "put");
+    const input = screen.getAllByPlaceholderText(questionPlaceholder)[0];
+
+    fireEvent.change(input, { target: { value: "First edit" } });
+    fireEvent.change(input, { target: { value: "Second edit" } });
+    fireEvent.change(input, { target: { value: "Newest edit" } });
+
+    await screen.findByText("Private draft saved on this device.");
+    expect(write.mock.calls.filter(([store]) => store === "practice_records")).toHaveLength(1);
+    expect(await storage.get("practice_records", draftId)).toMatchObject({
+      questions: expect.arrayContaining([expect.objectContaining({ text: "Newest edit" })])
+    });
+  });
+
   it("grades a resumed completed draft using its input locale when the UI uses another locale", async () => {
     const storage = new MemoryAppStorage();
     const saved = await synthesisDraft();

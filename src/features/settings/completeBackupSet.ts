@@ -164,11 +164,17 @@ export async function validateCompleteBackupSet(
     }
     for (const storeName of appStoreNames) {
       const ids = new Set<string>();
+      let recordsSinceYield = 0;
       for (const backup of backups) {
         const records = storeName === "question_packs" ? backup.sections.packs ?? [] : backup.sections.progress.stores[storeName];
         for (const record of records) {
           if (ids.has(record.id)) throw new Error(`Backup parts contain duplicate records in "${storeName}".`);
           ids.add(record.id);
+          recordsSinceYield += 1;
+          if (recordsSinceYield === 1_000) {
+            recordsSinceYield = 0;
+            await new Promise((resolve) => setTimeout(resolve, 0));
+          }
         }
       }
     }

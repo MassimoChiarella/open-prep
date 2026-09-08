@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { PageHeader } from "@/components/PageHeader";
 import { ActiveDrillSession } from "@/features/drills/ActiveDrillSession";
+import { loadStoredResponseHistory } from "@/features/drills/drillPersistence";
 import { createDailyWorkoutSession } from "@/features/drills/dailyWorkout";
 import {
   createReviewDrillSession,
@@ -72,7 +73,7 @@ export function LocalDrillSessionLoader({
       const activeStorage = storage;
 
       void Promise.all([
-        activeStorage.getAll("responses"),
+        loadStoredResponseHistory(activeStorage, 5_000),
         activeStorage.getAll("mistake_notebook"),
         activeStorage.getAll("retry_schedules"),
         Promise.all(selectedPackIds.map((packId) => activeStorage.get("question_packs", packId)))

@@ -15,7 +15,7 @@ import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 describe("typed app storage", () => {
   it("defines the MVP IndexedDB stores", () => {
     expect(appDatabaseName).toBe("consulting_math_drill_tool");
-    expect(appDatabaseVersion).toBe(8);
+    expect(appDatabaseVersion).toBe(9);
     expect(progressStoreNames).toEqual([
       "drill_sessions",
       "responses",
@@ -116,6 +116,27 @@ describe("typed app storage", () => {
     expect(await storage.count("benchmark_results")).toBe(4);
   });
 
+  it("pages drill sessions and responses by their chronological indexes", async () => {
+    const storage = new MemoryAppStorage();
+    await storage.put("drill_sessions", storedDrillSession());
+    await storage.put("drill_sessions", {
+      ...storedDrillSession(),
+      id: "session-2",
+      updatedAt: "2026-06-02T00:02:00.000Z"
+    });
+    await storage.put("responses", {
+      errorTypes: ["none"], id: "response-1", isCorrect: true, questionId: "question-1",
+      rawInput: "1", sessionId: "session-1", submittedAt: "2026-06-02T00:00:01.000Z", timeTakenSeconds: 1
+    });
+
+    expect((await storage.getPage("drill_sessions", appStoreIndexNames.drill_sessions, {
+      direction: "prev", limit: 1
+    })).values.map(({ id }) => id)).toEqual(["session-2"]);
+    expect((await storage.getPage("responses", appStoreIndexNames.responses, {
+      direction: "prev", limit: 1
+    })).values.map(({ id }) => id)).toEqual(["response-1"]);
+  });
+
   it("clears individual stores and all local data", async () => {
     const storage = new MemoryAppStorage();
     const session = storedDrillSession();
@@ -169,6 +190,21 @@ describe("typed app storage", () => {
     expect(snapshot.drill_sessions.map(({ id }) => id)).toEqual(["session-1"]);
     expect(snapshot.question_packs).toEqual([]);
     expect(Object.keys(snapshot)).toEqual(["drill_sessions", "question_packs"]);
+  });
+
+  it("atomically replaces only the stores named in a snapshot", async () => {
+    const storage = new MemoryAppStorage();
+    await storage.put("drill_sessions", storedDrillSession());
+    await storage.put("user_settings", {
+      id: "default",
+      settings: createDrillSettings(),
+      updatedAt: "2026-06-02T00:00:00.000Z"
+    });
+
+    await storage.replaceSnapshot({ drill_sessions: [] });
+
+    expect(await storage.getAll("drill_sessions")).toEqual([]);
+    expect(await storage.getAll("user_settings")).toHaveLength(1);
   });
 
   it("handles empty snapshots and rejects duplicate store requests", async () => {

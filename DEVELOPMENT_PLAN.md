@@ -192,9 +192,9 @@ This phase closes the issues discovered after the completed 30-item audit. It pr
 | Step | Scope | Status |
 |---|---|---|
 | 14 | Publish the hardening plan and acceptance ledger | Complete |
-| 15 | Drill identity, repeat behavior and local-day correctness | In progress |
+| 15 | Drill identity, repeat behavior and local-day correctness | Complete |
 | 16 | Multilingual scoring, localized summaries and recoverable UI state | Complete |
-| 17 | Storage write coalescing, bounded reads and restore responsiveness | Planned |
+| 17 | Storage write coalescing, bounded reads and restore responsiveness | Complete |
 | 18 | Release-server isolation, service-worker retry and Node preflight | Planned |
 | 19 | Integrated verification and completion record | Planned |
 
@@ -247,16 +247,16 @@ This phase closes the issues discovered after the completed 30-item audit. It pr
 | ID | Finding | Acceptance criterion | Status |
 |---|---|---|---|
 | HARD-01 | Local release tests can reuse a stale or unrelated build | Every Playwright invocation owns a fresh verified build server on its allocated port | Planned |
-| HARD-02 | Same-route changes mix old questions with new metadata | Query changes create one coherent loader/session identity before interaction resumes | Planned |
-| HARD-03 | Repeat Drill is a no-op on a canonical URL | Repeat starts a fresh session even when settings are unchanged | Planned |
-| HARD-04 | CJK/unspaced questioning aliases do not receive concept credit | Exact normalized authored aliases match with or without word boundaries | Planned |
-| HARD-05 | Exit copy claims failed drafts were saved | Exit messaging reflects the latest persistence result | Planned |
-| HARD-06 | Full-case drafts enqueue one adapter/write per keystroke | Rapid edits coalesce and the newest valid snapshot is recoverable | Planned |
-| HARD-07 | Routine drill operations scan lifetime response history | Bounded/indexed operations replace avoidable full-store reads | Planned |
-| HARD-08 | Session guidance bypasses localization | All user-visible summary copy uses locale-aware formatting and translation | Planned |
-| HARD-09 | Maximum backup restore monopolizes the main thread | Large restores yield/batch without weakening validation or atomic rollback | Planned |
-| HARD-10 | Domain submission accepts duplicate question answers | A duplicate submission fails before scoring or persistence | Planned |
-| HARD-11 | Daily Workout rotates at UTC rather than local midnight | The daily seed and generated identity use the learner's local date | Planned |
-| HARD-12 | A failed locale chunk cannot retry | A later selection of the same locale triggers a new load | Planned |
-| HARD-13 | Service-worker registration failure is sticky | The user can retry and recover without reloading the page | Planned |
+| HARD-02 | Same-route changes mix old questions with new metadata | Query changes create one coherent loader/session identity before interaction resumes | Complete |
+| HARD-03 | Repeat Drill is a no-op on a canonical URL | Repeat starts a fresh session even when settings are unchanged | Complete |
+| HARD-04 | CJK/unspaced questioning aliases do not receive concept credit | Exact normalized authored aliases match with or without word boundaries | Complete |
+| HARD-05 | Exit copy claims failed drafts were saved | Exit messaging reflects the latest persistence result | Complete |
+| HARD-06 | Full-case drafts enqueue one adapter/write per keystroke | Rapid edits coalesce and the newest valid snapshot is recoverable | Complete |
+| HARD-07 | Routine drill operations scan lifetime response history | Bounded/indexed operations replace avoidable full-store reads | Complete |
+| HARD-08 | Session guidance bypasses localization | All user-visible summary copy uses locale-aware formatting and translation | Complete |
+| HARD-09 | Maximum backup restore monopolizes the main thread | Large restores yield/batch without weakening validation or atomic rollback | Complete |
+| HARD-10 | Domain submission accepts duplicate question answers | A duplicate submission fails before scoring or persistence | Complete |
+| HARD-11 | Daily Workout rotates at UTC rather than local midnight | The daily seed and generated identity use the learner's local date | Complete |
+| HARD-12 | A failed locale chunk cannot retry | A later selection of the same locale triggers a new load | Complete |
+| HARD-13 | Service-worker registration failure is sticky | The user can retry and recover without reloading the page | Complete |
 | HARD-14 | Unsupported Node can reach opaque tool failures | Repository commands fail early with an actionable pinned-runtime message | Planned |

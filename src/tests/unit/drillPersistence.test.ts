@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { completeDrillSession } from "@/features/drills/sessionCompletion";
 import { createDrillSession } from "@/features/drills/sessionFactory";
@@ -377,6 +377,7 @@ describe("drill persistence", () => {
 
   it("loads the latest completed stored session as a summary snapshot", async () => {
     const storage = new MemoryAppStorage();
+    const getAll = vi.spyOn(storage, "getAll");
     const older = createCompletedSession("older", "2026-06-02T00:00:00.000Z", "2026-06-02T00:00:10.000Z");
     const newer = createCompletedSession("newer", "2026-06-02T01:00:00.000Z", "2026-06-02T01:00:10.000Z");
 
@@ -393,6 +394,7 @@ describe("drill persistence", () => {
         }
       ]
     });
+    expect(getAll).not.toHaveBeenCalledWith("drill_sessions");
   });
 
   it("loads an exact completed session by id without returning drafts or another session", async () => {

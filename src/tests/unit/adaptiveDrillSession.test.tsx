@@ -101,6 +101,7 @@ describe("LocalDrillSessionLoader question pool", () => {
 
   it("uses the selected numeric pool for the whole Weakness Mode session", async () => {
     const storage = new MemoryAppStorage();
+    const getPage = vi.spyOn(storage, "getPage");
     await storage.put("question_packs", fixedPack("weakness-pack", "weakness-question"));
     await Promise.all(Array.from({ length: 10 }, (_, index) =>
       storage.put("responses", response(`weakness-${index}`))
@@ -118,6 +119,10 @@ describe("LocalDrillSessionLoader question pool", () => {
     expect(questionIds(await screen.findByTestId("adaptive-session"))).toEqual([
       "question-pack:weakness-pack:weakness-question"
     ]);
+    expect(getPage).toHaveBeenCalledWith("responses", "submitted_at_id", {
+      direction: "prev",
+      limit: 500
+    });
   });
 
   it("keeps Retry Missed historical-only even when selected-only is active", async () => {

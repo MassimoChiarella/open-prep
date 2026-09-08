@@ -8,6 +8,7 @@ import {
   type AppStorageMutation,
   type AppStoragePage,
   type AppStoragePageOptions,
+  type AppStorageReplacement,
   type AppStorageSnapshot,
   type AppIndexedStoreName,
   type AppStoreIndexName,
@@ -230,6 +231,63 @@ class IndexedDbAppStorage implements AppStorage {
     });
   }
 
+  async replaceSnapshot(snapshot: AppStorageReplacement): Promise<void> {
+    const storeNames = Object.keys(snapshot) as AppStoreName[];
+    if (storeNames.length === 0) return;
+
+    const database = await this.openDatabase();
+    this.assertWritable();
+
+    await new Promise<void>((resolve, reject) => {
+      const transaction = database.transaction(storeNames, "readwrite");
+      this.trackWrite(transaction);
+      let storesRemaining = storeNames.length;
+      let storeIndex = 0;
+      let recordIndex = 0;
+
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error ?? new Error("IndexedDB replacement failed."));
+      transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDB replacement was aborted."));
+
+      const enqueueBatch = () => {
+        let lastRequest: IDBRequest | undefined;
+        let enqueued = 0;
+
+        while (storeIndex < storeNames.length && enqueued < 250) {
+          const storeName = storeNames[storeIndex];
+          const records = snapshot[storeName] ?? [];
+
+          if (recordIndex >= records.length) {
+            storeIndex += 1;
+            recordIndex = 0;
+            continue;
+          }
+
+          lastRequest = transaction.objectStore(storeName).put(records[recordIndex]);
+          recordIndex += 1;
+          enqueued += 1;
+        }
+
+        if (lastRequest !== undefined && storeIndex < storeNames.length) {
+          lastRequest.onsuccess = enqueueBatch;
+        }
+      };
+
+      try {
+        for (const storeName of storeNames) {
+          const request = transaction.objectStore(storeName).clear();
+          request.onsuccess = () => {
+            storesRemaining -= 1;
+            if (storesRemaining === 0) enqueueBatch();
+          };
+        }
+      } catch (error) {
+        try { transaction.abort(); } catch { /* The transaction may already be inactive. */ }
+        reject(error);
+      }
+    });
+  }
+
   async clearAll(): Promise<void> {
     await this.mutate(appStoreNames.map((storeName) => ({ storeName, type: "clear" })));
   }
@@ -354,6 +412,16 @@ function upgradeDatabase(database: IDBDatabase, transaction: IDBTransaction | nu
   const benchmarkStore = transaction.objectStore("benchmark_results");
   if (!benchmarkStore.indexNames.contains(appStoreIndexNames.benchmark_results)) {
     benchmarkStore.createIndex(appStoreIndexNames.benchmark_results, ["completedAt", "id"]);
+  }
+
+  const drillSessionStore = transaction.objectStore("drill_sessions");
+  if (!drillSessionStore.indexNames.contains(appStoreIndexNames.drill_sessions)) {
+    drillSessionStore.createIndex(appStoreIndexNames.drill_sessions, ["updatedAt", "id"]);
+  }
+
+  const responseStore = transaction.objectStore("responses");
+  if (!responseStore.indexNames.contains(appStoreIndexNames.responses)) {
+    responseStore.createIndex(appStoreIndexNames.responses, ["submittedAt", "id"]);
   }
 
   const packStore = transaction.objectStore("question_packs");

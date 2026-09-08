@@ -102,6 +102,9 @@ function FullCaseSession({
   const runRevision = useRef(0);
   const lifecycleRevision = useRef(0);
   const dataRevision = useRef(0);
+  const draftSaveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const pendingDraftSnapshot = useRef<FullCaseDraftRecord | undefined>(undefined);
+  const flushDraftWriteRef = useRef<() => Promise<void>>(async () => undefined);
   const startedAtRef = useRef(0);
   const nextQuestionNumberRef = useRef((simulation.questioning?.minimumQuestions ?? 0) + 1);
   const calculationQuestion = getFullCaseCalculationQuestion(simulation);
@@ -116,6 +119,9 @@ function FullCaseSession({
     };
     const unsubscribe = subscribeToLocalDataInvalidation(() => {
       dataRevision.current += 1;
+      if (draftSaveTimer.current !== undefined) clearTimeout(draftSaveTimer.current);
+      draftSaveTimer.current = undefined;
+      pendingDraftSnapshot.current = undefined;
       invalidate();
     });
     void (async () => {
@@ -180,17 +186,45 @@ function FullCaseSession({
     hypothesisId, branchIds, calculationInput, ideaIds, priorityIdeaIds, synthesis
   }), [attemptLocale, branchIds, calculationInput, contentKey, hypothesisId, ideaIds, includeQuestionRanking, priorityIdeaIds, questions, simulation.id, stage, synthesis]);
 
+  const cancelScheduledDraftWrite = useCallback(() => {
+    if (draftSaveTimer.current !== undefined) clearTimeout(draftSaveTimer.current);
+    draftSaveTimer.current = undefined;
+    pendingDraftSnapshot.current = undefined;
+  }, []);
+
+  const flushScheduledDraftWrite = useCallback((): Promise<void> => {
+    if (draftSaveTimer.current !== undefined) clearTimeout(draftSaveTimer.current);
+    draftSaveTimer.current = undefined;
+    const draft = pendingDraftSnapshot.current;
+    pendingDraftSnapshot.current = undefined;
+    return draft === undefined ? Promise.resolve() : queueDraftWrite(draft);
+  }, [queueDraftWrite]);
+
+  flushDraftWriteRef.current = flushScheduledDraftWrite;
+
+  useEffect(() => () => {
+    void flushDraftWriteRef.current().catch(() => undefined);
+  }, []);
+
   useEffect(() => {
     if (draftEnabled && contentKey !== undefined && pendingDraft === undefined && result === undefined) {
-      void queueDraftWrite(draftSnapshot()).catch(() => undefined);
+      pendingDraftSnapshot.current = draftSnapshot();
+      setDraftStatus("saving");
+      if (draftSaveTimer.current !== undefined) clearTimeout(draftSaveTimer.current);
+      draftSaveTimer.current = setTimeout(() => {
+        void flushScheduledDraftWrite().catch(() => undefined);
+      }, 250);
+    } else {
+      cancelScheduledDraftWrite();
     }
-  }, [contentKey, draftEnabled, draftSnapshot, pendingDraft, queueDraftWrite, result]);
+  }, [cancelScheduledDraftWrite, contentKey, draftEnabled, draftSnapshot, flushScheduledDraftWrite, pendingDraft, result]);
 
   async function discardDraft(): Promise<void> {
     if (draftDeleting) return;
     draftFocusReturn.current = document.activeElement instanceof HTMLElement ? document.activeElement : null;
     setDraftDeleting(true);
     setDraftEnabled(false);
+    cancelScheduledDraftWrite();
     const lifecycle = lifecycleRevision.current;
     try {
       await queueDraftWrite();
@@ -357,6 +391,7 @@ function FullCaseSession({
       synthesis
     }, attemptLocale);
     setResult(score);
+    cancelScheduledDraftWrite();
     if (draftEnabled && contentKey !== undefined) {
       await queueDraftWrite(draftSnapshot(completedAt.toISOString())).catch(() => undefined);
     }
@@ -382,6 +417,7 @@ function FullCaseSession({
 
   function resetCase(): void {
     runRevision.current += 1;
+    cancelScheduledDraftWrite();
     setStage(0);
     setQuestions(initialQuestions(simulation));
     setIncludeQuestionRanking(false);

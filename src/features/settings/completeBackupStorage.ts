@@ -17,9 +17,6 @@ import { publishLocalDataInvalidation } from "@/features/settings/localDataInval
 import {
   progressStoreNames,
   type AppStorage,
-  type AppStorageMutation,
-  type AppStorageSnapshot,
-  type AppStoreName
 } from "@/lib/storage/appStorageTypes";
 
 type PreferenceReader = Pick<Storage, "getItem">;
@@ -103,14 +100,29 @@ export async function restoreCompleteBackupFiles(
   }
 
   const first = validation.backups[0];
+  const progressStores = Object.fromEntries(
+    progressStoreNames.map((storeName) => [storeName, []])
+  ) as unknown as CompleteBackupSections["progress"]["stores"];
+  let recordsSinceYield = 0;
+
+  for (const part of validation.backups) {
+    for (const storeName of progressStoreNames) {
+      for (const record of part.sections.progress.stores[storeName]) {
+        (progressStores[storeName] as unknown[]).push(record);
+        recordsSinceYield += 1;
+        if (recordsSinceYield === 1_000) {
+          recordsSinceYield = 0;
+          await yieldToBrowser();
+        }
+      }
+    }
+  }
+
   const sections: CompleteBackupSections = {
     ...first.sections,
     progress: {
       ...first.sections.progress,
-      stores: Object.fromEntries(progressStoreNames.map((storeName) => [
-        storeName,
-        validation.backups.flatMap((part) => part.sections.progress.stores[storeName] as unknown[])
-      ])) as CompleteBackupSections["progress"]["stores"]
+      stores: progressStores
     },
     ...(first.selectedScopes.includes("packs")
       ? { packs: validation.backups.flatMap((part) => part.sections.packs ?? []) }
@@ -124,16 +136,12 @@ export async function restoreCompleteBackupFiles(
   const progress = includesPrivateText
     ? backup.sections.progress.stores
     : preservePrivateData(backup.sections.progress.stores, existingPrivateData!);
-  const operations: AppStorageMutation[] = [];
-
-  for (const storeName of progressStoreNames) {
-    appendReplacement(operations, storeName, progress[storeName]);
-  }
-  if (backup.selectedScopes.includes("packs")) {
-    appendReplacement(operations, "question_packs", backup.sections.packs ?? []);
-  }
-
-  await storage.mutate(operations);
+  await storage.replaceSnapshot({
+    ...progress,
+    ...(backup.selectedScopes.includes("packs")
+      ? { question_packs: backup.sections.packs ?? [] }
+      : {})
+  });
 
   if (!backup.selectedScopes.includes("preferences")) {
     publishLocalDataInvalidation("progress_replaced");
@@ -175,17 +183,6 @@ export function buildCompleteBackupFileName(exportedAt: string): string {
   return `open-prep-complete-backup-${exportedAt.slice(0, 10)}.json`;
 }
 
-function appendReplacement<TStore extends AppStoreName>(
-  operations: AppStorageMutation[],
-  storeName: TStore,
-  records: AppStorageSnapshot<readonly TStore[]>[TStore]
-): void {
-  operations.push({ storeName, type: "clear" } as AppStorageMutation);
-  for (const value of records) {
-    operations.push({ storeName, type: "put", value } as AppStorageMutation);
-  }
-}
-
 function readPreferences(storage: PreferenceReader | undefined): Partial<Record<keyof CompleteBackupPreferences, unknown>> {
   return Object.fromEntries(localPreferenceKeys.map((key) => [key, storage?.getItem(key)]));
 }
@@ -211,4 +208,8 @@ function getLocalStorage(): Storage | undefined {
   } catch {
     return undefined;
   }
+}
+
+function yieldToBrowser(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
 }

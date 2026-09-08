@@ -48,6 +48,7 @@ const COMMUNITY_PACK_PREFIX = "/community-packs/";
 
 // The production build appends every generated static asset and navigation payload before hashing this policy.
 const PRECACHED_URLS = [
+  "/backup-json-worker.js",
   "/404.html",
   "/manifest.webmanifest",
   "/icons/app-icon.svg",

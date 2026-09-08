@@ -6,6 +6,7 @@ import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
 import { LocalSaveNotice } from "@/components/LocalSaveNotice";
 import { PageHeader } from "@/components/PageHeader";
 import { getCurrentConnectionState } from "@/features/offline/OfflineStatusIndicator";
+import { parseBackupJsonFiles } from "@/features/settings/backupFileParsing";
 import { localePreferenceStorageKey } from "@/features/i18n/i18n";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { QuestionPackPoolSettings } from "@/features/question-packs/QuestionPackPoolSettings";
@@ -389,11 +390,8 @@ export function LocalSettingsView({
     }
 
     try {
-      const parsed: unknown[] = [];
-      for (const file of files) {
-        parsed.push(JSON.parse(await file.text()));
-        if (request !== restoreRequest.current) return;
-      }
+      const parsed = await parseBackupJsonFiles(files, () => request === restoreRequest.current);
+      if (request !== restoreRequest.current) return;
       const sourceSizes = files.map((file) => file.size);
       const validation = await validateCompleteBackupSet(parsed, sourceSizes);
       if (request !== restoreRequest.current) return;
