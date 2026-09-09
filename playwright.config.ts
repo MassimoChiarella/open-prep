@@ -2,6 +2,14 @@ import { defineConfig, devices } from "@playwright/test";
 
 // Portable browser smoke covers web and service-worker journeys; OS-level PWA install prompts remain manual QA.
 const backupPortabilityTest = /cross-browser-backup\.spec\.ts/u;
+const requestedPort = process.env.PLAYWRIGHT_PORT;
+const port = requestedPort === undefined ? 30_000 + (process.pid % 20_000) : Number(requestedPort);
+
+if (!Number.isInteger(port) || port < 1 || port > 65_535) {
+  throw new Error("PLAYWRIGHT_PORT must be an integer from 1 through 65535.");
+}
+
+const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({
   testDir: "./src/tests/e2e",
@@ -11,14 +19,15 @@ export default defineConfig({
   retries: 0,
   reporter: "list",
   use: {
-    baseURL: "http://127.0.0.1:3000",
+    baseURL,
     screenshot: "only-on-failure",
     trace: "retain-on-failure"
   },
   webServer: {
-    command: "node scripts/serve-web-build.mjs",
-    url: "http://127.0.0.1:3000",
-    reuseExistingServer: !process.env.CI,
+    command: `"${process.execPath}" scripts/serve-web-build.mjs`,
+    env: { PORT: String(port) },
+    url: baseURL,
+    reuseExistingServer: false,
     timeout: 120000
   },
   projects: [

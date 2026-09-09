@@ -195,7 +195,7 @@ This phase closes the issues discovered after the completed 30-item audit. It pr
 | 15 | Drill identity, repeat behavior and local-day correctness | Complete |
 | 16 | Multilingual scoring, localized summaries and recoverable UI state | Complete |
 | 17 | Storage write coalescing, bounded reads and restore responsiveness | Complete |
-| 18 | Release-server isolation, service-worker retry and Node preflight | Planned |
+| 18 | Release-server isolation, service-worker retry and Node preflight | Complete |
 | 19 | Integrated verification and completion record | Planned |
 
 ### 14 — Establish the hardening record
@@ -246,7 +246,7 @@ This phase closes the issues discovered after the completed 30-item audit. It pr
 
 | ID | Finding | Acceptance criterion | Status |
 |---|---|---|---|
-| HARD-01 | Local release tests can reuse a stale or unrelated build | Every Playwright invocation owns a fresh verified build server on its allocated port | Planned |
+| HARD-01 | Local release tests can reuse a stale or unrelated build | Every Playwright invocation owns a fresh verified build server on its allocated port | Complete |
 | HARD-02 | Same-route changes mix old questions with new metadata | Query changes create one coherent loader/session identity before interaction resumes | Complete |
 | HARD-03 | Repeat Drill is a no-op on a canonical URL | Repeat starts a fresh session even when settings are unchanged | Complete |
 | HARD-04 | CJK/unspaced questioning aliases do not receive concept credit | Exact normalized authored aliases match with or without word boundaries | Complete |
@@ -259,4 +259,4 @@ This phase closes the issues discovered after the completed 30-item audit. It pr
 | HARD-11 | Daily Workout rotates at UTC rather than local midnight | The daily seed and generated identity use the learner's local date | Complete |
 | HARD-12 | A failed locale chunk cannot retry | A later selection of the same locale triggers a new load | Complete |
 | HARD-13 | Service-worker registration failure is sticky | The user can retry and recover without reloading the page | Complete |
-| HARD-14 | Unsupported Node can reach opaque tool failures | Repository commands fail early with an actionable pinned-runtime message | Planned |
+| HARD-14 | Unsupported Node can reach opaque tool failures | Repository commands fail early with an actionable pinned-runtime message | Complete |
