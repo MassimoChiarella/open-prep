@@ -102,14 +102,12 @@ describe("session progress helpers", () => {
       rawInput: String(created.questions[0].answer.value),
       timeTakenSeconds: 2
     });
-    const duplicateSubmission = submitAnswer({
-      session: firstSubmission.session,
-      question: created.questions[0],
-      rawInput: String(created.questions[0].answer.value),
-      timeTakenSeconds: 2
-    });
+    const duplicateSession = {
+      ...firstSubmission.session,
+      responses: [...firstSubmission.session.responses, firstSubmission.response]
+    };
 
-    expect(getDrillProgressSummary(duplicateSubmission.session)).toMatchObject({
+    expect(getDrillProgressSummary(duplicateSession)).toMatchObject({
       answeredCount: 1,
       remainingCount: 1,
       currentIndex: 1,

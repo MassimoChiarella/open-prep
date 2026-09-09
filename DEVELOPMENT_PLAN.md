@@ -196,7 +196,7 @@ This phase closes the issues discovered after the completed 30-item audit. It pr
 | 16 | Multilingual scoring, localized summaries and recoverable UI state | Complete |
 | 17 | Storage write coalescing, bounded reads and restore responsiveness | Complete |
 | 18 | Release-server isolation, service-worker retry and Node preflight | Complete |
-| 19 | Integrated verification and completion record | Planned |
+| 19 | Integrated verification and completion record | Complete |
 
 ### 14 — Establish the hardening record
 
@@ -260,3 +260,16 @@ This phase closes the issues discovered after the completed 30-item audit. It pr
 | HARD-12 | A failed locale chunk cannot retry | A later selection of the same locale triggers a new load | Complete |
 | HARD-13 | Service-worker registration failure is sticky | The user can retry and recover without reloading the page | Complete |
 | HARD-14 | Unsupported Node can reach opaque tool failures | Repository commands fail early with an actionable pinned-runtime message | Complete |
+
+## Completion evidence
+
+- `4daac2c` published this acceptance plan before implementation.
+- `7051cac` completed coherent drill identity, repeat behavior, duplicate-answer rejection and local-day generation.
+- `f28bef2` completed multilingual scoring, localized summaries and recoverable draft, locale and service-worker states.
+- `334202b` completed autosave coalescing, indexed/bounded history reads and responsive atomic backup restore.
+- `71b89f9` completed isolated Playwright serving and dependency-free Node/npm preflight checks.
+- Full ESLint and strict TypeScript checks passed on 2026-09-08.
+- The complete Vitest suite passed, followed by focused storage, Playwright and toolchain contract checks.
+- A clean static build passed all performance budgets: 394.2 KiB largest JavaScript chunk, 404.3 KiB largest Brotli route, and 4,830.8 KiB service-worker precache.
+- Playwright passed 178 Chromium tests and 103 Firefox, WebKit and cross-browser backup-portability tests.
+- Final review found no new dependency, external runtime, API behavior, source-map export, credential, or personal absolute path.

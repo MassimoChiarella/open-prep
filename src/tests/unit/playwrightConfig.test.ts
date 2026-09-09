@@ -29,6 +29,7 @@ describe("Playwright project selection", () => {
     });
     expect(playwrightConfig.use?.baseURL).toMatch(/^http:\/\/127\.0\.0\.1:\d+$/u);
     expect(playwrightConfig.use?.baseURL).not.toBe("http://127.0.0.1:3000");
+    expect(process.env.PLAYWRIGHT_PORT).toBe(new URL(String(playwrightConfig.use?.baseURL)).port);
     expect(playwrightConfig.webServer).toMatchObject({
       command: `"${process.execPath}" scripts/serve-web-build.mjs`,
       env: { PORT: expect.any(String) },

@@ -406,7 +406,7 @@ export function ActiveDrillSession({
       // Subscribe this queued write to data invalidation before an earlier save settles.
       storage = storageFactory();
     } catch {
-      setDraftSaveFailed(true);
+      void Promise.resolve().then(() => setDraftSaveFailed(true));
       return;
     }
 

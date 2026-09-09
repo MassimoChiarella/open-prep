@@ -9,6 +9,8 @@ if (!Number.isInteger(port) || port < 1 || port > 65_535) {
   throw new Error("PLAYWRIGHT_PORT must be an integer from 1 through 65535.");
 }
 
+process.env.PLAYWRIGHT_PORT = String(port);
+
 const baseURL = `http://127.0.0.1:${port}`;
 
 export default defineConfig({

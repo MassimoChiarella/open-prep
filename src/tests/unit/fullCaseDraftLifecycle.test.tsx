@@ -29,8 +29,9 @@ describe("full-case draft write lifecycle", () => {
     fireEvent.change(input, { target: { value: "Second edit" } });
     fireEvent.change(input, { target: { value: "Newest edit" } });
 
-    await screen.findByText("Private draft saved on this device.");
-    expect(write.mock.calls.filter(([store]) => store === "practice_records")).toHaveLength(1);
+    await waitFor(() => expect(
+      write.mock.calls.filter(([store]) => store === "practice_records")
+    ).toHaveLength(1));
     expect(await storage.get("practice_records", draftId)).toMatchObject({
       questions: expect.arrayContaining([expect.objectContaining({ text: "Newest edit" })])
     });

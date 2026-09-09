@@ -53,11 +53,21 @@ interface DatabaseSnapshot {
 }
 
 const fixtureDirectory = resolve(process.cwd(), "src", "tests", "fixtures", "storage-history");
-const indexedDbFixture = readJson<IndexedDbFixture>("indexeddb-v7.json");
+const indexedDbFixture = readJson<IndexedDbFixture>("indexeddb-v8.json");
 const progressExportV3 = readJson<unknown>("progress-export-v3.json");
 const progressExportV4 = readJson<unknown>("progress-export-v4.json");
 
 const currentIndexes = [
+  {
+    keyPath: ["updatedAt", "id"],
+    name: appStoreIndexNames.drill_sessions,
+    storeName: "drill_sessions"
+  },
+  {
+    keyPath: ["submittedAt", "id"],
+    name: appStoreIndexNames.responses,
+    storeName: "responses"
+  },
   {
     keyPath: ["completedAt", "id"],
     name: appStoreIndexNames.benchmark_results,
@@ -88,7 +98,12 @@ test("@browser-smoke upgrades the authentic immediate-predecessor database witho
   expect(indexedDbFixture.database.name).toBe(appDatabaseName);
   expect(indexedDbFixture.database.version).toBe(appDatabaseVersion - 1);
   expect(Object.keys(indexedDbFixture.database.stores).sort()).toEqual([...appStoreNames].sort());
-  expect(Object.values(indexedDbFixture.database.stores).every((store) => store.indexes.length === 0)).toBe(true);
+  expect(indexedDbFixture.database.stores.benchmark_results.indexes.map(({ name }) => name)).toEqual([
+    "completed_at_id"
+  ]);
+  expect(indexedDbFixture.database.stores.question_packs.indexes.map(({ name }) => name)).toEqual([
+    "imported_at_id"
+  ]);
 
   await page.goto("/formulas");
   await deleteDatabase(page, appDatabaseName);

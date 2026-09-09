@@ -200,7 +200,9 @@ function FullCaseSession({
     return draft === undefined ? Promise.resolve() : queueDraftWrite(draft);
   }, [queueDraftWrite]);
 
-  flushDraftWriteRef.current = flushScheduledDraftWrite;
+  useEffect(() => {
+    flushDraftWriteRef.current = flushScheduledDraftWrite;
+  }, [flushScheduledDraftWrite]);
 
   useEffect(() => () => {
     void flushDraftWriteRef.current().catch(() => undefined);
@@ -209,7 +211,6 @@ function FullCaseSession({
   useEffect(() => {
     if (draftEnabled && contentKey !== undefined && pendingDraft === undefined && result === undefined) {
       pendingDraftSnapshot.current = draftSnapshot();
-      setDraftStatus("saving");
       if (draftSaveTimer.current !== undefined) clearTimeout(draftSaveTimer.current);
       draftSaveTimer.current = setTimeout(() => {
         void flushScheduledDraftWrite().catch(() => undefined);

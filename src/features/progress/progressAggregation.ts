@@ -131,8 +131,8 @@ export async function loadProgressSummary(
     exhibitAttempts,
     marketSizingAttempts
   ] = await Promise.all([
-    // ponytail: exact lifetime drill metrics still require full reads for these unindexed stores;
-    // add chronological indexes if the existing 20k-record budget is exceeded.
+    // Exact lifetime metrics intentionally read all drill records; routine practice loaders use
+    // the chronological indexes and bounded pages instead.
     storage.getAll("drill_sessions"),
     storage.getAll("responses"),
     storage.getAll("mistake_notebook"),

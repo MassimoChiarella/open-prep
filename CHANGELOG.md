@@ -11,6 +11,8 @@ approved and tagged.
 
 ### Added
 
+- Dependency-free Node.js and npm preflight diagnostics for contributor commands.
+- Chronological IndexedDB indexes for drill sessions and responses.
 - Opt-in GitHub Actions production deployment of the exact verified static
   artifact, with staged smoke checks, source-identity checks, and promotion.
 - Canonical URLs, search indexing guidance, a public-route sitemap, and a
@@ -26,6 +28,10 @@ approved and tagged.
 
 ### Changed
 
+- Full-case draft writes now debounce rapid edits, while complete backup parsing and
+  atomic replacement yield work in bounded batches.
+- Playwright runs now own an isolated server port and use the invoking Node.js
+  executable instead of attaching to an existing local server.
 - Load simulation and chart code with the simulation page instead of unrelated
   case-practice pages, keeping all exercise stages ready before practice starts.
 
@@ -36,6 +42,13 @@ approved and tagged.
 
 ### Fixed
 
+- Keep drill loaders coherent across same-route query changes, make Repeat Drill
+  start a fresh session, reject duplicate answer submission, and rotate Daily
+  Workout at local midnight.
+- Localize generated session summaries, support authored CJK concept aliases, and
+  recover from failed locale and service-worker loading.
+- Report failed draft persistence truthfully before a learner leaves an active
+  session.
 - Wait for the client-rendered builder before seeding browser-history checks,
   preventing a CI race with Next.js hydration.
 - Wait for actual service-worker activation during hosted verification instead
