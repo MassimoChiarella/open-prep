@@ -2,6 +2,7 @@ import type { AnswerSpec, ErrorType, ToleranceSpec, UnitType } from "@/lib/domai
 import { parseAnswer, type ParsedAnswer } from "@/lib/parser/parseAnswer";
 
 export interface ValidateAnswerOptions {
+  acceptWithinTenPercent?: boolean;
   locale?: string;
   selectedUnit?: UnitType;
   timedOut?: boolean;
@@ -51,7 +52,10 @@ export function validateAnswer(
   }
 
   const candidates = normalizedValueCandidates(parsedAnswer, answer.unit, options.selectedUnit);
-  const matchingValue = candidates.find((value) => isWithinTolerance(value, answer.value, answer.tolerance));
+  const matchingValue = candidates.find((value) =>
+    isWithinTolerance(value, answer.value, answer.tolerance) ||
+    (options.acceptWithinTenPercent === true && isWithinPercentageTolerance(value, answer.value, 0.1))
+  );
   const normalizedUserValue = matchingValue ?? candidates[0];
   const numericMatch = matchingValue !== undefined;
   const legacyPercentageMatch =
@@ -106,13 +110,17 @@ function isWithinTolerance(userValue: number, correctValue: number, tolerance?: 
   }
 
   if (tolerance.type === "percentage") {
-    const allowedDelta = Math.abs(correctValue) * (tolerance.value ?? 0);
-    return Math.abs(userValue - correctValue) <= allowedDelta + exactMatchEpsilon;
+    return isWithinPercentageTolerance(userValue, correctValue, tolerance.value ?? 0);
   }
 
   const min = tolerance.min ?? Number.NEGATIVE_INFINITY;
   const max = tolerance.max ?? Number.POSITIVE_INFINITY;
   return userValue >= min - exactMatchEpsilon && userValue <= max + exactMatchEpsilon;
+}
+
+function isWithinPercentageTolerance(userValue: number, correctValue: number, tolerance: number): boolean {
+  const allowedDelta = Math.abs(correctValue) * tolerance;
+  return Math.abs(userValue - correctValue) <= allowedDelta + exactMatchEpsilon;
 }
 
 function getUnitStatus(

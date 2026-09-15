@@ -49,6 +49,7 @@ export interface MarketSizingEvaluation {
 }
 
 export interface EvaluateMarketSizingDraftOptions {
+  acceptWithinTenPercent?: boolean;
   finalAnswer?: string;
   locale?: string;
   stepValues: MarketSizingStepValueMap;
@@ -73,7 +74,13 @@ export function evaluateMarketSizingDraft(options: EvaluateMarketSizingDraftOpti
     calculatedValue,
     finalAnswer:
       calculationError === undefined
-        ? evaluateMarketSizingFinalAnswer(options.template, calculatedValue, options.finalAnswer, options.locale)
+        ? evaluateMarketSizingFinalAnswer(
+            options.template,
+            calculatedValue,
+            options.finalAnswer,
+            options.locale,
+            options.acceptWithinTenPercent
+          )
         : { message: calculationError, status: "not_ready" },
     rangeSummary: summarizeRanges(assumptionEvaluations),
     templateId: options.template.id,
@@ -93,7 +100,8 @@ export function evaluateMarketSizingFinalAnswer(
   template: MarketSizingTemplate,
   calculatedValue: number | undefined,
   rawInput = "",
-  locale?: string
+  locale?: string,
+  acceptWithinTenPercent = false
 ): MarketSizingFinalAnswerEvaluation {
   if (calculatedValue === undefined) {
     return {
@@ -114,7 +122,7 @@ export function evaluateMarketSizingFinalAnswer(
     unit: template.outputUnit,
     tolerance: template.finalFormula.tolerance,
     roundingRule: template.finalFormula.roundingRule
-  }, { locale });
+  }, { acceptWithinTenPercent, locale });
 
   if (validation.normalizedUserValue === undefined) {
     return {

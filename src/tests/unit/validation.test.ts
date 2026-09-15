@@ -40,6 +40,16 @@ describe("validateAnswer", () => {
     expect(validateAnswer("189.9", answer).isCorrect).toBe(false);
   });
 
+  it("optionally accepts answers within 10% without narrowing authored tolerances", () => {
+    const exactAnswer = { value: 100, tolerance: { type: "absolute" as const, value: 0 } };
+
+    expect(validateAnswer("109", exactAnswer).isCorrect).toBe(false);
+    expect(validateAnswer("110", exactAnswer, { acceptWithinTenPercent: true }).isCorrect).toBe(true);
+    expect(validateAnswer("110.01", exactAnswer, { acceptWithinTenPercent: true }).isCorrect).toBe(false);
+    expect(validateAnswer("-90", { ...exactAnswer, value: -100 }, { acceptWithinTenPercent: true }).isCorrect).toBe(true);
+    expect(validateAnswer("0.01", { ...exactAnswer, value: 0 }, { acceptWithinTenPercent: true }).isCorrect).toBe(false);
+  });
+
   it("accepts answers within a range tolerance", () => {
     const answer: AnswerSpec = {
       value: 97.2,

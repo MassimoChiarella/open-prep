@@ -59,6 +59,27 @@ describe("submitAnswer", () => {
     expect(result.validation.feedbackMessage).toBe("Check the calculation and try again.");
   });
 
+  it("applies the selected 10% tolerance to persisted drill responses", () => {
+    const created = createDrillSession({
+      seed: "submit-case-tolerance",
+      settings: { acceptWithinTenPercent: true, questionCount: 1 }
+    });
+    const question: Question = {
+      ...created.questions[0],
+      answer: { value: 100, tolerance: { type: "absolute", value: 0 } }
+    };
+
+    const result = submitAnswer({
+      session: created.session,
+      question,
+      rawInput: "109",
+      timeTakenSeconds: 5
+    });
+
+    expect(result.validation.isCorrect).toBe(true);
+    expect(result.response).toMatchObject({ isCorrect: true, normalizedValue: 109 });
+  });
+
   it("never normalizes malformed numeric fragments into a persisted response value", () => {
     const created = createDrillSession({
       seed: "submit-malformed",

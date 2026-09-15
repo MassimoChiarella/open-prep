@@ -23,6 +23,7 @@ export interface InterviewMathSubmission {
 }
 
 export interface EvaluateInterviewMathInput extends InterviewMathSubmission {
+  acceptWithinTenPercent?: boolean;
   locale?: string;
   question: Question;
   rawInput: string;
@@ -43,6 +44,7 @@ export function evaluateInterviewMath(input: EvaluateInterviewMathInput): Interv
   }
 
   const numericValidation = validateAnswer(input.rawInput, input.question.answer, {
+    acceptWithinTenPercent: input.acceptWithinTenPercent,
     locale: input.locale,
     selectedUnit: input.selectedUnit,
     timedOut: input.timedOut

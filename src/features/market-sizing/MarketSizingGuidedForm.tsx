@@ -58,6 +58,7 @@ export function MarketSizingGuidedForm({
   const [reviewedScore, setReviewedScore] = useState<MarketSizingAttemptScore>();
   const [reviewStatus, setReviewStatus] = useState<string | undefined>();
   const [saveStatus, setSaveStatus] = useState<AttemptSaveStatus>("idle");
+  const [acceptWithinTenPercent, setAcceptWithinTenPercent] = useState(false);
   const stageHeadingRef = useRef<HTMLHeadingElement>(null);
   const shouldFocusStageRef = useRef(false);
   const evaluation = useMemo(
@@ -65,12 +66,13 @@ export function MarketSizingGuidedForm({
       selectedTemplate === undefined
         ? undefined
         : evaluateMarketSizingDraft({
+            acceptWithinTenPercent,
             finalAnswer: draft.finalAnswer,
             locale,
             stepValues: draft.stepValues,
             template: selectedTemplate
           }),
-    [draft.finalAnswer, draft.stepValues, locale, selectedTemplate]
+    [acceptWithinTenPercent, draft.finalAnswer, draft.stepValues, locale, selectedTemplate]
   );
   const assumptionEvaluationByStepId = useMemo(
     () => new Map((evaluation?.assumptionEvaluations ?? []).map((item) => [item.stepId, item])),
@@ -127,6 +129,15 @@ export function MarketSizingGuidedForm({
     attemptRevision.current += 1;
     pendingAttempt.current = undefined;
     setDraft(update);
+    setHasScored(false);
+    setReviewStatus(undefined);
+    setSaveStatus("idle");
+  }
+
+  function updateAnswerTolerance(checked: boolean) {
+    attemptRevision.current += 1;
+    pendingAttempt.current = undefined;
+    setAcceptWithinTenPercent(checked);
     setHasScored(false);
     setReviewStatus(undefined);
     setSaveStatus("idle");
@@ -194,6 +205,21 @@ export function MarketSizingGuidedForm({
               <bdi className="block min-w-0 max-w-full" dir="auto">{selectedTemplate.prompt}</bdi>
             </p>
           </div>
+
+          <label className="flex min-h-11 items-start gap-3 rounded-md border border-ink/15 px-3 py-3 text-sm font-medium text-ink">
+            <input
+              checked={acceptWithinTenPercent}
+              className="mt-0.5 h-4 w-4 shrink-0 accent-teal"
+              onChange={(event) => updateAnswerTolerance(event.currentTarget.checked)}
+              type="checkbox"
+            />
+            <span>
+              {t("Accept answers within 10%")}
+              <span className="mt-0.5 block font-normal leading-5 text-ink/65">
+                {t("Use the typical case-interview margin for numeric answers.")}
+              </span>
+            </span>
+          </label>
         </section>
 
         <form

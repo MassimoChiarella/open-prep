@@ -543,9 +543,14 @@ export function ActiveDrillSession({
       selectedUnit || (interviewMath === undefined ? currentQuestion.answer.unit : undefined);
     const validation =
       interviewMath === undefined
-        ? validateAnswer(answer, currentQuestion.answer, { locale, selectedUnit: submittedUnit })
+        ? validateAnswer(answer, currentQuestion.answer, {
+            acceptWithinTenPercent: session.settings.acceptWithinTenPercent,
+            locale,
+            selectedUnit: submittedUnit
+          })
         : evaluateInterviewMath({
             ...interviewMath,
+            acceptWithinTenPercent: session.settings.acceptWithinTenPercent,
             locale,
             question: currentQuestion,
             rawInput: answer,

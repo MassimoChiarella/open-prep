@@ -146,6 +146,11 @@ export function parseDrillSettingsQuery(searchParams: DrillSessionSearchParams =
         warnings
       ),
       hintsEnabled: parseOptionalBoolean(readParam(searchParams, "hints"), "hints setting", warnings),
+      acceptWithinTenPercent: parseOptionalBoolean(
+        readParam(searchParams, "withinTenPercent"),
+        "10% answer tolerance setting",
+        warnings
+      ),
       questionPackId,
       timingAccommodation: parseSingleOption(
         readParam(searchParams, "timingAccommodation"),

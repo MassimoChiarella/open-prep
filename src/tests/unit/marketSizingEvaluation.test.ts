@@ -165,9 +165,25 @@ describe("market sizing evaluation", () => {
   it("compares final answers against the calculated value with template tolerance", () => {
     const match = evaluateMarketSizingFinalAnswer(coffeeTemplate, 1_000_000, "$1.01M");
     const mismatch = evaluateMarketSizingFinalAnswer(coffeeTemplate, 1_000_000, "$500K");
+    const interviewMarginMatch = evaluateMarketSizingFinalAnswer(
+      coffeeTemplate,
+      1_000_000,
+      "$1.09M",
+      undefined,
+      true
+    );
+    const interviewMarginMiss = evaluateMarketSizingFinalAnswer(
+      coffeeTemplate,
+      1_000_000,
+      "$1.101M",
+      undefined,
+      true
+    );
 
     expect(match.status).toBe("match");
     expect(mismatch.status).toBe("mismatch");
+    expect(interviewMarginMatch.status).toBe("match");
+    expect(interviewMarginMiss.status).toBe("mismatch");
     expect(mismatch.validation?.errorTypes).toContain("arithmetic_error");
   });
 });

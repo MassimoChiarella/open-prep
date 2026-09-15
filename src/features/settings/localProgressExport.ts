@@ -485,6 +485,7 @@ function isDrillSettings(value: unknown): boolean {
     optional(value.caseRequireInterpretation, isBoolean) &&
     optional(value.unitPreference, (unit) => isOneOf(unit, unitTypes)) &&
     optional(value.hintsEnabled, isBoolean) &&
+    optional(value.acceptWithinTenPercent, isBoolean) &&
     optional(value.questionPackId, isNonEmptyString) &&
     optional(value.timingAccommodation, (accommodation) => isOneOf(accommodation, ["standard", "time_and_a_half", "double_time", "untimed"])) &&
     isOneOf(value.timeMode, ["untimed", "per_question", "session"]) &&

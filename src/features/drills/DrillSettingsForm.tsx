@@ -797,6 +797,26 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
             ) : null}
           </ControlGroup>
 
+          <ControlGroup title="Answer tolerance">
+            <label className="flex min-h-11 items-start gap-3 rounded-md border border-ink/10 bg-white px-3 py-3 text-sm font-medium text-ink">
+              <input
+                checked={settings.acceptWithinTenPercent === true}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-teal"
+                onChange={(event) => {
+                  const acceptWithinTenPercent = event.currentTarget.checked;
+                  setSettings((current) => createDrillSettings({ ...current, acceptWithinTenPercent }));
+                }}
+                type="checkbox"
+              />
+              <span>
+                {t("Accept answers within 10%")}
+                <span className="mt-0.5 block font-normal leading-5 text-ink/65">
+                  {t("Use the typical case-interview margin for numeric answers.")}
+                </span>
+              </span>
+            </label>
+          </ControlGroup>
+
           <DisclosureGroup
             summary={labelFor(timeModeOptions, settings.timeMode)}
             testId="drill-timing-options"

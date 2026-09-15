@@ -33,6 +33,7 @@ export function submitAnswer(input: SubmitAnswerInput): SubmitAnswerResult {
           ...input.interviewMath,
           question: input.question,
           rawInput: input.rawInput,
+          acceptWithinTenPercent: input.session.settings.acceptWithinTenPercent,
           locale: input.locale,
           selectedUnit: input.selectedUnit,
           timedOut: input.timedOut
@@ -40,6 +41,7 @@ export function submitAnswer(input: SubmitAnswerInput): SubmitAnswerResult {
   const validation =
     interviewEvaluation?.validation ??
     validateAnswer(input.rawInput, input.question.answer, {
+      acceptWithinTenPercent: input.session.settings.acceptWithinTenPercent,
       locale: input.locale,
       selectedUnit: input.selectedUnit,
       timedOut: input.timedOut

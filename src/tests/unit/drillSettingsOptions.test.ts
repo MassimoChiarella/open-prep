@@ -116,6 +116,7 @@ describe("drill settings options", () => {
       arithmeticDivisionRounding: "nearest_whole",
       arithmeticMixedOperators: ["addition", "division"],
       arithmeticUseParentheses: false,
+      acceptWithinTenPercent: true,
       hintsEnabled: true,
       questionCount: 37,
       unitPreference: "m"
@@ -126,6 +127,7 @@ describe("drill settings options", () => {
     expect(Object.fromEntries(new URLSearchParams(query))).toMatchObject({
       count: "37",
       hints: "1",
+      withinTenPercent: "1",
       negatives: "1",
       multiplicationStyle: "multiple_25",
       divisionMode: "approximate",

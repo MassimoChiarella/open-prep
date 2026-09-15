@@ -181,6 +181,7 @@ describe("DrillSettingsForm", () => {
     fireEvent.click(screen.getByLabelText("Use parentheses in mixed operations"));
     fireEvent.click(screen.getByLabelText("Include negative values"));
     fireEvent.change(screen.getByLabelText("Unit preference"), { target: { value: "m" } });
+    fireEvent.click(screen.getByRole("checkbox", { name: /Accept answers within 10%/ }));
     fireEvent.click(screen.getByLabelText("Enable hints during the drill"));
     fireEvent.change(screen.getByLabelText("Custom question count"), { target: { value: "23" } });
 
@@ -198,7 +199,8 @@ describe("DrillSettingsForm", () => {
       operators: "addition,subtraction,multiplication,division",
       parentheses: "0",
       terms: "4",
-      unit: "m"
+      unit: "m",
+      withinTenPercent: "1"
     });
     expect(screen.getByLabelText("Preset")).toHaveValue("custom");
   });

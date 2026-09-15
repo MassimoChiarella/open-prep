@@ -226,6 +226,21 @@ describe("MarketSizingGuidedForm", () => {
     );
   });
 
+  it("accepts a final answer within 10% when the interview margin is selected", () => {
+    render(<MarketSizingGuidedForm templates={marketSizingTemplates} />);
+
+    fireEvent.click(screen.getByRole("checkbox", { name: /Accept answers within 10%/ }));
+    completeCoffeeAssumptions();
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Calculation" }));
+    fireEvent.click(screen.getByRole("button", { name: "Continue to Final Answer" }));
+    fireEvent.change(screen.getByLabelText("Final answer (Currency)"), { target: { value: "$2.4B" } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit Answer" }));
+
+    expect(screen.getByTestId("market-sizing-review-result")).toHaveTextContent(
+      "Final answer matches the calculated result."
+    );
+  });
+
   it("associates invalid final-answer guidance without revealing correctness", () => {
     render(<MarketSizingGuidedForm templates={marketSizingTemplates} />);
 

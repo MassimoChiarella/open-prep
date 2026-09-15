@@ -236,6 +236,10 @@ export function buildDrillSettingsQuery(settings: DrillSettings): string {
     params.set("hints", settings.hintsEnabled ? "1" : "0");
   }
 
+  if (settings.acceptWithinTenPercent === true) {
+    params.set("withinTenPercent", "1");
+  }
+
   if (settings.questionPackId !== undefined) {
     params.set("source", "question_pack");
     params.set("pack", settings.questionPackId);
