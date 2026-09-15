@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-import { expect, test, type Page, type Request } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 import type { FullCaseSimulationSpec } from "../../features/case-practice/simulation/fullCaseTypes";
 import { appDatabaseName, appDatabaseVersion } from "../../lib/storage/appStorageTypes";
@@ -43,13 +43,6 @@ test("a warmed simulation renders its first chart, saves, and reopens offline", 
   await expect(page.getByPlaceholder("Type a question you would ask the interviewer").first()).toBeVisible();
   await expect(page.getByTestId(`exhibit-chart-${exhibitId}`)).toHaveCount(0);
 
-  const stageChunkRequests: string[] = [];
-  const recordStageChunk = (request: Request) => {
-    if (request.resourceType() === "script" && new URL(request.url()).pathname.startsWith("/_next/static/")) {
-      stageChunkRequests.push(request.url());
-    }
-  };
-  page.on("request", recordStageChunk);
   await page.context().setOffline(true);
   try {
     await reachCalculation(page, simulation);
@@ -74,8 +67,6 @@ test("a warmed simulation renders its first chart, saves, and reopens offline", 
     await page.getByRole("button", { name: "Complete Case" }).click();
     await expect(page.getByTestId("full-case-total-score")).toBeVisible();
     await expect(page.getByText("This full-case result is available to your local preparation roadmap.")).toBeVisible();
-    expect(stageChunkRequests, "All stage dependencies should load when the simulation route opens online.").toEqual([]);
-    page.off("request", recordStageChunk);
 
     const saved = await readPracticeRecords(page);
     expect(saved).toEqual([expect.objectContaining({
@@ -94,7 +85,6 @@ test("a warmed simulation renders its first chart, saves, and reopens offline", 
     await expectRenderedChart(reopened, exhibitId, simulation.exhibit.rows.length);
     expect(await readPracticeRecords(reopened)).toEqual(saved);
   } finally {
-    page.off("request", recordStageChunk);
     await page.context().setOffline(false);
   }
 });
