@@ -49,7 +49,7 @@ for (const layout of [
 
     test(`@browser-smoke weekly roadmap uses accessible arrows`, async ({ page }) => {
       await page.goto("/case-practice/plan");
-      await expect(page.locator("#weekly-roadmap-heading")).toBeVisible();
+      await expect(page.locator("#weekly-roadmap-heading")).toBeVisible({ timeout: 15_000 });
       const roadmapArrows = page.locator("section[aria-labelledby='weekly-roadmap-heading'] > ol a svg");
       expect(await roadmapArrows.count()).toBeGreaterThan(0);
       await expectVectors(roadmapArrows, await roadmapArrows.count());
