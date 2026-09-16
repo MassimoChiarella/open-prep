@@ -36,7 +36,7 @@ export default defineConfig({
     {
       name: "chromium",
       testIgnore: backupPortabilityTest,
-      use: { ...devices["Desktop Chrome"] }
+      use: { ...devices["Desktop Chrome"], channel: "chromium" }
     },
     {
       grep: /@browser-smoke/,

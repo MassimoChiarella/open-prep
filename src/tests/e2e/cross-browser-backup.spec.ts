@@ -33,7 +33,7 @@ test("complete backup transfers preferences from Chromium to Firefox and WebKit"
 });
 
 async function createChromiumBackup(baseURL: string): Promise<Buffer> {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({ channel: "chromium" });
   try {
     const context = await browser.newContext({ acceptDownloads: true });
     try {
