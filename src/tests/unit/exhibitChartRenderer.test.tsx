@@ -32,6 +32,13 @@ if (
 }
 
 describe("ExhibitChartRenderer", () => {
+  it.each([pieDataset, scatterDataset])("fits $id to its container without sideways-axis guidance", (dataset) => {
+    render(<ExhibitChartRenderer dataset={dataset} />);
+    expect(screen.getByTestId(`exhibit-chart-canvas-${dataset.id}`)).toHaveClass("w-full", "min-w-0", "h-[320px]");
+    expect(screen.queryByText("Scroll chart sideways to inspect axis labels.")).not.toBeInTheDocument();
+    expect(within(screen.getByTestId("exhibit-chart-values")).getAllByRole("term")).toHaveLength(dataset.rows.length);
+  });
+
   it("renders a local bar chart with formatted value summaries", () => {
     const { container } = render(<ExhibitChartRenderer dataset={barDataset} />);
 
