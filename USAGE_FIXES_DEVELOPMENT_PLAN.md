@@ -2,7 +2,7 @@
 
 Created: 2026-09-21
 
-Status: UX-01 pushed; UX-06 implemented and locally verified. Responsive and contrast repairs are next.
+Status: UX-01 and UX-06 pushed. UX-02 is verified and being published; the other independent presentation fixes are implemented and passing their focused checks. Final integration verification remains open.
 
 Execution baseline: `7a99e5c` on `main`, which includes the reviewed dependency refresh (PR #17). Repair branch: `codex/usage-audit-fixes`. The audit-time Firefox page-creation failure is reproducible inside the restricted sandbox but absent outside it: Chromium 153, Firefox 155, and WebKit 26.6 all passed a fresh page-creation/close preflight with normal process exit. Browser verification will use the unrestricted test environment; no dependency or test-assertion workaround is required.
 
@@ -24,8 +24,8 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 | --- | --- | --- | --- | --- | --- |
 | 1 | 0 | Establish a reproducible verification and GitHub baseline | Delivery prerequisite | None | In progress |
 | 2 | 1 | UX-01: Stale previews can export/install older draft content | P1 | Phase 0 | Pushed; CI pending |
-| 3 | 2 | UX-06: Discard/remove actions have no confirmation or recovery | P2 | Phase 1 | Locally verified; push/CI pending |
-| 4 | 3 | UX-02: German update-failure status overlaps mobile language selection | P2 | Phase 0 | Not started |
+| 3 | 2 | UX-06: Discard/remove actions have no confirmation or recovery | P2 | Phase 1 | Pushed; CI passed |
+| 4 | 3 | UX-02: German update-failure status overlaps mobile language selection | P2 | Phase 0 | Verified; publishing |
 | 5 | 4 | UX-03: Starter labels have insufficient text contrast | P2 | Phase 0 | Not started |
 | 6 | 5 | UX-04: Enlarged download buttons escape their cards/viewport | P2 | Phase 0 | Not started |
 | 7 | 6 | UX-05: Mobile pie/scatter framing initially hides meaningful data | P2 | Phase 0 | Not started |
@@ -48,7 +48,7 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 ### 0A. Confirm source and working-tree ownership
 
 - [x] Inspect the current branch, working tree, remotes, and upstream commits; preserve unrelated work.
-- [ ] Reconcile the audit artifact's baseline (`0c92484` plus dependency edits) with the dependency-refresh commit observed at planning (`d51c9e1`). Rebuild; do not test a stale audit artifact.
+- [x] Reconcile the audit artifact's baseline (`0c92484` plus dependency edits) with the dependency-refresh commit observed at planning (`d51c9e1`). Rebuild; do not test a stale audit artifact.
 - [x] Fetch and inspect the approved integration base. Use a dedicated `codex/usage-audit-fixes` branch, or a clearly named equivalent if it already exists. Do not silently include unmerged, unrelated branch changes.
 - [x] Confirm GitHub authentication and that `origin` is the intended Open Prep repository before publishing.
 
@@ -118,7 +118,7 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 ### 1F. Review, document, and push
 
 - [x] Review mutation coverage and the unchanged import/pack-format/privacy contracts.
-- [ ] Update the ledger, commit as `fix(authoring): invalidate stale draft previews (UX-01)`, and push independently.
+- [x] Update the ledger, commit as `fix(authoring): invalidate stale draft previews (UX-01)`, and push independently.
 - [ ] Verify the remote commit and required CI outcome.
 
 **Exit:** No apparently current preview can export/install an older draft, and no edit/discard can retain approval for outdated content.
@@ -150,8 +150,8 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 ### 2D. Review, document, and push
 
-- [ ] Commit as `fix(authoring): protect destructive draft actions (UX-06)` with focused evidence and translated copy.
-- [ ] Push this completed fix separately and verify its remote/CI status.
+- [x] Commit as `fix(authoring): protect destructive draft actions (UX-06)` with focused evidence and translated copy.
+- [x] Push this completed fix separately and verify its remote/CI status.
 
 **Exit:** Cancellation loses no work; confirmation affects only the chosen target; outdated previews do not survive destruction.
 
@@ -163,20 +163,20 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 ### 3A. Reproduce translated state collisions
 
-- [ ] Cover checking, online, offline-ready, unreachable, update-ready, and update-failed with Retry.
-- [ ] Reproduce the 320-pixel German collision and record each control's rectangle and usable width.
+- [x] Cover checking, online, offline-ready, unreachable, update-ready, and update-failed with Retry.
+- [x] Reproduce the 320-pixel German collision and record each control's rectangle and usable width.
 
 ### 3B. Repair layout constraints
 
-- [ ] Let narrow layouts wrap or stack the controls with a usable minimum language-selector width.
-- [ ] Preserve status announcements and Retry functionality, including long translations and RTL ordering.
-- [ ] Keep normal desktop/tablet navigation compact and avoid unrelated shell redesign.
+- [x] Let narrow layouts wrap or stack the controls with a usable minimum language-selector width.
+- [x] Preserve status announcements and Retry functionality, including long translations and RTL ordering.
+- [x] Keep normal desktop/tablet navigation compact and avoid unrelated shell redesign.
 
 ### 3C. Add responsive and interaction regressions
 
-- [ ] Test every supported locale across status states at 320/390 pixels; inspect representative desktop, short-landscape, and enlarged-text layouts.
-- [ ] Assert no intersecting control rectangles, clipping, or document overflow; verify focus visibility, keyboard selection, and Retry.
-- [ ] Add focused screenshots for German failure and Arabic/RTL without blindly updating existing baselines.
+- [x] Test every supported locale across status states at 320/390 pixels; inspect representative desktop, short-landscape, and enlarged-text layouts.
+- [x] Assert no intersecting control rectangles, clipping, or document overflow; verify focus visibility, keyboard selection, and Retry.
+- [x] Add focused screenshots for German failure and Arabic/RTL without blindly updating existing baselines.
 
 ### 3D. Review, document, and push
 
@@ -342,9 +342,9 @@ Parallel development does not require parallel builds or pushes. Default push or
 | --- | --- | --- | --- | --- |
 | Planning | `docs: plan usage audit fixes and verification` | `cd45638` | Documentation reviewed | Pushed; [CI passed](https://github.com/MassimoChiarella/open-prep/actions/runs/35563710526) |
 | Tooling, only if necessary | No change required so far | No application-tooling workaround | Browser preflight and production build exit successfully outside sandbox | Not applicable |
-| UX-01 | `fix(authoring): invalidate stale draft previews (UX-01)` | `909589e`; originating-builder invalidation; installation lock | 52 focused tests; 1,263 full-suite tests (serial); lint/typecheck/build; 10 existing Chromium pack/navigation tests; 6 export checks across three browsers | Pushed; [CI pending](https://github.com/MassimoChiarella/open-prep/actions/runs/35564965065) |
-| UX-06 | `fix(authoring): protect destructive draft actions (UX-06)` | Native confirmation; localized copy; survivor/title focus | 5 new tests failed before; 57 focused unit tests and 11 browser checks pass; lint/typecheck/build and budgets pass | Pending |
-| UX-02 | `fix(layout): prevent mobile header control overlap (UX-02)` | Not started | Pending | Pending |
+| UX-01 | `fix(authoring): invalidate stale draft previews (UX-01)` | `909589e`; originating-builder invalidation; installation lock | 52 focused tests; 1,263 full-suite tests (serial); lint/typecheck/build; 10 existing Chromium pack/navigation tests; 6 export checks across three browsers | Pushed; [initial CI failed two Firefox checks](https://github.com/MassimoChiarella/open-prep/actions/runs/35564965065); subsequent UX-06 CI passed |
+| UX-06 | `fix(authoring): protect destructive draft actions (UX-06)` | `23b1fa1`; native confirmation; localized copy; survivor/title focus | 5 new tests failed before; 57 focused unit tests and 11 browser checks pass; lint/typecheck/build and budgets pass | Pushed; [CI passed](https://github.com/MassimoChiarella/open-prep/actions/runs/35565625639) |
+| UX-02 | `fix(layout): prevent mobile header control overlap (UX-02)` | Wrap controls/status; minimum selector width | 40 browser cases: ten locales, four widths, six states; existing shell/locale tests; six unchanged visual baselines; lint/typecheck/build passed | Publishing |
 | UX-03 | `fix(a11y): improve content pack label contrast (UX-03)` | Not started | Pending | Pending |
 | UX-04 | `fix(layout): keep authoring downloads within containers (UX-04)` | Not started | Pending | Pending |
 | UX-05 | `fix(exhibits): improve mobile chart framing (UX-05)` | Not started | Pending | Pending |
@@ -357,6 +357,9 @@ For each checkpoint, record the date, test commands and exit results, relevant s
 - Initial `npm run check`: version/actions/authoring/identity, lint and TypeScript passed; 161 test files and 1,238 assertions passed, but one worker exited unexpectedly, so the command failed. A serial rerun completed successfully: all 163 files / 1,263 tests passed. The initial failed command is not recorded as a pass.
 - The production build initially paused in catalog validation but completed normally, including all performance budgets. An isolated bounded comparison completed both with and without file watching, so no watcher workaround was retained. The first artifact reproduced the browser failure. A second fresh build included UX-01 and passed the new browser checks.
 - UX-01 regression: 10 of 11 tests failed before the repair; all 52 tests across the preview-integrity, manager, and two builder suites pass after it. Native export/invalidation checks pass in Chromium, Firefox, and WebKit (6 tests, normal exit). Existing Chromium import/install and unsaved navigation checks passed (10 tests). Lint, typecheck, and a fresh production build with unchanged performance budgets passed.
+- UX-02 regression: the old 320-pixel German layout failed the minimum selector-width assertion. After the repair, 40 cases pass across 320/390/844/1280 pixels, including 200% text on wide/short windows and keyboard Retry. German and Arabic screenshots were inspected. All six existing visual snapshots passed without baseline updates.
+- Independent presentation repairs were developed together in disjoint files, then verified against a fresh combined production build before separate reviewed commits/pushes. The focused matrix passed 135 Chromium cases; related unit suites passed 55 tests, and lint/TypeScript passed. GitHub rebuilds each pushed snapshot independently. This avoids concurrent builds replacing the artifact under test.
+- UX-01's first CI run passed its main verification but failed existing Firefox offline-resume and backup-transfer checks. UX-06's subsequent unmodified checks passed. The follow-up test correction waits for the draft write/settings initialization and additionally checks resumed prompt identity; three repetitions across engines passed all 12 cases, without relaxed final assertions or global timeouts.
 
 If a fix must be rolled back, use an ordinary reviewed revert commit, restore its status to open, run the affected checks, and push the revert. Do not reset or overwrite other contributors' history.
 
