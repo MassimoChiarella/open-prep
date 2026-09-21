@@ -12,9 +12,12 @@ for (const width of [320, 390, 640, 768, 1280]) {
         ${preference !== "spacing" ? "html { font-size: 200% !important; }" : ""}
         ${preference !== "large" ? "* { letter-spacing: .12em !important; line-height: 1.5 !important; word-spacing: .16em !important; } p { margin-bottom: 2em !important; }" : ""}
       ` });
-      for (const locale of ["en", "de", "ar"]) {
+      for (const locale of ["en", "de", "ar"] as const) {
         await page.locator("header select").selectOption(locale);
         await expect(page.locator("html")).toHaveAttribute("lang", locale);
+        await expect(page.locator("article a[download]").first()).toHaveText(
+          { en: "Download", de: "Herunterladen", ar: "تنزيل" }[locale]
+        );
         const outside = await page.locator("article a[download]").evaluateAll((links) => links.filter((link) => {
           const rect = link.getBoundingClientRect();
           const parent = link.closest("article")!.getBoundingClientRect();
