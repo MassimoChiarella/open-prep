@@ -23,6 +23,7 @@ const entryStateIds = [
   "structuring:entry",
   "synthesis:entry",
   "content-packs:discover-empty",
+  "content-packs:create-entry",
   "content-pack-downloads:default",
   "drill:setup-default",
   "drill:session-active",
