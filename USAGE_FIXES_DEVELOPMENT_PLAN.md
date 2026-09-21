@@ -2,7 +2,7 @@
 
 Created: 2026-09-21
 
-Status: UX-01 and UX-06 pushed. UX-02 is verified and being published; the other independent presentation fixes are implemented and passing their focused checks. Final integration verification remains open.
+Status: UX-01, UX-06, and UX-02 pushed. UX-03 is verified and being published; download/chart repairs are implemented and passing their focused checks. Final integration verification remains open.
 
 Execution baseline: `7a99e5c` on `main`, which includes the reviewed dependency refresh (PR #17). Repair branch: `codex/usage-audit-fixes`. The audit-time Firefox page-creation failure is reproducible inside the restricted sandbox but absent outside it: Chromium 153, Firefox 155, and WebKit 26.6 all passed a fresh page-creation/close preflight with normal process exit. Browser verification will use the unrestricted test environment; no dependency or test-assertion workaround is required.
 
@@ -25,8 +25,8 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 | 1 | 0 | Establish a reproducible verification and GitHub baseline | Delivery prerequisite | None | In progress |
 | 2 | 1 | UX-01: Stale previews can export/install older draft content | P1 | Phase 0 | Pushed; CI pending |
 | 3 | 2 | UX-06: Discard/remove actions have no confirmation or recovery | P2 | Phase 1 | Pushed; CI passed |
-| 4 | 3 | UX-02: German update-failure status overlaps mobile language selection | P2 | Phase 0 | Verified; publishing |
-| 5 | 4 | UX-03: Starter labels have insufficient text contrast | P2 | Phase 0 | Not started |
+| 4 | 3 | UX-02: German update-failure status overlaps mobile language selection | P2 | Phase 0 | Pushed; CI pending |
+| 5 | 4 | UX-03: Starter labels have insufficient text contrast | P2 | Phase 0 | Verified; publishing |
 | 6 | 5 | UX-04: Enlarged download buttons escape their cards/viewport | P2 | Phase 0 | Not started |
 | 7 | 6 | UX-05: Mobile pie/scatter framing initially hides meaningful data | P2 | Phase 0 | Not started |
 | 8 | 7 | Integrated verification and final GitHub evidence | Completion gate | Phases 1-6 | Not started |
@@ -180,7 +180,7 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 ### 3D. Review, document, and push
 
-- [ ] Commit as `fix(layout): prevent mobile header control overlap (UX-02)` and push independently after the fix gate.
+- [x] Commit as `fix(layout): prevent mobile header control overlap (UX-02)` and push independently after the fix gate.
 - [ ] Verify the remote commit and CI result.
 
 **Exit:** All status text and both controls fit, remain readable, and can be used without obstruction.
@@ -191,18 +191,18 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 ### 4A. Add missing accessibility coverage
 
-- [ ] Add Content Packs Create to the existing entry-state axe tests.
-- [ ] Reproduce the 25 light-theme label failures; check current dark-theme behavior separately.
+- [x] Add Content Packs Create to the existing entry-state axe tests.
+- [x] Reproduce the 25 light-theme label failures; check current dark-theme behavior separately.
 
 ### 4B. Apply a verified text token
 
-- [ ] Replace the failing starter-label color with an existing accessible token where possible.
-- [ ] Limit the change to affected labels unless inspection proves a shared-token defect; avoid unrelated palette changes.
+- [x] Replace the failing starter-label color with an existing accessible token where possible.
+- [x] Limit the change to affected labels unless inspection proves a shared-token defect; avoid unrelated palette changes.
 
 ### 4C. Verify, document, and push
 
-- [ ] Check Create, Import, Installed, Discover, Resources, and Downloads in light/dark mode with relevant disclosures open and closed.
-- [ ] Inspect mobile/desktop readability and run axe without disabling the contrast rule.
+- [x] Check Create, Import, Installed, Discover, Resources, and Downloads in light/dark mode with relevant disclosures open and closed.
+- [x] Inspect mobile/desktop readability and run axe without disabling the contrast rule.
 - [ ] Commit as `fix(a11y): improve content pack label contrast (UX-03)`, push independently, and record remote/CI evidence.
 
 **Exit:** The affected normal-sized text meets at least 4.5:1 contrast and the new Create-page regression passes.
@@ -344,8 +344,8 @@ Parallel development does not require parallel builds or pushes. Default push or
 | Tooling, only if necessary | No change required so far | No application-tooling workaround | Browser preflight and production build exit successfully outside sandbox | Not applicable |
 | UX-01 | `fix(authoring): invalidate stale draft previews (UX-01)` | `909589e`; originating-builder invalidation; installation lock | 52 focused tests; 1,263 full-suite tests (serial); lint/typecheck/build; 10 existing Chromium pack/navigation tests; 6 export checks across three browsers | Pushed; [initial CI failed two Firefox checks](https://github.com/MassimoChiarella/open-prep/actions/runs/35564965065); subsequent UX-06 CI passed |
 | UX-06 | `fix(authoring): protect destructive draft actions (UX-06)` | `23b1fa1`; native confirmation; localized copy; survivor/title focus | 5 new tests failed before; 57 focused unit tests and 11 browser checks pass; lint/typecheck/build and budgets pass | Pushed; [CI passed](https://github.com/MassimoChiarella/open-prep/actions/runs/35565625639) |
-| UX-02 | `fix(layout): prevent mobile header control overlap (UX-02)` | Wrap controls/status; minimum selector width | 40 browser cases: ten locales, four widths, six states; existing shell/locale tests; six unchanged visual baselines; lint/typecheck/build passed | Publishing |
-| UX-03 | `fix(a11y): improve content pack label contrast (UX-03)` | Not started | Pending | Pending |
+| UX-02 | `fix(layout): prevent mobile header control overlap (UX-02)` | `65c55af`; wrap controls/status; minimum selector width | 40 browser cases: ten locales, four widths, six states; existing shell/locale tests; six unchanged visual baselines; lint/typecheck/build passed | Pushed; CI pending |
+| UX-03 | `fix(a11y): improve content pack label contrast (UX-03)` | Existing accessible text token for starter subtype labels; Create added to axe entry coverage | 12 theme/view contrast cases, disclosures open/closed; starter tests; full existing accessibility matrix; mobile/light and desktop/dark screenshots inspected | Publishing |
 | UX-04 | `fix(layout): keep authoring downloads within containers (UX-04)` | Not started | Pending | Pending |
 | UX-05 | `fix(exhibits): improve mobile chart framing (UX-05)` | Not started | Pending | Pending |
 | Integration | `docs: record usage audit repair verification` | Not started | Pending | Pending |
@@ -358,6 +358,7 @@ For each checkpoint, record the date, test commands and exit results, relevant s
 - The production build initially paused in catalog validation but completed normally, including all performance budgets. An isolated bounded comparison completed both with and without file watching, so no watcher workaround was retained. The first artifact reproduced the browser failure. A second fresh build included UX-01 and passed the new browser checks.
 - UX-01 regression: 10 of 11 tests failed before the repair; all 52 tests across the preview-integrity, manager, and two builder suites pass after it. Native export/invalidation checks pass in Chromium, Firefox, and WebKit (6 tests, normal exit). Existing Chromium import/install and unsaved navigation checks passed (10 tests). Lint, typecheck, and a fresh production build with unchanged performance budgets passed.
 - UX-02 regression: the old 320-pixel German layout failed the minimum selector-width assertion. After the repair, 40 cases pass across 320/390/844/1280 pixels, including 200% text on wide/short windows and keyboard Retry. German and Arabic screenshots were inspected. All six existing visual snapshots passed without baseline updates.
+- UX-03 regression: the original 25 starter labels failed light-theme contrast. All six Content Packs views now pass in both themes with disclosures closed/open. Tests use the existing reduced-motion approach so axe does not sample a partially transparent entry animation; no contrast rule is disabled. Screenshots show the actual starter identifiers at 390/1280 pixels. Related starter tests and the full accessibility matrix pass.
 - Independent presentation repairs were developed together in disjoint files, then verified against a fresh combined production build before separate reviewed commits/pushes. The focused matrix passed 135 Chromium cases; related unit suites passed 55 tests, and lint/TypeScript passed. GitHub rebuilds each pushed snapshot independently. This avoids concurrent builds replacing the artifact under test.
 - UX-01's first CI run passed its main verification but failed existing Firefox offline-resume and backup-transfer checks. UX-06's subsequent unmodified checks passed. The follow-up test correction waits for the draft write/settings initialization and additionally checks resumed prompt identity; three repetitions across engines passed all 12 cases, without relaxed final assertions or global timeouts.
 
