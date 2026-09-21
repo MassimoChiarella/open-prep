@@ -114,7 +114,7 @@ export function OfflineStatusIndicator() {
       aria-live="polite"
       className={cx(
         badgeClass(tone),
-        "inline-flex min-h-11 items-center gap-2 border",
+        "inline-flex min-h-11 max-w-full flex-wrap items-center gap-2 border [overflow-wrap:anywhere]",
         tone === "error" ? "border-coral/40" : "border-transparent"
       )}
       data-state={state}
@@ -123,7 +123,7 @@ export function OfflineStatusIndicator() {
     >
       <span
         aria-hidden="true"
-        className={cx("h-2.5 w-2.5 rounded-full", uiStatusDots[tone])}
+        className={cx("h-2.5 w-2.5 shrink-0 rounded-full", uiStatusDots[tone])}
       />
       {t(label)}
       {state === "update-failed" ? (

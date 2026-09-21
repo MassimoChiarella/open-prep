@@ -100,7 +100,7 @@ describe("I18nProvider", () => {
     const select = screen.getByRole("combobox", { name: "Language" });
 
     expect(select).toHaveClass("min-w-0", "w-full", "sm:w-44");
-    expect(select.closest("label")).toHaveClass("min-w-0", "flex-1", "sm:flex-none");
+    expect(select.closest("label")).toHaveClass("min-w-[min(100%,11rem)]", "max-w-full", "flex-1", "sm:flex-none");
   });
 
   it("formats numbers, percentages, dates, and durations with the resolved locale", () => {
