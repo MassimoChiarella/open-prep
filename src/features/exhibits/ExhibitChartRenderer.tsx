@@ -9,6 +9,7 @@ import {
   LineChart,
   Pie,
   PieChart,
+  ResponsiveContainer,
   Scatter,
   ScatterChart,
   Tooltip,
@@ -44,6 +45,9 @@ export const ExhibitChartRenderer = memo(function ExhibitChartRenderer({ dataset
     return null;
   }
 
+  const fitsContainer = dataset.visualization.type === "pie_chart" || dataset.visualization.type === "scatterplot";
+  const chart = renderChart(dataset, chartData, series, t);
+
   return (
     <section
       aria-labelledby={`${dataset.id}-chart-heading`}
@@ -65,16 +69,20 @@ export const ExhibitChartRenderer = memo(function ExhibitChartRenderer({ dataset
       </div>
 
       <div className="max-w-full overflow-x-auto overscroll-x-contain border border-ink/15 bg-white">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink/65 sm:hidden">
+        {!fitsContainer ? <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-ink/65 sm:hidden">
           {t("Scroll chart sideways to inspect axis labels.")}
-        </p>
+        </p> : null}
         <div
           aria-label={t("{title} {chartType}", { title: dataset.title, chartType: chartTypeLabel })}
-          className="h-[320px] w-[720px] max-w-none shrink-0"
+          className={fitsContainer ? "h-[320px] w-full min-w-0" : "h-[320px] w-[720px] max-w-none shrink-0"}
           data-testid={`exhibit-chart-canvas-${dataset.id}`}
           role="img"
         >
-          {renderChart(dataset, chartData, series, t)}
+          {fitsContainer ? (
+            <ResponsiveContainer width="100%" height={chartHeight} initialDimension={{ width: chartWidth, height: chartHeight }}>
+              {chart}
+            </ResponsiveContainer>
+          ) : chart}
         </div>
       </div>
 
@@ -279,7 +287,7 @@ function renderChart(
         dataKey={pieSeries.column.id}
         isAnimationActive={false}
         nameKey="label"
-        outerRadius={112}
+        outerRadius="80%"
       >
         {chartData.map((datum, index) => (
           <Cell fill={exhibitChartColors[index % exhibitChartColors.length]} key={datum.label} />
