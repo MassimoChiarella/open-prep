@@ -14,6 +14,7 @@ import { useUnsavedChangesGuard } from "@/features/question-packs/useUnsavedChan
 import type { Difficulty, RoundingRule, SkillCategory, SkillTag, UnitType } from "@/lib/domain";
 
 interface QuestionPackBuilderProps {
+  onDraftChange?(): void;
   onPreview(payload: unknown): void;
 }
 
@@ -59,9 +60,9 @@ const roundingOptions: Array<{ label: string; value: "" | RoundingRule }> = [
   { label: "Nearest million", value: "nearest_1m" }
 ];
 
-export function QuestionPackBuilder({ onPreview }: QuestionPackBuilderProps) {
+export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBuilderProps) {
   const { t } = useI18n();
-  const { clearDirty, isDirty, markDirty } = useUnsavedChangesGuard(
+  const { clearDirty, isDirty, markDirty: markUnsaved } = useUnsavedChangesGuard(
     t("Leave this builder? Your unsaved changes will be lost.")
   );
   const nextQuestionNumber = useRef(2);
@@ -74,6 +75,11 @@ export function QuestionPackBuilder({ onPreview }: QuestionPackBuilderProps) {
   const [license, setLicense] = useState("");
   const [questions, setQuestions] = useState<QuestionDraft[]>([createQuestionDraft(1)]);
   const [questionErrors, setQuestionErrors] = useState<Record<number, QuestionDraftErrors>>({});
+
+  function markDirty() {
+    markUnsaved();
+    onDraftChange?.();
+  }
 
   function updateQuestion(key: number, update: Partial<QuestionDraft>) {
     setQuestionErrors({});
@@ -131,6 +137,7 @@ export function QuestionPackBuilder({ onPreview }: QuestionPackBuilderProps) {
   }
 
   function discardChanges() {
+    onDraftChange?.();
     nextQuestionNumber.current = 2;
     setTitle("");
     setPackVersion("1.0");
