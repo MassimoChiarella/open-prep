@@ -7,12 +7,12 @@ for (const width of [320, 390, 844, 1280]) {
     test(`header controls fit at ${width}px in ${locale}`, async ({ page }, testInfo) => {
       await page.setViewportSize({ width, height: width === 844 ? 390 : 800 });
       await page.goto("/settings/");
+      const status = page.getByTestId("offline-status-indicator");
+      await expect(status).toHaveAttribute("data-state", "online");
       if (width >= 844) await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
       const language = page.locator("header select");
       await language.selectOption(locale);
       await expect(page.locator("html")).toHaveAttribute("lang", locale);
-      const status = page.getByTestId("offline-status-indicator");
-      await expect(status).toHaveAttribute("data-state", "online");
       for (const state of ["checking", "online", "offline-ready", "unreachable", "update-ready", "update-failed"]) {
         await page.evaluate((state) => window.dispatchEvent(new CustomEvent(
           "consulting-math-service-worker-status", { detail: state }
