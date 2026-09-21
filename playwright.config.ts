@@ -51,9 +51,14 @@ export default defineConfig({
       use: { ...devices["Desktop Safari"] }
     },
     {
-      name: "backup-portability",
+      name: "backup-portability-firefox",
       testMatch: backupPortabilityTest,
-      use: { ...devices["Desktop Chrome"] }
+      use: { ...devices["Desktop Firefox"] }
+    },
+    {
+      name: "backup-portability-webkit",
+      testMatch: backupPortabilityTest,
+      use: { ...devices["Desktop Safari"] }
     }
   ]
 });
