@@ -33,7 +33,7 @@ export function ContentPackDownloadsView({ groups, optionalGroups }: ContentPack
   const { t } = useI18n();
 
   return (
-    <main className="mx-auto flex w-full max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-1 flex-col gap-8 px-4 py-8 [overflow-wrap:anywhere] sm:px-6 lg:px-8">
       <a className="w-fit text-sm font-semibold text-teal underline-offset-4 hover:underline" href="/content-packs/?view=resources">
         <span aria-hidden="true"><ArrowIcon direction="left" /> </span>{t("Back to Content Packs")}
       </a>
@@ -120,7 +120,7 @@ function DownloadSection({ group }: { group: DownloadViewGroup }) {
         <h2 className="text-2xl font-semibold text-ink" id={headingId}>{t(group.title)}</h2>
         <p className={uiText.body}>{t(group.description)}</p>
       </div>
-      <div className="grid min-w-0 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))] gap-4">
         {group.assets.map((asset) => {
           const name = t(asset.name);
 
@@ -129,16 +129,16 @@ function DownloadSection({ group }: { group: DownloadViewGroup }) {
               className="flex min-h-52 min-w-0 flex-col gap-3 border border-ink/15 border-t-2 border-t-teal bg-white p-5 transition-colors hover:border-ink/30 focus-within:border-teal sm:p-6"
               key={asset.href}
             >
-              <span className={badgeClass("neutral")}>{t(asset.type)}</span>
+              <span className={badgeClass("neutral", "max-w-full")}>{t(asset.type)}</span>
               <h3 className="break-words text-lg font-semibold text-ink [overflow-wrap:anywhere]">{name}</h3>
               <code className="break-all text-xs leading-5 text-ink/55">{asset.href.slice(1).split("?")[0]}</code>
               <a
                 aria-label={t("Download {name}", { name })}
-                className={buttonClass("secondary", "mt-auto")}
+                className={buttonClass("secondary", "mt-auto max-w-full whitespace-normal [overflow-wrap:anywhere]")}
                 download={asset.downloadName ?? true}
                 href={asset.href}
               >
-                {t("Download {name}", { name })}
+                {t("Download")}
               </a>
             </article>
           );

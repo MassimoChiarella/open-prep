@@ -2,7 +2,7 @@
 
 Created: 2026-09-21
 
-Status: UX-01, UX-06, and UX-02 pushed. UX-03 is verified and being published; download/chart repairs are implemented and passing their focused checks. Final integration verification remains open.
+Status: UX-01, UX-06, UX-02, and UX-03 pushed. UX-04 is verified and being published; chart repairs are implemented and passing their focused checks. Final integration verification remains open.
 
 Execution baseline: `7a99e5c` on `main`, which includes the reviewed dependency refresh (PR #17). Repair branch: `codex/usage-audit-fixes`. The audit-time Firefox page-creation failure is reproducible inside the restricted sandbox but absent outside it: Chromium 153, Firefox 155, and WebKit 26.6 all passed a fresh page-creation/close preflight with normal process exit. Browser verification will use the unrestricted test environment; no dependency or test-assertion workaround is required.
 
@@ -26,8 +26,8 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 | 2 | 1 | UX-01: Stale previews can export/install older draft content | P1 | Phase 0 | Pushed; CI pending |
 | 3 | 2 | UX-06: Discard/remove actions have no confirmation or recovery | P2 | Phase 1 | Pushed; CI passed |
 | 4 | 3 | UX-02: German update-failure status overlaps mobile language selection | P2 | Phase 0 | Pushed; CI pending |
-| 5 | 4 | UX-03: Starter labels have insufficient text contrast | P2 | Phase 0 | Verified; publishing |
-| 6 | 5 | UX-04: Enlarged download buttons escape their cards/viewport | P2 | Phase 0 | Not started |
+| 5 | 4 | UX-03: Starter labels have insufficient text contrast | P2 | Phase 0 | Pushed; CI pending |
+| 6 | 5 | UX-04: Enlarged download buttons escape their cards/viewport | P2 | Phase 0 | Verified; publishing |
 | 7 | 6 | UX-05: Mobile pie/scatter framing initially hides meaningful data | P2 | Phase 0 | Not started |
 | 8 | 7 | Integrated verification and final GitHub evidence | Completion gate | Phases 1-6 | Not started |
 
@@ -215,22 +215,22 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 ### 5A. Build the failure matrix
 
-- [ ] Reproduce the 640-pixel, 200%-text-plus-spacing overflow, including the Questioning example action.
-- [ ] Test text resizing alone, spacing alone, and their combination so failures are correctly attributed.
-- [ ] Include optional downloads, longest translated labels, and RTL layouts.
+- [x] Reproduce the 640-pixel, 200%-text-plus-spacing overflow, including the Questioning example action.
+- [x] Test text resizing alone, spacing alone, and their combination so failures are correctly attributed.
+- [x] Include optional downloads, longest translated labels, and RTL layouts.
 
 ### 5B. Make controls and grid content-aware
 
-- [ ] Constrain download actions to their containing item and permit natural wrapping.
-- [ ] Prefer a short visible Download command with a descriptive accessible name; keep the complete resource title nearby.
-- [ ] Collapse columns when available content width cannot support them; preserve all file destinations and download attributes.
+- [x] Constrain download actions to their containing item and permit natural wrapping.
+- [x] Prefer a short visible Download command with a descriptive accessible name; keep the complete resource title nearby.
+- [x] Collapse columns when available content width cannot support them; preserve all file destinations and download attributes.
 
 ### 5C. Verify layout and files
 
-- [ ] Assert every action remains inside its card and the document at 320, 390, 640, 768, and desktop widths; include increased-text variants and short windows.
-- [ ] Check keyboard focus rings and accessible names remain visible and useful.
-- [ ] Recheck all 30 download URLs and a native starter download/import round trip; preserve same-origin/offline behavior.
-- [ ] Inspect intentionally changed screenshots before updating only affected baselines.
+- [x] Assert every action remains inside its card and the document at 320, 390, 640, 768, and desktop widths; include increased-text variants and short windows.
+- [x] Check keyboard focus rings and accessible names remain visible and useful.
+- [x] Recheck all 30 download URLs and a native starter download/import round trip; preserve same-origin/offline behavior.
+- [x] Inspect intentionally changed screenshots before updating only affected baselines.
 
 ### 5D. Review, document, and push
 
@@ -345,8 +345,8 @@ Parallel development does not require parallel builds or pushes. Default push or
 | UX-01 | `fix(authoring): invalidate stale draft previews (UX-01)` | `909589e`; originating-builder invalidation; installation lock | 52 focused tests; 1,263 full-suite tests (serial); lint/typecheck/build; 10 existing Chromium pack/navigation tests; 6 export checks across three browsers | Pushed; [initial CI failed two Firefox checks](https://github.com/MassimoChiarella/open-prep/actions/runs/35564965065); subsequent UX-06 CI passed |
 | UX-06 | `fix(authoring): protect destructive draft actions (UX-06)` | `23b1fa1`; native confirmation; localized copy; survivor/title focus | 5 new tests failed before; 57 focused unit tests and 11 browser checks pass; lint/typecheck/build and budgets pass | Pushed; [CI passed](https://github.com/MassimoChiarella/open-prep/actions/runs/35565625639) |
 | UX-02 | `fix(layout): prevent mobile header control overlap (UX-02)` | `65c55af`; wrap controls/status; minimum selector width | 40 browser cases: ten locales, four widths, six states; existing shell/locale tests; six unchanged visual baselines; lint/typecheck/build passed | Pushed; CI pending |
-| UX-03 | `fix(a11y): improve content pack label contrast (UX-03)` | Existing accessible text token for starter subtype labels; Create added to axe entry coverage | 12 theme/view contrast cases, disclosures open/closed; starter tests; full existing accessibility matrix; mobile/light and desktop/dark screenshots inspected | Publishing |
-| UX-04 | `fix(layout): keep authoring downloads within containers (UX-04)` | Not started | Pending | Pending |
+| UX-03 | `fix(a11y): improve content pack label contrast (UX-03)` | `b0cfac2`; existing accessible text token; Create axe coverage | 12 theme/view contrast cases, disclosures open/closed; starter tests; full existing accessibility matrix; mobile/light and desktop/dark screenshots inspected | Pushed; CI pending |
+| UX-04 | `fix(layout): keep authoring downloads within containers (UX-04)` | Content-aware grid; short Download action; wrapping badges and text | 15 width/preference cases across English/German/Arabic; 30 URLs and download/import round trip; screenshots reviewed; fresh build/lint/typecheck pass | Publishing |
 | UX-05 | `fix(exhibits): improve mobile chart framing (UX-05)` | Not started | Pending | Pending |
 | Integration | `docs: record usage audit repair verification` | Not started | Pending | Pending |
 
@@ -359,6 +359,7 @@ For each checkpoint, record the date, test commands and exit results, relevant s
 - UX-01 regression: 10 of 11 tests failed before the repair; all 52 tests across the preview-integrity, manager, and two builder suites pass after it. Native export/invalidation checks pass in Chromium, Firefox, and WebKit (6 tests, normal exit). Existing Chromium import/install and unsaved navigation checks passed (10 tests). Lint, typecheck, and a fresh production build with unchanged performance budgets passed.
 - UX-02 regression: the old 320-pixel German layout failed the minimum selector-width assertion. After the repair, 40 cases pass across 320/390/844/1280 pixels, including 200% text on wide/short windows and keyboard Retry. German and Arabic screenshots were inspected. All six existing visual snapshots passed without baseline updates.
 - UX-03 regression: the original 25 starter labels failed light-theme contrast. All six Content Packs views now pass in both themes with disclosures closed/open. Tests use the existing reduced-motion approach so axe does not sample a partially transparent entry animation; no contrast rule is disabled. Screenshots show the actual starter identifiers at 390/1280 pixels. Related starter tests and the full accessibility matrix pass.
+- UX-04 regression: the original 640-pixel combined text/spacing case failed containment. The broader matrix also exposed narrow file-type badges; natural wrapping fixes both. Fifteen tests cover five widths and three preferences in English/German/Arabic, including optional resources and a short window; a sixteenth verifies all 30 destinations and downloads/imports the real starter. The enlarged RTL screenshot was inspected. No resource files, paths, or download attributes changed.
 - Independent presentation repairs were developed together in disjoint files, then verified against a fresh combined production build before separate reviewed commits/pushes. The focused matrix passed 135 Chromium cases; related unit suites passed 55 tests, and lint/TypeScript passed. GitHub rebuilds each pushed snapshot independently. This avoids concurrent builds replacing the artifact under test.
 - UX-01's first CI run passed its main verification but failed existing Firefox offline-resume and backup-transfer checks. UX-06's subsequent unmodified checks passed. The follow-up test correction waits for the draft write/settings initialization and additionally checks resumed prompt identity; three repetitions across engines passed all 12 cases, without relaxed final assertions or global timeouts.
 
