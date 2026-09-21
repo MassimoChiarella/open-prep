@@ -6,19 +6,21 @@ import { describe, expect, it } from "vitest";
 import playwrightConfig from "../../../playwright.config";
 
 describe("Playwright project selection", () => {
-  it("defines one full project, two tagged engine smokes, and one backup transfer project", () => {
+  it("defines one full project, two tagged engine smokes, and two backup transfer projects", () => {
     const projects = playwrightConfig.projects ?? [];
 
     expect(projects.map(({ name }) => name)).toEqual([
       "chromium",
       "firefox-smoke",
       "webkit-smoke",
-      "backup-portability"
+      "backup-portability-firefox",
+      "backup-portability-webkit"
     ]);
     expect(projects[0]?.grep).toBeUndefined();
     expect(projects[1]?.grep).toEqual(/@browser-smoke/);
     expect(projects[2]?.grep).toEqual(/@browser-smoke/);
     expect(projects[3]?.testMatch).toEqual(/cross-browser-backup\.spec\.ts/u);
+    expect(projects[4]?.testMatch).toEqual(/cross-browser-backup\.spec\.ts/u);
     expect(projects.slice(0, 3).every(({ testIgnore }) =>
       String(testIgnore).includes("cross-browser-backup")
     )).toBe(true);
@@ -45,7 +47,7 @@ describe("Playwright project selection", () => {
 
     expect(packageJson.scripts.e2e).toBe("playwright test --project=chromium");
     expect(packageJson.scripts["e2e:cross-browser"]).toBe(
-      "playwright test --grep @browser-smoke --project=chromium --project=firefox-smoke --project=webkit-smoke --project=backup-portability"
+      "playwright test --grep @browser-smoke --project=chromium --project=firefox-smoke --project=webkit-smoke --project=backup-portability-firefox --project=backup-portability-webkit"
     );
   });
 });

@@ -41,7 +41,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "e2e": "playwright test --project=chromium",
-    "e2e:cross-browser": "playwright test --grep @browser-smoke --project=chromium --project=firefox-smoke --project=webkit-smoke --project=backup-portability"
+    "e2e:cross-browser": "playwright test --grep @browser-smoke --project=chromium --project=firefox-smoke --project=webkit-smoke --project=backup-portability-firefox --project=backup-portability-webkit"
   },
   "dependencies": {
     "@vercel/analytics": "2.0.1",
