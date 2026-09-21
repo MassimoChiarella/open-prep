@@ -188,7 +188,7 @@ export function LanguageSelect() {
   const { locale, preference, setPreference, t } = useI18n();
 
   return (
-    <label className="inline-flex min-h-11 min-w-0 flex-1 items-center gap-2 text-sm font-medium text-ink/75 sm:flex-none">
+    <label className="inline-flex min-h-11 min-w-[min(100%,11rem)] max-w-full flex-1 items-center gap-2 text-sm font-medium text-ink/75 sm:flex-none">
       <span className="hidden sm:inline">{t("Language")}</span>
       <select
         aria-label={t("Language")}

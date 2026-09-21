@@ -41,7 +41,7 @@ function AppChrome({ children }: { children: ReactNode }) {
                 OpenPrep
               </p>
             </div>
-            <div className="flex min-w-0 items-center justify-between gap-2 sm:ml-auto sm:flex-wrap sm:justify-end">
+            <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:ml-auto sm:justify-end">
               <LanguageSelect />
               <OfflineStatusIndicator />
             </div>
