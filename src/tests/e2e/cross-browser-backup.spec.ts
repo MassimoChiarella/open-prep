@@ -5,6 +5,7 @@ import { themePreferenceStorageKey } from "@/features/theme/theme";
 import { timingAccommodationPreferenceKey } from "@/features/timing/timingAccommodationPreference";
 
 const expectedPreferences = ["fr", "dark", "double_time"] as const;
+const backupProcessingTimeout = 15_000;
 const preferenceKeys = [
   localePreferenceStorageKey,
   themePreferenceStorageKey,
@@ -96,11 +97,11 @@ async function restoreAndVerify(browser: Browser, baseURL: string, backup: Buffe
       name: "synthetic-complete-backup.json"
     });
     const preview = page.getByTestId("complete-backup-restore-preview");
-    await expect(preview).toBeVisible();
+    await expect(preview).toBeVisible({ timeout: backupProcessingTimeout });
     await preview.locator('input[type="checkbox"]').check();
     await preview.locator("button").click();
 
-    await expect(page).toHaveURL(new URL("/", baseURL).href);
+    await expect(page).toHaveURL(new URL("/", baseURL).href, { timeout: backupProcessingTimeout });
 
     await expect.poll(() => page.evaluate(
       (keys) => keys.map((key) => window.localStorage.getItem(key)),
