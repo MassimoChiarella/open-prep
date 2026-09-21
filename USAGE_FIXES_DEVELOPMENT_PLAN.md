@@ -2,7 +2,7 @@
 
 Created: 2026-09-21
 
-Status: UX-01, UX-06, UX-02, UX-03, and UX-04 pushed. UX-05 is verified and being published. Final integration verification remains open.
+Status: All six fixes pushed independently. Final integration verification is in progress; native screen-reader and real-device assessments remain pending.
 
 Execution baseline: `7a99e5c` on `main`, which includes the reviewed dependency refresh (PR #17). Repair branch: `codex/usage-audit-fixes`. The audit-time Firefox page-creation failure is reproducible inside the restricted sandbox but absent outside it: Chromium 153, Firefox 155, and WebKit 26.6 all passed a fresh page-creation/close preflight with normal process exit. Browser verification will use the unrestricted test environment; no dependency or test-assertion workaround is required.
 
@@ -28,8 +28,8 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 | 4 | 3 | UX-02: German update-failure status overlaps mobile language selection | P2 | Phase 0 | Pushed; CI pending |
 | 5 | 4 | UX-03: Starter labels have insufficient text contrast | P2 | Phase 0 | Pushed; CI pending |
 | 6 | 5 | UX-04: Enlarged download buttons escape their cards/viewport | P2 | Phase 0 | Pushed; CI pending |
-| 7 | 6 | UX-05: Mobile pie/scatter framing initially hides meaningful data | P2 | Phase 0 | Verified; publishing |
-| 8 | 7 | Integrated verification and final GitHub evidence | Completion gate | Phases 1-6 | Not started |
+| 7 | 6 | UX-05: Mobile pie/scatter framing initially hides meaningful data | P2 | Phase 0 | Pushed; CI pending |
+| 8 | 7 | Integrated verification and final GitHub evidence | Completion gate | Phases 1-6 | In progress |
 
 ## Execution Rules
 
@@ -93,7 +93,7 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 ### 1B. Add failing state-integrity tests
 
 - [x] Preview an answer of 50, approve review, edit it to 60, and assert the obsolete payload is no longer exportable/installable as current.
-- [ ] Complete extended metadata/intent mutation coverage. Current tests cover title/answer changes, duplicate/add/remove/reorder, discard, invalid concept JSON, builder ownership, and approval reset.
+- [x] Complete extended metadata/intent mutation coverage. Tests cover title/answer/ID/version/language/theme changes, duplicate/add/remove/reorder, discard, invalid concept JSON, builder ownership, file-import ownership, and approval reset.
 - [x] Cover two builders on the same page: a new preview replaces its predecessor and an unrelated builder cannot mistakenly clear or approve another preview.
 - [x] Preserve file-import/catalog confirmation and installed-pack replacement semantics.
 
@@ -273,7 +273,7 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 ### 6E. Review, document, and push
 
-- [ ] Commit as `fix(exhibits): improve mobile chart framing (UX-05)` and push independently.
+- [x] Commit as `fix(exhibits): improve mobile chart framing (UX-05)` and push independently.
 - [ ] Verify remote identity and required CI results.
 
 **Exit:** Mobile charts open with meaningful visible data and all chart types retain their evidence, interactions, and performance contracts.
@@ -290,8 +290,8 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 ### 7B. Repeat the affected usage matrix
 
-- [ ] Re-run the audit's eight window sizes across core routes and the six repaired scenarios.
-- [ ] Repeat expanded authoring/downloads, light/dark, German/Arabic, larger text, spacing, and keyboard checks.
+- [x] Re-run the audit's eight window sizes across core routes and the six repaired scenarios.
+- [x] Repeat expanded authoring/downloads, light/dark, German/Arabic, larger text, spacing, and keyboard checks.
 - [ ] Inspect screenshots for clipping, overlap, useful initial chart framing, and focus visibility, not just geometry assertions.
 
 ### 7C. Record manual checks honestly
@@ -347,7 +347,8 @@ Parallel development does not require parallel builds or pushes. Default push or
 | UX-02 | `fix(layout): prevent mobile header control overlap (UX-02)` | `65c55af`; wrap controls/status; minimum selector width | 40 browser cases: ten locales, four widths, six states; existing shell/locale tests; six unchanged visual baselines; lint/typecheck/build passed | Pushed; CI pending |
 | UX-03 | `fix(a11y): improve content pack label contrast (UX-03)` | `b0cfac2`; existing accessible text token; Create axe coverage | 12 theme/view contrast cases, disclosures open/closed; starter tests; full existing accessibility matrix; mobile/light and desktop/dark screenshots inspected | Pushed; CI pending |
 | UX-04 | `fix(layout): keep authoring downloads within containers (UX-04)` | `7fe9d0c`; content-aware grid; short Download action; wrapping badges/text | 15 width/preference cases across English/German/Arabic; 30 URLs and download/import round trip; screenshots reviewed; fresh build/lint/typecheck pass | Pushed; CI pending |
-| UX-05 | `fix(exhibits): improve mobile chart framing (UX-05)` | Existing Recharts responsive container for pies/scatter; accurate guidance | 16 browser cases including 500-row import/hide/resize, 320/390/768/1280 framing and seven chart preference checks; renderer/workflow units and Sprint checks; screenshots inspected | Publishing |
+| UX-05 | `fix(exhibits): improve mobile chart framing (UX-05)` | `7ae4298`; existing Recharts responsive container for pies/scatter; accurate guidance | 16 browser cases including 500-row import/hide/resize, 320/390/768/1280 framing and seven chart preference checks; renderer/workflow units and Sprint checks; screenshots inspected | Pushed; CI pending |
+| Verification follow-up | `test: wait for persisted state in offline and backup checks` | Explicit async storage readiness; additional preview mutation/import-owner coverage | 12 repeated offline/backup cases passed; 21 preview-integrity unit tests passed; lint/typecheck pass | Publishing |
 | Integration | `docs: record usage audit repair verification` | Not started | Pending | Pending |
 
 For each checkpoint, record the date, test commands and exit results, relevant screenshots or reviewed baseline paths, commit SHA, remote verification, and CI run URL. Code commits contain their finding IDs and local test evidence; add the resolved SHA/CI result to the next ledger update or the final documentation checkpoint rather than rewriting a published commit to reference itself.
@@ -363,6 +364,7 @@ For each checkpoint, record the date, test commands and exit results, relevant s
 - UX-05 regression: the old mobile pie/scatter canvases placed plotted marks outside the viewport. All marks now fit at four widths and after repeated resizing. A 500-row imported scatterplot retains every point/text row after hide/resize/reveal. Seven chart types pass dark-theme axe and retain exact data under forced-colors/RTL/reduced motion; renderer/tooltips and related workflow unit tests and four Sprint browser checks pass. Pie/scatter phone and desktop screenshots were inspected. Existing dense axis-based charts retain inspection scrolling. No data, scoring, content, or dependencies changed.
 - Independent presentation repairs were developed together in disjoint files, then verified against a fresh combined production build before separate reviewed commits/pushes. The focused matrix passed 135 Chromium cases; related unit suites passed 55 tests, and lint/TypeScript passed. GitHub rebuilds each pushed snapshot independently. This avoids concurrent builds replacing the artifact under test.
 - UX-01's first CI run passed its main verification but failed existing Firefox offline-resume and backup-transfer checks. UX-06's subsequent unmodified checks passed. The follow-up test correction waits for the draft write/settings initialization and additionally checks resumed prompt identity; three repetitions across engines passed all 12 cases, without relaxed final assertions or global timeouts.
+- The repeated audit matrix completed normally: 282 layout states (29 routes at eight window sizes, expanded/preference states, and five routes in each additional engine), no document/control overflow findings, no axe violations, and no uncaught Chromium page errors. Firefox and WebKit both completed. Evidence is retained only in ignored `.dist-verification/usage-fixes-2026-09-21/`; it is not a public release artifact. The broader matrix supplements, not replaces, targeted state/geometry assertions.
 
 If a fix must be rolled back, use an ordinary reviewed revert commit, restore its status to open, run the affected checks, and push the revert. Do not reset or overwrite other contributors' history.
 

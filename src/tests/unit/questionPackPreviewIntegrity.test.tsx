@@ -1,3 +1,6 @@
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
+
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -41,6 +44,33 @@ async function preview(builder: ReturnType<typeof within>) {
 }
 
 describe("draft preview integrity", () => {
+  it.each([
+    ["numeric", "Pack ID", "revised-id"],
+    ["numeric", "Version", "2.0"],
+    ["questioning", "Scoring themes JSON", "{"],
+    ["questioning", "Content language", "fr"]
+  ] as const)("invalidates %s preview when %s changes", async (owner, label, value) => {
+    const builders = await setup();
+    await preview(builders[owner]);
+    fireEvent.change(builders[owner].getByLabelText(label), { target: { value } });
+    expect(screen.queryByTestId("question-pack-preview")).not.toBeInTheDocument();
+  });
+
+  it("preserves a reviewed file import when either unrelated draft changes or is discarded", async () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    const { numeric, questioning } = await setup();
+    const text = readFileSync(resolve("public/question-pack-example.mathdrill.json"), "utf8");
+    fireEvent.change(screen.getByLabelText("Choose a question pack"), {
+      target: { files: [{ size: text.length, text: async () => text }] }
+    });
+    await screen.findByTestId("question-pack-preview");
+    fireEvent.click(screen.getByTestId("question-pack-review-confirmation"));
+    fireEvent.change(numeric.getByLabelText("Question 1 answer value"), { target: { value: "60" } });
+    fireEvent.click(questioning.getByRole("button", { name: "Discard changes" }));
+    expect(screen.getByTestId("question-pack-review-confirmation")).toBeChecked();
+    expect(screen.getByTestId("question-pack-preview")).toHaveTextContent("Example Retail Practice");
+  });
+
   it.each(["numeric", "questioning"] as const)("preserves %s work and approval when discard is cancelled", async (owner) => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const builders = await setup();

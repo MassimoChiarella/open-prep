@@ -515,6 +515,9 @@ test("a warmed drill loads and saves while offline", { tag: "@browser-smoke" }, 
   const prompt = await page.getByTestId("active-question-prompt").textContent();
   const answer = solveAdditionPrompt(prompt ?? "");
 
+  // A visible prompt can precede the asynchronous draft write.
+  await expect.poll(() => readStore(page, "drill_sessions")).toHaveLength(1);
+
   await page.context().setOffline(true);
 
   try {
@@ -524,6 +527,7 @@ test("a warmed drill loads and saves while offline", { tag: "@browser-smoke" }, 
       await page.reload();
     }
     await expect(page.getByTestId("offline-status-indicator")).toHaveText("Offline ready");
+    await expect(page.getByTestId("active-question-prompt")).toHaveText(prompt ?? "");
     await page.getByLabel("Answer", { exact: true }).fill(String(answer));
     await page.getByRole("button", { name: "Submit" }).click();
     await page.getByRole("button", { name: "View summary" }).click();

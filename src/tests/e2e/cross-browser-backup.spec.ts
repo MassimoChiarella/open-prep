@@ -87,6 +87,9 @@ async function restoreAndVerify(browser: Browser, baseURL: string, backup: Buffe
     const unexpectedRequests = monitorUnexpectedRequests(page, baseURL);
 
     await page.goto(new URL("/settings/", baseURL).href);
+    await expect(page.getByTestId("settings-preferences")).toContainText(
+      "Built-in defaults initialize Drill Selection.", { timeout: 10_000 }
+    );
     await page.getByTestId("settings-local-data").locator("summary").click();
 
     const restoreSection = page.locator('section[aria-labelledby="restore-complete-backup-heading"]');
