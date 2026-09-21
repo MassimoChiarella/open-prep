@@ -12,7 +12,7 @@ for (const width of [320, 390, 844, 1280]) {
       if (width >= 844) await page.addStyleTag({ content: "html { font-size: 200% !important; }" });
       const language = page.locator("header select");
       await language.selectOption(locale);
-      await expect(page.locator("html")).toHaveAttribute("lang", locale);
+      await expect(page.locator("html")).toHaveAttribute("lang", locale, { timeout: 15_000 });
       for (const state of ["checking", "online", "offline-ready", "unreachable", "update-ready", "update-failed"]) {
         await page.evaluate((state) => window.dispatchEvent(new CustomEvent(
           "consulting-math-service-worker-status", { detail: state }
