@@ -2,7 +2,7 @@
 
 Created: 2026-09-21
 
-Status: Implementation started; Phase 0 verification is in progress.
+Status: UX-01 implemented and locally verified; publishing its independent checkpoint. Remaining fixes are pending.
 
 Execution baseline: `7a99e5c` on `main`, which includes the reviewed dependency refresh (PR #17). Repair branch: `codex/usage-audit-fixes`. The audit-time Firefox page-creation failure is reproducible inside the restricted sandbox but absent outside it: Chromium 153, Firefox 155, and WebKit 26.6 all passed a fresh page-creation/close preflight with normal process exit. Browser verification will use the unrestricted test environment; no dependency or test-assertion workaround is required.
 
@@ -23,7 +23,7 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 | Order | Phase | Finding | Priority | Dependency | Status |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 0 | Establish a reproducible verification and GitHub baseline | Delivery prerequisite | None | In progress |
-| 2 | 1 | UX-01: Stale previews can export/install older draft content | P1 | Phase 0 | Not started |
+| 2 | 1 | UX-01: Stale previews can export/install older draft content | P1 | Phase 0 | Locally verified; push/CI pending |
 | 3 | 2 | UX-06: Discard/remove actions have no confirmation or recovery | P2 | Phase 1 | Not started |
 | 4 | 3 | UX-02: German update-failure status overlaps mobile language selection | P2 | Phase 0 | Not started |
 | 5 | 4 | UX-03: Starter labels have insufficient text contrast | P2 | Phase 0 | Not started |
@@ -60,21 +60,21 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 ### 0C. Establish reliable test completion
 
-- [ ] Run a small existing browser suite and require normal runner/browser/server shutdown.
+- [x] Run a small existing browser suite and require normal runner/browser/server shutdown.
 - [ ] If cleanup hangs recur, isolate runner, browser, and server teardown; make any necessary minimal test-tool correction its own documented prerequisite commit.
 - [ ] Recheck the slow WebKit cross-window reset test. Profile/split its steps if needed rather than increasing all timeouts or weakening privacy assertions.
 - [ ] Preserve bounded execution limits and failing-run evidence. If a platform remains unavailable, record the limitation and leave its gate pending rather than marking the overall repair complete.
 
 ### 0D. Freeze useful baselines
 
-- [ ] Build and verify a fresh production export in an isolated location with known source identity.
-- [ ] Record current lint/typecheck/unit/build results and affected browser tests, distinguishing unrelated baseline failures.
-- [ ] Capture reproducible failing cases for all six findings, including the exact viewport/preferences and representative pack/chart data.
+- [x] Build and verify a fresh production export in an isolated location with known source identity.
+- [x] Record current lint/typecheck/unit/build results and affected browser tests, distinguishing unrelated baseline failures.
+- [x] Capture reproducible failing cases for all six findings, including the exact viewport/preferences and representative pack/chart data.
 
 ### 0E. Publish the development record
 
-- [ ] Review and commit the audit, this plan, and the active-plan link, excluding ignored evidence files.
-- [ ] Push the planning checkpoint to the development branch; record its remote identity and CI outcome.
+- [x] Review and commit the audit, this plan, and the active-plan link, excluding ignored evidence files.
+- [x] Push the planning checkpoint to the development branch; record its remote identity and CI outcome.
 
 **Exit:** Source/toolchain/build identity is known; targeted browser checks terminate normally; the repair branch and planning record are available on GitHub. Independent code work may proceed while a tooling issue is investigated, but affected verification gates remain open.
 
@@ -86,38 +86,38 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 ### 1A. Specify the preview lifecycle
 
-- [ ] Trace numeric-builder, questioning-builder, file-import, and catalog preview paths and every install/download action.
-- [ ] Define which draft owns a preview and when its review acknowledgement expires.
-- [ ] Choose the smallest existing-pattern implementation. Prefer invalidating the originating preview on edits over adding a generalized draft framework.
+- [x] Trace numeric-builder, questioning-builder, file-import, and catalog preview paths and every install/download action.
+- [x] Define which draft owns a preview and when its review acknowledgement expires.
+- [x] Choose the smallest existing-pattern implementation. Prefer invalidating the originating preview on edits over adding a generalized draft framework.
 
 ### 1B. Add failing state-integrity tests
 
-- [ ] Preview an answer of 50, approve review, edit it to 60, and assert the obsolete payload is no longer exportable/installable as current.
-- [ ] Cover title/metadata changes, question edits, duplicate/add/remove/reorder, discard, failed revalidation, and questioning concept/intent edits.
-- [ ] Cover two builders on the same page: a new preview replaces its predecessor and an unrelated builder cannot mistakenly clear or approve another preview.
-- [ ] Preserve file-import/catalog confirmation and installed-pack replacement semantics.
+- [x] Preview an answer of 50, approve review, edit it to 60, and assert the obsolete payload is no longer exportable/installable as current.
+- [ ] Complete extended metadata/intent mutation coverage. Current tests cover title/answer changes, duplicate/add/remove/reorder, discard, invalid concept JSON, builder ownership, and approval reset.
+- [x] Cover two builders on the same page: a new preview replaces its predecessor and an unrelated builder cannot mistakenly clear or approve another preview.
+- [x] Preserve file-import/catalog confirmation and installed-pack replacement semantics.
 
 ### 1C. Implement invalidation and approval reset
 
-- [ ] Clear or disable the originating draft's obsolete preview immediately after a content mutation.
-- [ ] Require validation and fresh review for the new payload before installation; do not retain stale approval.
-- [ ] Make discard clear its corresponding preview, pending errors, and approval without affecting unrelated imported/installed content.
+- [x] Clear or disable the originating draft's obsolete preview immediately after a content mutation.
+- [x] Require validation and fresh review for the new payload before installation; do not retain stale approval.
+- [x] Make discard clear its corresponding preview, pending errors, and approval without affecting unrelated imported/installed content.
 
 ### 1D. Protect asynchronous boundaries
 
-- [ ] Ensure an in-flight installation uses an immutable, explicitly approved snapshot and cannot become a mixture of old/new content.
-- [ ] Prevent edits or safely distinguish the new draft while an install is pending; test success and failure against the chosen behavior.
-- [ ] Keep stale async completions from reviving discarded previews or approvals.
+- [x] Ensure an in-flight installation uses an immutable, explicitly approved snapshot and cannot become a mixture of old/new content.
+- [x] Prevent edits or safely distinguish the new draft while an install is pending; test success and failure against the chosen behavior.
+- [x] Keep stale async completions from reviving discarded previews or approvals.
 
 ### 1E. Verify actual exported content
 
-- [ ] Add a browser regression that downloads the generated JSON and checks its answer/content, not merely the success message.
-- [ ] Confirm re-preview exports 60, discard removes the old installable preview, and both builders still produce valid supported files.
-- [ ] Run focused pack tests, unsaved-navigation tests, lint/typecheck, and fresh-build import/install/export browser checks.
+- [x] Add a browser regression that downloads the generated JSON and checks its answer/content, not merely the success message.
+- [x] Confirm re-preview exports 60, discard removes the old installable preview, and both builders still produce valid supported files.
+- [x] Run focused pack tests, unsaved-navigation tests, lint/typecheck, and fresh-build import/install/export browser checks.
 
 ### 1F. Review, document, and push
 
-- [ ] Review mutation coverage and the unchanged import/pack-format/privacy contracts.
+- [x] Review mutation coverage and the unchanged import/pack-format/privacy contracts.
 - [ ] Update the ledger, commit as `fix(authoring): invalidate stale draft previews (UX-01)`, and push independently.
 - [ ] Verify the remote commit and required CI outcome.
 
@@ -340,9 +340,9 @@ Parallel development does not require parallel builds or pushes. Default push or
 
 | Checkpoint | Commit subject | Implementation | Local verification | Remote push / CI |
 | --- | --- | --- | --- | --- |
-| Planning | `docs: plan usage audit fixes and verification` | Documents prepared | Documentation checks only | Not pushed |
-| Tooling, only if necessary | `test: restore reliable browser verification` | Not started | Pending | Pending |
-| UX-01 | `fix(authoring): invalidate stale draft previews (UX-01)` | Not started | Pending | Pending |
+| Planning | `docs: plan usage audit fixes and verification` | `cd45638` | Documentation reviewed | Pushed; [CI passed](https://github.com/MassimoChiarella/open-prep/actions/runs/35563710526) |
+| Tooling, only if necessary | No change required so far | No application-tooling workaround | Browser preflight and production build exit successfully outside sandbox | Not applicable |
+| UX-01 | `fix(authoring): invalidate stale draft previews (UX-01)` | Originating-builder invalidation; installation lock | 52 focused tests; 1,263 full-suite tests (serial); lint/typecheck/build; 10 existing Chromium pack/navigation tests; 6 export checks across three browsers | Pending |
 | UX-06 | `fix(authoring): protect destructive draft actions (UX-06)` | Not started | Pending | Pending |
 | UX-02 | `fix(layout): prevent mobile header control overlap (UX-02)` | Not started | Pending | Pending |
 | UX-03 | `fix(a11y): improve content pack label contrast (UX-03)` | Not started | Pending | Pending |
@@ -351,6 +351,12 @@ Parallel development does not require parallel builds or pushes. Default push or
 | Integration | `docs: record usage audit repair verification` | Not started | Pending | Pending |
 
 For each checkpoint, record the date, test commands and exit results, relevant screenshots or reviewed baseline paths, commit SHA, remote verification, and CI run URL. Code commits contain their finding IDs and local test evidence; add the resolved SHA/CI result to the next ledger update or the final documentation checkpoint rather than rewriting a published commit to reference itself.
+
+### Execution Notes: 2026-09-21
+
+- Initial `npm run check`: version/actions/authoring/identity, lint and TypeScript passed; 161 test files and 1,238 assertions passed, but one worker exited unexpectedly, so the command failed. A serial rerun completed successfully: all 163 files / 1,263 tests passed. The initial failed command is not recorded as a pass.
+- The production build initially paused in catalog validation but completed normally, including all performance budgets. An isolated bounded comparison completed both with and without file watching, so no watcher workaround was retained. The first artifact reproduced the browser failure. A second fresh build included UX-01 and passed the new browser checks.
+- UX-01 regression: 10 of 11 tests failed before the repair; all 52 tests across the preview-integrity, manager, and two builder suites pass after it. Native export/invalidation checks pass in Chromium, Firefox, and WebKit (6 tests, normal exit). Existing Chromium import/install and unsaved navigation checks passed (10 tests). Lint, typecheck, and a fresh production build with unchanged performance budgets passed.
 
 If a fix must be rolled back, use an ordinary reviewed revert commit, restore its status to open, run the affected checks, and push the revert. Do not reset or overwrite other contributors' history.
 

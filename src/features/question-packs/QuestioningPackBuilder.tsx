@@ -7,6 +7,7 @@ import { useI18n } from "@/features/i18n/I18nProvider";
 import { useUnsavedChangesGuard } from "@/features/question-packs/useUnsavedChangesGuard";
 
 interface QuestioningPackBuilderProps {
+  onDraftChange?(): void;
   onPreview(payload: unknown): void;
 }
 
@@ -52,9 +53,9 @@ const starterIntentsJson = JSON.stringify(starterIntents, null, 2);
 
 type JsonArrayError = "array" | "syntax";
 
-export function QuestioningPackBuilder({ onPreview }: QuestioningPackBuilderProps) {
+export function QuestioningPackBuilder({ onDraftChange, onPreview }: QuestioningPackBuilderProps) {
   const { t } = useI18n();
-  const { clearDirty, isDirty, markDirty } = useUnsavedChangesGuard(
+  const { clearDirty, isDirty, markDirty: markUnsaved } = useUnsavedChangesGuard(
     t("Leave this builder? Your unsaved changes will be lost.")
   );
   const conceptsRef = useRef<HTMLTextAreaElement>(null);
@@ -77,6 +78,11 @@ export function QuestioningPackBuilder({ onPreview }: QuestioningPackBuilderProp
   const [conceptsError, setConceptsError] = useState<JsonArrayError>();
   const [intentsError, setIntentsError] = useState<JsonArrayError>();
   const [questionCountError, setQuestionCountError] = useState(false);
+
+  function markDirty() {
+    markUnsaved();
+    onDraftChange?.();
+  }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -129,6 +135,7 @@ export function QuestioningPackBuilder({ onPreview }: QuestioningPackBuilderProp
   }
 
   function discardChanges() {
+    onDraftChange?.();
     setTitle("");
     setPackId("my-questioning-pack");
     setPackIdIsCustom(false);
