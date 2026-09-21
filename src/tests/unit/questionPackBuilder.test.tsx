@@ -136,6 +136,7 @@ describe("QuestionPackBuilder", () => {
   });
 
   it("guards dirty work on unload and clears the guard after discard", () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     render(<QuestionPackBuilder onPreview={vi.fn()} />);
 
     expect(dispatchBeforeUnload().defaultPrevented).toBe(false);

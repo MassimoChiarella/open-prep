@@ -71,6 +71,41 @@ describe("draft preview integrity", () => {
     expect(screen.getByTestId("question-pack-preview")).toHaveTextContent("Example Retail Practice");
   });
 
+  it.each(["numeric", "questioning"] as const)("preserves %s work and approval when discard is cancelled", async (owner) => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const builders = await setup();
+    const builder = builders[owner];
+    await preview(builder);
+    fireEvent.click(builder.getByRole("button", { name: "Discard changes" }));
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("question-pack-review-confirmation")).toBeChecked();
+    expect(builder.getByLabelText("Pack title")).not.toHaveValue("");
+    confirm.mockReturnValue(true);
+    fireEvent.click(builder.getByRole("button", { name: "Discard changes" }));
+    expect(screen.queryByTestId("question-pack-preview")).not.toBeInTheDocument();
+    expect(builder.getByLabelText("Pack title")).toHaveValue("");
+    expect(builder.getByLabelText("Pack title")).toHaveFocus();
+  });
+
+  it.each([1, 2, 3])("confirms removal of populated question %s and focuses a survivor", async (number) => {
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    const { numeric } = await setup();
+    fireEvent.click(numeric.getByRole("button", { name: "Duplicate Question 1" }));
+    fireEvent.click(numeric.getByRole("button", { name: "Duplicate Question 2" }));
+    await preview(numeric);
+    const ids = screen.getAllByLabelText(/Question \d+ ID/).map((input) => (input as HTMLInputElement).value);
+    fireEvent.click(numeric.getByRole("button", { name: `Remove Question ${number}` }));
+    expect(confirm).toHaveBeenCalledOnce();
+    expect(screen.getByTestId("question-pack-review-confirmation")).toBeChecked();
+    expect(screen.getAllByTestId("builder-question")).toHaveLength(3);
+    confirm.mockReturnValue(true);
+    fireEvent.click(numeric.getByRole("button", { name: `Remove Question ${number}` }));
+    expect(screen.getAllByLabelText(/Question \d+ ID/).map((input) => (input as HTMLInputElement).value))
+      .toEqual(ids.filter((_, index) => index !== number - 1));
+    expect(screen.queryByTestId("question-pack-preview")).not.toBeInTheDocument();
+    expect(numeric.getByLabelText(`Question ${Math.min(number, 2)} prompt`)).toHaveFocus();
+  });
+
   it.each([
     "answer", "title", "add", "duplicate", "remove", "reorder", "discard"
   ])("invalidates a reviewed numeric preview after %s", async (mutation) => {

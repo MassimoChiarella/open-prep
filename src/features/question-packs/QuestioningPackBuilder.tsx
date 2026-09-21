@@ -59,6 +59,7 @@ export function QuestioningPackBuilder({ onDraftChange, onPreview }: Questioning
     t("Leave this builder? Your unsaved changes will be lost.")
   );
   const conceptsRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
   const intentsRef = useRef<HTMLTextAreaElement>(null);
   const maximumQuestionsRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
@@ -135,6 +136,8 @@ export function QuestioningPackBuilder({ onDraftChange, onPreview }: Questioning
   }
 
   function discardChanges() {
+    if (!isDirty || !window.confirm(t("Discard this draft? Your unsaved changes will be lost."))) return;
+    formRef.current?.querySelector<HTMLInputElement>("input")?.focus();
     onDraftChange?.();
     setTitle("");
     setPackId("my-questioning-pack");
@@ -168,7 +171,7 @@ export function QuestioningPackBuilder({ onDraftChange, onPreview }: Questioning
         </span>
       </summary>
 
-      <form className="mt-5 grid min-w-0 gap-5" onChange={markDirty} onSubmit={handleSubmit}>
+      <form className="mt-5 grid min-w-0 gap-5" onChange={markDirty} onSubmit={handleSubmit} ref={formRef}>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Field label="Pack title">
             <input

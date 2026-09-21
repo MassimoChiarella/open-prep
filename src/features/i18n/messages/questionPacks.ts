@@ -1,6 +1,8 @@
 import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 
 const keys = {
+  "Discard this draft? Your unsaved changes will be lost.": ["¿Descartar este borrador? Se perderán los cambios sin guardar.", "Supprimer ce brouillon ? Les modifications non enregistrées seront perdues.", "Diesen Entwurf verwerfen? Nicht gespeicherte Änderungen gehen verloren.", "Descartar este rascunho? As alterações não salvas serão perdidas.", "放弃此草稿？未保存的更改将丢失。", "捨棄此草稿？未儲存的變更將遺失。", "この下書きを破棄しますか？未保存の変更は失われます。", "هل تريد تجاهل هذه المسودة؟ ستفقد التغييرات غير المحفوظة.", "यह मसौदा छोड़ें? आपके सहेजे न गए बदलाव खो जाएँगे।"],
+  "Remove Question {number}? This cannot be undone.": ["¿Eliminar la pregunta {number}? Esta acción no se puede deshacer.", "Supprimer la question {number} ? Cette action est irréversible.", "Frage {number} entfernen? Dies kann nicht rückgängig gemacht werden.", "Remover a questão {number}? Esta ação não pode ser desfeita.", "移除第 {number} 题？此操作无法撤销。", "移除第 {number} 題？此操作無法復原。", "問題 {number} を削除しますか？この操作は取り消せません。", "هل تريد إزالة السؤال {number}؟ لا يمكن التراجع عن هذا الإجراء.", "प्रश्न {number} हटाएँ? इसे पूर्ववत नहीं किया जा सकता।"],
   "Custom Content": ["Contenido personalizado", "Contenu personnalisé", "Eigene Inhalte", "Conteúdo personalizado", "自定义内容", "自訂內容", "カスタムコンテンツ", "محتوى مخصص", "कस्टम सामग्री"],
   "Custom Content Packs": ["Paquetes personalizados", "Packs personnalisés", "Eigene Inhaltspakete", "Pacotes personalizados", "自定义内容包", "自訂內容包", "カスタムコンテンツパック", "حزم محتوى مخصصة", "कस्टम कंटेंट पैक"],
   "Choose a question pack": ["Elegir un paquete", "Choisir un pack", "Fragenpaket auswählen", "Escolher um pacote", "选择题库", "選擇題庫", "問題パックを選択", "اختر حزمة أسئلة", "प्रश्न पैक चुनें"],
