@@ -1,4 +1,4 @@
-import { chromium, expect, firefox, test, webkit, type Browser, type Page } from "@playwright/test";
+import { chromium, expect, test, type Browser, type Page } from "@playwright/test";
 
 import { localePreferenceStorageKey } from "@/features/i18n/i18n";
 import { themePreferenceStorageKey } from "@/features/theme/theme";
@@ -12,25 +12,11 @@ const preferenceKeys = [
   timingAccommodationPreferenceKey
 ] as const;
 
-test("complete backup transfers preferences from Chromium to Firefox and WebKit", { tag: "@browser-smoke" }, async ({ baseURL }, testInfo) => {
-  test.skip(testInfo.project.name !== "backup-portability", "Runs once in the dedicated portability project.");
-  if (baseURL === undefined) throw new Error("The backup-portability project requires a baseURL.");
+test("complete backup transfers preferences from Chromium to the target browser", { tag: "@browser-smoke" }, async ({ baseURL, browser }) => {
+  if (baseURL === undefined) throw new Error("The backup-portability projects require a baseURL.");
 
   const backup = await createChromiumBackup(baseURL);
-
-  for (const [engineName, launch] of [
-    ["Firefox", () => firefox.launch()],
-    ["WebKit", () => webkit.launch()]
-  ] as const) {
-    await test.step(`restore the Chromium backup in ${engineName}`, async () => {
-      const browser = await launch();
-      try {
-        await restoreAndVerify(browser, baseURL, backup);
-      } finally {
-        await browser.close();
-      }
-    });
-  }
+  await restoreAndVerify(browser, baseURL, backup);
 });
 
 async function createChromiumBackup(baseURL: string): Promise<Buffer> {
