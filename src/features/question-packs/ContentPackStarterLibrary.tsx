@@ -325,7 +325,7 @@ export function ContentPackStarterLibrary() {
                       <h4 className="min-w-0 break-words text-sm font-semibold text-ink [overflow-wrap:anywhere]">
                         {t(starter.title)}
                       </h4>
-                      <code className="w-fit max-w-full break-all text-xs text-ink/60" dir="ltr">{starter.subtype}</code>
+                      <code className="w-fit max-w-full break-all text-xs text-ink/65" dir="ltr">{starter.subtype}</code>
                     </div>
                     <p className="min-w-0 break-words text-xs leading-5 text-ink/70 [overflow-wrap:anywhere]">
                       {t(starter.description)}
