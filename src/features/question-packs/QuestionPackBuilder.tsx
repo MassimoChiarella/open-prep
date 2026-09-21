@@ -61,11 +61,12 @@ const roundingOptions: Array<{ label: string; value: "" | RoundingRule }> = [
 ];
 
 export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBuilderProps) {
-  const { t } = useI18n();
+  const { formatNumber, t } = useI18n();
   const { clearDirty, isDirty, markDirty: markUnsaved } = useUnsavedChangesGuard(
     t("Leave this builder? Your unsaved changes will be lost.")
   );
   const nextQuestionNumber = useRef(2);
+  const formRef = useRef<HTMLFormElement>(null);
   const [title, setTitle] = useState("");
   const [packVersion, setPackVersion] = useState("1.0");
   const [packId, setPackId] = useState("my-question-pack");
@@ -96,6 +97,17 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
   }
 
   function removeQuestion(key: number) {
+    const index = questions.findIndex((question) => question.key === key);
+    const question = questions[index];
+    if (question === undefined || questions.length < 2) return;
+    const empty = createQuestionDraft(key);
+    const hasContent = Object.entries(question).some(([field, value]) => value !== empty[field as keyof QuestionDraft]);
+    if (hasContent && !window.confirm(t("Remove Question {number}? This cannot be undone.", {
+      number: formatNumber(index + 1)
+    }))) return;
+    const nextIndex = index < questions.length - 1 ? index + 1 : index - 1;
+    formRef.current?.querySelectorAll('[data-testid="builder-question"]')[nextIndex]
+      ?.querySelector<HTMLTextAreaElement>("textarea")?.focus();
     setQuestions((current) => current.filter((question) => question.key !== key));
     setQuestionErrors({});
     markDirty();
@@ -137,6 +149,8 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
   }
 
   function discardChanges() {
+    if (!isDirty || !window.confirm(t("Discard this draft? Your unsaved changes will be lost."))) return;
+    formRef.current?.querySelector<HTMLInputElement>("input")?.focus();
     onDraftChange?.();
     nextQuestionNumber.current = 2;
     setTitle("");
@@ -181,7 +195,7 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
         <span className="ms-2 text-sm font-normal text-ink/65">{t("Create fixed numeric questions in the app.")}</span>
       </summary>
 
-      <form className="mt-5 grid min-w-0 gap-5" onChange={markDirty} onSubmit={handleSubmit}>
+      <form className="mt-5 grid min-w-0 gap-5" onChange={markDirty} onSubmit={handleSubmit} ref={formRef}>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t("Pack title")}>
             <input
