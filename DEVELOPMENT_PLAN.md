@@ -2,11 +2,13 @@
 
 ## Current Follow-Up Plan
 
-The six priority findings from the September 21 usage audit are scheduled in the
+The six priority findings from the September 21 usage audit are implemented in the
 [Usage Audit Fixes Development Plan](USAGE_FIXES_DEVELOPMENT_PLAN.md). It defines
 eight phases, focused implementation/test slices, and an independent documented
-GitHub push for each completed fix. Implementation is underway; the linked plan
-records current progress and verification. The completed
+GitHub push for each completed fix. All six repairs and follow-up corrections are
+pushed to `codex/usage-audit-fixes`; local verification passes. The linked plan
+records the outstanding integrated CI rerun and manual device/accessibility
+checks. No merge, tag, or production deployment is included. The completed
 remediation and hardening records below remain historical evidence.
 
 Baseline: `9d25cbe`. Development branch: `codex/audit-remediation`.

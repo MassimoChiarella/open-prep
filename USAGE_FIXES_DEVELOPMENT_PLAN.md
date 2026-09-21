@@ -2,7 +2,7 @@
 
 Created: 2026-09-21
 
-Status: All six fixes and the Download translation follow-up pushed. The header test readiness correction passes all 40 cases and is being published. Final integrated checks are running; native screen-reader and real-device assessments remain pending.
+Status: All six fixes and follow-up corrections pushed. Application revision `d05e834` passes the complete GitHub workflow, including cross-browser smoke. Later commit `6d1c051` changes only a header test's readiness wait and the ledger; it passes GitHub's complete project check and both local browser suites (267 Chromium and 160 cross-browser cases). Its first GitHub cross-browser attempt failed one Firefox exhibit-save timeout; an unchanged rerun is pending. Final-HEAD CI and native screen-reader/real-device assessments are not signed off.
 
 Execution baseline: `7a99e5c` on `main`, which includes the reviewed dependency refresh (PR #17). Repair branch: `codex/usage-audit-fixes`. The audit-time Firefox page-creation failure is reproducible inside the restricted sandbox but absent outside it: Chromium 153, Firefox 155, and WebKit 26.6 all passed a fresh page-creation/close preflight with normal process exit. Browser verification will use the unrestricted test environment; no dependency or test-assertion workaround is required.
 
@@ -22,13 +22,13 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 | Order | Phase | Finding | Priority | Dependency | Status |
 | --- | --- | --- | --- | --- | --- |
-| 1 | 0 | Establish a reproducible verification and GitHub baseline | Delivery prerequisite | None | In progress |
-| 2 | 1 | UX-01: Stale previews can export/install older draft content | P1 | Phase 0 | Pushed; CI pending |
+| 1 | 0 | Establish a reproducible verification and GitHub baseline | Delivery prerequisite | None | Complete |
+| 2 | 1 | UX-01: Stale previews can export/install older draft content | P1 | Phase 0 | Pushed; application CI passed |
 | 3 | 2 | UX-06: Discard/remove actions have no confirmation or recovery | P2 | Phase 1 | Pushed; CI passed |
-| 4 | 3 | UX-02: German update-failure status overlaps mobile language selection | P2 | Phase 0 | Pushed; CI pending |
-| 5 | 4 | UX-03: Starter labels have insufficient text contrast | P2 | Phase 0 | Pushed; CI pending |
-| 6 | 5 | UX-04: Enlarged download buttons escape their cards/viewport | P2 | Phase 0 | Pushed; CI pending |
-| 7 | 6 | UX-05: Mobile pie/scatter framing initially hides meaningful data | P2 | Phase 0 | Pushed; CI pending |
+| 4 | 3 | UX-02: German update-failure status overlaps mobile language selection | P2 | Phase 0 | Pushed; application CI passed |
+| 5 | 4 | UX-03: Starter labels have insufficient text contrast | P2 | Phase 0 | Pushed; application CI passed |
+| 6 | 5 | UX-04: Enlarged download buttons escape their cards/viewport | P2 | Phase 0 | Pushed; application CI passed |
+| 7 | 6 | UX-05: Mobile pie/scatter framing initially hides meaningful data | P2 | Phase 0 | Pushed; application CI passed |
 | 8 | 7 | Integrated verification and final GitHub evidence | Completion gate | Phases 1-6 | In progress |
 
 ## Execution Rules
@@ -61,9 +61,9 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 ### 0C. Establish reliable test completion
 
 - [x] Run a small existing browser suite and require normal runner/browser/server shutdown.
-- [ ] If cleanup hangs recur, isolate runner, browser, and server teardown; make any necessary minimal test-tool correction its own documented prerequisite commit.
-- [ ] Recheck the slow WebKit cross-window reset test. Profile/split its steps if needed rather than increasing all timeouts or weakening privacy assertions.
-- [ ] Preserve bounded execution limits and failing-run evidence. If a platform remains unavailable, record the limitation and leave its gate pending rather than marking the overall repair complete.
+- [x] Recheck cleanup: the final full Chromium and cross-browser runners, browsers, and test servers exit normally. No teardown correction was needed.
+- [x] Recheck the slow WebKit cross-window reset test: it passes in the complete cross-browser run within the existing limit; no privacy assertions or global timeouts were changed.
+- [x] Preserve bounded execution limits and failing-run evidence. Unavailable manual/platform checks remain explicitly pending.
 
 ### 0D. Freeze useful baselines
 
@@ -119,7 +119,7 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 - [x] Review mutation coverage and the unchanged import/pack-format/privacy contracts.
 - [x] Update the ledger, commit as `fix(authoring): invalidate stale draft previews (UX-01)`, and push independently.
-- [ ] Verify the remote commit and required CI outcome.
+- [x] Verify the remote commit and required CI outcome; the complete application workflow passes at `d05e834`.
 
 **Exit:** No apparently current preview can export/install an older draft, and no edit/discard can retain approval for outdated content.
 
@@ -181,7 +181,7 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 ### 3D. Review, document, and push
 
 - [x] Commit as `fix(layout): prevent mobile header control overlap (UX-02)` and push independently after the fix gate.
-- [ ] Verify the remote commit and CI result.
+- [x] Verify the remote commit and CI result; the complete application workflow passes at `d05e834`.
 
 **Exit:** All status text and both controls fit, remain readable, and can be used without obstruction.
 
@@ -203,7 +203,8 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 - [x] Check Create, Import, Installed, Discover, Resources, and Downloads in light/dark mode with relevant disclosures open and closed.
 - [x] Inspect mobile/desktop readability and run axe without disabling the contrast rule.
-- [ ] Commit as `fix(a11y): improve content pack label contrast (UX-03)`, push independently, and record remote/CI evidence.
+- [x] Commit as `fix(a11y): improve content pack label contrast (UX-03)` and push independently.
+- [x] Record a successful application CI outcome at `d05e834`; the initial run and correction are retained in the ledger.
 
 **Exit:** The affected normal-sized text meets at least 4.5:1 contrast and the new Create-page regression passes.
 
@@ -235,7 +236,7 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 ### 5D. Review, document, and push
 
 - [x] Commit as `fix(layout): keep authoring downloads within containers (UX-04)` and push independently.
-- [ ] Verify remote identity and CI results.
+- [x] Verify remote identity and CI results; the complete application workflow passes at `d05e834`.
 
 **Exit:** No download button escapes its item or viewport in the matrix, with no removed/renamed file or lost download behavior.
 
@@ -262,19 +263,19 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 - [x] Verify no chart transformation changes source data, series mapping, question answers, grading, or chart semantics.
 - [x] Test long imported labels and a dense imported example against existing validator limits; do not clip content to make a screenshot fit.
-- [ ] Check standalone exhibits, Sprint, and full-case embedding at their actual available widths.
+- [x] Check standalone exhibits, Sprint, and full-case embedding at their actual available widths.
 
 ### 6D. Run chart-specific visual and accessibility checks
 
-- [ ] Inspect table, bar, line, pie, waterfall, scatterplot, stacked bar, and index chart at phone/tablet/desktop sizes.
+- [x] Inspect table, bar, line, pie, waterfall, scatterplot, stacked bar, and index chart at phone/tablet/desktop sizes.
 - [x] Assert the intended plotted pie/points are visible inside the plot viewport, not merely that an SVG exists.
 - [x] Exercise keyboard, touch-sized emulation, dark mode, forced colors, reduced motion, and RTL; retain complete textual data access.
-- [ ] Verify production performance budgets and offline loading; review each intentional baseline change.
+- [x] Verify production performance budgets and offline loading; review each intentional baseline change.
 
 ### 6E. Review, document, and push
 
 - [x] Commit as `fix(exhibits): improve mobile chart framing (UX-05)` and push independently.
-- [ ] Verify remote identity and required CI results.
+- [x] Verify remote identity and required CI results; the complete application workflow passes at `d05e834`.
 
 **Exit:** Mobile charts open with meaningful visible data and all chart types retain their evidence, interactions, and performance contracts.
 
@@ -284,28 +285,31 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 ### 7A. Complete automated verification
 
-- [ ] From the final implementation commit, run `npm run check` and `npm run e2e:cross-browser` with matching installed browsers; require successful exit codes.
-- [ ] Include all newly added regressions, production artifact validation, offline practice, pack import/export, cross-tab data clearing, and unchanged scoring tests.
-- [ ] Verify the existing JavaScript, route, and offline-install performance budgets without weakening them.
+- [x] Run `npm run check` and `npm run e2e:cross-browser` from the final implementation with matching browsers and successful exit codes: the complete project check passed on GitHub; the cross-browser suite passed locally. The failed local check and failed GitHub cross-browser attempt remain documented separately below.
+- [x] Include all newly added regressions, production artifact validation, offline practice, pack import/export, cross-tab data clearing, and unchanged scoring tests.
+- [ ] Obtain a successful integrated GitHub run for final HEAD without weakening assertions or bypassing checks. All application changes passed together at `d05e834`; the later test-only correction is still being rechecked.
+- [x] Verify the existing JavaScript, route, and offline-install performance budgets without weakening them.
 
 ### 7B. Repeat the affected usage matrix
 
 - [x] Re-run the audit's eight window sizes across core routes and the six repaired scenarios.
 - [x] Repeat expanded authoring/downloads, light/dark, German/Arabic, larger text, spacing, and keyboard checks.
-- [ ] Inspect screenshots for clipping, overlap, useful initial chart framing, and focus visibility, not just geometry assertions.
+- [x] Inspect screenshots for clipping, overlap, useful initial chart framing, and focus visibility, not just geometry assertions.
 
 ### 7C. Record manual checks honestly
 
 - [ ] Manually assess changed interactions with NVDA and with VoiceOver/Safari when the corresponding systems are available.
 - [ ] Check representative real iOS/Android touch and resizing behavior when devices are available.
-- [ ] Record each unavailable check as pending; do not equate WebKit automation with real Safari or claim accessibility certification/release readiness.
+- [x] Record each unavailable check as pending; do not equate WebKit automation with real Safari or claim accessibility certification/release readiness.
+
+Pending manual assessment: this run has no interactive NVDA/VoiceOver or physical iOS/Android verification capability. No screen-reader, real Safari, real-device, hosted-origin, or release-certification pass is claimed.
 
 ### 7D. Publish the final completion record
 
-- [ ] Reconcile all six finding IDs with implementation commits, validation evidence, push results, and CI URLs.
-- [ ] Update this plan and the audit with dated remediation references while preserving the original audit findings as historical evidence.
-- [ ] Push a final documentation checkpoint after the six independent fix pushes; do not squash away their timeline.
-- [ ] Report remaining manual/platform blockers separately from completed code fixes. Do not merge, tag, or deploy to production as an incidental part of this plan.
+- [x] Reconcile all six finding IDs with implementation commits, validation evidence, push results, and CI URLs.
+- [x] Update this plan and the audit with dated remediation references while preserving the original audit findings as historical evidence.
+- [x] Publish this final documentation checkpoint after the six independent fix pushes; retain their timeline.
+- [x] Report remaining CI/manual/platform gates separately from completed code fixes. No merge, tag, or production deployment is included.
 
 ## Verification Gate for Every Fix Push
 
@@ -344,14 +348,14 @@ Parallel development does not require parallel builds or pushes. Default push or
 | Tooling, only if necessary | No change required so far | No application-tooling workaround | Browser preflight and production build exit successfully outside sandbox | Not applicable |
 | UX-01 | `fix(authoring): invalidate stale draft previews (UX-01)` | `909589e`; originating-builder invalidation; installation lock | 52 focused tests; 1,263 full-suite tests (serial); lint/typecheck/build; 10 existing Chromium pack/navigation tests; 6 export checks across three browsers | Pushed; [initial CI failed two Firefox checks](https://github.com/MassimoChiarella/open-prep/actions/runs/35564965065); subsequent UX-06 CI passed |
 | UX-06 | `fix(authoring): protect destructive draft actions (UX-06)` | `23b1fa1`; native confirmation; localized copy; survivor/title focus | 5 new tests failed before; 57 focused unit tests and 11 browser checks pass; lint/typecheck/build and budgets pass | Pushed; [CI passed](https://github.com/MassimoChiarella/open-prep/actions/runs/35565625639) |
-| UX-02 | `fix(layout): prevent mobile header control overlap (UX-02)` | `65c55af`; wrap controls/status; minimum selector width | 40 browser cases: ten locales, four widths, six states; existing shell/locale tests; six unchanged visual baselines; lint/typecheck/build passed | Pushed; CI pending |
-| UX-03 | `fix(a11y): improve content pack label contrast (UX-03)` | `b0cfac2`; existing accessible text token; Create axe coverage | 12 theme/view contrast cases, disclosures open/closed; starter tests; full existing accessibility matrix; mobile/light and desktop/dark screenshots inspected | Pushed; CI pending |
-| UX-04 | `fix(layout): keep authoring downloads within containers (UX-04)` | `7fe9d0c`; content-aware grid; short Download action; wrapping badges/text | 15 width/preference cases across English/German/Arabic; 30 URLs and download/import round trip; screenshots reviewed; fresh build/lint/typecheck pass | Pushed; CI pending |
-| UX-05 | `fix(exhibits): improve mobile chart framing (UX-05)` | `7ae4298`; existing Recharts responsive container for pies/scatter; accurate guidance | 16 browser cases including 500-row import/hide/resize, 320/390/768/1280 framing and seven chart preference checks; renderer/workflow units and Sprint checks; screenshots inspected | Pushed; CI pending |
-| Verification follow-up | `test: wait for persisted state in offline and backup checks` | `f3067a7`; explicit async storage readiness; additional preview mutation/import-owner coverage | 12 repeated offline/backup cases passed; 21 preview-integrity unit tests passed; lint/typecheck pass | Pushed; CI exposed the Download catalog omission |
-| UX-04 localization follow-up | `fix(i18n): translate compact download actions (UX-04)` | `d05e834`; nine translated Download labels and generated catalogs; explicit localized-label assertions | All 1,275 unit tests pass; lint/typecheck/build/budgets pass; all 16 download browser cases pass; refreshed RTL screenshot inspected | Pushed; full integration still running |
-| Header verification follow-up | `test: wait for header initialization before selecting locale` | Move the existing ready-state wait before language interaction | All 40 locale/viewport cases pass in the integrated run; unchanged assertions/timeouts | Publishing |
-| Integration | `docs: record usage audit repair verification` | Not started | Pending | Pending |
+| UX-02 | `fix(layout): prevent mobile header control overlap (UX-02)` | `65c55af`; wrap controls/status; minimum selector width | 40 browser cases: ten locales, four widths, six states; existing shell/locale tests; six unchanged visual baselines; lint/typecheck/build passed | Pushed; [initial CI failed Firefox restore timing](https://github.com/MassimoChiarella/open-prep/actions/runs/35567015256); complete application CI later passed at `d05e834` |
+| UX-03 | `fix(a11y): improve content pack label contrast (UX-03)` | `b0cfac2`; existing accessible text token; Create axe coverage | 12 theme/view contrast cases, disclosures open/closed; starter tests; full existing accessibility matrix; mobile/light and desktop/dark screenshots inspected | Pushed; [initial CI exposed header-test initialization race](https://github.com/MassimoChiarella/open-prep/actions/runs/35567199614); corrected in `6d1c051` |
+| UX-04 | `fix(layout): keep authoring downloads within containers (UX-04)` | `7fe9d0c`; content-aware grid; short Download action; wrapping badges/text | 15 width/preference cases across English/German/Arabic; 30 URLs and download/import round trip; screenshots reviewed; fresh build/lint/typecheck pass | Pushed; [initial CI found missing Download translations](https://github.com/MassimoChiarella/open-prep/actions/runs/35567293917); corrected in `d05e834` |
+| UX-05 | `fix(exhibits): improve mobile chart framing (UX-05)` | `7ae4298`; existing Recharts responsive container for pies/scatter; accurate guidance | 16 browser cases including 500-row import/hide/resize, 320/390/768/1280 framing and seven chart preference checks; renderer/workflow units and Sprint checks; screenshots inspected | Pushed; [initial CI inherited the Download catalog failure](https://github.com/MassimoChiarella/open-prep/actions/runs/35567403003); complete application CI later passed at `d05e834` |
+| Verification follow-up | `test: wait for persisted state in offline and backup checks` | `f3067a7`; explicit async storage readiness; additional preview mutation/import-owner coverage | 12 repeated offline/backup cases passed; 21 preview-integrity unit tests passed; lint/typecheck pass | Pushed; [CI inherited the Download catalog failure](https://github.com/MassimoChiarella/open-prep/actions/runs/35567519868) |
+| UX-04 localization follow-up | `fix(i18n): translate compact download actions (UX-04)` | `d05e834`; nine translated Download labels and generated catalogs; explicit localized-label assertions | All 1,275 unit tests pass; lint/typecheck/build/budgets pass; all 16 download browser cases pass; refreshed RTL screenshot inspected | Pushed; [complete CI passed](https://github.com/MassimoChiarella/open-prep/actions/runs/35605196830), including cross-browser smoke; [another run of the same revision failed](https://github.com/MassimoChiarella/open-prep/actions/runs/35605194509) |
+| Header verification follow-up | `test: wait for header initialization before selecting locale` | `6d1c051`; move the existing ready-state wait before language interaction | All 40 locale/viewport cases pass in the integrated run; unchanged assertions/timeouts | Pushed; [CI attempt 1](https://github.com/MassimoChiarella/open-prep/actions/runs/35605418909/attempts/1) passed the complete project check but failed one Firefox exhibit-save check; unchanged attempt 2 pending |
+| Integration | `docs: record usage audit repair verification` | This documentation checkpoint; no additional runtime changes | 1,275 unit tests, 267 Chromium cases, 160 cross-browser cases, 282 audit layouts and 108 axe scans pass; limits and manual gaps recorded | Published separately after the fixes; final-HEAD CI and manual assessments remain pending |
 
 For each checkpoint, record the date, test commands and exit results, relevant screenshots or reviewed baseline paths, commit SHA, remote verification, and CI run URL. Code commits contain their finding IDs and local test evidence; add the resolved SHA/CI result to the next ledger update or the final documentation checkpoint rather than rewriting a published commit to reference itself.
 
@@ -368,6 +372,12 @@ For each checkpoint, record the date, test commands and exit results, relevant s
 - UX-01's first CI run passed its main verification but failed existing Firefox offline-resume and backup-transfer checks. UX-06's subsequent unmodified checks passed. The follow-up test correction waits for the draft write/settings initialization and additionally checks resumed prompt identity; three repetitions across engines passed all 12 cases, without relaxed final assertions or global timeouts.
 - The repeated audit matrix completed normally: 282 layout states (29 routes at eight window sizes, expanded/preference states, and five routes in each additional engine), no document/control overflow findings, no axe violations, and no uncaught Chromium page errors. Firefox and WebKit both completed. Evidence is retained only in ignored `.dist-verification/usage-fixes-2026-09-21/`; it is not a public release artifact. The broader matrix supplements, not replaces, targeted state/geometry assertions.
 - Integration follow-up: the full catalog-coverage test correctly rejected the new `Download` key because its nine translations were missing. They are now added and generated through the existing locale pipeline; the download matrix also asserts the translated label. The first header CI failed the pre-existing Firefox restore timing path; the contrast CI passed 234 cases but exposed a new header test selecting language before initialization. That test now waits for the existing online state before selection. Published failed runs remain historical failures, not retroactively green results. A later full passing run is required before completion.
+- The corrected full local check passed all 163 unit files / 1,275 tests, lint, TypeScript, authoring/identity/catalog/locale checks, and the fresh production build. Its Chromium stage passed 266 cases but one unchanged benchmark case ended with `Target crashed` before navigation; the command is recorded as failed. The exact benchmark test passed three isolated repetitions (normal exit), followed by the complete unchanged browser rerun below.
+- The complete unchanged Chromium rerun subsequently passed all 267 cases in 9.2 minutes with normal exit. GitHub's `Verify project` step also passed the entire `npm run check` from clean revision `6d1c051`. This successful clean-checkout result is separate from the failed local command; the latter is not relabeled as passing.
+- Reconciliation of GitHub's completed runs confirms the complete application revision `d05e834` passed both `Verify project` and cross-browser smoke in run `35605196830`. Its subsequent commit `6d1c051` changes only the header regression's initialization wait and this ledger, with no application changes. The later failed attempt is still retained and its final-HEAD gate remains pending rather than borrowing the earlier green status.
+- The final local `npm run e2e:cross-browser` passed all 160 cases in 5.8 minutes with normal exit, including Firefox/WebKit smoke, offline resume, cross-window clearing, authoring exports, and backup portability. No cleanup hang recurred. The GitHub run's first attempt passed its complete project check but timed out waiting five seconds for the existing Firefox exhibit-answer save. Its retained snapshot shows the correct answer/solution and `Saving...`, not a missed click or incorrect answer. Nine unchanged repetitions across three browsers with two workers passed locally. The failure is not reproduced locally or declared fixed; the same GitHub job is being rerun unchanged, and its gate remains pending.
+- Production budgets remain within their existing limits: largest JavaScript chunk 395.2 KiB / 500 KiB; largest Brotli route JavaScript 404.9 KiB / 480 KiB; offline install precache 4,844.7 KiB / 6,144 KiB (189 files). The build finalized 228 files with cache ID `math-drill-offline-v0.1.0-7b32d087c07117db`. No snapshot baselines or budget limits were changed.
+- Final chart inspection includes all eight types at phone/tablet/desktop sizes, plus standalone/Sprint/full-case workflow checks and an offline full-case chart. The 320-pixel chart title/statistics header has pre-existing awkward wrapping, recorded as a separate polish follow-up in the audit. It does not undo the repaired pie/scatter framing or remove exact textual evidence.
 
 If a fix must be rolled back, use an ordinary reviewed revert commit, restore its status to open, run the affected checks, and push the revert. Do not reset or overwrite other contributors' history.
 

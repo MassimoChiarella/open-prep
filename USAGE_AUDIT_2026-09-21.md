@@ -2,6 +2,25 @@
 
 Date: 2026-09-21
 
+## Remediation Update: 2026-09-21
+
+The six "Fix First" findings below have independent implementation commits on `codex/usage-audit-fixes`. The original observations remain unchanged as historical evidence. The [repair plan and verification ledger](USAGE_FIXES_DEVELOPMENT_PLAN.md) records current check outcomes, follow-ups, and manual gates; these commits are not a production deployment or release approval.
+
+| Finding | Repair | Implementation commit |
+| --- | --- | --- |
+| UX-01 | Invalidate only the originating draft's stale preview/review; protect installation snapshots | `909589e` |
+| UX-06 | Confirm dirty discard/nonempty removal; preserve cancelled work and recover focus | `23b1fa1` |
+| UX-02 | Wrap translated header controls and preserve a usable language-selector width | `65c55af` |
+| UX-03 | Use accessible starter-label contrast and cover Create in axe checks | `b0cfac2` |
+| UX-04 | Reflow download columns, text and actions without removing resources | `7fe9d0c`, with translated labels in `d05e834` |
+| UX-05 | Fit pies/scatterplots to their containers while retaining full data alternatives | `7ae4298` |
+
+The repeated eight-window route audit recorded 282 layouts and 108 axe scans, with no overflow/axe findings or uncaught Chromium page errors. Firefox and WebKit both completed this repeat; the original Firefox startup error was confined to the restricted test environment. Additional regression tests verify exported JSON, cancelled authoring actions, all ten header locales, enlarged text/spacing, all 30 resource destinations, and plotted-mark visibility. Final local suites passed 1,275 unit tests, 267 Chromium cases, and 160 cross-browser cases with normal exits. Application revision `d05e834` passed the complete GitHub workflow. Later test-only correction `6d1c051` passed the complete project check, but its first cross-browser attempt had one Firefox exhibit-save timeout; an unchanged rerun is pending. The repair plan retains failed attempts separately from passing reruns and does not claim final-HEAD CI sign-off.
+
+Remaining scope: the broader authoring-page simplification and successful-preview announcement are not included in this repair batch. NVDA, VoiceOver/Safari, real phones, and hosted-origin validation remain unperformed. Visual inspection also noted a pre-existing 320-pixel chart-header polish issue: side-by-side row/series statistics can compress long headings into awkward mid-word wrapping. Stack those statistics under the title in a later focused chart-header refinement. Dense axis-based exhibits still use deliberate horizontal inspection scrolling; this batch does not replace that behavior with universal chart shrinking.
+
+## Original Audit
+
 Scope: Open Prep's local production build, responsive layouts, accessibility, keyboard workflows, content-pack creation/downloads, local-data safety, and browser compatibility. This is an audit, not a repair or release approval.
 
 Baseline: commit `0c924842b2d929f994ceaece05cbe9aa806adccf`, with the dependency changes already present in the workspace. Those changes were not modified. Node 24.19.0 and the installed Playwright 1.63.0 were used. The finalized static output passed the repository's release-output verification. No application code, dependencies, learner data, or hosted deployment was changed by this audit.
