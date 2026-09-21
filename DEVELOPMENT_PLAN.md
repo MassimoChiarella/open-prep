@@ -1,5 +1,14 @@
 # Audit remediation development plan
 
+## Current Follow-Up Plan
+
+The six priority findings from the September 21 usage audit are scheduled in the
+[Usage Audit Fixes Development Plan](USAGE_FIXES_DEVELOPMENT_PLAN.md). It defines
+eight phases, focused implementation/test slices, and an independent documented
+GitHub push for each completed fix. Implementation is underway; the linked plan
+records current progress and verification. The completed
+remediation and hardening records below remain historical evidence.
+
 Baseline: `9d25cbe`. Development branch: `codex/audit-remediation`.
 
 Implement all 30 findings and six improvements in [BUG_AUDIT.md](BUG_AUDIT.md), preserve deterministic browser-only behavior and local privacy, and record tested increments in Git history. No runtime services or new dependencies are planned. Audit reproduction scripts are evidence, not regression tests: new tests must assert the intended correct behavior.
