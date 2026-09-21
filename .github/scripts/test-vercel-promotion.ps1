@@ -112,3 +112,93 @@ try {
 }
 
 Write-Host "Passed $($taskCases.Count) workflow promotion checks."
+
+$taskMatch = [regex]::Match($taskWorkflow, '(?ms)^      - name: Verify the canonical production origin\r?\n.*?^        run: \|\r?\n(?<body>(?:          [^\r\n]*\r?\n|\r?\n)+)')
+if (-not $taskMatch.Success) { throw 'Could not find the canonical production verification block.' }
+$taskCanonicalBlock = [scriptblock]::Create(($taskMatch.Groups['body'].Value -replace '(?m)^          ', ''))
+
+$taskAllowedCommands = @('Get-Content', 'ConvertFrom-Json', 'Invoke-RestMethod', 'Write-Host', 'Start-Sleep', 'npm')
+foreach ($taskCommand in $taskCanonicalBlock.Ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true)) {
+    if ($taskCommand.GetCommandName() -notin $taskAllowedCommands) {
+        throw "Unexpected command in canonical verification block: $($taskCommand.GetCommandName())"
+    }
+}
+
+$taskLocalMarker = @{
+    artifact = @{ inventorySha256 = 'inventory-expected' }
+} | ConvertTo-Json -Depth 3 -Compress
+$taskExpectedMarker = @{
+    artifact = @{ inventorySha256 = 'inventory-expected' }
+    source = @{ commit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; ref = 'refs/heads/main' }
+}
+$taskStaleMarker = @{
+    artifact = @{ inventorySha256 = 'inventory-expected' }
+    source = @{ commit = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb'; ref = 'refs/heads/main' }
+}
+$taskWrongInventoryMarker = @{
+    artifact = @{ inventorySha256 = 'inventory-previous' }
+    source = @{ commit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; ref = 'refs/heads/main' }
+}
+$taskWrongRefMarker = @{
+    artifact = @{ inventorySha256 = 'inventory-expected' }
+    source = @{ commit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'; ref = 'refs/heads/other' }
+}
+
+function Get-Content {
+    Assert-Equal ($args -join ' ') '-Raw -LiteralPath .vercel/output/static/open-prep-release.json' 'Local marker request'
+    $taskLocalMarker
+}
+
+function Invoke-RestMethod {
+    param([string]$Uri, [hashtable]$Headers, [int]$MaximumRedirection, [int]$TimeoutSec)
+    Assert-Equal $Uri 'https://openprep.app/open-prep-release.json' 'Canonical marker URL'
+    Assert-Equal $Headers['Cache-Control'] 'no-cache' 'Canonical marker cache control'
+    Assert-Equal $MaximumRedirection 0 'Canonical marker redirects'
+    Assert-Equal $TimeoutSec 15 'Canonical marker request timeout'
+    $taskState.Attempts++
+    if ($taskState.Attempts -le $taskCase.RequestFailures) { throw 'Simulated network failure.' }
+    $taskCase.Markers[[Math]::Min($taskState.Attempts - $taskCase.RequestFailures - 1, $taskCase.Markers.Count - 1)]
+}
+
+function Start-Sleep {
+    param([int]$Seconds)
+    $taskState.Sleeps += $Seconds
+}
+
+function npm {
+    Assert-Equal ($args -join ' ') 'run postdeploy:check https://openprep.app/' 'Canonical behavioral smoke'
+    $taskState.Smokes++
+}
+
+$taskCases = @(
+    @{ Name = 'accepts the current marker immediately'; Markers = @($taskExpectedMarker); RequestFailures = 0; Attempts = 1; Sleeps = @(); Smokes = 1 }
+    @{ Name = 'waits for the canonical marker to change'; Markers = @($taskStaleMarker, $taskStaleMarker, $taskExpectedMarker); RequestFailures = 0; Attempts = 3; Sleeps = @(5, 5); Smokes = 1 }
+    @{ Name = 'recovers from a transient marker request failure'; Markers = @($taskExpectedMarker); RequestFailures = 1; Attempts = 2; Sleeps = @(5); Smokes = 1 }
+    @{ Name = 'rejects a persistently stale marker'; Markers = @($taskStaleMarker); RequestFailures = 0; Attempts = 12; Sleeps = @(5) * 11; Smokes = 0; Error = 'The canonical origin does not serve the verified artifact.' }
+    @{ Name = 'rejects a persistent wrong source ref'; Markers = @($taskWrongRefMarker); RequestFailures = 0; Attempts = 12; Sleeps = @(5) * 11; Smokes = 0; Error = 'The canonical origin does not serve the verified artifact.' }
+    @{ Name = 'rejects a persistent wrong inventory'; Markers = @($taskWrongInventoryMarker); RequestFailures = 0; Attempts = 12; Sleeps = @(5) * 11; Smokes = 0; Error = 'The canonical origin does not serve the verified artifact.' }
+    @{ Name = 'rejects persistent marker request failures'; Markers = @($taskExpectedMarker); RequestFailures = 12; Attempts = 12; Sleeps = @(5) * 11; Smokes = 0; Error = 'Could not read the canonical release marker after promotion.' }
+)
+
+$taskPreviousSha = $env:GITHUB_SHA
+$taskPreviousRef = $env:GITHUB_REF
+$env:GITHUB_SHA = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
+$env:GITHUB_REF = 'refs/heads/main'
+
+try {
+    foreach ($taskCase in $taskCases) {
+        $taskState = @{ Attempts = 0; Sleeps = @(); Smokes = 0 }
+        $taskError = $null
+        try { & { . $taskCanonicalBlock } } catch { $taskError = $_.Exception.Message }
+        Assert-Equal $taskError $taskCase.Error $taskCase.Name
+        Assert-Equal $taskState.Attempts $taskCase.Attempts "$($taskCase.Name): marker attempts"
+        Assert-Equal ($taskState.Sleeps -join ',') ($taskCase.Sleeps -join ',') "$($taskCase.Name): retry delays"
+        Assert-Equal $taskState.Smokes $taskCase.Smokes "$($taskCase.Name): behavioral smoke runs"
+        Write-Host "PASS $($taskCase.Name)"
+    }
+} finally {
+    $env:GITHUB_SHA = $taskPreviousSha
+    $env:GITHUB_REF = $taskPreviousRef
+}
+
+Write-Host "Passed $($taskCases.Count) canonical production checks."
