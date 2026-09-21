@@ -2,7 +2,7 @@
 
 Created: 2026-09-21
 
-Status: UX-01 implemented and locally verified; publishing its independent checkpoint. Remaining fixes are pending.
+Status: UX-01 pushed; UX-06 implemented and locally verified. Responsive and contrast repairs are next.
 
 Execution baseline: `7a99e5c` on `main`, which includes the reviewed dependency refresh (PR #17). Repair branch: `codex/usage-audit-fixes`. The audit-time Firefox page-creation failure is reproducible inside the restricted sandbox but absent outside it: Chromium 153, Firefox 155, and WebKit 26.6 all passed a fresh page-creation/close preflight with normal process exit. Browser verification will use the unrestricted test environment; no dependency or test-assertion workaround is required.
 
@@ -23,8 +23,8 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 | Order | Phase | Finding | Priority | Dependency | Status |
 | --- | --- | --- | --- | --- | --- |
 | 1 | 0 | Establish a reproducible verification and GitHub baseline | Delivery prerequisite | None | In progress |
-| 2 | 1 | UX-01: Stale previews can export/install older draft content | P1 | Phase 0 | Locally verified; push/CI pending |
-| 3 | 2 | UX-06: Discard/remove actions have no confirmation or recovery | P2 | Phase 1 | Not started |
+| 2 | 1 | UX-01: Stale previews can export/install older draft content | P1 | Phase 0 | Pushed; CI pending |
+| 3 | 2 | UX-06: Discard/remove actions have no confirmation or recovery | P2 | Phase 1 | Locally verified; push/CI pending |
 | 4 | 3 | UX-02: German update-failure status overlaps mobile language selection | P2 | Phase 0 | Not started |
 | 5 | 4 | UX-03: Starter labels have insufficient text contrast | P2 | Phase 0 | Not started |
 | 6 | 5 | UX-04: Enlarged download buttons escape their cards/viewport | P2 | Phase 0 | Not started |
@@ -131,22 +131,22 @@ IDs match the six items in the user-facing audit summary. Delivery order puts bo
 
 ### 2A. Define the smallest recovery interaction
 
-- [ ] Reuse the project's established native confirmation approach for discarding a dirty draft and removing a nonempty question. Add Undo only if existing UX patterns make it equally small and reliable.
-- [ ] Define nonempty/dirty behavior, last-question constraints, the affected draft/question, and translated confirmation text.
-- [ ] Keep this repair independent of a new autosave/draft-storage feature.
+- [x] Reuse the project's established native confirmation approach for discarding a dirty draft and removing a nonempty question. Add Undo only if existing UX patterns make it equally small and reliable.
+- [x] Define nonempty/dirty behavior, last-question constraints, the affected draft/question, and translated confirmation text.
+- [x] Keep this repair independent of a new autosave/draft-storage feature.
 
 ### 2B. Add safeguards
 
-- [ ] Protect numeric and questioning Discard actions and numeric question removal.
-- [ ] Cancellation must preserve content, order, dirty state, preview, and approval exactly as before the action.
-- [ ] Confirmed deletion must remove only the intended work and invoke Phase 1 preview invalidation.
-- [ ] Return focus to the initiating control after cancellation and a logical surviving control after deletion.
+- [x] Protect numeric and questioning Discard actions and numeric question removal.
+- [x] Cancellation must preserve content, order, dirty state, preview, and approval exactly as before the action.
+- [x] Confirmed deletion must remove only the intended work and invoke Phase 1 preview invalidation.
+- [x] Return focus to the initiating control after cancellation and a logical surviving control after deletion.
 
 ### 2C. Exercise real editing flows
 
-- [ ] Test multi-question packs, first/middle/last removal, dirty/empty drafts, duplicated questions, and both builders.
-- [ ] Test keyboard cancellation/confirmation and continued editing at mobile and desktop sizes.
-- [ ] Re-run unsaved Back/Forward/link protection and stale-preview regressions together.
+- [x] Test multi-question packs, first/middle/last removal, dirty/empty drafts, duplicated questions, and both builders.
+- [x] Test keyboard cancellation/confirmation and continued editing at mobile and desktop sizes.
+- [x] Re-run unsaved Back/Forward/link protection and stale-preview regressions together.
 
 ### 2D. Review, document, and push
 
@@ -342,8 +342,8 @@ Parallel development does not require parallel builds or pushes. Default push or
 | --- | --- | --- | --- | --- |
 | Planning | `docs: plan usage audit fixes and verification` | `cd45638` | Documentation reviewed | Pushed; [CI passed](https://github.com/MassimoChiarella/open-prep/actions/runs/35563710526) |
 | Tooling, only if necessary | No change required so far | No application-tooling workaround | Browser preflight and production build exit successfully outside sandbox | Not applicable |
-| UX-01 | `fix(authoring): invalidate stale draft previews (UX-01)` | Originating-builder invalidation; installation lock | 52 focused tests; 1,263 full-suite tests (serial); lint/typecheck/build; 10 existing Chromium pack/navigation tests; 6 export checks across three browsers | Pending |
-| UX-06 | `fix(authoring): protect destructive draft actions (UX-06)` | Not started | Pending | Pending |
+| UX-01 | `fix(authoring): invalidate stale draft previews (UX-01)` | `909589e`; originating-builder invalidation; installation lock | 52 focused tests; 1,263 full-suite tests (serial); lint/typecheck/build; 10 existing Chromium pack/navigation tests; 6 export checks across three browsers | Pushed; [CI pending](https://github.com/MassimoChiarella/open-prep/actions/runs/35564965065) |
+| UX-06 | `fix(authoring): protect destructive draft actions (UX-06)` | Native confirmation; localized copy; survivor/title focus | 5 new tests failed before; 57 focused unit tests and 11 browser checks pass; lint/typecheck/build and budgets pass | Pending |
 | UX-02 | `fix(layout): prevent mobile header control overlap (UX-02)` | Not started | Pending | Pending |
 | UX-03 | `fix(a11y): improve content pack label contrast (UX-03)` | Not started | Pending | Pending |
 | UX-04 | `fix(layout): keep authoring downloads within containers (UX-04)` | Not started | Pending | Pending |
@@ -363,3 +363,5 @@ If a fix must be rolled back, use an ordinary reviewed revert commit, restore it
 ## Completion Definition
 
 All six fixes have independent documented GitHub commits, current regression coverage, reviewed responsive/accessibility evidence, and successful required automated checks. The final ledger clearly separates pending real-device/screen-reader checks from code completion. No broader redesign, unrelated dependency change, production deployment, or missing manual assessment is silently included or claimed complete.
+
+UX-06 evidence: populated means any question field differs from its initial defaults, including IDs/settings; untouched empty questions can be removed without a prompt. Dirty-draft discard and nonempty-question removal require confirmation. Unit tests cover cancellation with approval intact, first/middle/last deletion, duplicated questions, last-question protection, reset and focus. Chromium checks cover keyboard cancellation/confirmation at 390/1280 pixels; all three engines pass the export regressions. Existing Back/Forward/link guards remain passing. Native screen-reader review remains pending.

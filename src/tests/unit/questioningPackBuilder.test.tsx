@@ -39,6 +39,7 @@ describe("QuestioningPackBuilder", () => {
   });
 
   it("associates malformed concepts JSON with its field and protects invalid work", () => {
+    vi.spyOn(window, "confirm").mockReturnValue(true);
     const onPreview = vi.fn();
     render(<QuestioningPackBuilder onPreview={onPreview} />);
 
