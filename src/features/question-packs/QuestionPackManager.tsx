@@ -39,6 +39,7 @@ import type {
 type ImportStatus = "error" | "idle" | "installed" | "invalid" | "ready" | "saving";
 type ListStatus = "error" | "loading" | "ready";
 type MoreStatus = "error" | "idle" | "loading";
+type DraftOwner = "numeric" | "questioning";
 
 export type QuestionPackManagerView = "all" | "create" | "import" | "installed";
 
@@ -85,6 +86,7 @@ export function QuestionPackManager({
   const catalogCandidateKey = useRef<string>();
   const deleteInFlight = useRef(false);
   const fileReadRequest = useRef(0);
+  const previewOwner = useRef<DraftOwner>();
   const showCreate = view === "all" || view === "create";
   const showImport = view === "all" || view === "import";
   const showInstalled = view === "all" || view === "installed";
@@ -107,8 +109,10 @@ export function QuestionPackManager({
   );
   const applyPreviewPayload = useCallback((
     payload: unknown,
-    provenance?: CommunityPackCatalogProvenance
+    provenance?: CommunityPackCatalogProvenance,
+    owner?: DraftOwner
   ) => {
+    previewOwner.current = owner;
     setErrors([]);
     setPendingInstalledPack(undefined);
     setPendingPack(undefined);
@@ -135,11 +139,11 @@ export function QuestionPackManager({
   }, []);
 
   useEffect(() => {
-    if (catalogCandidate === undefined || catalogCandidateKey.current === catalogCandidate.key) return;
+    if (importStatus === "saving" || catalogCandidate === undefined || catalogCandidateKey.current === catalogCandidate.key) return;
     catalogCandidateKey.current = catalogCandidate.key;
     fileReadRequest.current += 1;
     applyPreviewPayload(catalogCandidate.payload, catalogCandidate.provenance);
-  }, [applyPreviewPayload, catalogCandidate]);
+  }, [applyPreviewPayload, catalogCandidate, importStatus]);
 
   useEffect(() => {
     let cancelled = false;
@@ -208,6 +212,7 @@ export function QuestionPackManager({
     const input = event.currentTarget;
     const file = input.files?.[0];
     const request = ++fileReadRequest.current;
+    previewOwner.current = undefined;
 
     setErrors([]);
     setImportStatus("idle");
@@ -245,13 +250,24 @@ export function QuestionPackManager({
     }
   }
 
-  function previewPayload(payload: unknown) {
+  function previewPayload(payload: unknown, owner: DraftOwner) {
     if (importStatus === "saving") {
       return;
     }
 
     fileReadRequest.current += 1;
-    applyPreviewPayload(payload);
+    applyPreviewPayload(payload, undefined, owner);
+  }
+
+  function invalidateDraftPreview(owner: DraftOwner) {
+    if (previewOwner.current !== owner || importStatus === "saving") return;
+    previewOwner.current = undefined;
+    setPendingPack(undefined);
+    setPendingInstalledPack(undefined);
+    setReviewConfirmed(false);
+    setErrors([]);
+    setSaveError(undefined);
+    setImportStatus("idle");
   }
 
   async function handleInstall() {
@@ -351,10 +367,16 @@ export function QuestionPackManager({
       ) : null}
 
       {showCreate ? (
-        <>
-          <QuestionPackBuilder onPreview={previewPayload} />
-          <QuestioningPackBuilder onPreview={previewPayload} />
-        </>
+        <fieldset className="contents" disabled={importStatus === "saving"}>
+          <QuestionPackBuilder
+            onDraftChange={() => invalidateDraftPreview("numeric")}
+            onPreview={(payload) => previewPayload(payload, "numeric")}
+          />
+          <QuestioningPackBuilder
+            onDraftChange={() => invalidateDraftPreview("questioning")}
+            onPreview={(payload) => previewPayload(payload, "questioning")}
+          />
+        </fieldset>
       ) : null}
 
       {showImport ? (
