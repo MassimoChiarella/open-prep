@@ -516,18 +516,22 @@ function formatAnswerWithUnit(
   t: ReturnType<typeof useI18n>["t"]
 ): string {
   if (unit === undefined || unit === "none") {
-    return formatLocaleNumber(value);
+    return formatLocaleNumber(value, { maximumFractionDigits: 12 });
   }
 
   if (unit === "currency") {
-    return `$${formatLocaleNumber(value)}`;
+    return `$${formatLocaleNumber(value, { maximumFractionDigits: 12 })}`;
   }
 
   if (unit === "percentage") {
-    return `${formatLocaleNumber(value * 100)}%`;
+    return `${formatLocaleNumber(value * 100, { maximumFractionDigits: 12 })}%`;
   }
 
-  return `${formatLocaleNumber(value)} ${t(formatUnit(unit))}`;
+  if (unit === "k" || unit === "m" || unit === "b") {
+    return `${formatLocaleNumber(value, { maximumFractionDigits: 12 })} ${unit.toUpperCase()}`;
+  }
+
+  return `${formatLocaleNumber(value, { maximumFractionDigits: 12 })} ${t(formatUnit(unit))}`;
 }
 
 function formatUnit(unit: UnitType): string {

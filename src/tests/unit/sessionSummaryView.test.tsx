@@ -5,10 +5,37 @@ import { buildDrillSettingsQuery } from "@/features/drills/drillSettingsOptions"
 import { SessionSummaryView } from "@/features/drills/SessionSummaryView";
 import type { SessionSummarySnapshot } from "@/features/drills/sessionSummary";
 import { renderWithStoredLocale, resetI18nTestState } from "@/tests/renderWithStoredLocale";
+import type { AnswerSpec } from "@/lib/domain";
+import { validateAnswer } from "@/lib/validation/validateAnswer";
 
 afterEach(resetI18nTestState);
 
 describe("SessionSummaryView", () => {
+  it.each(["en", "de", "fr", "ar", "hi"] as const)(
+    "shows complete correct answers that can be re-entered in %s", async (locale) => {
+      const answers: AnswerSpec[] = [
+        { value: 252907.321234 }, { value: -0.000123456789, unit: "none" },
+        { value: 1234567890123.125 }, { value: 42 },
+        { value: 1234.567891, unit: "currency" },
+        { value: 0.123456789123, unit: "percentage" }, { value: 1.234567891, unit: "m" }
+      ];
+      const snapshot = summarySnapshot();
+      snapshot.questionResults = answers.map((answer, index) => ({
+        ...snapshot.questionResults[0], correctValue: answer.value, answerUnit: answer.unit,
+        prompt: `Precision case ${index}`
+      }));
+      if (locale === "en") render(<SessionSummaryView snapshot={snapshot} />);
+      else await renderWithStoredLocale(<SessionSummaryView snapshot={snapshot} />, locale).initialize();
+
+      answers.forEach((answer, index) => {
+        const card = screen.getByText(new RegExp(`Precision case ${index}$`)).closest("li")!;
+        const displayed = card.querySelector("dl")!.querySelectorAll("dd")[1].textContent!;
+        expect(validateAnswer(displayed, answer, { locale }).isCorrect, displayed).toBe(true);
+        if (answer.value === 42) expect(displayed).toBe(new Intl.NumberFormat(locale).format(42));
+      });
+    }
+  );
+
   it("localizes the core results handoff", async () => {
     const locale = renderWithStoredLocale(<SessionSummaryView snapshot={summarySnapshot()} />, "es");
     await locale.initialize();
