@@ -18,7 +18,7 @@ Tracking requirement: [GitHub issue #25](https://github.com/MassimoChiarella/ope
 | S07 | Profile save protection | Implemented; integration pending | AUD-05; 4 profile tests passed, focused lint clean; delayed-write browser regression added |
 | S08 | Whole-session feedback deadline | Open | AUD-06 |
 | S09 | Coherent weighted-sales wording | Implemented | AUD-07; All 985 configured tuples independently checked; 8 content tests passed |
-| S10 | Correct-answer display precision | Open | AUD-08 |
+| S10 | Correct-answer display precision | Implemented | AUD-08; 12 summary tests passed; displayed answers accepted in en/de/fr/ar/hi |
 | S11 | Unitless Interview Math | Open | AUD-09 |
 | S12 | Generated identity compatibility | Open | AUD-10 |
 | S13 | Bulk authoring responsiveness | Open | AUD-11; reconcile concurrent source changes |
