@@ -109,7 +109,10 @@ export function ContentPackCreationGuide() {
           <li className="grid min-w-0 content-start gap-1 bg-white p-3" key={step.title}>
             <div className="flex min-w-0 items-center justify-between gap-1">
               <h3 className="min-w-0 text-sm font-semibold text-ink">{t(step.title)}</h3>
-              <InfoHint align={index > 2 ? "end" : "start"} label={t("About {step}", { step: t(step.title) })}>
+              <InfoHint
+                align={index === 0 ? "start" : index < 3 ? "center" : "end"}
+                label={t("About {step}", { step: t(step.title) })}
+              >
                 {t(step.help)}
               </InfoHint>
             </div>

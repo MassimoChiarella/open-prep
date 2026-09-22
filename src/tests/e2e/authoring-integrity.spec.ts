@@ -2,6 +2,8 @@ import { readFile } from "node:fs/promises";
 
 import { expect, test, type Locator, type Page } from "@playwright/test";
 
+import { localePreferenceStorageKey } from "@/features/i18n/i18n";
+
 test("only the current reviewed draft can be exported or installed", { tag: "@browser-smoke" }, async ({ page }, testInfo) => {
   await page.goto("/content-packs/?view=create");
   const builder = page.getByTestId("question-pack-builder");
@@ -83,6 +85,39 @@ for (const width of [390, 1280]) {
     await expect(builder.getByLabel("Pack title", { exact: true })).toHaveValue("");
     await expect(builder.getByLabel("Pack title", { exact: true })).toBeFocused();
   });
+}
+
+for (const locale of ["en", "ar"] as const) {
+  for (const { fontSize, width } of [
+    { fontSize: "100%", width: 320 },
+    { fontSize: "100%", width: 390 },
+    { fontSize: "200%", width: 768 }
+  ]) {
+    test(`authoring hints stay inside the ${width}px viewport at ${fontSize} text in ${locale}`, async ({ page }) => {
+      await page.addInitScript(([key, value]) => localStorage.setItem(key, value), [localePreferenceStorageKey, locale]);
+      await page.setViewportSize({ width, height: 800 });
+      await page.goto("/content-packs/?view=create");
+      await page.addStyleTag({ content: `html { font-size: ${fontSize} !important; }` });
+      await expect(page.locator("html")).toHaveAttribute("dir", locale === "ar" ? "rtl" : "ltr");
+
+      const guide = page.getByTestId("content-pack-creation-guide");
+      const hints = guide.locator('button[aria-expanded="false"]');
+      await expect(hints).toHaveCount(5);
+
+      for (let index = 0; index < 5; index += 1) {
+        await hints.nth(index).click();
+        const tooltip = page.getByRole("tooltip");
+        await expect(tooltip).toBeVisible();
+        const box = await tooltip.boundingBox();
+        expect(box).not.toBeNull();
+        expect(box!.x).toBeGreaterThanOrEqual(0);
+        expect(box!.x + box!.width).toBeLessThanOrEqual(width);
+        expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width);
+        await page.keyboard.press("Escape");
+        await expect(tooltip).toHaveCount(0);
+      }
+    });
+  }
 }
 
 async function downloadPreview(page: Page, path: string) {

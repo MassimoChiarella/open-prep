@@ -7,9 +7,9 @@ import { cx } from "@/components/uiStyles";
 type InfoHintAlignment = "center" | "end" | "start";
 
 const alignmentClasses: Record<InfoHintAlignment, string> = {
-  center: "start-1/2 -translate-x-1/2 rtl:translate-x-1/2",
+  center: "end-0 sm:end-auto sm:start-1/2 sm:-translate-x-1/2 sm:rtl:translate-x-1/2",
   end: "end-0",
-  start: "start-0"
+  start: "end-0 sm:end-auto sm:start-0"
 };
 
 export function InfoHint({
