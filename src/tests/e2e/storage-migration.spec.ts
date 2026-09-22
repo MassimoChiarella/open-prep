@@ -7,6 +7,7 @@ import { validateLocalProgressImportPayload } from "../../features/settings/loca
 import {
   appDatabaseName,
   appDatabaseVersion,
+  appCoordinationStoreName,
   appStoreIndexNames,
   appStoreNames
 } from "../../lib/storage/appStorageTypes";
@@ -53,7 +54,7 @@ interface DatabaseSnapshot {
 }
 
 const fixtureDirectory = resolve(process.cwd(), "src", "tests", "fixtures", "storage-history");
-const indexedDbFixture = readJson<IndexedDbFixture>("indexeddb-v8.json");
+const indexedDbFixture = readJson<IndexedDbFixture>("indexeddb-v9.json");
 const progressExportV3 = readJson<unknown>("progress-export-v3.json");
 const progressExportV4 = readJson<unknown>("progress-export-v4.json");
 
@@ -115,7 +116,7 @@ test("@browser-smoke upgrades the authentic immediate-predecessor database witho
   const migrated = await readDatabase(page);
 
   expect(migrated.version).toBe(appDatabaseVersion);
-  expect(migrated.storeNames).toEqual([...appStoreNames].sort());
+  expect(migrated.storeNames).toEqual([...appStoreNames, appCoordinationStoreName].sort());
   expect(migrated.storeMetadata).toEqual(expectedStoreMetadata());
 
   for (const storeName of appStoreNames) {
@@ -154,6 +155,20 @@ test("@browser-smoke upgrades the authentic immediate-predecessor database witho
   expect(findRecord(migrated, "mistake_notebook", "mistake-v7-001").sourceSessionId).toBe(session.id);
   expect(findRecord(migrated, "retry_schedules", "retry-v7-001").sourceId).toBe("mistake-v7-001");
 });
+
+for (const version of [7, 8]) {
+  test(`retains records from historical database v${version}`, async ({ page }) => {
+    const fixture = readJson<IndexedDbFixture>(`indexeddb-v${version}.json`);
+    await page.goto("/formulas");
+    await deleteDatabase(page, appDatabaseName);
+    await seedHistoricalDatabase(page, fixture, {});
+    await page.goto("/");
+    await expect(page.getByTestId("dashboard-priority-panel")).toBeVisible();
+    const migrated = await readDatabase(page);
+    expect(migrated.version).toBe(appDatabaseVersion);
+    for (const storeName of appStoreNames) expect(sortRecords(migrated.records[storeName])).toEqual(sortRecords(fixture.database.stores[storeName].records));
+  });
+}
 
 test("a native aborted upgrade rolls back and can be reopened and upgraded cleanly", async ({ page }) => {
   await page.goto("/formulas");

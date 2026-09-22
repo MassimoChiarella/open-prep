@@ -26,7 +26,9 @@ import type {
 } from "@/lib/domain";
 
 export const appDatabaseName = "consulting_math_drill_tool";
-export const appDatabaseVersion = 9;
+export const appDatabaseVersion = 10;
+// Coordination is local to this database and is deliberately absent from learner exports.
+export const appCoordinationStoreName = "_coordination";
 
 export const appStoreIndexNames = {
   drill_sessions: "updated_at_id",
@@ -328,7 +330,49 @@ export type AppStorageMutation = {
     | { storeName: TStore; type: "put"; value: AppStoreValue<TStore> };
 }[AppStoreName];
 
+export interface DrillSessionWriteToken {
+  generation: number;
+  revision: number;
+  exists: boolean;
+}
+
+export type AppStorageReads = Partial<{ [TStore in AppStoreName]: readonly AppStoreKey<TStore>[] | "all" }>;
+
+export interface AppStorageAtomicView {
+  generation: number;
+  get<TStore extends AppStoreName>(storeName: TStore, key: AppStoreKey<TStore>): AppStoreValue<TStore> | undefined;
+  getAll<TStore extends AppStoreName>(storeName: TStore): AppStoreValue<TStore>[];
+  sessionToken(id: string): DrillSessionWriteToken;
+}
+
+export interface AppStorageAtomicOptions {
+  stores: readonly AppStoreName[];
+  reads?: AppStorageReads;
+  expectedGeneration?: number;
+  advanceGeneration?: boolean;
+}
+
+export interface AppStorageAtomicDecision<TResult> {
+  operations: readonly AppStorageMutation[];
+  result: TResult;
+}
+
+export class AppStorageConflictError extends Error {
+  constructor(readonly reason: "generation" | "session") {
+    super(reason === "generation"
+      ? "Local data changed. Reload before saving new work."
+      : "This attempt changed in another tab. Review the saved attempt or keep your work separately.");
+    this.name = "AppStorageConflictError";
+  }
+}
+
 export interface AppStorage {
+  getGeneration(): Promise<number>;
+  getDrillSession(id: string): Promise<{ session?: StoredDrillSession; token: DrillSessionWriteToken }>;
+  atomic<TResult>(
+    options: AppStorageAtomicOptions,
+    decide: (view: AppStorageAtomicView) => AppStorageAtomicDecision<TResult>
+  ): Promise<TResult>;
   get<TStore extends AppStoreName>(
     storeName: TStore,
     key: AppStoreKey<TStore>
@@ -350,8 +394,11 @@ export interface AppStorage {
   put<TStore extends AppStoreName>(storeName: TStore, value: AppStoreValue<TStore>): Promise<void>;
   delete<TStore extends AppStoreName>(storeName: TStore, key: AppStoreKey<TStore>): Promise<void>;
   clear<TStore extends AppStoreName>(storeName: TStore): Promise<void>;
-  mutate(operations: readonly AppStorageMutation[]): Promise<void>;
-  replaceSnapshot(snapshot: AppStorageReplacement): Promise<void>;
+  mutate(operations: readonly AppStorageMutation[], options?: Pick<AppStorageAtomicOptions, "expectedGeneration" | "advanceGeneration">): Promise<void>;
+  replaceSnapshot(snapshot: AppStorageReplacement, options?: {
+    preserve?: (current: AppStorageReplacement) => AppStorageReplacement;
+    readStores?: readonly AppStoreName[];
+  }): Promise<void>;
   clearAll(): Promise<void>;
   close(): void;
 }

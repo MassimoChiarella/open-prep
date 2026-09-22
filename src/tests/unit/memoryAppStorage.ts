@@ -3,6 +3,9 @@ import {
   appStoreIndexNames,
   type AppDatabaseSchema,
   type AppStorage,
+  type AppStorageAtomicOptions,
+  type AppStorageAtomicView,
+  type AppStorageAtomicDecision,
   type AppStorageMutation,
   type AppStoragePage,
   type AppStoragePageOptions,
@@ -14,14 +17,49 @@ import {
   type AppStoreName,
   type AppStoreValue,
 } from "@/lib/storage/appStorageTypes";
+import { AppStorageConflictError } from "@/lib/storage/appStorageTypes";
+import { createAtomicView } from "@/lib/storage/storageCoordination";
+import { assertPersistableRecord } from "@/lib/validation/inputLimits";
 
 export class MemoryAppStorage implements AppStorage {
   private readonly stores = new Map<AppStoreName, Map<IDBValidKey, AppDatabaseSchema[AppStoreName]>>();
+  private readonly coordination = { generation: 0, revisions: new Map<string, number>() };
 
   constructor(private readonly failMutationAt?: number) {
     for (const storeName of appStoreNames) {
       this.stores.set(storeName, new Map());
     }
+  }
+
+  async getGeneration(): Promise<number> { return this.coordination.generation; }
+
+  async getDrillSession(id: string) {
+    const value = this.getStore("drill_sessions").get(id);
+    const session = value === undefined ? undefined : structuredClone(value);
+    return { session, token: {
+      generation: this.coordination.generation, revision: this.coordination.revisions.get(id) ?? 0,
+      exists: session !== undefined
+    } };
+  }
+
+  async atomic<TResult>(options: AppStorageAtomicOptions, decide: (view: AppStorageAtomicView) => AppStorageAtomicDecision<TResult>): Promise<TResult> {
+    if (options.expectedGeneration !== undefined && options.expectedGeneration !== this.coordination.generation) {
+      throw new AppStorageConflictError("generation");
+    }
+    const reads = options.reads ?? {};
+    const records: AppStorageReplacement = {};
+    for (const storeName of Object.keys(reads) as AppStoreName[]) {
+      const keys = reads[storeName]!;
+      (records as Record<string, unknown[]>)[storeName] = this.peekAll(storeName).filter((record) => keys === "all" || keys.includes(record.id as never));
+    }
+    const decision = decide(createAtomicView(records, reads, this.coordination.generation, this.coordination.revisions));
+    if (typeof (decision as unknown as { then?: unknown }).then === "function") throw new Error("Atomic decisions must be synchronous.");
+    for (const operation of decision.operations) {
+      if (!options.stores.includes(operation.storeName)) throw new Error(`Atomic write store was not declared: ${operation.storeName}.`);
+    }
+    this.applyOperations(decision.operations);
+    if (options.advanceGeneration) this.coordination.generation += 1;
+    return decision.result;
   }
 
   async get<TStore extends AppStoreName>(
@@ -88,19 +126,32 @@ export class MemoryAppStorage implements AppStorage {
   }
 
   async put<TStore extends AppStoreName>(storeName: TStore, value: AppStoreValue<TStore>): Promise<void> {
+    // Direct writes also seed fault-injection fixtures before a failing multi-write transaction.
+    assertPersistableRecord(value);
+    this.seedLegacy(storeName, value);
+  }
+
+  /** Represents an older app or an external database edit, bypassing today's write validation. */
+  seedLegacy<TStore extends AppStoreName>(storeName: TStore, value: AppStoreValue<TStore>): void {
     this.getStore(storeName).set(value.id, structuredClone(value));
+    if (storeName === "drill_sessions") this.coordination.revisions.set(value.id, (this.coordination.revisions.get(value.id) ?? 0) + 1);
   }
 
   async delete<TStore extends AppStoreName>(storeName: TStore, key: AppStoreKey<TStore>): Promise<void> {
-    this.getStore(storeName).delete(key);
+    await this.mutate([{ storeName, type: "delete", key } as AppStorageMutation]);
   }
 
   async clear<TStore extends AppStoreName>(storeName: TStore): Promise<void> {
-    this.getStore(storeName).clear();
+    await this.mutate([{ storeName, type: "clear" }]);
   }
 
-  async mutate(operations: readonly AppStorageMutation[]): Promise<void> {
+  async mutate(operations: readonly AppStorageMutation[], options: Pick<AppStorageAtomicOptions, "expectedGeneration" | "advanceGeneration"> = {}): Promise<void> {
+    await this.atomic({ ...options, stores: [...new Set(operations.map(({ storeName }) => storeName))] }, () => ({ operations, result: undefined }));
+  }
+
+  private applyOperations(operations: readonly AppStorageMutation[]): void {
     const staged = new Map<AppStoreName, Map<IDBValidKey, AppDatabaseSchema[AppStoreName]>>();
+    const revisions = new Map(this.coordination.revisions);
 
     for (const storeName of new Set(operations.map((operation) => operation.storeName))) {
       staged.set(storeName, new Map(this.getStore(storeName)));
@@ -119,31 +170,45 @@ export class MemoryAppStorage implements AppStorage {
 
       if (operation.type === "clear") {
         store.clear();
+        if (operation.storeName === "drill_sessions") revisions.clear();
       } else if (operation.type === "delete") {
         store.delete(operation.key);
+        if (operation.storeName === "drill_sessions") revisions.delete(String(operation.key));
       } else {
+        assertPersistableRecord(operation.value);
         store.set(operation.value.id, structuredClone(operation.value));
+        if (operation.storeName === "drill_sessions") revisions.set(operation.value.id, (revisions.get(operation.value.id) ?? 0) + 1);
       }
     }
 
     for (const [storeName, store] of staged) {
       this.stores.set(storeName, store);
     }
+    this.coordination.revisions = revisions;
   }
 
-  async replaceSnapshot(snapshot: AppStorageReplacement): Promise<void> {
-    const operations: AppStorageMutation[] = [];
-    for (const storeName of Object.keys(snapshot) as AppStoreName[]) {
-      operations.push({ storeName, type: "clear" } as AppStorageMutation);
-      for (const value of snapshot[storeName] ?? []) {
-        operations.push({ storeName, type: "put", value } as AppStorageMutation);
+  async replaceSnapshot(snapshot: AppStorageReplacement, options: {
+    preserve?: (current: AppStorageReplacement) => AppStorageReplacement;
+    readStores?: readonly AppStoreName[];
+  } = {}): Promise<void> {
+    const storeNames = Object.keys(snapshot) as AppStoreName[];
+    const readStores = options.readStores ?? [];
+    await this.atomic({ stores: storeNames, advanceGeneration: true,
+      reads: Object.fromEntries(readStores.map((name) => [name, "all" as const]))
+    }, (view) => {
+      const current = Object.fromEntries(readStores.map((name) => [name, view.getAll(name)])) as AppStorageReplacement;
+      const replacement = options.preserve?.(current) ?? snapshot;
+      const operations: AppStorageMutation[] = [];
+      for (const storeName of storeNames) {
+        operations.push({ storeName, type: "clear" });
+        for (const value of replacement[storeName] ?? []) operations.push({ storeName, type: "put", value } as AppStorageMutation);
       }
-    }
-    await this.mutate(operations);
+      return { operations, result: undefined };
+    });
   }
 
   async clearAll(): Promise<void> {
-    await this.mutate(appStoreNames.map((storeName) => ({ storeName, type: "clear" })));
+    await this.mutate(appStoreNames.map((storeName) => ({ storeName, type: "clear" })), { advanceGeneration: true });
   }
 
   close(): void {

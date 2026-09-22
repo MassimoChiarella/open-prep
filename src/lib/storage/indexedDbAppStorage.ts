@@ -2,9 +2,14 @@ import { subscribeToLocalDataInvalidation } from "@/features/settings/localDataI
 import {
   appDatabaseName,
   appDatabaseVersion,
+  appCoordinationStoreName,
+  AppStorageConflictError,
   appStoreIndexNames,
   appStoreNames,
   type AppStorage,
+  type AppStorageAtomicOptions,
+  type AppStorageAtomicView,
+  type AppStorageAtomicDecision,
   type AppStorageMutation,
   type AppStoragePage,
   type AppStoragePageOptions,
@@ -16,6 +21,12 @@ import {
   type AppStoreName,
   type AppStoreValue
 } from "@/lib/storage/appStorageTypes";
+import { createAtomicView, lifecycleMetadataKey, sessionRevisionKey } from "@/lib/storage/storageCoordination";
+import { assertPersistableRecord } from "@/lib/validation/inputLimits";
+
+// One document lifecycle, including adapters created later by an already-open form.
+// A successful destructive action navigates through the existing invalidation shell.
+const documentGenerations = new WeakMap<IDBFactory, Promise<number>>();
 
 export interface IndexedDbAppStorageOptions {
   indexedDB?: IDBFactory | null;
@@ -51,14 +62,53 @@ class IndexedDbAppStorage implements AppStorage {
     });
   }
 
+  getGeneration(): Promise<number> {
+    let pending = documentGenerations.get(this.indexedDbFactory);
+    if (pending === undefined) {
+      pending = this.openDatabase().then((database) => new Promise<number>((resolve, reject) => {
+        const transaction = database.transaction(appCoordinationStoreName, "readonly");
+        const request = transaction.objectStore(appCoordinationStoreName).get(lifecycleMetadataKey);
+        transaction.oncomplete = () => resolve(request.result?.generation ?? 0);
+        transaction.onerror = () => reject(transaction.error ?? new Error("Unable to read local data generation."));
+        transaction.onabort = () => reject(transaction.error ?? new Error("Generation read aborted."));
+      }));
+      documentGenerations.set(this.indexedDbFactory, pending);
+      void pending.catch(() => {
+        if (documentGenerations.get(this.indexedDbFactory) === pending) documentGenerations.delete(this.indexedDbFactory);
+      });
+    }
+    return pending;
+  }
+
+  async getDrillSession(id: string) {
+    await this.getGeneration();
+    const database = await this.openDatabase();
+    // Reads remain available to a stale page. Only an explicit recovery action may
+    // carry this current token into a new write; the document default stays stale.
+    return new Promise<{ session?: import("@/lib/storage/appStorageTypes").StoredDrillSession; token: import("@/lib/storage/appStorageTypes").DrillSessionWriteToken }>((resolve, reject) => {
+      const transaction = database.transaction(["drill_sessions", appCoordinationStoreName], "readonly");
+      const session = transaction.objectStore("drill_sessions").get(id);
+      const metadata = transaction.objectStore(appCoordinationStoreName);
+      const lifecycle = metadata.get(lifecycleMetadataKey);
+      const revision = metadata.get(sessionRevisionKey(id));
+      transaction.oncomplete = () => resolve({ session: session.result, token: {
+        generation: lifecycle.result?.generation ?? 0, revision: revision.result?.revision ?? 0, exists: session.result !== undefined
+      } });
+      transaction.onerror = () => reject(transaction.error ?? new Error("Session read failed."));
+      transaction.onabort = () => reject(transaction.error ?? new Error("Session read aborted."));
+    });
+  }
+
   async get<TStore extends AppStoreName>(
     storeName: TStore,
     key: AppStoreKey<TStore>
   ): Promise<AppStoreValue<TStore> | undefined> {
+    await this.getGeneration();
     return this.runStoreRequest(storeName, "readonly", (store) => store.get(key));
   }
 
   async getAll<TStore extends AppStoreName>(storeName: TStore): Promise<AppStoreValue<TStore>[]> {
+    await this.getGeneration();
     return this.runStoreRequest(storeName, "readonly", (store) => store.getAll());
   }
 
@@ -66,6 +116,7 @@ class IndexedDbAppStorage implements AppStorage {
     storeName: TStore,
     visit: (value: AppStoreValue<TStore>) => void
   ): Promise<void> {
+    await this.getGeneration();
     const database = await this.openDatabase();
 
     await new Promise<void>((resolve, reject) => {
@@ -105,6 +156,7 @@ class IndexedDbAppStorage implements AppStorage {
     }
     if (uniqueStoreNames.length === 0) return {} as AppStorageSnapshot<TStores>;
 
+    await this.getGeneration();
     const database = await this.openDatabase();
     return new Promise((resolve, reject) => {
       const transaction = database.transaction(uniqueStoreNames, "readonly");
@@ -133,6 +185,7 @@ class IndexedDbAppStorage implements AppStorage {
       throw new Error("IndexedDB pages require a positive whole-number limit.");
     }
 
+    await this.getGeneration();
     const database = await this.openDatabase();
     const direction = options.direction ?? "next";
 
@@ -180,116 +233,155 @@ class IndexedDbAppStorage implements AppStorage {
   }
 
   async put<TStore extends AppStoreName>(storeName: TStore, value: AppStoreValue<TStore>): Promise<void> {
-    await this.runStoreRequest(storeName, "readwrite", (store) => store.put(value));
+    await this.mutate([{ storeName, type: "put", value } as AppStorageMutation]);
   }
 
   async delete<TStore extends AppStoreName>(storeName: TStore, key: AppStoreKey<TStore>): Promise<void> {
-    await this.runStoreRequest(storeName, "readwrite", (store) => store.delete(key));
+    await this.mutate([{ storeName, type: "delete", key } as AppStorageMutation]);
   }
 
   async clear<TStore extends AppStoreName>(storeName: TStore): Promise<void> {
-    await this.runStoreRequest(storeName, "readwrite", (store) => store.clear());
+    await this.mutate([{ storeName, type: "clear" }]);
   }
 
-  async mutate(operations: readonly AppStorageMutation[]): Promise<void> {
-    if (operations.length === 0) {
-      return;
-    }
-
-    const database = await this.openDatabase();
-    const storeNames = [...new Set(operations.map((operation) => operation.storeName))];
-    this.assertWritable();
-
-    await new Promise<void>((resolve, reject) => {
-      const transaction = database.transaction(storeNames, "readwrite");
-      this.trackWrite(transaction);
-
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error ?? new Error("IndexedDB mutation failed."));
-      transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDB mutation was aborted."));
-
-      try {
-        for (const operation of operations) {
-          const store = transaction.objectStore(operation.storeName);
-
-          if (operation.type === "clear") {
-            store.clear();
-          } else if (operation.type === "delete") {
-            store.delete(operation.key);
-          } else {
-            store.put(operation.value);
-          }
-        }
-      } catch (error) {
-        try {
-          transaction.abort();
-        } catch {
-          // The transaction may already have aborted because of the synchronous request failure.
-        }
-        reject(error);
-      }
-    });
+  async mutate(operations: readonly AppStorageMutation[], options: Pick<AppStorageAtomicOptions, "expectedGeneration" | "advanceGeneration"> = {}): Promise<void> {
+    await this.atomic({ ...options, stores: [...new Set(operations.map(({ storeName }) => storeName))] }, () => ({ operations, result: undefined }));
   }
 
-  async replaceSnapshot(snapshot: AppStorageReplacement): Promise<void> {
+  async replaceSnapshot(snapshot: AppStorageReplacement, options: {
+    preserve?: (current: AppStorageReplacement) => AppStorageReplacement;
+    readStores?: readonly AppStoreName[];
+  } = {}): Promise<void> {
     const storeNames = Object.keys(snapshot) as AppStoreName[];
-    if (storeNames.length === 0) return;
-
-    const database = await this.openDatabase();
-    this.assertWritable();
-
-    await new Promise<void>((resolve, reject) => {
-      const transaction = database.transaction(storeNames, "readwrite");
-      this.trackWrite(transaction);
-      let storesRemaining = storeNames.length;
-      let storeIndex = 0;
-      let recordIndex = 0;
-
-      transaction.oncomplete = () => resolve();
-      transaction.onerror = () => reject(transaction.error ?? new Error("IndexedDB replacement failed."));
-      transaction.onabort = () => reject(transaction.error ?? new Error("IndexedDB replacement was aborted."));
-
-      const enqueueBatch = () => {
-        let lastRequest: IDBRequest | undefined;
-        let enqueued = 0;
-
-        while (storeIndex < storeNames.length && enqueued < 250) {
-          const storeName = storeNames[storeIndex];
-          const records = snapshot[storeName] ?? [];
-
-          if (recordIndex >= records.length) {
-            storeIndex += 1;
-            recordIndex = 0;
-            continue;
-          }
-
-          lastRequest = transaction.objectStore(storeName).put(records[recordIndex]);
-          recordIndex += 1;
-          enqueued += 1;
-        }
-
-        if (lastRequest !== undefined && storeIndex < storeNames.length) {
-          lastRequest.onsuccess = enqueueBatch;
-        }
-      };
-
-      try {
-        for (const storeName of storeNames) {
-          const request = transaction.objectStore(storeName).clear();
-          request.onsuccess = () => {
-            storesRemaining -= 1;
-            if (storesRemaining === 0) enqueueBatch();
-          };
-        }
-      } catch (error) {
-        try { transaction.abort(); } catch { /* The transaction may already be inactive. */ }
-        reject(error);
+    const readStores = options.readStores ?? [];
+    await this.atomic({
+      stores: storeNames, advanceGeneration: true,
+      reads: Object.fromEntries(readStores.map((name) => [name, "all" as const]))
+    }, (view) => {
+      const current = Object.fromEntries(readStores.map((name) => [name, view.getAll(name)])) as AppStorageReplacement;
+      const replacement = options.preserve?.(current) ?? snapshot;
+      const operations: AppStorageMutation[] = [];
+      for (const storeName of storeNames) {
+        operations.push({ storeName, type: "clear" });
+        for (const value of replacement[storeName] ?? []) operations.push({ storeName, type: "put", value } as AppStorageMutation);
       }
+      return { operations, result: undefined };
     });
   }
 
   async clearAll(): Promise<void> {
-    await this.mutate(appStoreNames.map((storeName) => ({ storeName, type: "clear" })));
+    await this.mutate(appStoreNames.map((storeName) => ({ storeName, type: "clear" })), { advanceGeneration: true });
+  }
+
+  async atomic<TResult>(options: AppStorageAtomicOptions, decide: (view: AppStorageAtomicView) => AppStorageAtomicDecision<TResult>): Promise<TResult> {
+    const database = await this.openDatabase();
+    this.assertWritable();
+    const expectedGeneration = options.expectedGeneration ?? await this.getGeneration();
+    this.assertWritable();
+    const reads = options.reads ?? {};
+    const storeNames = [...new Set([...options.stores, ...Object.keys(reads) as AppStoreName[]])];
+    return new Promise<TResult>((resolve, reject) => {
+      const transaction = database.transaction([...storeNames, appCoordinationStoreName], "readwrite");
+      this.trackWrite(transaction);
+      const metadata = transaction.objectStore(appCoordinationStoreName);
+      let result: TResult;
+      let failure: unknown;
+      const abort = (error: unknown) => { failure = error; try { transaction.abort(); } catch { reject(error); } };
+      transaction.oncomplete = () => resolve(result);
+      transaction.onerror = () => reject(failure ?? transaction.error ?? new Error("IndexedDB mutation failed."));
+      transaction.onabort = () => reject(failure ?? transaction.error ?? new Error("IndexedDB mutation was aborted."));
+      const lifecycle = metadata.get(lifecycleMetadataKey);
+      lifecycle.onsuccess = () => {
+        try {
+          const generation: number = lifecycle.result?.generation ?? 0;
+          if (generation !== expectedGeneration) throw new AppStorageConflictError("generation");
+          const records: AppStorageReplacement = {};
+          const revisions = new Map<string, number>();
+          let remaining = 1;
+          const done = () => {
+            remaining -= 1;
+            if (remaining !== 0) return;
+            try {
+              const decision = decide(createAtomicView(records, reads, generation, revisions));
+              if (typeof (decision as unknown as { then?: unknown }).then === "function") throw new Error("Atomic decisions must be synchronous.");
+              for (const operation of decision.operations) if (operation.type === "put") assertPersistableRecord(operation.value);
+              result = decision.result;
+              const nextGeneration = generation + (options.advanceGeneration ? 1 : 0);
+              let index = 0;
+              const enqueue = () => {
+                try {
+                  let last: IDBRequest | undefined;
+                  const end = Math.min(index + 250, decision.operations.length);
+                  while (index < end) {
+                    const operation = decision.operations[index++];
+                    if (!options.stores.includes(operation.storeName)) throw new Error(`Atomic write store was not declared: ${operation.storeName}.`);
+                    const store = transaction.objectStore(operation.storeName);
+                    if (operation.type === "clear") {
+                      last = store.clear();
+                      if (operation.storeName === "drill_sessions") {
+                        metadata.clear();
+                        revisions.clear();
+                        metadata.put({ id: lifecycleMetadataKey, generation: nextGeneration });
+                      }
+                    } else if (operation.type === "delete") {
+                      last = store.delete(operation.key);
+                      if (operation.storeName === "drill_sessions") metadata.delete(sessionRevisionKey(String(operation.key)));
+                    } else {
+                      last = store.put(operation.value);
+                      if (operation.storeName === "drill_sessions") {
+                        const id = operation.value.id;
+                        const request = metadata.get(sessionRevisionKey(id));
+                        request.onsuccess = () => {
+                          const revision = (revisions.get(id) ?? request.result?.revision ?? 0) + 1;
+                          revisions.set(id, revision);
+                          metadata.put({ id: sessionRevisionKey(id), revision });
+                        };
+                      }
+                    }
+                  }
+                  if (index < decision.operations.length && last !== undefined) last.onsuccess = enqueue;
+                } catch (error) { abort(error); }
+              };
+              metadata.put({ id: lifecycleMetadataKey, generation: nextGeneration });
+              enqueue();
+            } catch (error) { abort(error); }
+          };
+          for (const storeName of Object.keys(reads) as AppStoreName[]) {
+            const keys = reads[storeName]!;
+            const values: unknown[] = [];
+            (records as Record<string, unknown[]>)[storeName] = values;
+            for (const key of keys === "all" ? [undefined] : keys) {
+              remaining += 1;
+              const request = key === undefined ? transaction.objectStore(storeName).getAll() : transaction.objectStore(storeName).get(key);
+              request.onsuccess = () => {
+                if (key === undefined) values.push(...request.result);
+                else if (request.result !== undefined) values.push(request.result);
+                done();
+              };
+            }
+          }
+          const sessionKeys = reads.drill_sessions;
+          if (sessionKeys !== undefined) {
+            remaining += 1;
+            if (sessionKeys === "all") {
+              const request = metadata.getAll();
+              request.onsuccess = () => {
+                for (const record of request.result) if (record.id.startsWith("session:")) revisions.set(record.id.slice(8), record.revision);
+                done();
+              };
+            } else {
+              for (const id of sessionKeys) {
+                remaining += 1;
+                const request = metadata.get(sessionRevisionKey(id));
+                request.onsuccess = () => { revisions.set(id, request.result?.revision ?? 0); done(); };
+              }
+              done();
+            }
+          }
+          done();
+        } catch (error) { abort(error); }
+      };
+    });
   }
 
   close(): void {
@@ -395,6 +487,9 @@ function openIndexedDbDatabase(indexedDbFactory: IDBFactory, onClosed: () => voi
 }
 
 function upgradeDatabase(database: IDBDatabase, transaction: IDBTransaction | null): void {
+  if (!database.objectStoreNames.contains(appCoordinationStoreName)) {
+    database.createObjectStore(appCoordinationStoreName, { keyPath: "id" }).put({ id: lifecycleMetadataKey, generation: 0 });
+  }
   if (database.objectStoreNames.contains("drill_presets")) {
     database.deleteObjectStore("drill_presets");
   }

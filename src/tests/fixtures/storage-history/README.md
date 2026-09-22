@@ -11,6 +11,7 @@ the cited repository states; they are not current records with older version num
 | --- | --- | --- |
 | `indexeddb-v7.json` | `4e8fe70c3eae1deb34f609ad8bf1e002b9745989` (`Initial public release`, 2026-08-29) | The immediate predecessor of database v8: ten `id`-keyed stores and no indexes. |
 | `indexeddb-v8.json` | `bc7e9ee8a65cd32fbb80c17b3901b659e3e73907` | The immediate predecessor of database v9: the same stores plus chronological benchmark and question-pack indexes. |
+| `indexeddb-v9.json` | `a54775dad4af2edb6c4a7542a1734f451ba69c20` | The immediate predecessor of database v10: ten learner stores, all four chronological indexes, and no coordination metadata. Historical fictional rows are retained unchanged from the v8 fixture. |
 | `progress-export-v3.json` | `4e8fe70c3eae1deb34f609ad8bf1e002b9745989` | Progress export schema v3: nine progress stores, no `privacyScope`, and all practice/private fields included. |
 | `progress-export-v4.json` | Legacy-compatible schema v4 contract | A historical `privacyScope: "standard"` export that excludes Fit stories but retains preparation profiles and market-sizing notes. These older fields remain accepted on import. |
 
