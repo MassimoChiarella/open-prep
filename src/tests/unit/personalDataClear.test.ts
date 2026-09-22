@@ -4,7 +4,7 @@ import {
   clearPersonalData,
   previewPersonalDataClear
 } from "@/features/settings/personalDataClear";
-import type { AppStorageMutation } from "@/lib/storage/appStorageTypes";
+import type { AppStorageAtomicDecision, AppStorageAtomicOptions, AppStorageAtomicView, AppStorageMutation } from "@/lib/storage/appStorageTypes";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 const timestamp = "2026-08-31T12:00:00.000Z";
@@ -89,13 +89,13 @@ describe("personal data clear", () => {
     expect(preview).toEqual({
       fullCaseDrafts: 0,
       fitStories: 1,
-      marketSizingNotes: 2,
+      marketSizingNotes: 1,
       preparationProfiles: 1,
-      totalItems: 4
+      totalItems: 3
     });
     expect(result).toEqual(preview);
     expect(storage.mutationCalls).toBe(1);
-    expect(storage.snapshotCalls).toBe(2);
+    expect(storage.snapshotCalls).toBe(1);
     expect(storage.lastOperations.map((operation) => operation.storeName).sort()).toEqual([
       "market_sizing_attempts",
       "market_sizing_attempts",
@@ -156,7 +156,7 @@ describe("personal data clear", () => {
     });
   });
 
-  it("reports an empty state without calling mutate", async () => {
+  it("advances the lifecycle even when no private records need removal", async () => {
     const storage = new TrackingStorage();
 
     const result = await clearPersonalData(storage);
@@ -168,8 +168,9 @@ describe("personal data clear", () => {
       preparationProfiles: 0,
       totalItems: 0
     });
-    expect(storage.mutationCalls).toBe(0);
-    expect(storage.snapshotCalls).toBe(1);
+    expect(storage.mutationCalls).toBe(1);
+    expect(storage.lastOperations).toEqual([]);
+    expect(storage.snapshotCalls).toBe(0);
   });
 
   it("rolls back every change when the single mutation fails", async () => {
@@ -233,9 +234,17 @@ class TrackingStorage extends MemoryAppStorage {
     return super.getSnapshot(storeNames);
   }
 
-  override async mutate(operations: readonly AppStorageMutation[]): Promise<void> {
-    this.mutationCalls += 1;
-    this.lastOperations = structuredClone(operations);
-    await super.mutate(operations);
+  override async atomic<TResult>(
+    options: AppStorageAtomicOptions,
+    decide: (view: AppStorageAtomicView) => AppStorageAtomicDecision<TResult>
+  ): Promise<TResult> {
+    return super.atomic(options, (view) => {
+      const decision = decide(view);
+      if (options.advanceGeneration) {
+        this.mutationCalls += 1;
+        this.lastOperations = structuredClone(decision.operations ?? []);
+      }
+      return decision;
+    });
   }
 }

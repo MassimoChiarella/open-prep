@@ -7,7 +7,7 @@ import { scoreMarketSizingAttempt } from "@/features/market-sizing/marketSizingS
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("market sizing persistence", () => {
-  it("persists a scored attempt record", async () => {
+  it.each([undefined, "", " \n\t ", "  Explain the assumption.  "])("persists a scored attempt with note %j", async (note) => {
     const storage = new MemoryAppStorage();
     const template = marketSizingTemplates[0];
     const stepValues = {
@@ -32,6 +32,7 @@ describe("market sizing persistence", () => {
       finalAnswer: "  $2.628B  ",
       id: "attempt-1",
       interpretationId: "plausible",
+      note,
       score,
       startedAt: "2026-06-02T12:00:00.000Z",
       stepValues,
@@ -56,6 +57,8 @@ describe("market sizing persistence", () => {
       templateId: "market_coffee_city_001"
     });
     expect(record.scoreBreakdown).toHaveLength(6);
+    if (note?.trim()) expect(record.note).toBe(note);
+    else expect(Object.hasOwn(record, "note")).toBe(false);
   });
 
   it("refuses to persist an attempt whose formula did not calculate", async () => {

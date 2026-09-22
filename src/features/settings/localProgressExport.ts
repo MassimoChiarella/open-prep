@@ -5,7 +5,6 @@ import {
   appDatabaseName,
   progressStoreNames,
   type AppStorage,
-  type AppStorageMutation,
   type AppStoreValue,
   type ProgressStoreName,
 } from "@/lib/storage/appStorageTypes";
@@ -99,21 +98,13 @@ export async function replaceLocalProgressWithImport(
     throw new Error(validation.errors[0] ?? "Local progress import is invalid.");
   }
 
-  const imported = validation.exportData.privacyScope === "standard"
-    ? preservePrivateData(validation.exportData.stores, await storage.getSnapshot(privatePreservationStoreNames))
-    : validation.exportData.stores;
-  const operations: AppStorageMutation[] = localProgressExportStoreNames.map((storeName) => ({
-    storeName,
-    type: "clear"
-  }));
-
-  for (const storeName of localProgressExportStoreNames) {
-    for (const record of imported[storeName]) {
-      operations.push({ storeName, type: "put", value: record } as AppStorageMutation);
-    }
-  }
-
-  await storage.mutate(operations);
+  const imported = validation.exportData.stores;
+  await storage.replaceSnapshot(imported, validation.exportData.privacyScope === "standard" ? {
+    readStores: privatePreservationStoreNames,
+    preserve: (current) => preservePrivateData(imported, {
+      practice_records: current.practice_records ?? [], market_sizing_attempts: current.market_sizing_attempts ?? []
+    })
+  } : {});
   publishLocalDataInvalidation("progress_replaced");
 }
 

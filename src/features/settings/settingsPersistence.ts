@@ -24,7 +24,7 @@ export async function saveUserDrillSettings(
 }
 
 export async function resetLocalData(storage: AppStorage): Promise<void> {
-  await storage.mutate(progressStoreNames.map((storeName) => ({ storeName, type: "clear" })));
+  await storage.mutate(progressStoreNames.map((storeName) => ({ storeName, type: "clear" })), { advanceGeneration: true });
   publishLocalDataInvalidation("progress_replaced");
 }
 
