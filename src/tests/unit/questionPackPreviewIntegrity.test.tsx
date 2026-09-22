@@ -91,7 +91,9 @@ describe("draft preview integrity", () => {
     const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
     const { numeric } = await setup();
     fireEvent.click(numeric.getByRole("button", { name: "Duplicate Question 1" }));
+    openNumericEditors(numeric);
     fireEvent.click(numeric.getByRole("button", { name: "Duplicate Question 2" }));
+    openNumericEditors(numeric);
     await preview(numeric);
     const ids = screen.getAllByLabelText(/Question \d+ ID/).map((input) => (input as HTMLInputElement).value);
     fireEvent.click(numeric.getByRole("button", { name: `Remove Question ${number}` }));
@@ -103,7 +105,7 @@ describe("draft preview integrity", () => {
     expect(screen.getAllByLabelText(/Question \d+ ID/).map((input) => (input as HTMLInputElement).value))
       .toEqual(ids.filter((_, index) => index !== number - 1));
     expect(screen.queryByTestId("question-pack-preview")).not.toBeInTheDocument();
-    expect(numeric.getByLabelText(`Question ${Math.min(number, 2)} prompt`)).toHaveFocus();
+    await waitFor(() => expect(numeric.getByLabelText(`Question ${Math.min(number, 2)} prompt`)).toHaveFocus());
   });
 
   it.each([
@@ -113,6 +115,7 @@ describe("draft preview integrity", () => {
     const { numeric } = await setup();
     if (mutation === "remove" || mutation === "reorder") {
       fireEvent.click(numeric.getByRole("button", { name: "Duplicate Question 1" }));
+      openNumericEditors(numeric);
     }
     await preview(numeric);
     if (mutation === "answer" || mutation === "title") {
@@ -181,3 +184,10 @@ describe("draft preview integrity", () => {
     } else expect(storage.peekAll("question_packs")).toHaveLength(1);
   });
 });
+
+function openNumericEditors(builder: ReturnType<typeof within>): void {
+  for (const editor of builder.getAllByTestId("builder-question")) {
+    (editor as HTMLDetailsElement).open = true;
+    fireEvent(editor, new Event("toggle"));
+  }
+}

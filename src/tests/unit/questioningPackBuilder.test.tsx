@@ -14,6 +14,7 @@ describe("QuestioningPackBuilder", () => {
 
     fireEvent.click(screen.getByText("Build a questioning pack"));
     expect(screen.getByLabelText("Pack title")).toHaveAttribute("dir", "auto");
+    expect(screen.getByLabelText("Pack ID")).toHaveAttribute("pattern", "[a-z0-9][a-z0-9_\\-]*");
     expect(screen.getByLabelText("Situation")).toHaveAttribute("dir", "auto");
     expect(screen.getByLabelText("Concepts JSON")).toHaveAttribute("dir", "ltr");
     fireEvent.change(screen.getByLabelText("Pack title"), { target: { value: "Retail Questions" } });

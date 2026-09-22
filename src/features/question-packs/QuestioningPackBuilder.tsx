@@ -195,7 +195,7 @@ export function QuestioningPackBuilder({ onDraftChange, onPreview }: Questioning
                 setPackId(event.currentTarget.value);
                 setPackIdIsCustom(true);
               }}
-              pattern="[a-z0-9][a-z0-9_-]*"
+              pattern={"[a-z0-9][a-z0-9_\\-]*"}
               required
               value={packId}
             />

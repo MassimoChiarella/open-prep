@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type FormEvent } from "react";
+import { memo, useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 
 import { buttonClass, uiInputs, uiText } from "@/components/uiStyles";
 import { useI18n } from "@/features/i18n/I18nProvider";
@@ -41,9 +41,12 @@ interface QuestionDraft {
 }
 
 interface QuestionDraftErrors {
-  id?: "duplicate" | "empty";
+  id?: "duplicate" | "empty" | "format";
+  invalid?: true;
   toleranceMax?: true;
 }
+
+const questionIdPattern = /^[a-z0-9][a-z0-9_-]*$/;
 
 const toleranceOptions: Array<{ label: string; value: ToleranceType }> = [
   { label: "Exact", value: "exact" },
@@ -81,18 +84,22 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
   const [license, setLicense] = useState("");
   const [questions, setQuestions] = useState<QuestionDraft[]>([createQuestionDraft(1)]);
   const [questionErrors, setQuestionErrors] = useState<Record<number, QuestionDraftErrors>>({});
+  const questionsRef = useRef(questions);
+  useEffect(() => {
+    questionsRef.current = questions;
+  }, [questions]);
 
-  function markDirty() {
+  const markDirty = useCallback(() => {
     markUnsaved();
     onDraftChange?.();
-  }
+  }, [markUnsaved, onDraftChange]);
 
-  function updateQuestion(key: number, update: Partial<QuestionDraft>) {
+  const updateQuestion = useCallback((key: number, update: Partial<QuestionDraft>) => {
     setQuestionErrors({});
     setQuestions((current) =>
       current.map((question) => (question.key === key ? { ...question, ...update } : question))
     );
-  }
+  }, []);
 
   function addQuestions(count: number) {
     if (!canAddQuestionBatch(questions.length, count)) return;
@@ -105,28 +112,31 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
     markDirty();
   }
 
-  function removeQuestion(key: number) {
-    const index = questions.findIndex((question) => question.key === key);
-    const question = questions[index];
-    if (question === undefined || questions.length < 2) return;
+  const removeQuestion = useCallback((key: number) => {
+    const currentQuestions = questionsRef.current;
+    const index = currentQuestions.findIndex((question) => question.key === key);
+    const question = currentQuestions[index];
+    if (question === undefined || currentQuestions.length < 2) return;
     const empty = createQuestionDraft(key);
     const hasContent = Object.entries(question).some(([field, value]) => value !== empty[field as keyof QuestionDraft]);
     if (hasContent && !window.confirm(t("Remove Question {number}? This cannot be undone.", {
       number: formatNumber(index + 1)
     }))) return;
-    const nextIndex = index < questions.length - 1 ? index + 1 : index - 1;
+    const nextIndex = index < currentQuestions.length - 1 ? index + 1 : index - 1;
     const nextEditor = formRef.current?.querySelectorAll<HTMLDetailsElement>('[data-testid="builder-question"]')[nextIndex];
     if (nextEditor !== undefined) {
       nextEditor.open = true;
-      nextEditor.querySelector<HTMLTextAreaElement>("textarea")?.focus();
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(() => nextEditor.querySelector<HTMLTextAreaElement>("textarea")?.focus());
+      });
     }
     setQuestions((current) => current.filter((question) => question.key !== key));
     setQuestionErrors({});
     markDirty();
-  }
+  }, [formatNumber, markDirty, t]);
 
-  function duplicateQuestion(key: number) {
-    if (!canAddQuestionBatch(questions.length, 1)) return;
+  const duplicateQuestion = useCallback((key: number) => {
+    if (!canAddQuestionBatch(questionsRef.current.length, 1)) return;
     const number = nextQuestionNumber.current;
     nextQuestionNumber.current += 1;
     setQuestions((current) => {
@@ -143,9 +153,9 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
     });
     setQuestionErrors({});
     markDirty();
-  }
+  }, [markDirty]);
 
-  function moveQuestion(key: number, direction: -1 | 1) {
+  const moveQuestion = useCallback((key: number, direction: -1 | 1) => {
     setQuestions((current) => {
       const index = current.findIndex((question) => question.key === key);
       const destination = index + direction;
@@ -160,7 +170,7 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
     });
     setQuestionErrors({});
     markDirty();
-  }
+  }, [markDirty]);
 
   function discardChanges() {
     if (!isDirty || !window.confirm(t("Discard this draft? Your unsaved changes will be lost."))) return;
@@ -184,10 +194,16 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
     const nextErrors = validateQuestionDrafts(questions);
     setQuestionErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
-      for (const key of Object.keys(nextErrors)) {
-        const editor = formRef.current?.querySelector<HTMLDetailsElement>(`[data-question-key="${key}"]`);
-        if (editor !== null && editor !== undefined) editor.open = true;
-      }
+      const key = Object.keys(nextErrors)[0];
+      const editor = formRef.current?.querySelector<HTMLDetailsElement>(`[data-question-key="${key}"]`);
+      if (editor !== null && editor !== undefined) editor.open = true;
+      window.requestAnimationFrame(() => {
+        const invalidField = editor?.querySelector<HTMLElement>(':invalid, [aria-invalid="true"]');
+        invalidField?.focus();
+        if (invalidField instanceof HTMLInputElement || invalidField instanceof HTMLTextAreaElement) {
+          invalidField.reportValidity();
+        }
+      });
       return;
     }
 
@@ -219,8 +235,8 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
         className="mt-5 grid min-w-0 gap-5"
         onChange={markDirty}
         onInvalid={(event) => {
-          const editor = (event.target as HTMLElement).closest<HTMLDetailsElement>('[data-testid="builder-question"]');
-          if (editor !== null) editor.open = true;
+          const collapsedSection = (event.target as HTMLElement).closest<HTMLDetailsElement>("details");
+          if (collapsedSection !== null) collapsedSection.open = true;
         }}
         onSubmit={handleSubmit}
         ref={formRef}
@@ -262,7 +278,7 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
                   setPackId(event.currentTarget.value);
                   setPackIdIsCustom(true);
                 }}
-                pattern="[a-z0-9][a-z0-9_-]*"
+                pattern={"[a-z0-9][a-z0-9_\\-]*"}
                 required
                 value={packId}
               />
@@ -303,11 +319,10 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
               canDuplicate={canAddQuestionBatch(questions.length, 1)}
               index={index}
               key={question.key}
-              onChange={(update) => updateQuestion(question.key, update)}
-              onDuplicate={() => duplicateQuestion(question.key)}
-              onMoveDown={() => moveQuestion(question.key, 1)}
-              onMoveUp={() => moveQuestion(question.key, -1)}
-              onRemove={() => removeQuestion(question.key)}
+              onChange={updateQuestion}
+              onDuplicate={duplicateQuestion}
+              onMove={moveQuestion}
+              onRemove={removeQuestion}
               question={question}
               canMoveDown={index < questions.length - 1}
               validationErrors={questionErrors[question.key]}
@@ -353,15 +368,14 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
   );
 }
 
-function QuestionEditor({
+const QuestionEditor = memo(function QuestionEditor({
   canDuplicate,
   canMoveDown,
   canRemove,
   index,
   onChange: updateQuestion,
   onDuplicate,
-  onMoveDown,
-  onMoveUp,
+  onMove,
   onRemove,
   question,
   validationErrors
@@ -370,11 +384,10 @@ function QuestionEditor({
   canMoveDown: boolean;
   canRemove: boolean;
   index: number;
-  onChange(update: Partial<QuestionDraft>): void;
-  onDuplicate(): void;
-  onMoveDown(): void;
-  onMoveUp(): void;
-  onRemove(): void;
+  onChange(key: number, update: Partial<QuestionDraft>): void;
+  onDuplicate(key: number): void;
+  onMove(key: number, direction: -1 | 1): void;
+  onRemove(key: number): void;
   question: QuestionDraft;
   validationErrors?: QuestionDraftErrors;
 }) {
@@ -384,13 +397,14 @@ function QuestionEditor({
 
   function onChange(update: Partial<QuestionDraft>) {
     setIsOpen(true);
-    updateQuestion(update);
+    updateQuestion(question.key, update);
   }
 
   return (
     <details
       className="border border-ink/15 border-t-2 border-t-teal bg-white"
       data-question-key={question.key}
+      data-question-id={question.id}
       data-testid="builder-question"
       onToggle={(event) => setIsOpen(event.currentTarget.open)}
       open={isOpen || validationErrors !== undefined}
@@ -401,20 +415,21 @@ function QuestionEditor({
           {question.prompt.trim() || question.id}
         </span>
       </summary>
+      {isOpen || validationErrors !== undefined ? (
       <fieldset className="grid min-w-0 gap-4 border-t border-ink/15 p-4">
         <legend className="sr-only">{t("Question {number}", { number: formatNumber(number) })}</legend>
         <div className="flex min-w-0 flex-wrap justify-end gap-2">
-          <button className={buttonClass("secondary", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} disabled={index === 0} onClick={onMoveUp} type="button">
+          <button className={buttonClass("secondary", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} disabled={index === 0} onClick={() => onMove(question.key, -1)} type="button">
             {t("Move Question {number} up", { number: formatNumber(number) })}
           </button>
-          <button className={buttonClass("secondary", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} disabled={!canMoveDown} onClick={onMoveDown} type="button">
+          <button className={buttonClass("secondary", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} disabled={!canMoveDown} onClick={() => onMove(question.key, 1)} type="button">
             {t("Move Question {number} down", { number: formatNumber(number) })}
           </button>
-          <button className={buttonClass("secondary", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} disabled={!canDuplicate} onClick={onDuplicate} type="button">
+          <button className={buttonClass("secondary", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} disabled={!canDuplicate} onClick={() => onDuplicate(question.key)} type="button">
             {t("Duplicate Question {number}", { number: formatNumber(number) })}
           </button>
           {canRemove ? (
-            <button className={buttonClass("danger", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} onClick={onRemove} type="button">
+            <button className={buttonClass("danger", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} onClick={() => onRemove(question.key)} type="button">
               {t("Remove Question {number}", { number: formatNumber(number) })}
             </button>
           ) : null}
@@ -428,7 +443,7 @@ function QuestionEditor({
           className={uiInputs.compact}
           maxLength={80}
           onChange={(event) => onChange({ id: event.currentTarget.value })}
-          pattern="[a-z0-9][a-z0-9_-]*"
+          pattern={"[a-z0-9][a-z0-9_\\-]*"}
           required
           value={question.id}
         />
@@ -436,7 +451,9 @@ function QuestionEditor({
           <span className="text-sm text-coral [overflow-wrap:anywhere]" id={`question-${question.key}-id-error`} role="alert">
             {validationErrors.id === "empty"
               ? t("Enter a question ID using lowercase letters, numbers, hyphens, or underscores.")
-              : t("Use a unique question ID. This ID is already used by another question.")}
+              : validationErrors.id === "duplicate"
+                ? t("Use a unique question ID. This ID is already used by another question.")
+                : t("Enter a question ID using lowercase letters, numbers, hyphens, or underscores.")}
           </span>
         ) : null}
         </Field>
@@ -597,9 +614,10 @@ function QuestionEditor({
         />
         </Field>
       </fieldset>
+      ) : null}
     </details>
   );
-}
+});
 
 function ToleranceFields({
   index,
@@ -775,29 +793,68 @@ function optionalText<TKey extends "description" | "license" | "publisher">(
 }
 
 function validateQuestionDrafts(questions: QuestionDraft[]): Record<number, QuestionDraftErrors> {
-  const errors: Record<number, QuestionDraftErrors> = {};
   const ids = new Set<string>();
 
   for (const question of questions) {
     const id = question.id.trim();
     if (id === "") {
-      errors[question.key] = { id: "empty" };
-    } else if (ids.has(id)) {
-      errors[question.key] = { id: "duplicate" };
+      return { [question.key]: { id: "empty" } };
+    }
+    if (!questionIdPattern.test(id)) {
+      return { [question.key]: { id: "format" } };
+    }
+    if (ids.has(id)) {
+      return { [question.key]: { id: "duplicate" } };
     }
     ids.add(id);
+  }
+
+  for (const question of questions) {
+    if (hasInvalidNativeField(question)) {
+      return { [question.key]: { invalid: true } };
+    }
 
     if (question.toleranceType === "range") {
       const minimum = numericValue(question.toleranceMin);
       const maximum = numericValue(question.toleranceMax);
-      if (!Number.isFinite(minimum) || !Number.isFinite(maximum) || maximum < minimum) {
-        errors[question.key] = {
-          ...errors[question.key],
-          toleranceMax: true
-        };
+      if (maximum < minimum) {
+        return { [question.key]: { toleranceMax: true } };
       }
     }
   }
 
-  return errors;
+  return {};
+}
+
+function hasInvalidNativeField(question: QuestionDraft): boolean {
+  if (
+    question.prompt === "" ||
+    question.value === "" ||
+    !Number.isFinite(numericValue(question.value)) ||
+    question.summary === "" ||
+    question.steps === ""
+  ) {
+    return true;
+  }
+
+  if (question.expectedTimeSeconds !== "") {
+    const expectedTime = numericValue(question.expectedTimeSeconds);
+    if (!Number.isInteger(expectedTime) || expectedTime < 1 || expectedTime > 3_600) return true;
+  }
+
+  if (question.toleranceType === "range") {
+    return (
+      question.toleranceMin === "" ||
+      question.toleranceMax === "" ||
+      !Number.isFinite(numericValue(question.toleranceMin)) ||
+      !Number.isFinite(numericValue(question.toleranceMax))
+    );
+  }
+
+  if (question.toleranceType !== "exact") {
+    const tolerance = numericValue(question.toleranceValue);
+    return question.toleranceValue === "" || !Number.isFinite(tolerance) || tolerance < 0;
+  }
+
+  return false;
 }

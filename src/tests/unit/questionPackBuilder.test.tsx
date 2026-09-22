@@ -20,6 +20,8 @@ describe("QuestionPackBuilder", () => {
 
     fireEvent.click(screen.getByText("Build a question pack"));
     expect(screen.getByLabelText("Pack title")).toHaveAttribute("dir", "auto");
+    expect(screen.getByLabelText("Pack ID")).toHaveAttribute("pattern", "[a-z0-9][a-z0-9_\\-]*");
+    expect(screen.getByLabelText("Question 1 ID")).toHaveAttribute("pattern", "[a-z0-9][a-z0-9_\\-]*");
     expect(screen.getByLabelText("Question 1 prompt")).toHaveAttribute("dir", "auto");
     expect(screen.getByLabelText("Question 1 explanation summary")).toHaveAttribute("dir", "auto");
     expect(screen.getByLabelText("Question 1 explanation steps")).toHaveAttribute("dir", "auto");
@@ -97,18 +99,17 @@ describe("QuestionPackBuilder", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add Question" }));
 
     expect(screen.getAllByTestId("builder-question")).toHaveLength(3);
-    expect(screen.getByLabelText("Question 2 ID")).toHaveValue("question-002");
-    expect(screen.getByLabelText("Question 3 ID")).toHaveValue("question-003");
+    expect(questionIds()).toEqual(["question-001", "question-002", "question-003"]);
 
+    setEditorOpen(screen.getAllByTestId("builder-question")[1]!, true);
     fireEvent.click(screen.getByRole("button", { name: "Remove Question 2" }));
     fireEvent.click(screen.getByRole("button", { name: "Add Question" }));
 
     expect(screen.getAllByTestId("builder-question")).toHaveLength(3);
-    expect(screen.getByLabelText("Question 2 ID")).toHaveValue("question-003");
-    expect(screen.getByLabelText("Question 3 ID")).toHaveValue("question-004");
+    expect(questionIds()).toEqual(["question-001", "question-003", "question-004"]);
   });
 
-  it("batch-adds unique, ordered questions while keeping collapsed editors mounted", () => {
+  it("batch-adds unique, ordered questions while mounting only the active editor", () => {
     render(<QuestionPackBuilder onPreview={vi.fn()} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Add Question +5" }));
@@ -125,9 +126,16 @@ describe("QuestionPackBuilder", () => {
       "question-005",
       "question-006"
     ]);
-    expect(screen.getByLabelText("Question 6 prompt")).toBeRequired();
+    expect(screen.queryByLabelText("Question 6 prompt")).not.toBeInTheDocument();
 
-    fireEvent.click(editors[5]!.querySelector("summary")!);
+    setEditorOpen(editors[5]!, true);
+    const prompt = screen.getByLabelText("Question 6 prompt");
+    expect(prompt).toBeRequired();
+    fireEvent.change(prompt, { target: { value: "Preserved draft" } });
+    setEditorOpen(editors[5]!, false);
+    expect(screen.queryByLabelText("Question 6 prompt")).not.toBeInTheDocument();
+    setEditorOpen(editors[5]!, true);
+    expect(screen.getByLabelText("Question 6 prompt")).toHaveValue("Preserved draft");
     fireEvent.click(screen.getByRole("button", { name: "Move Question 6 up" }));
     expect(questionIds()).toEqual([
       "question-001",
@@ -154,10 +162,12 @@ describe("QuestionPackBuilder", () => {
 
     expect(questionIds()).toEqual(["question-001", "question-003", "question-002"]);
 
+    setEditorOpen(screen.getAllByTestId("builder-question")[2]!, true);
     fireEvent.click(screen.getByRole("button", { name: "Move Question 3 up" }));
 
     expect(questionIds()).toEqual(["question-001", "question-002", "question-003"]);
     expect(screen.getByRole("button", { name: "Move Question 1 up" })).toBeDisabled();
+    setEditorOpen(screen.getAllByTestId("builder-question")[2]!, true);
     expect(screen.getByRole("button", { name: "Move Question 3 down" })).toBeDisabled();
   });
 
@@ -166,18 +176,35 @@ describe("QuestionPackBuilder", () => {
     render(<QuestionPackBuilder onPreview={onPreview} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Add Question" }));
+    setEditorOpen(screen.getAllByTestId("builder-question")[1]!, true);
     const duplicateId = screen.getByLabelText("Question 2 ID");
     const affectedEditor = screen.getAllByTestId("builder-question")[1]!;
-    expect(affectedEditor).not.toHaveAttribute("open");
     fireEvent.change(duplicateId, { target: { value: "question-001" } });
+    setEditorOpen(affectedEditor, false);
+    expect(affectedEditor).not.toHaveAttribute("open");
+    expect(screen.queryByLabelText("Question 2 ID")).not.toBeInTheDocument();
     fireEvent.submit(screen.getByRole("button", { name: "Preview Pack" }).closest("form")!);
 
     const error = screen.getByRole("alert");
+    const visibleDuplicateId = screen.getByLabelText("Question 2 ID");
     expect(affectedEditor).toHaveAttribute("open");
     expect(error).toHaveTextContent("Use a unique question ID.");
-    expect(duplicateId).toHaveAttribute("aria-invalid", "true");
-    expect(duplicateId).toHaveAttribute("aria-describedby", error.id);
+    expect(visibleDuplicateId).toHaveAttribute("aria-invalid", "true");
+    expect(visibleDuplicateId).toHaveAttribute("aria-describedby", error.id);
     expect(onPreview).not.toHaveBeenCalled();
+  });
+
+  it("reveals collapsed advanced details when a hidden field is invalid", () => {
+    render(<QuestionPackBuilder onPreview={vi.fn()} />);
+
+    const packId = screen.getByLabelText("Pack ID");
+    const advancedDetails = packId.closest("details");
+    expect(advancedDetails).not.toHaveAttribute("open");
+
+    fireEvent.change(packId, { target: { value: "" } });
+    fireEvent.invalid(packId);
+
+    expect(advancedDetails).toHaveAttribute("open");
   });
 
   it("guards dirty work on unload and clears the guard after discard", () => {
@@ -226,5 +253,10 @@ function dispatchBeforeUnload(): Event {
 }
 
 function questionIds(): string[] {
-  return screen.getAllByLabelText(/Question \d+ ID/).map((input) => (input as HTMLInputElement).value);
+  return screen.getAllByTestId("builder-question").map((editor) => editor.dataset.questionId ?? "");
+}
+
+function setEditorOpen(editor: HTMLElement, open: boolean): void {
+  (editor as HTMLDetailsElement).open = open;
+  fireEvent(editor, new Event("toggle"));
 }
