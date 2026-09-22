@@ -386,7 +386,7 @@ export function FitPracticeView({
   return (
     <div className="grid min-w-0 gap-8 xl:grid-cols-[minmax(0,1.08fr)_minmax(22rem,0.92fr)] xl:items-start">
       <section
-        className="grid gap-6 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
+        className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-6 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
         aria-labelledby="story-bank-heading"
       >
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -420,11 +420,11 @@ export function FitPracticeView({
           ) : (
             <ul className="divide-y divide-ink/10">
               {stories.map((story) => (
-                <li className="grid gap-3 py-4" key={story.id}>
+                <li className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 py-4" key={story.id}>
                   <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div>
+                    <div className="min-w-0 max-w-full">
                       <span className={badgeClass("success")}>{t(fitCompetencyLabels[story.competency])}</span>
-                      <h4 className="mt-2 font-semibold text-ink">{story.title}</h4>
+                      <h4 className="mt-2 font-semibold text-ink [overflow-wrap:anywhere]" dir="auto">{story.title}</h4>
                     </div>
                     <div className="flex flex-wrap gap-2">
                       <button className={buttonClass("secondary", "px-3")} disabled={storyStatus === "saving"} onClick={() => editStory(story)} type="button">
@@ -438,7 +438,7 @@ export function FitPracticeView({
                       </button>
                     </div>
                   </div>
-                  <p className={uiText.body}>{story.result}</p>
+                  <p className={cx(uiText.body, "[overflow-wrap:anywhere]")} dir="auto">{story.result}</p>
                 </li>
               ))}
             </ul>
@@ -666,7 +666,7 @@ function StoryForm({
 }) {
   const { t } = useI18n();
   return (
-    <form className="grid gap-4 border-y border-ink/10 py-5" noValidate onSubmit={onSubmit}>
+    <form className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-4 border-y border-ink/10 py-5" noValidate onSubmit={onSubmit}>
       <fieldset className="contents" disabled={saving}>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 className={uiText.sectionTitle}>{editing ? t("Edit story") : t("Add a story")}</h3>
@@ -769,7 +769,7 @@ function Field({ children, error, id, label }: { children: ReactNode; error?: st
   const { t } = useI18n();
   const errorId = id === undefined ? undefined : `${id}-error`;
   return (
-    <label className="grid gap-2" htmlFor={id}>
+    <label className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-2" htmlFor={id}>
       <span className={uiText.controlLabel}>{label}</span>
       {children}
       {error !== undefined ? (
