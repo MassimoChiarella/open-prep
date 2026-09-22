@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { type FormEvent, useEffect, useMemo, useState } from "react";
+import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 
 import { ArrowIcon } from "@/components/ArrowIcon";
 import { EmptyState } from "@/components/EmptyState";
@@ -24,6 +24,7 @@ import {
   type WeeklyPrepRoadmap
 } from "@/features/case-practice/plan/prepPlan";
 import { loadProgressSummary, type ProgressSummary } from "@/features/progress/progressAggregation";
+import { subscribeToLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import type { AppStorage } from "@/lib/storage/appStorageTypes";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 
@@ -63,6 +64,19 @@ export function PrepPlanView({
   const [hasSavedProfile, setHasSavedProfile] = useState(false);
   const [loadState, setLoadState] = useState<LoadState>({ status: "loading" });
   const [saveStatus, setSaveStatus] = useState<SaveStatus>("idle");
+  const saveInFlight = useRef(false);
+  const lifecycleRevision = useRef(0);
+  const mounted = useRef(false);
+
+  useEffect(() => {
+    mounted.current = true;
+    const unsubscribe = subscribeToLocalDataInvalidation(() => { lifecycleRevision.current += 1; });
+    return () => {
+      mounted.current = false;
+      lifecycleRevision.current += 1;
+      unsubscribe();
+    };
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,6 +138,9 @@ export function PrepPlanView({
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (saveInFlight.current) return;
+    saveInFlight.current = true;
+    const revision = lifecycleRevision.current;
     setSaveStatus("saving");
 
     let storage: AppStorage | undefined;
@@ -135,12 +152,15 @@ export function PrepPlanView({
         updatedAt: new Date().toISOString()
       });
 
+      if (!mounted.current || revision !== lifecycleRevision.current) return;
       setDraft(toDraft(saved));
       setHasSavedProfile(true);
       setSaveStatus("saved");
     } catch {
-      setSaveStatus("error");
+      if (mounted.current && revision === lifecycleRevision.current) setSaveStatus("error");
     } finally {
+      saveInFlight.current = false;
+      if (mounted.current && revision !== lifecycleRevision.current) setSaveStatus("idle");
       storage?.close();
     }
   }
@@ -175,9 +195,11 @@ export function PrepPlanView({
         <>
           <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
             <form
+              aria-busy={saveStatus === "saving"}
               className="grid gap-5 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6"
               onSubmit={handleSave}
             >
+              <fieldset className="grid min-w-0 gap-5" disabled={saveStatus === "saving"}>
               <div className="grid gap-1">
                 <h2 className={uiText.sectionTitle}>{t("Preparation profile")}</h2>
                 <p className={uiText.body}>{t("The roadmap updates as these inputs change.")}</p>
@@ -279,6 +301,7 @@ export function PrepPlanView({
                 </button>
                 <p className={uiText.dense}>{t("Saved only in this browser.")}</p>
               </div>
+              </fieldset>
 
               {saveStatus === "saved" ? (
                 <LocalSaveNotice detail={t("Your preparation profile and weekly target are saved.")} />
