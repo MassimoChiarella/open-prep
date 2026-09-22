@@ -1,7 +1,11 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { QuestionPackBuilder } from "@/features/question-packs/QuestionPackBuilder";
+import {
+  canAddQuestionBatch,
+  QuestionPackBuilder
+} from "@/features/question-packs/QuestionPackBuilder";
+import { questionPackMaxQuestions } from "@/features/question-packs/questionPack";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -104,6 +108,44 @@ describe("QuestionPackBuilder", () => {
     expect(screen.getByLabelText("Question 3 ID")).toHaveValue("question-004");
   });
 
+  it("batch-adds unique, ordered questions while keeping collapsed editors mounted", () => {
+    render(<QuestionPackBuilder onPreview={vi.fn()} />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Add Question +5" }));
+
+    const editors = screen.getAllByTestId("builder-question");
+    expect(editors).toHaveLength(6);
+    expect(editors[0]).toHaveAttribute("open");
+    for (const editor of editors.slice(1)) expect(editor).not.toHaveAttribute("open");
+    expect(questionIds()).toEqual([
+      "question-001",
+      "question-002",
+      "question-003",
+      "question-004",
+      "question-005",
+      "question-006"
+    ]);
+    expect(screen.getByLabelText("Question 6 prompt")).toBeRequired();
+
+    fireEvent.click(editors[5]!.querySelector("summary")!);
+    fireEvent.click(screen.getByRole("button", { name: "Move Question 6 up" }));
+    expect(questionIds()).toEqual([
+      "question-001",
+      "question-002",
+      "question-003",
+      "question-004",
+      "question-006",
+      "question-005"
+    ]);
+  });
+
+  it("keeps single and batch additions within the configured question ceiling", () => {
+    expect(canAddQuestionBatch(questionPackMaxQuestions - 1, 1)).toBe(true);
+    expect(canAddQuestionBatch(questionPackMaxQuestions, 1)).toBe(false);
+    expect(canAddQuestionBatch(questionPackMaxQuestions - 10, 10)).toBe(true);
+    expect(canAddQuestionBatch(questionPackMaxQuestions - 9, 10)).toBe(false);
+  });
+
   it("duplicates and reorders questions without changing stable IDs", () => {
     render(<QuestionPackBuilder onPreview={vi.fn()} />);
 
@@ -125,10 +167,13 @@ describe("QuestionPackBuilder", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Add Question" }));
     const duplicateId = screen.getByLabelText("Question 2 ID");
+    const affectedEditor = screen.getAllByTestId("builder-question")[1]!;
+    expect(affectedEditor).not.toHaveAttribute("open");
     fireEvent.change(duplicateId, { target: { value: "question-001" } });
     fireEvent.submit(screen.getByRole("button", { name: "Preview Pack" }).closest("form")!);
 
     const error = screen.getByRole("alert");
+    expect(affectedEditor).toHaveAttribute("open");
     expect(error).toHaveTextContent("Use a unique question ID.");
     expect(duplicateId).toHaveAttribute("aria-invalid", "true");
     expect(duplicateId).toHaveAttribute("aria-describedby", error.id);

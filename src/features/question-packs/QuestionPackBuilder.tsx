@@ -10,6 +10,7 @@ import {
   skillTagOptions,
   unitPreferenceOptions
 } from "@/features/drills/drillSettingsOptions";
+import { questionPackMaxQuestions } from "@/features/question-packs/questionPack";
 import { useUnsavedChangesGuard } from "@/features/question-packs/useUnsavedChangesGuard";
 import type { Difficulty, RoundingRule, SkillCategory, SkillTag, UnitType } from "@/lib/domain";
 
@@ -60,6 +61,10 @@ const roundingOptions: Array<{ label: string; value: "" | RoundingRule }> = [
   { label: "Nearest million", value: "nearest_1m" }
 ];
 
+export function canAddQuestionBatch(currentCount: number, requestedCount: number): boolean {
+  return currentCount + requestedCount <= questionPackMaxQuestions;
+}
+
 export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBuilderProps) {
   const { formatNumber, t } = useI18n();
   const { clearDirty, isDirty, markDirty: markUnsaved } = useUnsavedChangesGuard(
@@ -89,10 +94,14 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
     );
   }
 
-  function addQuestion() {
-    const number = nextQuestionNumber.current;
-    nextQuestionNumber.current += 1;
-    setQuestions((current) => [...current, createQuestionDraft(number)]);
+  function addQuestions(count: number) {
+    if (!canAddQuestionBatch(questions.length, count)) return;
+    const drafts = Array.from({ length: count }, () => {
+      const number = nextQuestionNumber.current;
+      nextQuestionNumber.current += 1;
+      return createQuestionDraft(number);
+    });
+    setQuestions((current) => canAddQuestionBatch(current.length, count) ? [...current, ...drafts] : current);
     markDirty();
   }
 
@@ -106,17 +115,22 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
       number: formatNumber(index + 1)
     }))) return;
     const nextIndex = index < questions.length - 1 ? index + 1 : index - 1;
-    formRef.current?.querySelectorAll('[data-testid="builder-question"]')[nextIndex]
-      ?.querySelector<HTMLTextAreaElement>("textarea")?.focus();
+    const nextEditor = formRef.current?.querySelectorAll<HTMLDetailsElement>('[data-testid="builder-question"]')[nextIndex];
+    if (nextEditor !== undefined) {
+      nextEditor.open = true;
+      nextEditor.querySelector<HTMLTextAreaElement>("textarea")?.focus();
+    }
     setQuestions((current) => current.filter((question) => question.key !== key));
     setQuestionErrors({});
     markDirty();
   }
 
   function duplicateQuestion(key: number) {
+    if (!canAddQuestionBatch(questions.length, 1)) return;
     const number = nextQuestionNumber.current;
     nextQuestionNumber.current += 1;
     setQuestions((current) => {
+      if (!canAddQuestionBatch(current.length, 1)) return current;
       const index = current.findIndex((question) => question.key === key);
       const source = current[index];
       if (source === undefined) return current;
@@ -169,7 +183,13 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
     event.preventDefault();
     const nextErrors = validateQuestionDrafts(questions);
     setQuestionErrors(nextErrors);
-    if (Object.keys(nextErrors).length > 0) return;
+    if (Object.keys(nextErrors).length > 0) {
+      for (const key of Object.keys(nextErrors)) {
+        const editor = formRef.current?.querySelector<HTMLDetailsElement>(`[data-question-key="${key}"]`);
+        if (editor !== null && editor !== undefined) editor.open = true;
+      }
+      return;
+    }
 
     onPreview({
       format: "math-drill-question-pack",
@@ -195,7 +215,16 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
         <span className="ms-2 text-sm font-normal text-ink/65">{t("Create fixed numeric questions in the app.")}</span>
       </summary>
 
-      <form className="mt-5 grid min-w-0 gap-5" onChange={markDirty} onSubmit={handleSubmit} ref={formRef}>
+      <form
+        className="mt-5 grid min-w-0 gap-5"
+        onChange={markDirty}
+        onInvalid={(event) => {
+          const editor = (event.target as HTMLElement).closest<HTMLDetailsElement>('[data-testid="builder-question"]');
+          if (editor !== null) editor.open = true;
+        }}
+        onSubmit={handleSubmit}
+        ref={formRef}
+      >
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label={t("Pack title")}>
             <input
@@ -271,6 +300,7 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
           {questions.map((question, index) => (
             <QuestionEditor
               canRemove={questions.length > 1}
+              canDuplicate={canAddQuestionBatch(questions.length, 1)}
               index={index}
               key={question.key}
               onChange={(update) => updateQuestion(question.key, update)}
@@ -286,9 +316,26 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
         </div>
 
         <div className="flex flex-wrap gap-3">
-          <button className={buttonClass("secondary")} onClick={addQuestion} type="button">
+          <button
+            className={buttonClass("secondary")}
+            disabled={!canAddQuestionBatch(questions.length, 1)}
+            onClick={() => addQuestions(1)}
+            type="button"
+          >
             {t("Add Question")}
           </button>
+          {[5, 10].map((count) => (
+            <button
+              aria-label={`${t("Add Question")} +${formatNumber(count)}`}
+              className={buttonClass("secondary", "px-3")}
+              disabled={!canAddQuestionBatch(questions.length, count)}
+              key={count}
+              onClick={() => addQuestions(count)}
+              type="button"
+            >
+              +{formatNumber(count)}
+            </button>
+          ))}
           <button className={buttonClass("primary")} type="submit">
             {t("Preview Pack")}
           </button>
@@ -307,10 +354,11 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
 }
 
 function QuestionEditor({
+  canDuplicate,
   canMoveDown,
   canRemove,
   index,
-  onChange,
+  onChange: updateQuestion,
   onDuplicate,
   onMoveDown,
   onMoveUp,
@@ -318,6 +366,7 @@ function QuestionEditor({
   question,
   validationErrors
 }: {
+  canDuplicate: boolean;
   canMoveDown: boolean;
   canRemove: boolean;
   index: number;
@@ -331,19 +380,37 @@ function QuestionEditor({
 }) {
   const number = index + 1;
   const { formatNumber, t } = useI18n();
+  const [isOpen, setIsOpen] = useState(index === 0);
+
+  function onChange(update: Partial<QuestionDraft>) {
+    setIsOpen(true);
+    updateQuestion(update);
+  }
 
   return (
-    <fieldset className="grid min-w-0 gap-4 border border-ink/15 border-t-2 border-t-teal bg-white p-4" data-testid="builder-question">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <legend className="font-semibold text-ink">{t("Question {number}", { number: formatNumber(number) })}</legend>
-        <div className="flex min-w-0 flex-wrap gap-2">
+    <details
+      className="border border-ink/15 border-t-2 border-t-teal bg-white"
+      data-question-key={question.key}
+      data-testid="builder-question"
+      onToggle={(event) => setIsOpen(event.currentTarget.open)}
+      open={isOpen || validationErrors !== undefined}
+    >
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 font-semibold text-ink transition-colors hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal">
+        <span>{t("Question {number}", { number: formatNumber(number) })}</span>
+        <span className="min-w-0 truncate text-sm font-normal text-ink/60" dir="auto">
+          {question.prompt.trim() || question.id}
+        </span>
+      </summary>
+      <fieldset className="grid min-w-0 gap-4 border-t border-ink/15 p-4">
+        <legend className="sr-only">{t("Question {number}", { number: formatNumber(number) })}</legend>
+        <div className="flex min-w-0 flex-wrap justify-end gap-2">
           <button className={buttonClass("secondary", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} disabled={index === 0} onClick={onMoveUp} type="button">
             {t("Move Question {number} up", { number: formatNumber(number) })}
           </button>
           <button className={buttonClass("secondary", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} disabled={!canMoveDown} onClick={onMoveDown} type="button">
             {t("Move Question {number} down", { number: formatNumber(number) })}
           </button>
-          <button className={buttonClass("secondary", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} onClick={onDuplicate} type="button">
+          <button className={buttonClass("secondary", "max-w-full whitespace-normal px-3 text-center [overflow-wrap:anywhere]")} disabled={!canDuplicate} onClick={onDuplicate} type="button">
             {t("Duplicate Question {number}", { number: formatNumber(number) })}
           </button>
           {canRemove ? (
@@ -352,9 +419,8 @@ function QuestionEditor({
             </button>
           ) : null}
         </div>
-      </div>
 
-      <Field label={t("Question ID")}>
+        <Field label={t("Question ID")}>
         <input
           aria-describedby={validationErrors?.id ? `question-${question.key}-id-error` : undefined}
           aria-invalid={validationErrors?.id ? true : undefined}
@@ -373,7 +439,7 @@ function QuestionEditor({
               : t("Use a unique question ID. This ID is already used by another question.")}
           </span>
         ) : null}
-      </Field>
+        </Field>
 
       <Field label={t("Prompt")}>
         <textarea
@@ -385,7 +451,7 @@ function QuestionEditor({
           required
           value={question.prompt}
         />
-      </Field>
+        </Field>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label={t("Answer value")}>
@@ -529,8 +595,9 @@ function QuestionEditor({
           required
           value={question.steps}
         />
-      </Field>
-    </fieldset>
+        </Field>
+      </fieldset>
+    </details>
   );
 }
 
