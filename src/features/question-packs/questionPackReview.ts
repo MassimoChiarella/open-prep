@@ -5,6 +5,7 @@ import {
 } from "@/features/case-practice/questioning/questioningScoring";
 import type { ExhibitDataset } from "@/features/exhibits/exhibitTypes";
 import type { QuestionTemplate, VariableSpec } from "@/lib/domain";
+import { rangeStepCount } from "@/lib/math/steppedRange";
 import type { QuestionPackRecord } from "@/lib/storage/appStorageTypes";
 
 export type QuestionPackReviewSeverity = "attention" | "warning";
@@ -75,7 +76,7 @@ function getVariableValueCount(variable: VariableSpec): number {
   const min = variable.min as number;
   const max = variable.max as number;
   const step = variable.step ?? (variable.type === "integer" ? 1 : 0.1);
-  return Math.floor((max - min) / step) + 1;
+  return rangeStepCount(min, max, step) + 1;
 }
 
 function reviewGeneratedTemplates(

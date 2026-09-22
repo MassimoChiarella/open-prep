@@ -9,6 +9,7 @@ import {
   reviewQuestionPack
 } from "@/features/question-packs/questionPackReview";
 import { validateQuestionPackPayload } from "@/features/question-packs/questionPack";
+import { generateQuestionsFromTemplates, getQuestionGenerationCapacity } from "@/features/questions/questionGenerator";
 import type { QuestionPackRecord } from "@/lib/storage/appStorageTypes";
 
 const representativeAssets = [
@@ -72,7 +73,7 @@ describe("question-pack review", () => {
     template.variables = {
       decimalRange: { type: "decimal", min: 0, max: 0.3, step: 0.1 }
     };
-    expect(getGeneratedTemplateCombinationCount(template)).toBe(3);
+    expect(getGeneratedTemplateCombinationCount(template)).toBe(4);
 
     template.variables = Object.fromEntries(
       Array.from({ length: 20 }, (_, index) => [
@@ -81,6 +82,39 @@ describe("question-pack review", () => {
       ])
     );
     expect(getGeneratedTemplateCombinationCount(template)).toBe(Number.MAX_SAFE_INTEGER);
+  });
+
+  it.each([
+    [0.1, 0.3, 0.1, 6, 729],
+    [0, 0.3, 0.1, 1, 4],
+    [0, 0.25, 0.1, 1, 3],
+    [0.3, 0.3, 0.1, 1, 1],
+    [-2, 2, 1, 1, 5]
+  ])("agrees with generation for range %s..%s step %s across %s variables", (min, max, step, variableCount, expected) => {
+    const pack = validatedPublicPack("question-pack-template-example.mathdrill.json");
+    if (pack.kind !== "generated_template") throw new Error("Expected a generated pack.");
+    const names = Array.from({ length: variableCount }, (_, index) => `value${index}`);
+    const template = {
+      ...pack.templates[0]!,
+      variables: Object.fromEntries(names.map((name) => [name, { type: "decimal" as const, min, max, step }])),
+      promptTemplate: `Add ${names.map((name) => `{${name}}`).join(", ")}.`,
+      formula: { expression: names.join(" + ") },
+      explanationTemplate: { steps: ["The sum is {answer}."] }
+    };
+    const { importedAt: _importedAt, ...payload } = pack;
+    const result = validateQuestionPackPayload({ ...payload, templates: [template] });
+    if (result.status === "invalid") throw new Error(result.errors.join("\n"));
+    if (result.pack.kind !== "generated_template") throw new Error("Expected a generated pack.");
+    const settings = {
+      categories: [template.category], difficulty: "beginner" as const, questionCount: expected,
+      timeMode: "untimed" as const, feedbackMode: "instant" as const
+    };
+    expect(getGeneratedTemplateCombinationCount(result.pack.templates[0]!)).toBe(expected);
+    expect(getQuestionGenerationCapacity(result.pack.templates, settings, 1000)).toBe(expected);
+    const generated = generateQuestionsFromTemplates(result.pack.templates, settings, "decimal-review");
+    expect(generated).toHaveLength(expected);
+    expect(new Set(generated.map(({ id }) => id)).size).toBe(expected);
+    expect(reviewQuestionPack(result.pack).warnings.some(({ code }) => code === "generated-combinations-exceed-probes")).toBe(expected > 256);
   });
 
   it.each([
