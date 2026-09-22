@@ -1,6 +1,7 @@
 import type { MarketSizingInputStep, MarketSizingTemplate } from "@/features/market-sizing/marketSizingTypes";
 import { evaluateFormulaExpression } from "@/lib/math/formulaEvaluator";
 import { parseAnswer } from "@/lib/parser/parseAnswer";
+import { maxNumericInputLength, numericInputLimitMessage } from "@/lib/validation/inputLimits";
 import { validateAnswer, type ValidationResult } from "@/lib/validation/validateAnswer";
 
 export type MarketSizingStepRawValue = boolean | string | undefined;
@@ -103,6 +104,9 @@ export function evaluateMarketSizingFinalAnswer(
   locale?: string,
   acceptWithinTenPercent = false
 ): MarketSizingFinalAnswerEvaluation {
+  if (rawInput.length > maxNumericInputLength) {
+    return { message: numericInputLimitMessage, status: "invalid" };
+  }
   if (calculatedValue === undefined) {
     return {
       message: "Complete numeric assumptions to calculate the expected answer.",
@@ -167,6 +171,17 @@ function evaluateMarketSizingStep(
       message: "Enter an assumption.",
       rawValue,
       status: "missing",
+      stepId: step.id,
+      variableName: step.variableName
+    };
+  }
+
+  if (rawValue.length > maxNumericInputLength) {
+    return {
+      hasAssumptionRange: step.assumptionRange !== undefined,
+      message: numericInputLimitMessage,
+      rawValue,
+      status: "invalid",
       stepId: step.id,
       variableName: step.variableName
     };

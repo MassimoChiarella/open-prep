@@ -7,6 +7,7 @@ import type {
   ExhibitQuestionSpec
 } from "@/features/exhibits/exhibitTypes";
 import type { AnswerSpec } from "@/lib/domain";
+import { assertNumericInput } from "@/lib/validation/inputLimits";
 import { validateAnswer, type ValidateAnswerOptions, type ValidationResult } from "@/lib/validation/validateAnswer";
 
 const numericValueTypes: ReadonlySet<ExhibitColumnValueType> = new Set([
@@ -75,6 +76,7 @@ export function validateExhibitResponse(
   options: ValidateAnswerOptions = {}
 ): ValidationResult {
   if (!isExhibitMultipleChoiceQuestion(question)) {
+    assertNumericInput(rawInput);
     return validateAnswer(rawInput, question.answer, options);
   }
 

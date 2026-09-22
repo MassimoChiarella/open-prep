@@ -3,6 +3,7 @@ import { questionPackPoolPreferenceStorageKey } from "@/features/question-packs/
 import { themePreferenceStorageKey } from "@/features/theme/theme";
 import { timingAccommodationPreferenceKey } from "@/features/timing/timingAccommodationPreference";
 import { appStoreNames } from "@/lib/storage/appStorageTypes";
+import { maxStoredStringLength } from "@/lib/validation/inputLimits";
 
 export const completeBackupStoreNames = appStoreNames;
 
@@ -18,7 +19,7 @@ export const completeBackupLimits = {
   maxNestedCollectionItems: 10_000,
   maxQuestionPacks: 200,
   maxRecordsPerStore: 10_000,
-  maxStringLength: 100_000,
+  maxStringLength: maxStoredStringLength,
   maxTotalRecords: 20_200
 } as const;
 

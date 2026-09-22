@@ -1,4 +1,5 @@
 import type { DrillSession, Question, UnitType, UserResponse } from "@/lib/domain";
+import { assertNumericInput } from "@/lib/validation/inputLimits";
 import {
   evaluateInterviewMath,
   type InterviewMathSubmission
@@ -70,6 +71,7 @@ export function submitAnswer(input: SubmitAnswerInput): SubmitAnswerResult {
 }
 
 function validateSubmissionInput(input: SubmitAnswerInput): void {
+  assertNumericInput(input.rawInput);
   if (!input.session.questionIds.includes(input.question.id)) {
     throw new Error(`Question "${input.question.id}" does not belong to session "${input.session.id}".`);
   }

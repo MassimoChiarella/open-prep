@@ -11,7 +11,7 @@ Tracking requirement: [GitHub issue #25](https://github.com/MassimoChiarella/ope
 | S00 | Baseline and specification | In progress | Isolated source, pinned tooling, requirement #25, and durable documents established; quiet performance baselines still pending |
 | S01 | Atomic storage capability | Open | |
 | S02 | Conflict-aware drill persistence | Open | AUD-01 |
-| S03 | Input/storage/export limits | Open | AUD-02 |
+| S03 | Input/storage/export limits | In progress | AUD-02; shared 4,096/100,000-code-unit limits and editable input errors implemented; 8 new boundary/UI checks passed; adapter/export integration follows |
 | S04 | Finite parser and legacy sign | Implemented | AUD-03; 50 focused parser/validation/submission tests passed; overflow submission remains exportable |
 | S05 | Scoped incompatible-history recovery | Open | IMP-02; legacy AUD-02/03 |
 | S06 | Runtime cache failure isolation | Implemented; integration pending | AUD-04; 24 service-worker tests passed; production-worker browser regression added |
@@ -38,7 +38,7 @@ Tracking requirement: [GitHub issue #25](https://github.com/MassimoChiarella/ope
 
 ## Verification record
 
-No implementation acceptance checks have been recorded yet. Historical audit evidence is described in the planning documents; it does not substitute for testing the changed application.
+Focused evidence is recorded per package above. Historical audit evidence is described in the planning documents; it does not substitute for testing the changed application. Final integration and browser evidence will follow the implementation commits.
 
 ## Manual release evidence
 
