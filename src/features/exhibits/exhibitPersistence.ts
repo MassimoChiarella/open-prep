@@ -4,6 +4,7 @@ import {
   type TimingAccommodation
 } from "@/features/timing/timingAccommodation";
 import type { ValidationResult } from "@/lib/validation/validateAnswer";
+import { assertNumericInput } from "@/lib/validation/inputLimits";
 import type { AppStorage, ExhibitAttemptRecord } from "@/lib/storage/appStorageTypes";
 
 export interface PersistExhibitAttemptOptions {
@@ -19,6 +20,7 @@ export interface PersistExhibitAttemptOptions {
 }
 
 export async function persistExhibitAttempt(options: PersistExhibitAttemptOptions): Promise<void> {
+  assertNumericInput(options.rawInput);
   const completedAt = options.completedAt ?? new Date().toISOString();
   const record: ExhibitAttemptRecord = {
     id: options.id ?? `exhibit-attempt-${options.dataset.id}-${options.question.id}-${Date.parse(completedAt)}`,

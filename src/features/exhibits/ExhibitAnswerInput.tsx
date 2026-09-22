@@ -1,5 +1,7 @@
 "use client";
 
+import { NumericAnswerInput } from "@/components/NumericAnswerInput";
+
 import { isExhibitMultipleChoiceQuestion } from "@/features/exhibits/exhibitDataset";
 import type { ExhibitQuestionSpec } from "@/features/exhibits/exhibitTypes";
 import { useI18n } from "@/features/i18n/I18nProvider";
@@ -51,7 +53,7 @@ export function ExhibitAnswerInput({
   return (
     <label className="grid min-w-0 gap-2 text-sm font-medium text-ink/80">
       {t("Answer")}
-      <input
+      <NumericAnswerInput
         className="h-11 w-full min-w-0 rounded-md border border-ink/50 bg-white px-3 text-base text-ink outline-none transition placeholder:text-ink/65 focus:border-ink focus:ring-2 focus:ring-teal/20 disabled:bg-paper"
         disabled={disabled}
         inputMode="decimal"

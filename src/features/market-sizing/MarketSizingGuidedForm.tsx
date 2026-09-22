@@ -1,5 +1,7 @@
 "use client";
 
+import { NumericAnswerInput } from "@/components/NumericAnswerInput";
+
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -354,7 +356,7 @@ export function MarketSizingGuidedForm({
               </div>
               <label className="grid min-w-0 gap-2 text-sm font-medium text-ink/80">
                 {t("Final answer ({unit})", { unit: t(formatUnit(selectedTemplate.outputUnit)) })}
-                <input
+                <NumericAnswerInput
                   aria-describedby={
                     evaluation?.finalAnswer.status === "invalid" || evaluation?.finalAnswer.status === "missing"
                       ? "market-sizing-final-answer-status"
@@ -966,7 +968,7 @@ function fieldForStep(
 
   if (step.inputKind === "integer" || step.inputKind === "number") {
     return (
-      <input
+      <NumericAnswerInput
         aria-label={step.label}
         className={className}
         inputMode={step.inputKind === "integer" ? "numeric" : "decimal"}
@@ -979,7 +981,7 @@ function fieldForStep(
   }
 
   return (
-    <input
+    <NumericAnswerInput
       aria-label={step.label}
       className={className}
       inputMode="decimal"

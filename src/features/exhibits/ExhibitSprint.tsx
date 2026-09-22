@@ -1,5 +1,7 @@
 "use client";
 
+import { maxNumericInputLength } from "@/lib/validation/inputLimits";
+
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 
@@ -121,13 +123,14 @@ export function ExhibitSprint({
         Date.now() - questionStartedAtMsRef.current >= effectiveDurationSeconds * 1_000
       );
 
-      if (!timedOut && answerDraft.trim().length === 0) {
+      if (!timedOut && (answerDraft.trim().length === 0 || answerDraft.length > maxNumericInputLength)) {
         setFeedback(undefined);
         return;
       }
 
       submissionLockRef.current = true;
-      const validation = validateExhibitResponse(answerDraft, item.question, { locale, timedOut });
+      const submittedAnswer = timedOut ? "" : answerDraft;
+      const validation = validateExhibitResponse(submittedAnswer, item.question, { locale, timedOut });
       const initialFeedback: SprintFeedback = {
         message: timedOut ? t("Time expired. Review the answer, then continue.") : t(validation.feedbackMessage),
         saveStatus: "saving",
@@ -161,7 +164,7 @@ export function ExhibitSprint({
             completedAt,
             dataset: item.dataset,
             question: item.question,
-            rawInput: answerDraft,
+            rawInput: submittedAnswer,
             startedAt,
             storage,
             timingAccommodation: activeTimingAccommodation,

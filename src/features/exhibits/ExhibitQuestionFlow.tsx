@@ -1,5 +1,7 @@
 "use client";
 
+import { maxNumericInputLength, numericInputLimitMessage } from "@/lib/validation/inputLimits";
+
 import { useCallback, useMemo, useRef, useState } from "react";
 
 import { EmptyState } from "@/components/EmptyState";
@@ -360,6 +362,10 @@ async function submitExhibitAttempt({
   storageFactory: () => AppStorage;
   t: ReturnType<typeof useI18n>["t"];
 }): Promise<void> {
+  if (answerDraft.length > maxNumericInputLength) {
+    setAttemptStatus(t(numericInputLimitMessage));
+    return;
+  }
   if (answerDraft.trim().length === 0) {
     setAttemptStatus(t("Enter an answer before submitting."));
     setSaveStatus("error");
