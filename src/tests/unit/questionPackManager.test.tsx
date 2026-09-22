@@ -40,6 +40,8 @@ describe("QuestionPackManager", () => {
 
     expect(screen.getByTestId("question-pack-builder")).toBeInTheDocument();
     expect(screen.getByTestId("questioning-pack-builder")).toBeInTheDocument();
+    expect(screen.getByTestId("question-pack-builder").closest("#fixed-numeric-builder")).not.toBeNull();
+    expect(screen.getByTestId("questioning-pack-builder").closest("#case-questioning-builder")).not.toBeNull();
     expect(screen.queryByLabelText("Choose a question pack")).not.toBeInTheDocument();
     expect(screen.queryByText("Installed Packs")).not.toBeInTheDocument();
 

@@ -16,6 +16,7 @@ import ptMessages from "@/features/i18n/locales/pt";
 import zhHansMessages from "@/features/i18n/locales/zh-Hans";
 import zhHantMessages from "@/features/i18n/locales/zh-Hant";
 import { experienceQualityDynamicKeys } from "@/features/i18n/messages/experienceQuality";
+import { questionPackDynamicKeys } from "@/features/i18n/messages/questionPacks";
 import { remediationDynamicKeys } from "@/features/i18n/messages/remediation";
 import { appStoreNames } from "@/lib/storage/appStorageTypes";
 
@@ -50,10 +51,12 @@ const timingAccommodationDynamicKeys = [
 const auditedUiFiles = [
   "app/content-packs/downloads/page.tsx",
   "app/content-packs/page.tsx",
+  "components/InfoHint.tsx",
   "features/offline/NotFoundView.tsx",
   "features/settings/LocalSettingsView.tsx",
   "features/question-packs/CommunityPackDiscover.tsx",
   "features/question-packs/ContentPackDownloadsView.tsx",
+  "features/question-packs/ContentPackCreationGuide.tsx",
   "features/question-packs/ContentPacksHub.tsx",
   "features/question-packs/ContentPackStarterLibrary.tsx",
   "features/question-packs/QuestionPackBuilder.tsx",
@@ -64,6 +67,8 @@ const auditedUiFiles = [
   "features/exhibits/ExhibitTableRenderer.tsx"
 ] as const;
 const approvedRawUiText = new Map([
+  ["components/InfoHint.tsx:i", "Language-neutral, aria-hidden information glyph."],
+  ["features/question-packs/ContentPackCreationGuide.tsx:retail-01-warmup, retail-02-exhibits, retail-03-synthesis", "Technical pack ID examples."],
   ["features/question-packs/QuestionPackManager.tsx:v", "Technical version prefix adjacent to a localized pack label."]
 ]);
 
@@ -91,7 +96,12 @@ describe("application translation catalog", () => {
   });
 
   it("covers registered dynamic UI keys that a literal t() scan cannot discover", () => {
-    const dynamicUiKeys = [...experienceQualityDynamicKeys, ...timingAccommodationDynamicKeys, ...remediationDynamicKeys];
+    const dynamicUiKeys = [
+      ...experienceQualityDynamicKeys,
+      ...questionPackDynamicKeys,
+      ...timingAccommodationDynamicKeys,
+      ...remediationDynamicKeys
+    ];
     const missing = Object.fromEntries(
       translatedLocales.map((locale) => [
         locale,
@@ -127,6 +137,8 @@ describe("application translation catalog", () => {
 
     expect(findings).toEqual([]);
     expect([...approvedRawUiText]).toEqual([
+      ["components/InfoHint.tsx:i", "Language-neutral, aria-hidden information glyph."],
+      ["features/question-packs/ContentPackCreationGuide.tsx:retail-01-warmup, retail-02-exhibits, retail-03-synthesis", "Technical pack ID examples."],
       ["features/question-packs/QuestionPackManager.tsx:v", "Technical version prefix adjacent to a localized pack label."]
     ]);
   });

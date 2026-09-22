@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { badgeClass, buttonClass, cx, panelClass, uiText } from "@/components/uiStyles";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { ContentPackStarterLibrary } from "@/features/question-packs/ContentPackStarterLibrary";
+import { ContentPackCreationGuide } from "@/features/question-packs/ContentPackCreationGuide";
 import { CommunityPackDiscover } from "@/features/question-packs/CommunityPackDiscover";
 import type { CommunityPackCatalogEntry } from "@/features/question-packs/communityPackCatalog";
 import type { CommunityPackCatalogFetch } from "@/features/question-packs/communityPackCatalogClient";
@@ -236,6 +237,7 @@ function ContentPacksViewContent({
   if (view === "create") {
     return (
       <div className="grid min-w-0 gap-8">
+        <ContentPackCreationGuide />
         <QuestionPackManager view="create" />
         <ContentPackStarterLibrary />
       </div>
