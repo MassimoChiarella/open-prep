@@ -9,7 +9,7 @@ Tracking requirement: [GitHub issue #25](https://github.com/MassimoChiarella/ope
 | Package | Scope | Status | Evidence / integration note |
 |---|---|---|---|
 | S00 | Baseline and specification | In progress | Isolated source, pinned tooling, requirement #25, and durable documents established; quiet performance baselines still pending |
-| S01 | Atomic storage capability | Open | |
+| S01 | Atomic storage capability | Implemented; migration integration pending | 86 focused storage/persistence/restore tests; native atomic concurrency checks passed in Chromium/Firefox/WebKit (9 tests); v9 migration fixture added; direct write resource guards included |
 | S02 | Conflict-aware drill persistence | Open | AUD-01 |
 | S03 | Input/storage/export limits | In progress | AUD-02; shared 4,096/100,000-code-unit limits and editable input errors implemented; 8 new boundary/UI checks passed; adapter/export integration follows |
 | S04 | Finite parser and legacy sign | Implemented | AUD-03; 50 focused parser/validation/submission tests passed; overflow submission remains exportable |
