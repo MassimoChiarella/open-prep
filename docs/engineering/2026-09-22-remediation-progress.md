@@ -12,7 +12,7 @@ Tracking requirement: [GitHub issue #25](https://github.com/MassimoChiarella/ope
 | S01 | Atomic storage capability | Open | |
 | S02 | Conflict-aware drill persistence | Open | AUD-01 |
 | S03 | Input/storage/export limits | Open | AUD-02 |
-| S04 | Finite parser and legacy sign | Open | AUD-03 |
+| S04 | Finite parser and legacy sign | Implemented | AUD-03; 50 focused parser/validation/submission tests passed; overflow submission remains exportable |
 | S05 | Scoped incompatible-history recovery | Open | IMP-02; legacy AUD-02/03 |
 | S06 | Runtime cache failure isolation | Open | AUD-04 |
 | S07 | Profile save protection | Open | AUD-05 |

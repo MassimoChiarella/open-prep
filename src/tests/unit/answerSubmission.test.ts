@@ -2,9 +2,34 @@ import { describe, expect, it } from "vitest";
 
 import { createDrillSession } from "@/features/drills/sessionFactory";
 import { submitAnswer } from "@/features/drills/answerSubmission";
+import { completeDrillSession } from "@/features/drills/sessionCompletion";
+import { persistCompletedDrillSession } from "@/features/drills/drillPersistence";
+import { createLocalProgressExport } from "@/features/settings/localProgressExport";
+import { createCompleteBackupFilesFromStorage } from "@/features/settings/completeBackupStorage";
+import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 import type { Question } from "@/lib/domain";
 
 describe("submitAnswer", () => {
+  it("records an overflow answer without poisoning either progress export", async () => {
+    const storage = new MemoryAppStorage();
+    const created = createDrillSession({
+      seed: "overflow-export", startedAt: "2026-06-02T00:00:00.000Z", settings: { questionCount: 1 }
+    });
+    const submitted = submitAnswer({
+      session: created.session, question: created.questions[0], rawInput: `${"9".repeat(308)}b`,
+      locale: "en", timeTakenSeconds: 2, submittedAt: "2026-06-02T00:00:02.000Z"
+    });
+    expect(submitted.validation).toMatchObject({ isCorrect: false, unitStatus: "malformed" });
+    expect(submitted.response.normalizedValue).toBeUndefined();
+    const completed = completeDrillSession({
+      session: submitted.session, questions: created.questions, endedAt: "2026-06-02T00:00:02.000Z"
+    });
+    await persistCompletedDrillSession({ session: completed, questions: created.questions, storage });
+    expect((await storage.getAll("responses"))[0].normalizedValue).toBeUndefined();
+    await expect(createLocalProgressExport(storage)).resolves.toBeDefined();
+    await expect(createCompleteBackupFilesFromStorage(storage)).resolves.toHaveLength(1);
+  });
+
   it("validates an answer and appends a typed response immutably", () => {
     const created = createDrillSession({
       seed: "submit-correct",

@@ -4,6 +4,33 @@ import { parseAnswer } from "@/lib/parser/parseAnswer";
 import { locales } from "@/features/i18n/i18n";
 
 describe("parseAnswer", () => {
+  it("rejects overflow after scales and fractions while retaining finite large values", () => {
+    const large = "9".repeat(308);
+    for (const raw of [`${large}b`, `-${large}b`, `$${large} million`, `${large}/0.1`, `1/-0.${"0".repeat(308)}1`]) {
+      expect(parseAnswer(raw, { locale: "en" }), raw).toMatchObject({
+        raw, value: null, parseError: "Enter a valid number."
+      });
+    }
+    expect(parseAnswer(`${large}b`)).toMatchObject({ scaleHint: "b", isPercentageInput: false });
+    expect(parseAnswer(large).value).toBe(Number(large));
+    expect(parseAnswer(`1${"0".repeat(299)}b`).value).toBe(1e308);
+    expect(parseAnswer(`${large}/10`).value).toBe(Number(large) / 10);
+    expect(parseAnswer(`${large}%`).value).toBe(Number(large) / 100);
+  });
+
+  it("preserves signs exactly once in legacy mixed-separator currency and fractions", () => {
+    for (const options of [{}, { locale: "de" }]) {
+      expect(parseAnswer("$-1.234,56", options).value).toBe(-1234.56);
+      expect(parseAnswer("1/-1.234,56", options).value).toBe(-1 / 1234.56);
+      expect(parseAnswer("$+1.234,56", options).value).toBe(1234.56);
+      expect(parseAnswer("($1.234,56)", options).value).toBe(-1234.56);
+      expect(parseAnswer("-1/-1.234,56", options).value).toBe(1 / 1234.56);
+    }
+    expect(parseAnswer("$-1,234.56", { locale: "en" }).value).toBe(-1234.56);
+    expect(parseAnswer("$-1.234,56", { locale: "en" }).parseError).toBeDefined();
+    expect(parseAnswer("(-1.234,56)").parseError).toBeDefined();
+  });
+
   it("parses plain numbers and comma-separated numbers", () => {
     expect(parseAnswer("1000000")).toMatchObject({
       value: 1_000_000,
