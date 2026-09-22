@@ -397,7 +397,7 @@ function QuestionEditor({
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 font-semibold text-ink transition-colors hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal">
         <span>{t("Question {number}", { number: formatNumber(number) })}</span>
-        <span className="min-w-0 truncate text-sm font-normal text-ink/60" dir="auto">
+        <span className="min-w-0 truncate text-sm font-normal text-ink/70" dir="auto">
           {question.prompt.trim() || question.id}
         </span>
       </summary>
