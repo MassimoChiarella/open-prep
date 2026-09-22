@@ -12,6 +12,55 @@ import { createSeededRandom } from "@/lib/random/seededRandom";
 import { validateAnswer } from "@/lib/validation/validateAnswer";
 
 describe("question generation", () => {
+  it("retains distinct templates whose legacy variant IDs collided", () => {
+    const templates: QuestionTemplate[] = [
+      { ...starterQuestionTemplates[0], id: "a-x-1", variables: { y: { type: "integer", values: [2] } },
+        promptTemplate: "What is {y} + 10?", formula: { expression: "y + 10" }, explanationTemplate: { steps: ["{answer}"] } },
+      { ...starterQuestionTemplates[0], id: "a", variables: { x: { type: "integer", values: [1] }, y: { type: "integer", values: [2] } },
+        promptTemplate: "What is {x} + {y}?", formula: { expression: "x + y" }, explanationTemplate: { steps: ["{answer}"] } }
+    ];
+    const settings = drillSettings({ categories: ["arithmetic"], difficulty: "beginner", questionCount: 2 });
+    expect(getQuestionGenerationCapacity(templates, settings)).toBe(2);
+    for (const allowFewer of [false, true]) {
+      const questions = generateQuestionsFromTemplates(templates, settings, "collision", allowFewer);
+      expect(questions).toHaveLength(2);
+      expect(new Set(questions.map((question) => question.id)).size).toBe(2);
+      expect(questions.map((question) => question.answer.value).sort((a, b) => a - b)).toEqual([3, 12]);
+    }
+  });
+
+  it("encodes variant names and signed decimal values in stable code-unit order", () => {
+    const template: QuestionTemplate = {
+      ...starterQuestionTemplates[0], id: "question-pack:example:signed",
+      variables: { z: { type: "decimal", values: [-1.25] }, _a: { type: "integer", values: [0] }, A: { type: "integer", values: [2] } },
+      promptTemplate: "What is {z} + {_a} + {A}?", formula: { expression: "z + _a + A" }, explanationTemplate: { steps: ["{answer}"] }
+    };
+    const options = () => ({ difficulty: "beginner" as const, random: createSeededRandom(1) });
+    const original = generateQuestionFromTemplate(template, options());
+    const reordered = generateQuestionFromTemplate({ ...template, variables: Object.fromEntries(Object.entries(template.variables).reverse()) }, options());
+    expect(original.id).toBe('question-pack:example:signed:v2:[["A",2],["_a",0],["z",-1.25]]');
+    expect(reordered.id).toBe(original.id);
+    const positive = generateQuestionFromTemplate({ ...template, variables: { ...template.variables, z: { type: "decimal", values: [1.25] } } }, options());
+    expect(positive.id).not.toBe(original.id);
+    const negativeZero = generateQuestionFromTemplate({ ...template, variables: { ...template.variables, _a: { type: "integer", values: [-0] } } }, options());
+    expect(negativeZero.id).toBe(original.id);
+  });
+
+  it("excludes queued legacy content when a new variant has a different ID", () => {
+    const template: QuestionTemplate = {
+      ...starterQuestionTemplates[0], id: "legacy", variables: { a: { type: "integer", values: [1, 2] } },
+      promptTemplate: "What is {a}?", formula: { expression: "a" }, explanationTemplate: { steps: ["{answer}"] }
+    };
+    const settings = drillSettings({ categories: ["arithmetic"], difficulty: "beginner", questionCount: 2 });
+    const queue = generateQuestionsFromTemplates([template], settings, "legacy-queue").map((question) => ({
+      ...question, id: `legacy-a-${question.answer.value}`
+    }));
+    expect(generateSimilarQuestionFromTemplates([template], queue[0], settings, "similar", queue)).toBeUndefined();
+    const next = generateSimilarQuestionFromTemplates([template], queue[0], settings, "similar", [queue[0]]);
+    expect(next).toBeDefined();
+    expect(next?.answer.value).not.toBe(queue[0].answer.value);
+  });
+
   it("deduplicates custom arithmetic by expression across starter templates", () => {
     const settings = drillSettings({
       categories: ["arithmetic"], difficulty: "beginner", questionCount: 10,
@@ -375,14 +424,14 @@ describe("question generation", () => {
       source,
       settings,
       "similar-retry",
-      [source.id]
+      [source]
     );
     const second = generateSimilarQuestionFromTemplates(
       starterQuestionTemplates,
       source,
       settings,
       "similar-retry",
-      [source.id]
+      [source]
     );
 
     expect(first).toBeDefined();

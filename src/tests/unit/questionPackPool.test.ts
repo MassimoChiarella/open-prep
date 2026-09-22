@@ -2,9 +2,74 @@ import { describe, expect, it } from "vitest";
 
 import { createQuestionPackDrillSession } from "@/features/question-packs/questionPack";
 import { createQuestionPackPoolSession } from "@/features/question-packs/questionPackPool";
-import type { QuestionPackRecord } from "@/lib/storage/appStorageTypes";
+import type { DrillSessionWriteToken, QuestionPackRecord } from "@/lib/storage/appStorageTypes";
+import type { DrillSession, Question } from "@/lib/domain";
+import { loadInProgressDrillSession, persistCompletedDrillSession } from "@/features/drills/drillPersistence";
+import { submitAnswer } from "@/features/drills/answerSubmission";
+import { completeDrillSession } from "@/features/drills/sessionCompletion";
+import { createReviewDrillSession } from "@/features/drills/mistakeRetry";
+import { createLocalProgressExport, replaceLocalProgressWithImport } from "@/features/settings/localProgressExport";
+import { createCompleteBackupFilesFromStorage, restoreCompleteBackupFiles } from "@/features/settings/completeBackupStorage";
+import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("question-pack drill pools", () => {
+  it("resumes, reviews and backs up literal legacy IDs alongside new generated IDs", async () => {
+    const storage = new MemoryAppStorage();
+    // A pre-v2 stored snapshot: do not regenerate this fixture with the current encoder.
+    const legacyQuestion: Question = {
+      id: "question-pack:consistent-pack:shared-template-value-6", type: "numeric", category: "arithmetic",
+      difficulty: "beginner", tags: ["addition"], prompt: "Pack-authored value: 6",
+      answer: { value: 6, unit: "none", tolerance: { type: "absolute", value: 0.005 } },
+      explanation: { short: "The answer is 6.", steps: ["The answer is 6."] },
+      metadata: { sourceType: "generated", sourcePackId: "consistent-pack", sourceQuestionId: "shared-template-value-6", variables: { value: 6 } }
+    };
+    const legacySession: DrillSession = {
+      id: "legacy-session", startedAt: "2026-06-02T00:00:00.000Z", questionIds: [legacyQuestion.id], responses: [],
+      settings: { categories: ["arithmetic"], difficulty: "beginner", feedbackMode: "instant", questionCount: 1,
+        questionPackId: "consistent-pack", timeMode: "untimed" }
+    };
+    await storage.put("drill_sessions", { ...legacySession, draftKey: "legacy-draft", questions: [legacyQuestion] });
+    const resumed = await loadInProgressDrillSession(storage, "legacy-draft");
+    expect(resumed?.questions).toEqual([legacyQuestion]);
+    expect(resumed?.session.questionIds).toEqual([legacyQuestion.id]);
+    if (resumed === undefined) throw new Error("Legacy draft was not restored.");
+    const finish = async (session: DrillSession, questions: Question[], rawInput: string, endedAt: string, expectedToken?: DrillSessionWriteToken) => {
+      const submitted = submitAnswer({ session, question: questions[0], rawInput, timeTakenSeconds: 2, submittedAt: endedAt });
+      const completed = completeDrillSession({ session: submitted.session, questions, endedAt });
+      await persistCompletedDrillSession({ storage, session: completed, questions, expectedToken });
+    };
+    await finish(resumed.session, resumed.questions, "5", "2026-06-02T00:00:02.000Z", resumed.token);
+    const current = createQuestionPackDrillSession(generatedPack("consistent-pack", 6), {
+      difficulty: "beginner", questionCount: 1, seed: "new-identity", startedAt: "2026-06-03T00:00:00.000Z"
+    });
+    expect(current.questions[0].id).toBe('question-pack:consistent-pack:shared-template:v2:[["value",6]]');
+    expect(current.questions[0].metadata).toMatchObject({
+      sourcePackId: "consistent-pack", sourceQuestionId: 'shared-template:v2:[["value",6]]'
+    });
+    await finish(current.session, current.questions, "6", "2026-06-03T00:00:02.000Z");
+
+    const exported = await createLocalProgressExport(storage);
+    const standardRestored = new MemoryAppStorage();
+    await replaceLocalProgressWithImport(standardRestored, JSON.parse(JSON.stringify(exported)));
+    expect((await standardRestored.getAll("responses")).map((response) => response.questionId)).toEqual([
+      legacyQuestion.id, current.questions[0].id
+    ]);
+    const restored = new MemoryAppStorage();
+    await restoreCompleteBackupFiles(restored, await createCompleteBackupFilesFromStorage(storage));
+    const mistakes = await restored.getAll("mistake_notebook");
+    const schedules = await restored.getAll("retry_schedules");
+    expect(mistakes[0]).toMatchObject({ sourceQuestionId: legacyQuestion.id, sourceSessionId: legacySession.id });
+    expect(schedules[0].sourceId).toBe(mistakes[0].id);
+    const review = createReviewDrillSession(mistakes, {
+      questionCount: 1, retrySchedules: schedules, now: "2026-06-05T00:00:00.000Z", startedAt: "2026-06-05T00:00:00.000Z"
+    });
+    expect(review.questions[0]).toMatchObject({
+      id: `retry-${mistakes[0].id}`, prompt: legacyQuestion.prompt, answer: legacyQuestion.answer,
+      metadata: { variables: { mistakeId: mistakes[0].id } }
+    });
+    expect((await restored.get("drill_sessions", legacySession.id))?.questionIds).toEqual([legacyQuestion.id]);
+  });
+
   it("uses every selected fixed pack without leaking built-in questions in selected-only mode", () => {
     const created = createQuestionPackPoolSession({
       includeBuiltIn: false,

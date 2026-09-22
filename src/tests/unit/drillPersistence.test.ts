@@ -22,6 +22,50 @@ import type { MistakeNotebookRecord } from "@/lib/storage/appStorageTypes";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("drill persistence", () => {
+  it("rejects an old draft or divergent completion without changing acknowledged history", async () => {
+    const storage = new MemoryAppStorage();
+    const completed = createCompletedSession("two-tabs");
+    const draft = { ...completed.session, responses: [], score: undefined, endedAt: undefined };
+    const token = await persistInProgressDrillSession({ session: draft, questions: completed.questions, draftKey: "shared", storage });
+    await persistCompletedDrillSession({ ...completed, expectedToken: token, storage, benchmarkId: "baseline_beginner" });
+    const saved = await storage.getSnapshot(["drill_sessions", "responses", "benchmark_results"]);
+    await expect(persistInProgressDrillSession({ session: draft, questions: completed.questions, draftKey: "shared", expectedToken: token, storage })).rejects.toMatchObject({ reason: "session" });
+    const divergent = { ...completed.session, responses: completed.session.responses.map((response) => ({ ...response, rawInput: "another answer" })) };
+    await expect(persistCompletedDrillSession({ questions: completed.questions, session: divergent, expectedToken: token, storage })).rejects.toMatchObject({ reason: "session" });
+    expect(await storage.getSnapshot(["drill_sessions", "responses", "benchmark_results"])).toEqual(saved);
+    expect(saved.benchmark_results).toHaveLength(1);
+  });
+
+  it("treats semantic completion retries as idempotent despite persistence timestamps", async () => {
+    const storage = new MemoryAppStorage();
+    const completed = createCompletedSession("semantic-retry");
+    const first = await persistCompletedDrillSession({ ...completed, storage, updatedAt: "2026-06-02T00:01:00.000Z" });
+    const retried = await persistCompletedDrillSession({ ...completed, storage, updatedAt: "2026-06-03T00:01:00.000Z" });
+    expect(retried).toEqual(first);
+    expect((await storage.get("drill_sessions", completed.session.id))?.updatedAt).toBe("2026-06-02T00:01:00.000Z");
+    await storage.clearAll();
+    await expect(persistCompletedDrillSession({ ...completed, storage, expectedToken: first })).rejects.toMatchObject({ reason: "generation" });
+  });
+
+  it("serializes distinct concurrent reviews of the same mistake", async () => {
+    const storage = new MemoryAppStorage();
+    const missed = createCompletedSession("review-source", undefined, undefined, "0");
+    const mistake = createStoredMistakeNotebookRecords(missed.session, missed.questions)[0];
+    await storage.put("mistake_notebook", mistake);
+    await storage.put("retry_schedules", createRetryScheduleRecord(mistake));
+    const retry = createRetryCompletedSession(mistake, "0");
+    await Promise.all(["first", "second"].map((id) => persistCompletedDrillSession({ ...retry, session: { ...retry.session, id }, storage })));
+    expect((await storage.get("mistake_notebook", mistake.id))?.retryCount).toBe(2);
+    expect((await storage.getAll("retry_schedules"))[0].attemptCount).toBe(2);
+  });
+
+  it("rolls back completion, responses, and benchmark together on storage failure", async () => {
+    const storage = new MemoryAppStorage(2);
+    await expect(persistCompletedDrillSession({ ...createCompletedSession("atomic-benchmark"), benchmarkId: "baseline_beginner", storage })).rejects.toThrow("Injected atomic mutation failure");
+    expect(await storage.getAll("drill_sessions")).toEqual([]);
+    expect(await storage.getAll("benchmark_results")).toEqual([]);
+    expect(await storage.getAll("responses")).toEqual([]);
+  });
   it("does not advance review bookkeeping twice when a completed save is retried", async () => {
     const storage = new MemoryAppStorage();
     const completed = createCompletedSession("idempotent", undefined, undefined, "0");
@@ -64,7 +108,8 @@ describe("drill persistence", () => {
     expect(await loadInProgressDrillSession(storage, "another-route")).toBeUndefined();
     expect(await loadInProgressDrillSession(storage, draftKey)).toEqual({
       questions: created.questions,
-      session: submitted.session
+      session: submitted.session,
+      token: { generation: 0, revision: 1, exists: true }
     });
   });
 
@@ -89,7 +134,7 @@ describe("drill persistence", () => {
       storage,
       buildDrillDraftKey(route, created.session.settings, "pool-b")
     )).toBeUndefined();
-    expect(await loadInProgressDrillSession(storage, firstPoolKey)).toEqual(created);
+    expect(await loadInProgressDrillSession(storage, firstPoolKey)).toEqual({ ...created, token: { generation: 0, revision: 1, exists: true } });
     expect(buildDrillDraftKey(route, created.session.settings)).not.toBe(firstPoolKey);
   });
 

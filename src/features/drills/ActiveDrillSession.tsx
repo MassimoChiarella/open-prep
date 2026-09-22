@@ -1,5 +1,7 @@
 "use client";
 
+import { NumericAnswerInput } from "@/components/NumericAnswerInput";
+
 import { FormEvent, type RefObject, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { LocalSaveNotice } from "@/components/LocalSaveNotice";
@@ -17,7 +19,6 @@ import {
   evaluateInterviewMath,
   type InterviewMathSubmission
 } from "@/features/drills/interviewMathEvaluation";
-import { persistBenchmarkResult } from "@/features/benchmarks/benchmarkPersistence";
 import { buildBenchmarkSelectionHref } from "@/features/benchmarks/benchmarkSession";
 import type { BenchmarkId } from "@/features/benchmarks/benchmarkTypes";
 import {
@@ -55,9 +56,10 @@ import type {
   UserResponse
 } from "@/lib/domain";
 import { formatNumber } from "@/lib/format";
-import type { AppStorage } from "@/lib/storage/appStorageTypes";
+import { AppStorageConflictError, type AppStorage, type DrillSessionWriteToken } from "@/lib/storage/appStorageTypes";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 import { validateAnswer, type ValidationResult } from "@/lib/validation/validateAnswer";
+import { maxNumericInputLength } from "@/lib/validation/inputLimits";
 
 interface ActiveDrillSessionProps {
   benchmarkId?: BenchmarkId;
@@ -134,6 +136,9 @@ export function ActiveDrillSession({
   const [saveAttempt, setSaveAttempt] = useState(0);
   const [draftLoaded, setDraftLoaded] = useState(false);
   const [draftSaveFailed, setDraftSaveFailed] = useState(false);
+  const [writeConflict, setWriteConflict] = useState(false);
+  const [recoveringConflict, setRecoveringConflict] = useState(false);
+  const [conflictRecoveryFailed, setConflictRecoveryFailed] = useState(false);
   const [retryQuestionIds, setRetryQuestionIds] = useState<Set<string>>(() => new Set());
   const [showHint, setShowHint] = useState(false);
   const [scratchpad, setScratchpad] = useState("");
@@ -145,7 +150,17 @@ export function ActiveDrillSession({
   const pendingSessionIds = useRef<Set<string>>(new Set());
   const persistedSessionIds = useRef<Set<string>>(new Set());
   const draftSavePromise = useRef<Promise<void>>(Promise.resolve());
+  const writeToken = useRef<DrillSessionWriteToken | undefined>(undefined);
+  const conflictRef = useRef(false);
   const sessionRef = useRef(session);
+
+  const flagWriteFailure = useCallback((error: unknown) => {
+    if (error instanceof AppStorageConflictError) {
+      conflictRef.current = true;
+      setWriteConflict(true);
+    }
+    setDraftSaveFailed(true);
+  }, []);
 
   const draftKey = useMemo(
     () =>
@@ -183,6 +198,7 @@ export function ActiveDrillSession({
   );
   const timer = useMemo(() => timerAt(nowMs), [nowMs, timerAt]);
   const timerIsActive =
+    !writeConflict &&
     completedSession?.score === undefined &&
     currentQuestion !== undefined &&
     feedback?.recorded !== true;
@@ -197,7 +213,7 @@ export function ActiveDrillSession({
             feedback.question,
             session.settings,
             `${session.id}:similar:${feedback.question.id}:${session.responses.length}`,
-            questionQueue.map((question) => question.id)
+            questionQueue
           )
         : undefined,
     [benchmarkId, feedback, lockedModeSummary.length, questionQueue, session.id, session.responses.length, session.settings, similarQuestionTemplates]
@@ -360,7 +376,11 @@ export function ActiveDrillSession({
     try {
       const storage = storageFactory();
 
-      void loadInProgressDrillSession(storage, draftKey)
+      void storage.getGeneration().then(async (generation) => {
+        const draft = await loadInProgressDrillSession(storage, draftKey);
+        if (!cancelled) writeToken.current = draft?.token ?? { generation, revision: 0, exists: false };
+        return draft;
+      })
         .then((draft) => {
           if (!cancelled && draft !== undefined && sessionRef.current.responses.length === 0) {
             setSession(isDrillSessionComplete(draft.session)
@@ -397,7 +417,7 @@ export function ActiveDrillSession({
   }, [draftKey, storageFactory]);
 
   useEffect(() => {
-    if (!draftLoaded || session.score !== undefined) {
+    if (!draftLoaded || session.score !== undefined || writeConflict || writeToken.current === undefined) {
       return;
     }
 
@@ -413,7 +433,9 @@ export function ActiveDrillSession({
     draftSavePromise.current = draftSavePromise.current
       .then(async () => {
         try {
-          await persistInProgressDrillSession({
+          if (conflictRef.current || sessionRef.current.id !== session.id) return;
+          writeToken.current = await persistInProgressDrillSession({
+            expectedToken: writeToken.current,
             draftKey,
             ...(feedback?.recorded === true ? {} : { questionStartedAtMs: questionStartedAt }),
             questions: questionQueue,
@@ -425,11 +447,11 @@ export function ActiveDrillSession({
           storage.close();
         }
       })
-      .catch(() => setDraftSaveFailed(true));
-  }, [draftKey, draftLoaded, feedback?.recorded, questionStartedAt, questionQueue, session, storageFactory]);
+      .catch(flagWriteFailure);
+  }, [draftKey, draftLoaded, feedback?.recorded, flagWriteFailure, questionStartedAt, questionQueue, session, storageFactory, writeConflict]);
 
   useEffect(() => {
-    if (completedSession?.score === undefined || completedSummary === undefined) {
+    if (!draftLoaded || writeConflict || writeToken.current === undefined || completedSession?.score === undefined || completedSummary === undefined) {
       return;
     }
 
@@ -449,21 +471,21 @@ export function ActiveDrillSession({
       void draftSavePromise.current
         .then(async () => {
           try {
-            await persistCompletedDrillSession({
+            if (conflictRef.current || sessionRef.current.id !== completedSession.id) return;
+            writeToken.current = await persistCompletedDrillSession({
+              expectedToken: writeToken.current,
+              benchmarkId,
               questions: questionQueue,
               session: completedSession,
               storage
             });
+            // The transaction is acknowledged before optional personal-best presentation work.
+            persistedSessionIds.current.add(completedSession.id);
+            setSaveStatus("saved");
             const sourceIds = [completedSession.id];
 
             if (benchmarkId !== undefined) {
-              const result = await persistBenchmarkResult({
-                benchmarkId,
-                session: completedSession,
-                storage
-              });
-
-              sourceIds.push(result.id);
+              sourceIds.push(`benchmark-result-${benchmarkId}-${completedSession.id}`);
             }
 
             const [sessions, responses, benchmarkResults] = await Promise.all([
@@ -491,18 +513,19 @@ export function ActiveDrillSession({
         })
         .then(() => {
           pendingSessionIds.current.delete(completedSession.id);
-          persistedSessionIds.current.add(completedSession.id);
-          setSaveStatus("saved");
         })
-        .catch(() => {
+        .catch((error: unknown) => {
           pendingSessionIds.current.delete(completedSession.id);
-          setSaveStatus("error");
+          if (!persistedSessionIds.current.has(completedSession.id)) {
+            flagWriteFailure(error);
+            setSaveStatus("error");
+          }
         });
     } catch {
       pendingSessionIds.current.delete(completedSession.id);
       void Promise.resolve().then(() => setSaveStatus("error"));
     }
-  }, [benchmarkId, completedSession, completedSummary, questionQueue, saveAttempt, storageFactory]);
+  }, [benchmarkId, completedSession, completedSummary, draftLoaded, flagWriteFailure, questionQueue, saveAttempt, storageFactory, writeConflict]);
 
   useEffect(() => {
     if (feedback?.recorded === false) {
@@ -530,7 +553,7 @@ export function ActiveDrillSession({
     const submittedAtMs = currentTimestampMs();
     const submissionTimer = timerAt(submittedAtMs);
 
-    if (currentQuestion === undefined || feedback?.recorded || submissionTimer.isExpired) {
+    if (writeConflict || answer.length > maxNumericInputLength || currentQuestion === undefined || feedback?.recorded || submissionTimer.isExpired) {
       if (submissionTimer.isExpired) setNowMs(submittedAtMs);
       return;
     }
@@ -665,6 +688,60 @@ export function ActiveDrillSession({
     prepareNextQuestion();
   }
 
+  async function recoverConflict(copyLocal: boolean) {
+    if (recoveringConflict) return;
+    setRecoveringConflict(true);
+    setConflictRecoveryFailed(false);
+    let storage: AppStorage | undefined;
+    try {
+      await draftSavePromise.current;
+      storage = storageFactory();
+      const id = copyLocal ? `session-${crypto.randomUUID()}` : session.id;
+      const saved = await storage.getDrillSession(id);
+      if (!copyLocal && (saved.session === undefined || !saved.session.questions?.length)) {
+        setConflictRecoveryFailed(true);
+        return;
+      }
+      writeToken.current = saved.token;
+      if (copyLocal) {
+        // Keep actual start/end times, answers and snapshots; this is an explicit separate attempt.
+        setSession((current) => ({ ...current, id }));
+        setSaveStatus("idle");
+      } else if (saved.session !== undefined) {
+        setSession(saved.session);
+        setQuestionQueue(saved.session.questions!);
+        setFeedback(undefined);
+        setAnswer("");
+        setEquationOptionId("");
+        setInterpretationOptionId("");
+        setSelectedUnit("");
+        setQuestionStartedAt(saved.session.activeQuestionStartedAt === undefined ? Date.now() : Date.parse(saved.session.activeQuestionStartedAt));
+        if (saved.session.score !== undefined) persistedSessionIds.current.add(saved.session.id);
+        setSaveStatus(saved.session.score === undefined ? "idle" : "saved");
+      }
+      conflictRef.current = false;
+      setWriteConflict(false);
+      setDraftSaveFailed(false);
+      setNowMs(Date.now());
+    } catch {
+      setConflictRecoveryFailed(true);
+    } finally {
+      storage?.close();
+      setRecoveringConflict(false);
+    }
+  }
+
+  const conflictNotice = writeConflict ? (
+    <section className="grid gap-3 border border-coral bg-paper p-4" role="alert">
+      <p>{t("This attempt changed in another tab. Your answers are still here. Choose which attempt to keep working with.")}</p>
+      <div className="flex flex-wrap gap-3">
+        <button className="min-h-11 rounded-md border border-ink px-3 font-semibold" disabled={recoveringConflict} onClick={() => void recoverConflict(false)} type="button">{t("View saved attempt")}</button>
+        <button className="min-h-11 rounded-md bg-ink px-3 font-semibold text-white" disabled={recoveringConflict} onClick={() => void recoverConflict(true)} type="button">{t("Keep my answers as a separate attempt")}</button>
+      </div>
+      {conflictRecoveryFailed ? <p>{t("The saved attempt is unavailable or could not be loaded. Your local answers are still here.")}</p> : null}
+    </section>
+  ) : null;
+
   if (completedSummary !== undefined) {
     return (
       <main
@@ -678,9 +755,10 @@ export function ActiveDrillSession({
           warnings={warnings.map((warning) => t(warning))}
         />
         <LocalSaveStatus
-          onRetry={saveStatus === "error" ? () => setSaveAttempt((current) => current + 1) : undefined}
+          onRetry={saveStatus === "error" && !writeConflict ? () => setSaveAttempt((current) => current + 1) : undefined}
           status={saveStatus}
         />
+        {conflictNotice}
         <SessionSummaryView
           newBestLabels={newBestLabels}
           repeatAction={
@@ -724,11 +802,12 @@ export function ActiveDrillSession({
     : undefined;
   const progressPercent = Math.round((progress.answeredCount / progress.totalQuestions) * 100);
   const displayedQuestionNumber = Math.max(1, questionQueue.findIndex((question) => question.id === displayedQuestion.id) + 1);
-  const inputDisabled = feedback?.recorded === true || timer.isExpired;
+  const inputDisabled = writeConflict || feedback?.recorded === true || timer.isExpired;
   const requiresUnit = displayedQuestion.answer.unit !== undefined && displayedQuestion.answer.unit !== "none";
   const requiresEquationSetup = session.settings.caseRequireEquationSetup !== false;
   const requiresInterpretation = session.settings.caseRequireInterpretation === true;
   const submitDisabled =
+    answer.length > maxNumericInputLength ||
     answer.trim() === "" ||
     inputDisabled ||
     (interviewMathSpec !== undefined &&
@@ -764,6 +843,7 @@ export function ActiveDrillSession({
         warnings={warnings.map((warning) => t(warning))}
       />
 
+      {conflictNotice}
       <div
         className="grid max-w-full min-w-0 items-start gap-5 lg:grid-cols-[minmax(0,1fr)_18rem] xl:grid-cols-[minmax(0,1fr)_20rem]"
         data-testid="active-session-layout"
@@ -866,7 +946,7 @@ export function ActiveDrillSession({
                   >
                     <label className="grid gap-2 text-sm font-semibold text-ink/80">
                       {t("Answer")}
-                      <input
+                      <NumericAnswerInput
                         aria-describedby="active-question-prompt active-question-expectations"
                         autoComplete="off"
                         autoFocus
@@ -1095,7 +1175,7 @@ function InterviewMathAnswerFields({
           <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(10rem,13rem)] xl:grid-cols-1">
             <label className="grid gap-2 text-sm font-semibold text-ink">
               {t("2. Answer")}
-              <input
+              <NumericAnswerInput
                 aria-describedby={describedBy}
                 autoComplete="off"
                 className="h-14 w-full rounded-md border border-ink/50 bg-white px-4 text-xl font-semibold text-ink outline-none transition placeholder:text-ink/65 focus:border-teal focus:ring-2 focus:ring-mint disabled:bg-white/70 disabled:text-ink/65"

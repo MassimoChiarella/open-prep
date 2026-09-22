@@ -10,7 +10,7 @@ import {
 import { createDrillSession } from "@/features/drills/sessionFactory";
 import { unitPreferenceOptions } from "@/features/drills/drillSettingsOptions";
 import { timingAccommodationPreferenceKey } from "@/features/timing/timingAccommodationPreference";
-import type { AppStorageMutation } from "@/lib/storage/appStorageTypes";
+import type { AppStorageAtomicDecision, AppStorageAtomicOptions, AppStorageAtomicView } from "@/lib/storage/appStorageTypes";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 afterEach(() => {
@@ -552,33 +552,27 @@ describe("ActiveDrillSession", () => {
 class FailOnceStorage extends MemoryAppStorage {
   failNextCompletedSessionPut = false;
 
-  override async mutate(operations: readonly AppStorageMutation[]): Promise<void> {
+  override async atomic<TResult>(options: AppStorageAtomicOptions, decide: (view: AppStorageAtomicView) => AppStorageAtomicDecision<TResult>): Promise<TResult> {
     if (
       this.failNextCompletedSessionPut &&
-      operations.some(
-        (operation) => operation.type === "put" &&
-          operation.storeName === "drill_sessions" && operation.value.score !== undefined
-      )
+      options.stores.includes("responses")
     ) {
       this.failNextCompletedSessionPut = false;
       throw new Error("Injected one-time save failure.");
     }
 
-    await super.mutate(operations);
+    return super.atomic(options, decide);
   }
 }
 
 class PendingCompletedSaveStorage extends MemoryAppStorage {
-  override async mutate(operations: readonly AppStorageMutation[]): Promise<void> {
+  override async atomic<TResult>(options: AppStorageAtomicOptions, decide: (view: AppStorageAtomicView) => AppStorageAtomicDecision<TResult>): Promise<TResult> {
     if (
-      operations.some(
-        (operation) => operation.type === "put" &&
-          operation.storeName === "drill_sessions" && operation.value.score !== undefined
-      )
+      options.stores.includes("responses")
     ) {
-      return new Promise<void>(() => undefined);
+      return new Promise<TResult>(() => undefined);
     }
 
-    await super.mutate(operations);
+    return super.atomic(options, decide);
   }
 }

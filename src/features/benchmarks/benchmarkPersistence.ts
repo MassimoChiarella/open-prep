@@ -41,6 +41,12 @@ export interface PersistBenchmarkResultOptions {
 }
 
 export async function persistBenchmarkResult(options: PersistBenchmarkResultOptions): Promise<BenchmarkResultRecord> {
+  const record = createBenchmarkResult(options);
+  await options.storage.put("benchmark_results", record);
+  return record;
+}
+
+export function createBenchmarkResult(options: Omit<PersistBenchmarkResultOptions, "storage">): BenchmarkResultRecord {
   if (options.session.score === undefined) {
     throw new Error("Only completed benchmark sessions can be persisted.");
   }
@@ -60,8 +66,6 @@ export async function persistBenchmarkResult(options: PersistBenchmarkResultOpti
     sessionId: options.session.id,
     timingAccommodation: normalizeTimingAccommodation(options.session.settings.timingAccommodation)
   };
-
-  await options.storage.put("benchmark_results", record);
 
   return record;
 }
