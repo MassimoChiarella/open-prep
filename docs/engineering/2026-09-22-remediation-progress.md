@@ -22,7 +22,7 @@ Tracking requirement: [GitHub issue #25](https://github.com/MassimoChiarella/ope
 | S11 | Unitless Interview Math | Implemented | AUD-09; 61 validation/evaluation/scoring/submission tests passed; backup round-trip covered |
 | S12 | Generated identity compatibility | Implemented | AUD-10; 68 generator/pack/retry tests passed, including literal legacy IDs and both backup formats; integrated with S02 because the active drill caller shares both changes |
 | S13 | Bulk authoring responsiveness | Open | AUD-11; reconcile concurrent source changes |
-| S14 | Long Fit story containment | Open | AUD-12 |
+| S14 | Long Fit story containment | Implemented | AUD-12; 16 Fit unit tests and lint passed; long-text browser matrix added, final geometry execution pending |
 | S15 | Hidden-field validation | Open | AUD-13; reconcile concurrent source changes |
 | S16 | Mobile help placement | Open | AUD-14; reconcile concurrent source changes |
 | S17 | Backup responsiveness | Open | AUD-15 |
