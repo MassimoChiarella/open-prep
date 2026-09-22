@@ -5,10 +5,16 @@ node_modules/
 .env*
 !.env.example
 .npmrc
+.netrc
 *.pem
 *.key
+*.p8
 *.p12
 *.pfx
+*.jks
+*.keystore
+google-service-account*.json
+service-account-credentials*.json
 playwright/.auth/
 
 # Downloaded learner progress and private backups
