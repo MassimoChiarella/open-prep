@@ -651,8 +651,10 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
               ) : null}
               <label className="flex min-h-11 items-center gap-3 rounded-md border border-ink/10 bg-white px-3 py-2 text-sm font-medium text-ink">
                 <input
-                  aria-label={t("Include negative values")}
-                  aria-describedby={remainderDivisionSelected ? "remainder-negative-values-note" : undefined}
+                  aria-label={t("Include negative starting numbers")}
+                  aria-describedby={remainderDivisionSelected
+                    ? "negative-starting-numbers-help remainder-negative-values-note"
+                    : "negative-starting-numbers-help"}
                   checked={settings.arithmeticAllowNegatives === true}
                   className="h-4 w-4 accent-teal"
                   disabled={remainderDivisionSelected}
@@ -665,7 +667,10 @@ export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }
                   type="checkbox"
                 />
                 <span>
-                  {t("Include negative values")}
+                  {t("Include negative starting numbers")}
+                  <span className="mt-0.5 block font-normal text-ink/65" id="negative-starting-numbers-help">
+                    {t("Answers may still be negative when this is off.")}
+                  </span>
                   {remainderDivisionSelected ? (
                     <span className="mt-0.5 block font-normal text-ink/65" id="remainder-negative-values-note">
                       {t("Remainder division uses non-negative whole-number operands.")}

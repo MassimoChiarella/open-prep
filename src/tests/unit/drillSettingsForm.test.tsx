@@ -179,7 +179,7 @@ describe("DrillSettingsForm", () => {
     fireEvent.change(screen.getByLabelText("Division rounding"), { target: { value: "nearest_whole" } });
     fireEvent.click(screen.getByLabelText("Divide"));
     fireEvent.click(screen.getByLabelText("Use parentheses in mixed operations"));
-    fireEvent.click(screen.getByLabelText("Include negative values"));
+    fireEvent.click(screen.getByLabelText("Include negative starting numbers"));
     fireEvent.change(screen.getByLabelText("Unit preference"), { target: { value: "m" } });
     fireEvent.click(screen.getByRole("checkbox", { name: /Accept answers within 10%/ }));
     fireEvent.click(screen.getByLabelText("Enable hints during the drill"));
@@ -212,7 +212,8 @@ describe("DrillSettingsForm", () => {
     expect(await screen.findByText(/Built-in defaults loaded/)).toBeInTheDocument();
 
     openDisclosure("drill-arithmetic-options");
-    const negativeValues = screen.getByLabelText("Include negative values");
+    const negativeValues = screen.getByLabelText("Include negative starting numbers");
+    expect(negativeValues).toHaveAccessibleDescription("Answers may still be negative when this is off.");
     fireEvent.click(negativeValues);
     expect(negativeValues).toBeChecked();
 
@@ -233,12 +234,12 @@ describe("DrillSettingsForm", () => {
     render(<DrillSettingsForm storageFactory={() => storage} />);
     openDisclosure("drill-arithmetic-options");
     await waitFor(() => expect(screen.getByRole("button", { name: "Remainder" })).toHaveAttribute("aria-pressed", "true"));
-    expect(screen.getByLabelText("Include negative values")).toBeDisabled();
-    expect(screen.getByLabelText("Include negative values")).not.toBeChecked();
+    expect(screen.getByLabelText("Include negative starting numbers")).toBeDisabled();
+    expect(screen.getByLabelText("Include negative starting numbers")).not.toBeChecked();
 
     fireEvent.click(screen.getByRole("button", { name: "Exact" }));
-    expect(screen.getByLabelText("Include negative values")).toBeEnabled();
-    expect(screen.getByLabelText("Include negative values")).not.toBeChecked();
+    expect(screen.getByLabelText("Include negative starting numbers")).toBeEnabled();
+    expect(screen.getByLabelText("Include negative starting numbers")).not.toBeChecked();
   });
 
   it("configures a compatible case-only Interview Math session", () => {

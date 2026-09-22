@@ -3,6 +3,52 @@ import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 type Translations = readonly [string, string, string, string, string, string, string, string, string];
 
 const keys: Record<string, Translations> = {
+  "This attempt changed in another tab. Your answers are still here. Choose which attempt to keep working with.": [
+    "Este intento cambió en otra pestaña. Tus respuestas siguen aquí. Elige con qué intento quieres continuar.",
+    "Cette tentative a été modifiée dans un autre onglet. Vos réponses sont toujours ici. Choisissez la tentative à poursuivre.",
+    "Dieser Versuch wurde in einem anderen Tab geändert. Ihre Antworten sind noch hier. Wählen Sie, mit welchem Versuch Sie fortfahren möchten.",
+    "Esta tentativa mudou em outra aba. Suas respostas continuam aqui. Escolha com qual tentativa deseja continuar.",
+    "此练习记录已在另一个标签页中更改。你的答案仍保留在这里。请选择要继续的练习记录。",
+    "此練習紀錄已在另一個分頁中變更。你的答案仍保留在這裡。請選擇要繼續的練習紀錄。",
+    "この練習は別のタブで変更されました。入力した回答はここに残っています。どちらの練習を続けるか選んでください。",
+    "تغيّرت هذه المحاولة في علامة تبويب أخرى. لا تزال إجاباتك هنا. اختر المحاولة التي تريد مواصلتها.",
+    "यह प्रयास दूसरे टैब में बदल गया है। आपके उत्तर अभी भी यहाँ हैं। चुनें कि किस प्रयास को जारी रखना है।"
+  ],
+  "View saved attempt": ["Ver intento guardado", "Voir la tentative enregistrée", "Gespeicherten Versuch anzeigen", "Ver tentativa salva", "查看已保存的练习记录", "查看已儲存的練習紀錄", "保存済みの練習を表示", "عرض المحاولة المحفوظة", "सहेजा गया प्रयास देखें"],
+  "Keep my answers as a separate attempt": ["Conservar mis respuestas como un intento separado", "Conserver mes réponses dans une tentative distincte", "Meine Antworten als separaten Versuch behalten", "Manter minhas respostas como uma tentativa separada", "将我的答案保留为单独的练习记录", "將我的答案保留為獨立的練習紀錄", "自分の回答を別の練習として保持", "الاحتفاظ بإجاباتي كمحاولة منفصلة", "मेरे उत्तर अलग प्रयास के रूप में रखें"],
+  "The saved attempt is unavailable or could not be loaded. Your local answers are still here.": [
+    "El intento guardado no está disponible o no se pudo cargar. Tus respuestas locales siguen aquí.",
+    "La tentative enregistrée est indisponible ou n’a pas pu être chargée. Vos réponses locales sont toujours ici.",
+    "Der gespeicherte Versuch ist nicht verfügbar oder konnte nicht geladen werden. Ihre lokalen Antworten sind noch hier.",
+    "A tentativa salva não está disponível ou não pôde ser carregada. Suas respostas locais continuam aqui.",
+    "已保存的练习记录不可用或无法加载。你的本地答案仍保留在这里。", "已儲存的練習紀錄無法使用或載入。你的本機答案仍保留在這裡。",
+    "保存済みの練習が見つからないか、読み込めませんでした。ローカルの回答はここに残っています。",
+    "المحاولة المحفوظة غير متاحة أو تعذّر تحميلها. لا تزال إجاباتك المحلية هنا.",
+    "सहेजा गया प्रयास उपलब्ध नहीं है या लोड नहीं हो सका। आपके स्थानीय उत्तर अभी भी यहाँ हैं।"
+  ],
+  "Include negative starting numbers": [
+    "Incluir números iniciales negativos", "Inclure des nombres de départ négatifs", "Negative Ausgangszahlen einbeziehen",
+    "Incluir números iniciais negativos", "包含负的起始数", "包含負的起始數", "計算に使う数に負の数を含める",
+    "تضمين أعداد سالبة في المعطيات", "ऋणात्मक शुरुआती संख्याएँ शामिल करें"
+  ],
+  "Answers may still be negative when this is off.": [
+    "Las respuestas pueden ser negativas aunque esta opción esté desactivada.",
+    "Les réponses peuvent être négatives même si cette option est désactivée.",
+    "Ergebnisse können auch bei deaktivierter Option negativ sein.",
+    "As respostas podem ser negativas mesmo com esta opção desativada.",
+    "关闭此选项时，答案仍可能为负数。", "關閉此選項時，答案仍可能為負數。",
+    "この設定がオフでも、答えが負の数になることがあります。",
+    "قد تكون الإجابات سالبة حتى عند إيقاف هذا الخيار.", "यह विकल्प बंद होने पर भी उत्तर ऋणात्मक हो सकते हैं।"
+  ],
+  "Use 4,096 characters or fewer for a numeric answer.": [
+    "Usa un máximo de 4.096 caracteres para una respuesta numérica.",
+    "Utilisez au maximum 4 096 caractères pour une réponse numérique.",
+    "Verwenden Sie höchstens 4.096 Zeichen für eine numerische Antwort.",
+    "Use no máximo 4.096 caracteres para uma resposta numérica.",
+    "数值答案请使用不超过 4096 个字符。", "數值答案請使用不超過 4096 個字元。",
+    "数値の回答は4,096文字以内で入力してください。",
+    "استخدم ٤٬٠٩٦ حرفًا أو أقل للإجابة الرقمية.", "संख्यात्मक उत्तर के लिए 4,096 या उससे कम वर्णों का उपयोग करें।"
+  ],
   "Separate firm names with commas. These are reference notes and do not change your practice priorities.": [
     "Separa los nombres de las firmas con comas. Son notas de referencia y no cambian tus prioridades de práctica.",
     "Séparez les noms des cabinets par des virgules. Ces notes de référence ne modifient pas vos priorités d’entraînement.",
