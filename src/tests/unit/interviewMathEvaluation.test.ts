@@ -5,8 +5,73 @@ import { evaluateInterviewMath } from "@/features/drills/interviewMathEvaluation
 import { generateQuestionFromTemplate } from "@/features/questions/questionGenerator";
 import type { Question } from "@/lib/domain";
 import { createSeededRandom } from "@/lib/random/seededRandom";
+import { validateGeneratedTemplateQuestionPackPayload } from "@/features/question-packs/questionPackTemplate";
+import { createDrillSession } from "@/features/drills/sessionFactory";
+import { submitAnswer } from "@/features/drills/answerSubmission";
+import { completeDrillSession } from "@/features/drills/sessionCompletion";
+import { createSessionSummarySnapshot } from "@/features/drills/sessionSummary";
+import { persistCompletedDrillSession } from "@/features/drills/drillPersistence";
+import { scoreResponse } from "@/features/scoring/scoringEngine";
+import { createCompleteBackupFilesFromStorage, restoreCompleteBackupFiles } from "@/features/settings/completeBackupStorage";
+import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("evaluateInterviewMath", () => {
+  it("awards and preserves full credit for a validated unitless imported question", async () => {
+    const result = validateGeneratedTemplateQuestionPackPayload({
+      format: "math-drill-question-pack", schemaVersion: 2, packVersion: "1.0", id: "unitless-case", title: "Unitless case",
+      kind: "generated_template", templates: [{
+        id: "ratio", category: "case_math", tags: ["ratio_conversion"], difficulty: ["intermediate"],
+        promptTemplate: "What is {a} divided by {b}?",
+        variables: { a: { type: "integer", values: [10] }, b: { type: "integer", values: [2] } },
+        formula: { expression: "a/b" }, answerUnit: "none", explanationTemplate: { steps: ["Divide to obtain {answer}."] },
+        caseStyle: { calculationStepCount: 2, industry: "retail", interviewMath: {
+          expectedUnit: "none",
+          equationOptions: [
+            { id: "right", label: "{a}/{b}", formulaCorrect: true, setupCorrect: true },
+            { id: "wrong", label: "{a}*{b}", formulaCorrect: false, setupCorrect: false }
+          ],
+          interpretationOptions: [
+            { id: "right", label: "The ratio is {answer}.", isCorrect: true },
+            { id: "wrong", label: "The ratio is 100.", isCorrect: false }
+          ]
+        } }
+      }]
+    });
+    expect(result.status).toBe("valid");
+    if (result.status !== "valid") throw new Error(result.errors.join("; "));
+    const created = createDrillSession({
+      seed: "unitless-score", templates: result.pack.templates, startedAt: "2026-06-02T00:00:00.000Z",
+      settings: { categories: ["case_math"], difficulty: "intermediate", questionCount: 1 }
+    });
+    const question = created.questions[0];
+    const correctInput = {
+      question, rawInput: "5", equationOptionId: "right", interpretationOptionId: "right",
+      requireEquationSetup: true, requireInterpretation: true
+    };
+    for (const selectedUnit of [undefined, "currency", "m"] as const) {
+      expect(evaluateInterviewMath({ ...correctInput, selectedUnit }).validation).toMatchObject({
+        isCorrect: false, errorTypes: ["unit_error"]
+      });
+    }
+    const submitted = submitAnswer({
+      session: created.session, question, rawInput: "5", selectedUnit: "none", timeTakenSeconds: 2,
+      submittedAt: "2026-06-02T00:00:02.000Z", interviewMath: correctInput
+    });
+    expect(submitted.validation).toMatchObject({ isCorrect: true, unitStatus: "compatible", errorTypes: ["none"] });
+    expect(submitted.response.interviewMath?.score.total).toBe(100);
+    expect(scoreResponse(submitted.response)).toBe(100);
+    const completed = completeDrillSession({
+      session: submitted.session, questions: created.questions, endedAt: "2026-06-02T00:00:02.000Z"
+    });
+    expect(createSessionSummarySnapshot(completed, created.questions).score.totalScore).toBe(100);
+    const storage = new MemoryAppStorage();
+    await persistCompletedDrillSession({ storage, session: completed, questions: created.questions });
+    const restored = new MemoryAppStorage();
+    await restoreCompleteBackupFiles(restored, await createCompleteBackupFilesFromStorage(storage));
+    expect((await restored.get("drill_sessions", completed.id))?.score?.totalScore).toBe(100);
+    expect((await restored.getAll("responses"))[0].isCorrect).toBe(true);
+  });
+
   it.each(caseStyleQuestionTemplates)("accepts the promised currency scale notation for $id", (template) => {
     const question = generateQuestionFromTemplate(template, {
       difficulty: template.difficulty[0], random: createSeededRandom("audit-money")

@@ -155,6 +155,7 @@ function getUnitStatus(
   if (typedUnit !== undefined && typedUnit !== expected) return "incompatible";
   if (selected !== undefined && selected !== expected) return "incompatible";
   if (typedUnit === expected || selected === expected) return "compatible";
+  if (expected === "none" && selectedUnit === "none") return "compatible";
   if (expected === "none" && typedScale !== undefined) return "compatible";
   return "omitted";
 }
