@@ -1,6 +1,6 @@
 # Open Prep Question Pack Author Guide
 
-Guide revision: 2026-08-31. Supported schemas: v2 and v3 case practice.
+Guide revision: 2026-09-21. Supported schemas: v2 and v3 case practice.
 
 Question packs are ordinary UTF-8 JSON files saved with the conventional `.mathdrill.json` extension. They are validated, installed, and used locally in the current browser.
 
@@ -18,7 +18,26 @@ Local import checks structure and runtime safety; it does not prove factual trut
 
 Importing the same pack `id` replaces its installed version after confirmation. A file may be at most 5 MiB (5,242,880 bytes), but that is an import ceiling rather than a content target. Prefer 10–25 ordinary questions or one full case per pack, then split larger curricula by topic or kind.
 
-The in-app builders support fixed numeric questions and deterministic case-questioning rubrics. Authors of other specialized formats should start from the validated examples below and edit the JSON directly.
+The in-app builders support fixed numeric questions and deterministic case-questioning rubrics. Use the fixed-numeric builder's batch controls for moderate sets of similar questions. For very large packs, start from a validated example, edit the JSON directly, and import it for validation rather than maintaining hundreds of form sections. Authors of other specialized formats should also start from the validated examples below.
+
+## Build a multi-format series
+
+A `.mathdrill.json` file contains one content format (`kind`). Open Prep does not currently combine different formats in one pack file or run them as one mixed-format session.
+
+Create a complex curriculum as a numbered series of independently usable packs. Give the series a shared stem and each section a stable ID and title, for example:
+
+- `retail-growth-01-numeric`: `Retail Growth 01: Quantitative Warm-up`
+- `retail-growth-02-exhibits`: `Retail Growth 02: Exhibit Analysis`
+- `retail-growth-03-case`: `Retail Growth 03: Case Practice`
+
+Keep those IDs stable when revising content and increment each pack's `packVersion`. For every section in the series:
+
+1. Build it with the matching in-app builder or validated example.
+2. Preview and validate it as its own pack.
+3. Review its facts, answers, formulas, rubrics, accessibility, and distribution rights.
+4. Install it locally and complete its matching practice flow.
+
+Numbered IDs and titles preserve the intended order for authors and learners; they do not create a cross-format runner.
 
 ## Choose a format
 

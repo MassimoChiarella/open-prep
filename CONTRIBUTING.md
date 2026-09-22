@@ -29,6 +29,7 @@ npm run dev
 - Use strict TypeScript and pure functions for parsing, generation, validation, scoring, and recommendations where practical.
 - Add focused tests when changing shared logic or user-facing workflows.
 - Submit only consulting-relevant practice content that you created or may distribute under one approved content license. The MIT software license does not grant practice-content rights.
+- Keep one content format per `.mathdrill.json` file. Represent a multi-format curriculum as a numbered series of separate packs, and preview, review, install, and test each pack independently.
 - Verify contributed questions, units, formulas, answers, explanations, and cross-references.
 - Do not submit hateful, harassing, discriminatory, dehumanizing, threatening, or unrelated content.
 - Use inclusive language and avoid real personal data unless it is clearly fictionalized and necessary to the exercise.

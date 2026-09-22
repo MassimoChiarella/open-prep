@@ -32,6 +32,8 @@ Contributions are welcome. Read the [contribution guide](CONTRIBUTING.md) and [C
 
 Open Prep supports locally imported question packs without uploading their content or the learner's results. Start with the [question-pack author guide](public/question-pack-author-guide.md); the complete contracts are documented in [format v2](QUESTION_PACK_FORMAT_V2.md) and [format v3](QUESTION_PACK_FORMAT_V3.md).
 
+Each `.mathdrill.json` file contains one content format. Build a multi-format curriculum as a numbered series of independently validated packs, then preview, review, install, and test every section. The author guide covers stable naming, batch authoring for moderate fixed-numeric sets, and validated JSON import for very large packs.
+
 In Settings, the Question Pool control can keep built-in content only, add selected installed packs to the built-in pool, or restrict matching practice areas to one or more selected packs. Direct links from the Content Packs workspace still open exactly one pack and temporarily override that saved pool preference.
 
 Local import checks file safety and compatibility, not ownership or accuracy. Packs proposed for the repository-reviewed catalog must also follow the [content policy](CONTENT_POLICY.md) and [community-pack lifecycle](COMMUNITY_PACK_LIFECYCLE.md).
