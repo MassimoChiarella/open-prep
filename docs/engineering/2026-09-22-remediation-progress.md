@@ -14,7 +14,7 @@ Tracking requirement: [GitHub issue #25](https://github.com/MassimoChiarella/ope
 | S03 | Input/storage/export limits | Open | AUD-02 |
 | S04 | Finite parser and legacy sign | Implemented | AUD-03; 50 focused parser/validation/submission tests passed; overflow submission remains exportable |
 | S05 | Scoped incompatible-history recovery | Open | IMP-02; legacy AUD-02/03 |
-| S06 | Runtime cache failure isolation | Open | AUD-04 |
+| S06 | Runtime cache failure isolation | Implemented; integration pending | AUD-04; 24 service-worker tests passed; production-worker browser regression added |
 | S07 | Profile save protection | Open | AUD-05 |
 | S08 | Whole-session feedback deadline | Open | AUD-06 |
 | S09 | Coherent weighted-sales wording | Open | AUD-07 |
