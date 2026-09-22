@@ -19,7 +19,7 @@ Tracking requirement: [GitHub issue #25](https://github.com/MassimoChiarella/ope
 | S08 | Whole-session feedback deadline | Open | AUD-06 |
 | S09 | Coherent weighted-sales wording | Implemented | AUD-07; All 985 configured tuples independently checked; 8 content tests passed |
 | S10 | Correct-answer display precision | Implemented | AUD-08; 12 summary tests passed; displayed answers accepted in en/de/fr/ar/hi |
-| S11 | Unitless Interview Math | Open | AUD-09 |
+| S11 | Unitless Interview Math | Implemented | AUD-09; 61 validation/evaluation/scoring/submission tests passed; backup round-trip covered |
 | S12 | Generated identity compatibility | Open | AUD-10 |
 | S13 | Bulk authoring responsiveness | Open | AUD-11; reconcile concurrent source changes |
 | S14 | Long Fit story containment | Open | AUD-12 |

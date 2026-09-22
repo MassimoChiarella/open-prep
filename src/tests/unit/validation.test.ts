@@ -4,6 +4,20 @@ import type { AnswerSpec } from "@/lib/domain";
 import { validateAnswer } from "@/lib/validation/validateAnswer";
 
 describe("validateAnswer", () => {
+  it("distinguishes explicit no-unit answers from omitted and conflicting units", () => {
+    const answer: AnswerSpec = { value: 5, unit: "none" };
+    expect(validateAnswer("5", answer, { selectedUnit: "none" })).toMatchObject({
+      isCorrect: true, unitStatus: "compatible", errorTypes: ["none"]
+    });
+    expect(validateAnswer("5", answer).unitStatus).toBe("omitted");
+    expect(validateAnswer("$5", answer, { selectedUnit: "none" })).toMatchObject({
+      isCorrect: false, unitStatus: "incompatible", errorTypes: ["unit_error"]
+    });
+    for (const unit of ["m", "currency", "percentage"] as const) {
+      expect(validateAnswer("5", { value: 5, unit }, { selectedUnit: "none" }).unitStatus).toBe("omitted");
+    }
+  });
+
   it("accepts exact numeric matches and equivalent parsed formats", () => {
     const answer: AnswerSpec = { value: 1_000_000, unit: "currency" };
 
