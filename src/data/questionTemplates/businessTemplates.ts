@@ -936,7 +936,7 @@ export const weightedAverageTemplates: QuestionTemplate[] = [
     category: "weighted_averages",
     tags: ["weighted_average"],
     difficulty: ["beginner"],
-    promptTemplate: "Segment A is {shareA}% at margin {marginA}%. Segment B is {shareB}% at margin {marginB}%. What is blended margin? Enter the percentage as a number or with %.",
+    promptTemplate: "Segment A and Segment B have sales in the ratio {shareA}:{shareB}. Their profit margins are {marginA}% and {marginB}%, respectively. What is blended margin? Enter the percentage as a number or with %.",
     variables: {
       shareA: { type: "percentage", values: [25, 40, 50, 60] },
       marginA: { type: "percentage", values: [10, 20, 30, 40] },
@@ -946,7 +946,7 @@ export const weightedAverageTemplates: QuestionTemplate[] = [
     formula: { expression: "(shareA * marginA + shareB * marginB) / (shareA + shareB) / 100" },
     answerUnit: "percentage",
     explanationTemplate: {
-      steps: ["Weight each margin by its share.", "Divide the weighted percent value by 100 to get {answer} as a decimal; enter the equivalent percentage."]
+      steps: ["Weight each margin by its relative sales weight, then divide by the sum of the weights.", "({shareA} x {marginA} + {shareB} x {marginB}) / ({shareA} + {shareB}) gives the blended percentage. Divide by 100 to get {answer} as a decimal; enter the equivalent percentage."]
     }
   },
   {
@@ -1067,7 +1067,7 @@ export const weightedAverageTemplates: QuestionTemplate[] = [
     category: "weighted_averages",
     tags: ["weighted_average", "margin"],
     difficulty: ["beginner", "expert"],
-    promptTemplate: "Product A is {shareA}% of sales at {marginA}% margin, Product B is {shareB}% at {marginB}%, and Product C is {shareC}% at {marginC}%. What is blended margin? Enter the percentage as a number or with %.",
+    promptTemplate: "Products A, B, and C have sales in the ratio {shareA}:{shareB}:{shareC}. Their profit margins are {marginA}%, {marginB}%, and {marginC}%, respectively. What is blended margin? Enter the percentage as a number or with %.",
     variables: {
       shareA: { type: "percentage", values: [20, 30, 40] },
       marginA: { type: "percentage", values: [15, 20, 25] },
@@ -1080,8 +1080,8 @@ export const weightedAverageTemplates: QuestionTemplate[] = [
     answerUnit: "percentage",
     explanationTemplate: {
       steps: [
-        "Weight each margin by its sales share.",
-        "Divide the weighted percent value by 100 to get {answer} as a decimal; enter the equivalent percentage."
+        "Weight each margin by its relative sales weight, then divide by the sum of the weights.",
+        "({shareA} x {marginA} + {shareB} x {marginB} + {shareC} x {marginC}) / ({shareA} + {shareB} + {shareC}) gives the blended percentage. Divide by 100 to get {answer} as a decimal; enter the equivalent percentage."
       ]
     }
   },
