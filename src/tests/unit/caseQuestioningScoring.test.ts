@@ -7,6 +7,7 @@ import {
   scoreCaseQuestioning,
   type CaseQuestioningPrompt
 } from "@/features/case-practice/questioning/questioningScoring";
+import { serializeQuestionPack, validateQuestionPackPayload } from "@/features/question-packs/questionPack";
 
 const prompt: CaseQuestioningPrompt = {
   concepts: [
@@ -58,6 +59,52 @@ const prompt: CaseQuestioningPrompt = {
 };
 
 describe("case questioning scoring", () => {
+  it.each([
+    [1e308, 1e308],
+    [1e308, 5e307],
+    [Number.MIN_VALUE, Number.MIN_VALUE],
+    [Number.MAX_VALUE, Number.MIN_VALUE],
+    [40, 35]
+  ])("keeps accepted weights %s and %s finite through pack round trips", (first, second) => {
+    const weightedPrompt = {
+      ...prompt,
+      minimumQuestions: 1,
+      intents: prompt.intents.slice(0, 2).map((intent, index) => ({ ...intent, weight: index === 0 ? first : second }))
+    };
+    const result = validateQuestionPackPayload({
+      format: "math-drill-question-pack", schemaVersion: 3, kind: "case_practice",
+      id: "extreme-weights", packVersion: "1.0", title: "Extreme weights",
+      questioningPrompts: [weightedPrompt]
+    });
+    if (result.status === "invalid" || result.pack.kind !== "case_practice") throw new Error("Expected a valid questioning pack.");
+    const restored = validateQuestionPackPayload(JSON.parse(serializeQuestionPack(result.pack)));
+    if (restored.status === "invalid" || restored.pack.kind !== "case_practice") throw new Error("Expected a valid restored pack.");
+    for (const installedPrompt of [weightedPrompt, result.pack.questioningPrompts![0], restored.pack.questioningPrompts![0]]) {
+      for (const count of [0, 1, 2]) {
+        const score = scoreCaseQuestioning(installedPrompt, {
+          includeRanking: false,
+          questions: count === 0
+            ? [{ id: "unknown", text: "What is your name?" }]
+            : installedPrompt.intents.slice(0, count).map((intent) => ({ id: intent.id, text: intent.referenceQuestions[0] }))
+        });
+        const maximum = Math.max(first, second);
+        const fraction = count === 0 ? 0 : count === 2 ? 1 : (first / maximum) / (first / maximum + second / maximum);
+        expect(score.coverage.score).toBe(Math.round(score.coverage.maxScore * fraction));
+        expect(Number.isFinite(score.totalScore)).toBe(true);
+        expect(score.totalScore).toBeGreaterThanOrEqual(0);
+        expect(score.totalScore).toBeLessThanOrEqual(score.maxScore);
+        if (count === 2) expect(score.totalScore).toBe(score.maxScore);
+      }
+    }
+  });
+
+  it.each([NaN, Infinity, -Infinity, 0, -1])("rejects invalid runtime weights %s", (weight) => {
+    expect(() => scoreCaseQuestioning({ ...prompt, intents: [{ ...prompt.intents[0], weight }] }, {
+      includeRanking: false,
+      questions: prompt.intents.map((intent) => ({ id: intent.id, text: intent.referenceQuestions[0] }))
+    })).toThrow(/incomplete/);
+  });
+
   it("deduplicates identical normalized questions even without a recognized intent", () => {
     const score = scoreCaseQuestioning(questioningPrompts[0], {
       includeRanking: false,
