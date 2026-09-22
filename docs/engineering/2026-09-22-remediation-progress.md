@@ -10,7 +10,7 @@ Tracking requirement: [GitHub issue #25](https://github.com/MassimoChiarella/ope
 |---|---|---|---|
 | S00 | Baseline and specification | In progress | Isolated source, pinned tooling, requirement #25, and durable documents established; quiet performance baselines still pending |
 | S01 | Atomic storage capability | Implemented; migration integration pending | 86 focused storage/persistence/restore tests; native atomic concurrency checks passed in Chromium/Firefox/WebKit (9 tests); v9 migration fixture added; direct write resource guards included |
-| S02 | Conflict-aware drill persistence | Open | AUD-01 |
+| S02 | Conflict-aware drill persistence | Implemented; UI browser integration pending | AUD-01; atomic completion/benchmark/review updates, retained-answer conflict recovery; 27 drill/input UI tests and 9 native transaction browser checks passed |
 | S03 | Input/storage/export limits | In progress | AUD-02; shared 4,096/100,000-code-unit limits and editable input errors implemented; 8 new boundary/UI checks passed; adapter/export integration follows |
 | S04 | Finite parser and legacy sign | Implemented | AUD-03; 50 focused parser/validation/submission tests passed; overflow submission remains exportable |
 | S05 | Scoped incompatible-history recovery | Open | IMP-02; legacy AUD-02/03 |
@@ -20,7 +20,7 @@ Tracking requirement: [GitHub issue #25](https://github.com/MassimoChiarella/ope
 | S09 | Coherent weighted-sales wording | Implemented | AUD-07; All 985 configured tuples independently checked; 8 content tests passed |
 | S10 | Correct-answer display precision | Implemented | AUD-08; 12 summary tests passed; displayed answers accepted in en/de/fr/ar/hi |
 | S11 | Unitless Interview Math | Implemented | AUD-09; 61 validation/evaluation/scoring/submission tests passed; backup round-trip covered |
-| S12 | Generated identity compatibility | Open | AUD-10 |
+| S12 | Generated identity compatibility | Implemented | AUD-10; 68 generator/pack/retry tests passed, including literal legacy IDs and both backup formats; integrated with S02 because the active drill caller shares both changes |
 | S13 | Bulk authoring responsiveness | Open | AUD-11; reconcile concurrent source changes |
 | S14 | Long Fit story containment | Open | AUD-12 |
 | S15 | Hidden-field validation | Open | AUD-13; reconcile concurrent source changes |

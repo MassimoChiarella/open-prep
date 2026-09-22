@@ -1,21 +1,27 @@
 import { createSessionSummarySnapshot, type SessionSummarySnapshot } from "@/features/drills/sessionSummary";
+import { createBenchmarkResult } from "@/features/benchmarks/benchmarkPersistence";
+import type { BenchmarkId } from "@/features/benchmarks/benchmarkTypes";
+import { assertSessionToken } from "@/lib/storage/storageCoordination";
 import type { DrillSession, DrillSettings, Question } from "@/lib/domain";
 import type {
   AppStorage,
   AppStorageMutation,
   AppStoreValue,
+  DrillSessionWriteToken,
   MistakeNotebookRecord,
   MistakeNotebookSourceType,
   RetryScheduleRecord,
   StoredDrillSession,
   StoredUserResponse,
 } from "@/lib/storage/appStorageTypes";
-import { appStoreIndexNames } from "@/lib/storage/appStorageTypes";
+import { appStoreIndexNames, AppStorageConflictError } from "@/lib/storage/appStorageTypes";
 
 export const retryScheduleIntervalsDays = [1, 3, 7] as const;
 const historyPageSize = 500;
 
 export interface PersistCompletedDrillSessionOptions {
+  benchmarkId?: BenchmarkId;
+  expectedToken?: DrillSessionWriteToken;
   questions: readonly Question[];
   session: DrillSession;
   storage: AppStorage;
@@ -23,6 +29,7 @@ export interface PersistCompletedDrillSessionOptions {
 }
 
 export interface PersistInProgressDrillSessionOptions {
+  expectedToken?: DrillSessionWriteToken;
   draftKey: string;
   questionStartedAtMs?: number;
   questions: readonly Question[];
@@ -42,7 +49,7 @@ export function buildDrillDraftKey(
 export async function loadInProgressDrillSession(
   storage: AppStorage,
   draftKey: string
-): Promise<{ questions: Question[]; session: DrillSession; questionStartedAtMs?: number } | undefined> {
+): Promise<{ questions: Question[]; session: DrillSession; questionStartedAtMs?: number; token: DrillSessionWriteToken } | undefined> {
   let afterKey: IDBValidKey | undefined;
   let draft: (StoredDrillSession & { questions: Question[] }) | undefined;
 
@@ -66,7 +73,12 @@ export async function loadInProgressDrillSession(
     return undefined;
   }
 
+  const current = await storage.getDrillSession(draft.id);
+  if (current.session === undefined || current.session.score !== undefined || current.session.draftKey !== draftKey || !current.session.questions?.length) return undefined;
+  draft = current.session as StoredDrillSession & { questions: Question[] };
+
   return {
+    token: current.token,
     ...(draft.activeQuestionStartedAt === undefined ? {} : {
       questionStartedAtMs: Date.parse(draft.activeQuestionStartedAt)
     }),
@@ -85,12 +97,12 @@ export async function loadInProgressDrillSession(
 
 export async function persistInProgressDrillSession(
   options: PersistInProgressDrillSessionOptions
-): Promise<void> {
+): Promise<DrillSessionWriteToken> {
   if (options.session.score !== undefined) {
     throw new Error("Completed drill sessions must use completed-session persistence.");
   }
 
-  await options.storage.put("drill_sessions", {
+  const stored: StoredDrillSession = {
     ...options.session,
     draftKey: options.draftKey,
     ...(options.questionStartedAtMs === undefined ? {} : {
@@ -98,15 +110,20 @@ export async function persistInProgressDrillSession(
     }),
     questions: options.questions.map((question) => ({ ...question })),
     updatedAt: options.updatedAt ?? new Date().toISOString()
+  };
+  const expected = options.expectedToken ?? { generation: await options.storage.getGeneration(), revision: 0, exists: false };
+  return options.storage.atomic({
+    stores: ["drill_sessions"], reads: { drill_sessions: [options.session.id] }, expectedGeneration: expected.generation
+  }, (view) => {
+    const actual = view.sessionToken(options.session.id);
+    assertSessionToken(actual, expected);
+    if (view.get("drill_sessions", options.session.id)?.score !== undefined) throw new AppStorageConflictError("session");
+    return { operations: [{ storeName: "drill_sessions", type: "put", value: stored }], result: { ...actual, exists: true, revision: actual.revision + 1 } };
   });
 }
 
-export async function persistCompletedDrillSession(options: PersistCompletedDrillSessionOptions): Promise<void> {
+export async function persistCompletedDrillSession(options: PersistCompletedDrillSessionOptions): Promise<DrillSessionWriteToken> {
   assertCompletedSessionReferences(options.session, options.questions);
-
-  // The completion transaction includes responses and review bookkeeping. A later
-  // benchmark/summary failure may retry saving, but must not advance reviews twice.
-  if ((await options.storage.get("drill_sessions", options.session.id))?.score !== undefined) return;
 
   const persistedAt = options.updatedAt ?? options.session.endedAt ?? new Date().toISOString();
   const storedSession = createStoredDrillSession(options.session, options.questions, persistedAt);
@@ -131,13 +148,38 @@ export async function persistCompletedDrillSession(options: PersistCompletedDril
         : [{ mistakeId, outcome: "skipped" as const, reviewedAt: skippedAt }];
     })
   ];
-  const reviewRecords = await Promise.all(reviews.map(async (review) => ({
-    ...review,
-    mistake: await options.storage.get("mistake_notebook", review.mistakeId),
-    schedule: await options.storage.get("retry_schedules", buildRetryScheduleId(review.mistakeId))
-  })));
-  const operations: AppStorageMutation[] = [
+  const benchmark = options.benchmarkId === undefined ? undefined : createBenchmarkResult({ benchmarkId: options.benchmarkId, session: options.session });
+  const expected = options.expectedToken ?? { generation: await options.storage.getGeneration(), revision: 0, exists: false };
+  return options.storage.atomic({
+    stores: ["drill_sessions", "responses", "mistake_notebook", "retry_schedules", "benchmark_results"],
+    expectedGeneration: expected.generation,
+    reads: {
+      drill_sessions: [options.session.id],
+      mistake_notebook: [...new Set(reviews.map((review) => review.mistakeId))],
+      retry_schedules: [...new Set(reviews.map((review) => buildRetryScheduleId(review.mistakeId)))],
+      benchmark_results: benchmark === undefined ? [] : [benchmark.id]
+    }
+  }, (view) => {
+    const actual = view.sessionToken(options.session.id);
+    const current = view.get("drill_sessions", options.session.id);
+    if (current?.score !== undefined) {
+      if (!sameCompletedSession(current, storedSession)) throw new AppStorageConflictError("session");
+      const existingBenchmark = benchmark === undefined ? undefined : view.get("benchmark_results", benchmark.id);
+      if (existingBenchmark !== undefined && !sameValue(existingBenchmark, benchmark)) throw new AppStorageConflictError("session");
+      return {
+        operations: benchmark !== undefined && existingBenchmark === undefined ? [{ storeName: "benchmark_results", type: "put", value: benchmark }] : [],
+        result: actual
+      };
+    }
+    assertSessionToken(actual, expected);
+    const reviewRecords = reviews.map((review) => ({
+      ...review,
+      mistake: view.get("mistake_notebook", review.mistakeId),
+      schedule: view.get("retry_schedules", buildRetryScheduleId(review.mistakeId))
+    }));
+    const operations: AppStorageMutation[] = [
     { storeName: "drill_sessions", type: "put", value: storedSession },
+    ...(benchmark === undefined ? [] : [{ storeName: "benchmark_results" as const, type: "put" as const, value: benchmark }]),
     ...storedResponses.map((value) => ({ storeName: "responses" as const, type: "put" as const, value })),
     ...mistakeRecords.flatMap((mistake): AppStorageMutation[] => [
       { storeName: "mistake_notebook", type: "put", value: mistake },
@@ -186,7 +228,25 @@ export async function persistCompletedDrillSession(options: PersistCompletedDril
     }
   }
 
-  await options.storage.mutate(operations);
+    return { operations, result: { ...actual, exists: true, revision: actual.revision + 1 } };
+  });
+}
+
+function sameCompletedSession(first: StoredDrillSession, second: StoredDrillSession): boolean {
+  const { updatedAt: _firstUpdated, draftKey: _firstDraft, activeQuestionStartedAt: _firstActive, ...firstCompletion } = first;
+  const { updatedAt: _secondUpdated, draftKey: _secondDraft, activeQuestionStartedAt: _secondActive, ...secondCompletion } = second;
+  return sameValue(firstCompletion, secondCompletion);
+}
+
+function sameValue(first: unknown, second: unknown): boolean {
+  if (Object.is(first, second)) return true;
+  if (typeof first !== "object" || first === null || typeof second !== "object" || second === null) return false;
+  if (Array.isArray(first) || Array.isArray(second)) return Array.isArray(first) && Array.isArray(second) && first.length === second.length && first.every((value, index) => sameValue(value, second[index]));
+  const left = first as Record<string, unknown>;
+  const right = second as Record<string, unknown>;
+  const keys = Object.keys(left).filter((key) => left[key] !== undefined).sort();
+  const otherKeys = Object.keys(right).filter((key) => right[key] !== undefined).sort();
+  return keys.length === otherKeys.length && keys.every((key, index) => key === otherKeys[index] && sameValue(left[key], right[key]));
 }
 
 export async function loadLatestStoredSessionSummarySnapshot(

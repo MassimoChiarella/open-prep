@@ -147,7 +147,7 @@ export function generateSimilarQuestionFromTemplates(
   sourceQuestion: Question,
   settings: DrillSettings,
   seed: string | number,
-  excludedQuestionIds: readonly string[] = []
+  excludedQuestions: readonly Question[] = []
 ): Question | undefined {
   const variantSettings: DrillSettings = {
     ...settings,
@@ -162,12 +162,13 @@ export function generateSimilarQuestionFromTemplates(
     return undefined;
   }
 
-  const excludedIds = new Set([sourceQuestion.id, ...excludedQuestionIds]);
+  const excluded = [sourceQuestion, ...excludedQuestions];
+  const excludedIds = new Set(excluded.map((question) => question.id));
 
   for (let attempt = 0; attempt < 25; attempt += 1) {
     const candidate = generateQuestionsFromTemplates(eligibleTemplates, variantSettings, `${seed}:${attempt}`)[0];
 
-    if (!excludedIds.has(candidate.id) && hasDifferentQuestionContent(sourceQuestion, candidate)) {
+    if (!excludedIds.has(candidate.id) && excluded.every((question) => hasDifferentQuestionContent(question, candidate))) {
       return candidate;
     }
   }
@@ -179,7 +180,8 @@ function hasDifferentQuestionContent(source: Question, candidate: Question): boo
   return (
     source.prompt !== candidate.prompt ||
     source.answer.value !== candidate.answer.value ||
-    JSON.stringify(source.metadata?.variables) !== JSON.stringify(candidate.metadata?.variables)
+    JSON.stringify(sortedVariableEntries(source.metadata?.variables ?? {})) !==
+      JSON.stringify(sortedVariableEntries(candidate.metadata?.variables ?? {}))
   );
 }
 
@@ -271,10 +273,9 @@ function renderCaseStyle(
 }
 
 function buildGeneratedQuestionId(templateId: string, variables: Record<string, number>): string {
-  const variableKey = Object.entries(variables)
-    .sort(([left], [right]) => left.localeCompare(right))
-    .map(([key, value]) => `${key}-${String(value).replace(".", "_")}`)
-    .join("-");
+  return `${templateId}:v2:${JSON.stringify(sortedVariableEntries(variables))}`;
+}
 
-  return `${templateId}-${variableKey}`;
+function sortedVariableEntries(variables: Record<string, number | string>): [string, number | string][] {
+  return Object.entries(variables).sort(([left], [right]) => left < right ? -1 : left > right ? 1 : 0);
 }
