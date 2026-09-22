@@ -28,7 +28,12 @@ describe("question-pack drill pools", () => {
       settings: { categories: ["arithmetic"], difficulty: "beginner", feedbackMode: "instant", questionCount: 1,
         questionPackId: "consistent-pack", timeMode: "untimed" }
     };
-    await storage.put("drill_sessions", { ...legacySession, draftKey: "legacy-draft", questions: [legacyQuestion] });
+    await storage.put("drill_sessions", {
+      ...legacySession,
+      draftKey: "legacy-draft",
+      questions: [legacyQuestion],
+      updatedAt: legacySession.startedAt
+    });
     const resumed = await loadInProgressDrillSession(storage, "legacy-draft");
     expect(resumed?.questions).toEqual([legacyQuestion]);
     expect(resumed?.session.questionIds).toEqual([legacyQuestion.id]);
