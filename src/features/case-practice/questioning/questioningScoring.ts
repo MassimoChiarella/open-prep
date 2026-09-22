@@ -200,10 +200,11 @@ export function scoreCaseQuestioning(
   const missedIntentIds = prompt.intents
     .filter((intent) => !matchedIntentIds.includes(intent.id))
     .map((intent) => intent.id);
-  const totalIntentWeight = prompt.intents.reduce((sum, intent) => sum + intent.weight, 0);
+  const maximumIntentWeight = prompt.intents.reduce((maximum, intent) => Math.max(maximum, intent.weight), 0);
+  const totalIntentWeight = prompt.intents.reduce((sum, intent) => sum + intent.weight / maximumIntentWeight, 0);
   const matchedIntentWeight = prompt.intents
     .filter((intent) => matchedIntentIds.includes(intent.id))
-    .reduce((sum, intent) => sum + intent.weight, 0);
+    .reduce((sum, intent) => sum + intent.weight / maximumIntentWeight, 0);
   const recognizedQuestionIds = withDuplicates
     .filter((match) => match.intentId !== undefined)
     .map((match) => match.questionId);
@@ -614,7 +615,7 @@ function validatePrompt(prompt: CaseQuestioningPrompt): void {
     throw new Error("Intent IDs must be unique.");
   }
   for (const intent of prompt.intents) {
-    if (intent.weight <= 0 || intent.requiredConceptGroups.length === 0 || intent.referenceQuestions.length === 0) {
+    if (!Number.isFinite(intent.weight) || intent.weight <= 0 || intent.requiredConceptGroups.length === 0 || intent.referenceQuestions.length === 0) {
       throw new Error(`Questioning intent "${intent.id}" is incomplete.`);
     }
     for (const conceptId of [...intent.requiredConceptGroups.flat(), ...(intent.supportingConceptIds ?? [])]) {
