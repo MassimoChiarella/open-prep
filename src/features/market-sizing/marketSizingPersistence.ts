@@ -1,7 +1,9 @@
 import type { MarketSizingEvaluation, MarketSizingStepValueMap } from "@/features/market-sizing/marketSizingEvaluation";
+import { hasSavedMarketSizingNote } from "@/features/market-sizing/marketSizingNote";
 import type { MarketSizingAttemptScore } from "@/features/market-sizing/marketSizingScoring";
 import type { MarketSizingTemplate } from "@/features/market-sizing/marketSizingTypes";
 import type { AppStorage, MarketSizingAttemptRecord } from "@/lib/storage/appStorageTypes";
+import { assertNumericInput } from "@/lib/validation/inputLimits";
 
 export interface PersistMarketSizingAttemptOptions {
   completedAt?: string;
@@ -18,6 +20,13 @@ export interface PersistMarketSizingAttemptOptions {
 }
 
 export async function persistMarketSizingAttempt(options: PersistMarketSizingAttemptOptions): Promise<void> {
+  assertNumericInput(options.finalAnswer ?? "");
+  for (const step of options.template.inputSteps) {
+    const value = options.stepValues[step.id];
+    if (["currency", "integer", "number", "percentage"].includes(step.inputKind) && typeof value === "string") {
+      assertNumericInput(value);
+    }
+  }
   if (options.evaluation.calculatedValue === undefined || options.evaluation.calculationError !== undefined) {
     throw new Error("A market-sizing attempt cannot be saved until its formula calculates successfully.");
   }
@@ -35,7 +44,7 @@ export async function persistMarketSizingAttempt(options: PersistMarketSizingAtt
     interpretationId: normalizeOptionalText(options.interpretationId),
     maxScore: options.score.maxScore,
     normalizedFinalAnswer: options.evaluation.finalAnswer.normalizedValue,
-    note: normalizeOptionalText(options.note),
+    ...(hasSavedMarketSizingNote(options.note) ? { note: options.note } : {}),
     score: options.score.totalScore,
     scoreBreakdown: options.score.breakdown.map((dimension) => ({
       awardedPoints: dimension.awardedPoints,

@@ -1,4 +1,5 @@
 import { isPrivatePracticeRecord, preservePrivateData, privatePreservationStoreNames } from "@/features/settings/privateDataPreservation";
+import { hasSavedMarketSizingNote } from "@/features/market-sizing/marketSizingNote";
 import {
   createCompleteBackup,
   serializeCompleteBackup,
@@ -130,17 +131,19 @@ export async function restoreCompleteBackupFiles(
   };
   const backup = { exportedAt: first.exportedAt, selectedScopes: first.selectedScopes, sections };
   const includesPrivateText = backup.selectedScopes.includes("private_text");
-  const existingPrivateData = includesPrivateText
-    ? undefined
-    : await storage.getSnapshot(privatePreservationStoreNames);
-  const progress = includesPrivateText
-    ? backup.sections.progress.stores
-    : preservePrivateData(backup.sections.progress.stores, existingPrivateData!);
+  const progress = backup.sections.progress.stores;
+  const packs = backup.selectedScopes.includes("packs") ? { question_packs: backup.sections.packs ?? [] } : {};
   await storage.replaceSnapshot({
     ...progress,
-    ...(backup.selectedScopes.includes("packs")
-      ? { question_packs: backup.sections.packs ?? [] }
-      : {})
+    ...packs
+  }, includesPrivateText ? {} : {
+    readStores: privatePreservationStoreNames,
+    preserve: (current) => ({
+      ...preservePrivateData(progress, {
+        practice_records: current.practice_records ?? [], market_sizing_attempts: current.market_sizing_attempts ?? []
+      }),
+      ...packs
+    })
   });
 
   if (!backup.selectedScopes.includes("preferences")) {
@@ -172,7 +175,7 @@ export function createCompleteBackupSummary(
     preferencesIncluded: backup.selectedScopes.includes("preferences"),
     privateEntryCount: backup.selectedScopes.includes("private_text")
       ? progress.practice_records.filter((record) => isPrivatePracticeRecord(record)).length +
-        progress.market_sizing_attempts.filter((record) => Object.hasOwn(record, "note")).length
+        progress.market_sizing_attempts.filter((record) => hasSavedMarketSizingNote(record.note)).length
       : 0,
     progressRecordCount: progressStoreNames.reduce((total, storeName) => total + progress[storeName].length, 0),
     schemaVersion: backup.schemaVersion

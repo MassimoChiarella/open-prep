@@ -1,3 +1,4 @@
+import { hasSavedMarketSizingNote } from "@/features/market-sizing/marketSizingNote";
 import { isPrivatePracticeRecord } from "@/features/settings/privateDataPreservation";
 import {
   type AppStorage,
@@ -24,25 +25,30 @@ export async function previewPersonalDataClear(
 export async function clearPersonalData(
   storage: AppStorage
 ): Promise<PersonalDataClearPreview> {
-  const snapshot = await storage.getSnapshot(personalDataStoreNames);
-  const preview = countPersonalData(snapshot);
-  const operations: AppStorageMutation[] = [];
+  return storage.atomic({
+    stores: personalDataStoreNames, advanceGeneration: true,
+    reads: { practice_records: "all", market_sizing_attempts: "all" }
+  }, (view) => {
+    const snapshot = {
+      practice_records: view.getAll("practice_records"), market_sizing_attempts: view.getAll("market_sizing_attempts")
+    };
+    const preview = countPersonalData(snapshot);
+    const operations: AppStorageMutation[] = [];
 
-  for (const record of snapshot.practice_records) {
-    if (isPrivatePracticeRecord(record)) {
-      operations.push({ key: record.id, storeName: "practice_records", type: "delete" });
+    for (const record of snapshot.practice_records) {
+      if (isPrivatePracticeRecord(record)) {
+        operations.push({ key: record.id, storeName: "practice_records", type: "delete" });
+      }
     }
-  }
 
-  for (const attempt of snapshot.market_sizing_attempts) {
-    if (!Object.hasOwn(attempt, "note")) continue;
-    const { note: _note, ...attemptWithoutNote } = attempt;
-    operations.push({ storeName: "market_sizing_attempts", type: "put", value: attemptWithoutNote });
-  }
+    for (const attempt of snapshot.market_sizing_attempts) {
+      if (!Object.hasOwn(attempt, "note")) continue;
+      const { note: _note, ...attemptWithoutNote } = attempt;
+      operations.push({ storeName: "market_sizing_attempts", type: "put", value: attemptWithoutNote });
+    }
 
-  if (operations.length > 0) await storage.mutate(operations);
-
-  return preview;
+    return { operations, result: preview };
+  });
 }
 
 export function countPersonalData(
@@ -54,7 +60,7 @@ export function countPersonalData(
     (record) => record.kind === "prep_profile"
   ).length;
   const marketSizingNotes = snapshot.market_sizing_attempts.filter((attempt) =>
-    Object.hasOwn(attempt, "note")
+    hasSavedMarketSizingNote(attempt.note)
   ).length;
 
   return {
