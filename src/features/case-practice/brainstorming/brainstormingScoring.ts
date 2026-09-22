@@ -62,7 +62,8 @@ export function scoreBrainstorming(
   );
   const expectedPriorityIds = new Set(prompt.priorityIdeaIds);
 
-  const coveredThemeIds = prompt.themes
+  const coverableThemes = prompt.themes.filter((theme) => theme.ideas.some((idea) => idea.relevant));
+  const coveredThemeIds = coverableThemes
     .filter((theme) => theme.ideas.some((idea) => idea.relevant && selectedIds.has(idea.id)))
     .map((theme) => theme.id);
   const relevantIdeaIds = ideas
@@ -78,7 +79,7 @@ export function scoreBrainstorming(
     .filter((idea) => priorityIds.has(idea.id) && !expectedPriorityIds.has(idea.id))
     .map((idea) => idea.id);
 
-  const coverageScore = scaledScore(coverageMaxScore, coveredThemeIds.length, prompt.themes.length);
+  const coverageScore = scaledScore(coverageMaxScore, coveredThemeIds.length, coverableThemes.length);
   const relevanceScore = scaledScore(
     relevanceMaxScore,
     relevantIdeaIds.length - irrelevantIdeaIds.length,
