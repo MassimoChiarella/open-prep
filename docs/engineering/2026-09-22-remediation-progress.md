@@ -28,7 +28,7 @@ Tracking requirement: [GitHub issue #25](https://github.com/MassimoChiarella/ope
 | S17 | Backup responsiveness | Open | AUD-15 |
 | S18 | Finite weighted questioning | Implemented | AUD-16; 49 questioning/import/full-case tests passed, including extreme finite weights |
 | S19 | Reachable brainstorming coverage | Implemented | AUD-17; 28 brainstorming/import/full-case tests passed; bundled prompts retain attainable full scores |
-| S20 | Decimal range review counts | Open | AUD-18 |
+| S20 | Decimal range review counts | Implemented | AUD-18; 75 review/generator/pack tests passed; actual generated capacity matches review |
 | S21 | Native ID pattern validity | Open | AUD-19; reconcile concurrent source changes |
 | S22 | Actual private-note counts | Implemented | AUD-20; 37 privacy/backup/note tests passed; atomic reset/restore preservation integrates S01; numeric sizing writes also enforce S03 |
 | S23 | Lifetime-history responsiveness | Open | IMP-01 |
