@@ -4,6 +4,9 @@ import {
   businessMathTemplates,
   weightedAverageTemplates
 } from "@/data/questionTemplates/businessTemplates";
+import { generateQuestionFromTemplate } from "@/features/questions/questionGenerator";
+import { createSeededRandom } from "@/lib/random/seededRandom";
+import { validateAnswer } from "@/lib/validation/validateAnswer";
 
 const requiredVariantIds = [
   "business_revenue_intermediate_price_001",
@@ -24,6 +27,37 @@ const requiredVariantIds = [
 ];
 
 describe("business content coverage", () => {
+  it.each(["weighted_average_beginner_003", "weighted_average_beginner_010"])(
+    "%s describes coherent relative sales weights for every configured combination", (id) => {
+      const template = weightedAverageTemplates.find((candidate) => candidate.id === id)!;
+      const combinations = Object.entries(template.variables).reduce<Record<string, number>[]>(
+        (rows, [name, spec]) => rows.flatMap((row) => spec.values!.map((value) => ({ ...row, [name]: value }))),
+        [{}]
+      );
+      expect(combinations).toHaveLength(id.endsWith("003") ? 256 : 729);
+      for (const variables of combinations) {
+        const question = generateQuestionFromTemplate({
+          ...template,
+          variables: Object.fromEntries(Object.entries(template.variables).map(([name, spec]) =>
+            [name, { ...spec, values: [variables[name]] }]))
+        }, { difficulty: "beginner", random: createSeededRandom(1) });
+        const suffixes = variables.shareC === undefined ? ["A", "B"] : ["A", "B", "C"];
+        const weights = suffixes.map((suffix) => variables[`share${suffix}`]);
+        const margins = suffixes.map((suffix) => variables[`margin${suffix}`]);
+        const expected = weights.reduce((sum, weight, index) => sum + weight * margins[index], 0)
+          / weights.reduce((sum, weight) => sum + weight, 0) / 100;
+
+        expect(question.prompt).toContain(`sales in the ratio ${weights.join(":")}`);
+        expect(question.prompt).not.toContain("% of sales");
+        expect(question.explanation.steps[0]).toContain("sum of the weights");
+        expect(question.answer.value).toBeCloseTo(expected, 12);
+        expect(question.answer.value).toBeGreaterThanOrEqual(Math.min(...margins) / 100 - 1e-12);
+        expect(question.answer.value).toBeLessThanOrEqual(Math.max(...margins) / 100 + 1e-12);
+        expect(validateAnswer(`${(expected * 100).toFixed(2)}%`, question.answer, { locale: "en" }).isCorrect).toBe(true);
+      }
+    }
+  );
+
   it("includes every requested inverse, comparison, mix-shift, and missing-input variant", () => {
     const ids = new Set([...businessMathTemplates, ...weightedAverageTemplates].map((template) => template.id));
 
