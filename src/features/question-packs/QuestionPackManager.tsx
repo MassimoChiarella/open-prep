@@ -368,14 +368,18 @@ export function QuestionPackManager({
 
       {showCreate ? (
         <fieldset className="contents" disabled={importStatus === "saving"}>
-          <QuestionPackBuilder
-            onDraftChange={() => invalidateDraftPreview("numeric")}
-            onPreview={(payload) => previewPayload(payload, "numeric")}
-          />
-          <QuestioningPackBuilder
-            onDraftChange={() => invalidateDraftPreview("questioning")}
-            onPreview={(payload) => previewPayload(payload, "questioning")}
-          />
+          <div className="min-w-0 scroll-mt-4" id="fixed-numeric-builder">
+            <QuestionPackBuilder
+              onDraftChange={() => invalidateDraftPreview("numeric")}
+              onPreview={(payload) => previewPayload(payload, "numeric")}
+            />
+          </div>
+          <div className="min-w-0 scroll-mt-4" id="case-questioning-builder">
+            <QuestioningPackBuilder
+              onDraftChange={() => invalidateDraftPreview("questioning")}
+              onPreview={(payload) => previewPayload(payload, "questioning")}
+            />
+          </div>
         </fieldset>
       ) : null}
 

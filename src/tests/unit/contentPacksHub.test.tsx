@@ -154,7 +154,10 @@ describe("ContentPacksHub", () => {
       navigation.view = view;
       const { unmount } = render(<ContentPacksHub />);
       expect(screen.getByTestId("question-pack-manager")).toHaveAttribute("data-manager-view", view);
-      if (view === "create") expect(screen.getByTestId("content-pack-starter-library")).toBeInTheDocument();
+      if (view === "create") {
+        expect(screen.getByTestId("content-pack-creation-guide")).toBeInTheDocument();
+        expect(screen.getByTestId("content-pack-starter-library")).toBeInTheDocument();
+      }
       unmount();
     }
   });
