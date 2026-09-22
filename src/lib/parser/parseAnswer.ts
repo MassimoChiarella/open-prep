@@ -169,13 +169,15 @@ export function parseAnswer(rawInput: string, options: ParseAnswerOptions = {}):
   }
 
   const scaledValue = sign * parsedValue.value * (scaleHint === undefined ? 1 : scaleMultipliers[scaleHint]);
+  const value = hasPercent ? scaledValue / 100 : scaledValue;
 
   return {
     raw,
-    value: hasPercent ? scaledValue / 100 : scaledValue,
+    value: Number.isFinite(value) ? value : null,
     unitHint: hasPercent ? "percentage" : hasCurrency ? "currency" : physicalUnit,
     scaleHint,
-    isPercentageInput: hasPercent
+    isPercentageInput: hasPercent,
+    ...(Number.isFinite(value) ? {} : { parseError: "Enter a valid number." })
   };
 }
 
@@ -217,7 +219,8 @@ function parseNumericText(
   const denominator = parseLocalizedNumber(fractionParts[1], policy);
   if (denominator === undefined) return { parseError: "Enter a valid number." };
   if (denominator === 0) return { parseError: "Fraction denominator cannot be zero." };
-  return { value: numerator / denominator };
+  const value = numerator / denominator;
+  return Number.isFinite(value) ? { value } : { parseError: "Enter a valid number." };
 }
 
 function parseLocalizedNumber(input: string, policy: NumberFormatPolicy): number | undefined {
@@ -231,7 +234,7 @@ function parseLocalizedNumber(input: string, policy: NumberFormatPolicy): number
 
   if (policy.legacyDecimalComma && value.includes(".") && value.includes(",")) {
     const decimal = value.lastIndexOf(",") > value.lastIndexOf(".") ? "," : ".";
-    return parseLocalizedNumber(value, {
+    return parseLocalizedNumber(`${sign}${value}`, {
       ...policy,
       decimal,
       group: decimal === "," ? "." : ",",
