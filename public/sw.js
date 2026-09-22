@@ -256,14 +256,23 @@ async function offlineFallback(request) {
 }
 
 async function matchFromCurrentCache(cacheKey) {
-  const cache = await caches.open(STATIC_CACHE);
-  return cache.match(cacheKey);
+  try {
+    const cache = await caches.open(STATIC_CACHE);
+    return await cache.match(cacheKey);
+  } catch {
+    // Runtime cache access is optional; a usable network response may still exist.
+    return undefined;
+  }
 }
 
 async function putIfCacheable(cacheName, cacheKey, response) {
   if (isCacheable(response)) {
-    const cache = await caches.open(cacheName);
-    await cache.put(cacheKey, response);
+    try {
+      const cache = await caches.open(cacheName);
+      await cache.put(cacheKey, response);
+    } catch {
+      // Quota or cache failures must not turn a successful fetch into an offline error.
+    }
   }
 }
 

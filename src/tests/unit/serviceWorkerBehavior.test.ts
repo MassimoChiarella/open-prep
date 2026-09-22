@@ -15,6 +15,55 @@ const currentReadyKey = `/__${cacheVersion}-ready`;
 const previousCacheName = "math-drill-offline-previous:static";
 
 describe("service worker cache lifecycle", () => {
+  for (const failure of ["open", "match", "put"] as const) {
+    it.each(["/_next/static/chunks/runtime.js", "/question-pack-author-guide.md"])(
+      `preserves a successful response for %s when runtime cache ${failure} fails`,
+      async (pathname) => {
+        const harness = createHarness({ fetch: vi.fn().mockResolvedValue(new Response("network body", {
+          headers: { "Content-Type": "text/plain", "X-Fixture": "intact" }
+        })) });
+        harness.failRuntimeCache(failure);
+
+        const response = await harness.dispatchFetch(pathname, "cors");
+
+        expect(response.status).toBe(200);
+        expect(response.headers.get("Content-Type")).toBe("text/plain");
+        expect(response.headers.get("X-Fixture")).toBe("intact");
+        expect(await response.text()).toBe("network body");
+      }
+    );
+  }
+
+  it("retains a cached hit when its background refresh cannot be cached", async () => {
+    const harness = createHarness({ fetch: vi.fn().mockResolvedValue(new Response("updated guide")) });
+    await harness.put(currentCacheName, "/question-pack-author-guide.md", new Response("cached guide"));
+    harness.failRuntimeCache("put");
+
+    const response = await harness.dispatchFetch("/question-pack-author-guide.md", "cors");
+
+    expect(await response.text()).toBe("cached guide");
+    expect(await (await harness.match(currentCacheName, "/question-pack-author-guide.md"))?.text()).toBe("cached guide");
+  });
+
+  it("retains the offline fallback when both network and runtime cache access fail", async () => {
+    const harness = createHarness({ fetch: vi.fn().mockRejectedValue(new TypeError("offline")) });
+    harness.failRuntimeCache("open");
+
+    const response = await harness.dispatchFetch("/missing-route/");
+
+    expect(response.status).toBe(503);
+    expect(await response.text()).toBe("This resource is not available offline yet.");
+  });
+
+  it("still rejects an install whose cache writes fail", async () => {
+    const harness = createHarness();
+    await harness.put(previousCacheName, "/", new Response("working previous shell"));
+    harness.failRuntimeCache("put");
+
+    await expect(harness.dispatchLifetimeEvent("install")).rejects.toThrow("cache put failed");
+    expect(await harness.cacheNames()).toEqual([previousCacheName]);
+  });
+
   it("keeps core HTML and navigation payloads aligned with their installed dependencies", async () => {
     const fetchMock = vi.fn().mockResolvedValue(new Response("next release content"));
     const harness = createHarness({ fetch: fetchMock, precacheDependencies: ["/drills/index.txt"] });
@@ -248,6 +297,7 @@ function createHarness(options: HarnessOptions = {}) {
 
   return {
     cacheNames: () => cacheStorage.keys(),
+    failRuntimeCache: (operation: "open" | "match" | "put") => { cacheStorage.failure = operation; },
     dispatchFetch: async (pathname: string, mode: RequestMode = "navigate") => {
       let responsePromise: Promise<Response> | undefined;
       const lifetimePromises: Promise<unknown>[] = [];
@@ -300,6 +350,7 @@ interface MockEvent {
 
 class MockCacheStorage {
   private readonly cachesByName = new Map<string, MockCache>();
+  failure?: "open" | "match" | "put";
 
   constructor(private readonly failNewCacheAddAll: boolean, private readonly failPrecacheUrl?: string) {}
 
@@ -312,10 +363,11 @@ class MockCacheStorage {
   }
 
   async open(name: string): Promise<MockCache> {
+    if (this.failure === "open") throw new Error("cache open failed");
     const existing = this.cachesByName.get(name);
     if (existing !== undefined) return existing;
 
-    const cache = new MockCache(name === currentCacheName && this.failNewCacheAddAll, this.failPrecacheUrl);
+    const cache = new MockCache(name === currentCacheName && this.failNewCacheAddAll, this.failPrecacheUrl, () => this.failure);
     this.cachesByName.set(name, cache);
     return cache;
   }
@@ -324,7 +376,11 @@ class MockCacheStorage {
 class MockCache {
   private readonly responses = new Map<string, Response>();
 
-  constructor(private readonly failAddAll: boolean, private readonly failPrecacheUrl?: string) {}
+  constructor(
+    private readonly failAddAll: boolean,
+    private readonly failPrecacheUrl?: string,
+    private readonly failure: () => "open" | "match" | "put" | undefined = () => undefined
+  ) {}
 
   async addAll(urls: readonly string[]): Promise<void> {
     if (this.failAddAll || (this.failPrecacheUrl !== undefined && urls.includes(this.failPrecacheUrl))) {
@@ -341,10 +397,12 @@ class MockCache {
   }
 
   async match(key: RequestInfo | URL): Promise<Response | undefined> {
+    if (this.failure() === "match") throw new Error("cache match failed");
     return this.responses.get(normalizeCacheKey(key))?.clone();
   }
 
   async put(key: RequestInfo | URL, response: Response): Promise<void> {
+    if (this.failure() === "put") throw new Error("cache put failed");
     this.responses.set(normalizeCacheKey(key), response.clone());
   }
 }
