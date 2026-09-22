@@ -32,7 +32,7 @@ Tracking requirement: [GitHub issue #25](https://github.com/MassimoChiarella/ope
 | S21 | Native ID pattern validity | Open | AUD-19; reconcile concurrent source changes |
 | S22 | Actual private-note counts | Implemented | AUD-20; 37 privacy/backup/note tests passed; atomic reset/restore preservation integrates S01; numeric sizing writes also enforce S03 |
 | S23 | Lifetime-history responsiveness | Open | IMP-01 |
-| S24 | Negative starting-number guidance | Open | IMP-03 |
+| S24 | Negative starting-number guidance | Implemented | IMP-03; 21 settings/generation/locale tests passed; all ten catalogs synchronized; includes translated input/conflict messages |
 | S25 | Integrated regression/compatibility | Open | IMP-04; manual evidence remains distinct |
 | S26 | Integration and final evidence | Open | |
 
