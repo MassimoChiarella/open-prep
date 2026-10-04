@@ -22,7 +22,7 @@ export async function createCanonicalPackTools(root = projectRoot) {
     logLevel: "silent",
     resolve: { alias: { "@": resolve(root, "src") } },
     root,
-    server: { middlewareMode: true }
+    server: { hmr: false, middlewareMode: true, watch: null }
   });
 
   try {
