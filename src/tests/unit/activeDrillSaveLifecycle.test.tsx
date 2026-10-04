@@ -61,13 +61,13 @@ function delayedStorageHandles(memory: MemoryAppStorage) {
       let closed = false;
       openHandles += 1;
       const unsubscribe = subscribeToLocalDataInvalidation(() => { invalidated = true; });
-      handle.put = async (storeName, value) => {
+      handle.atomic = async (options, decide) => {
         if (!started) {
           started = true;
           await gate;
         }
         if (invalidated) throw new Error("Local data changed. Reload before saving new work.");
-        await memory.put(storeName, value);
+        return memory.atomic(options, decide);
       };
       handle.mutate = async (operations) => {
         if (invalidated) throw new Error("Local data changed. Reload before saving new work.");

@@ -23,7 +23,7 @@ vi.mock("@/features/drills/ActiveDrillSession", () => ({
     similarQuestionTemplates?: readonly QuestionTemplate[];
   }) => (
     <div
-      data-question-ids={questions.map((question) => question.id).join(",")}
+      data-question-ids={JSON.stringify(questions.map((question) => question.id))}
       data-similar-template-count={similarQuestionTemplates?.length ?? "default"}
       data-testid="adaptive-session"
     />
@@ -167,7 +167,7 @@ describe("LocalDrillSessionLoader question pool", () => {
 });
 
 function questionIds(element: HTMLElement): string[] {
-  return element.getAttribute("data-question-ids")?.split(",").filter(Boolean) ?? [];
+  return JSON.parse(element.getAttribute("data-question-ids") ?? "[]") as string[];
 }
 
 function fixedPack(id: string, questionId: string): FixedNumericQuestionPackRecord {

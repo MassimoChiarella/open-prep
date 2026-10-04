@@ -28,9 +28,9 @@ describe("complete backup sets", () => {
     const payloads: unknown[] = files.map((file) => JSON.parse(serializeCompleteBackupFile(file)));
     expect((await validateCompleteBackupSet([...payloads].reverse())).status).toBe("valid");
     const target = new MemoryAppStorage();
-    const mutate = vi.spyOn(target, "mutate");
+    const atomic = vi.spyOn(target, "atomic");
     await restoreCompleteBackupFiles(target, [...payloads].reverse());
-    expect(mutate).toHaveBeenCalledOnce();
+    expect(atomic).toHaveBeenCalledOnce();
     expect(await target.getSnapshot(["responses", "drill_sessions"])).toEqual(await source.getSnapshot(["responses", "drill_sessions"]));
   });
 
