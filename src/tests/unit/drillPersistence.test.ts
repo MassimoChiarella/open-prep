@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 
 import { completeDrillSession } from "@/features/drills/sessionCompletion";
+import { createBenchmarkResult } from "@/features/benchmarks/benchmarkPersistence";
 import { createDrillSession } from "@/features/drills/sessionFactory";
 import {
   buildDrillDraftKey,
@@ -65,6 +66,31 @@ describe("drill persistence", () => {
     expect(await storage.getAll("drill_sessions")).toEqual([]);
     expect(await storage.getAll("benchmark_results")).toEqual([]);
     expect(await storage.getAll("responses")).toEqual([]);
+  });
+
+  it.each([
+    { conflicting: false, legacyTiming: false }, { conflicting: true, legacyTiming: false }, { conflicting: false, legacyTiming: true }
+  ])("preserves an acknowledged benchmark beside a draft (conflict: $conflicting, legacy timing: $legacyTiming)", async ({ conflicting, legacyTiming }) => {
+    const storage = new MemoryAppStorage();
+    const completed = createCompletedSession("legacy-benchmark-draft");
+    const draft = { ...completed.session, responses: [], endedAt: undefined, score: undefined };
+    const token = await persistInProgressDrillSession({ session: draft, questions: completed.questions, draftKey: "legacy", storage });
+    const benchmark = createBenchmarkResult({ session: completed.session, benchmarkId: "baseline_beginner" });
+    const { timingAccommodation: _timing, ...withoutTiming } = benchmark;
+    const original = conflicting ? { ...benchmark, score: { ...benchmark.score, totalScore: benchmark.score.totalScore === 100 ? 50 : 100 } }
+      : legacyTiming ? withoutTiming : benchmark;
+    await storage.put("benchmark_results", original);
+    const before = await storage.getSnapshot(["drill_sessions", "responses", "benchmark_results", "mistake_notebook", "retry_schedules"]);
+    const save = persistCompletedDrillSession({ ...completed, storage, expectedToken: token, benchmarkId: "baseline_beginner" });
+    if (conflicting) {
+      await expect(save).rejects.toMatchObject({ reason: "session" });
+      expect(await storage.getSnapshot(["drill_sessions", "responses", "benchmark_results", "mistake_notebook", "retry_schedules"])).toEqual(before);
+      expect((await storage.getDrillSession(draft.id)).token).toEqual(token);
+    } else {
+      await expect(save).resolves.toMatchObject({ revision: token.revision + 1 });
+      expect((await storage.get("drill_sessions", draft.id))?.score).toEqual(completed.session.score);
+    }
+    expect(await storage.get("benchmark_results", original.id)).toEqual(original);
   });
   it("does not advance review bookkeeping twice when a completed save is retried", async () => {
     const storage = new MemoryAppStorage();

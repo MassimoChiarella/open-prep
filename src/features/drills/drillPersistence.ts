@@ -1,6 +1,7 @@
 import { createSessionSummarySnapshot, type SessionSummarySnapshot } from "@/features/drills/sessionSummary";
 import { createBenchmarkResult } from "@/features/benchmarks/benchmarkPersistence";
 import type { BenchmarkId } from "@/features/benchmarks/benchmarkTypes";
+import { normalizeTimingAccommodation } from "@/features/timing/timingAccommodation";
 import { assertSessionToken } from "@/lib/storage/storageCoordination";
 import type { DrillSession, DrillSettings, Question } from "@/lib/domain";
 import type {
@@ -162,10 +163,13 @@ export async function persistCompletedDrillSession(options: PersistCompletedDril
   }, (view) => {
     const actual = view.sessionToken(options.session.id);
     const current = view.get("drill_sessions", options.session.id);
+    // Legacy stale-tab writes could leave a draft beside an acknowledged benchmark.
+    const existingBenchmark = benchmark === undefined ? undefined : view.get("benchmark_results", benchmark.id);
+    if (existingBenchmark !== undefined && !sameValue({
+      ...existingBenchmark, timingAccommodation: normalizeTimingAccommodation(existingBenchmark.timingAccommodation)
+    }, benchmark)) throw new AppStorageConflictError("session");
     if (current?.score !== undefined) {
       if (!sameCompletedSession(current, storedSession)) throw new AppStorageConflictError("session");
-      const existingBenchmark = benchmark === undefined ? undefined : view.get("benchmark_results", benchmark.id);
-      if (existingBenchmark !== undefined && !sameValue(existingBenchmark, benchmark)) throw new AppStorageConflictError("session");
       return {
         operations: benchmark !== undefined && existingBenchmark === undefined ? [{ storeName: "benchmark_results", type: "put", value: benchmark }] : [],
         result: actual
@@ -179,7 +183,7 @@ export async function persistCompletedDrillSession(options: PersistCompletedDril
     }));
     const operations: AppStorageMutation[] = [
     { storeName: "drill_sessions", type: "put", value: storedSession },
-    ...(benchmark === undefined ? [] : [{ storeName: "benchmark_results" as const, type: "put" as const, value: benchmark }]),
+    ...(benchmark === undefined || existingBenchmark !== undefined ? [] : [{ storeName: "benchmark_results" as const, type: "put" as const, value: benchmark }]),
     ...storedResponses.map((value) => ({ storeName: "responses" as const, type: "put" as const, value })),
     ...mistakeRecords.flatMap((mistake): AppStorageMutation[] => [
       { storeName: "mistake_notebook", type: "put", value: mistake },

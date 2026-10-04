@@ -201,7 +201,7 @@ export function ActiveDrillSession({
     !writeConflict &&
     completedSession?.score === undefined &&
     currentQuestion !== undefined &&
-    feedback?.recorded !== true;
+    (session.settings.timeMode === "session" || feedback?.recorded !== true);
   const similarQuestion = useMemo(
     () =>
       feedback?.recorded === true &&
@@ -290,7 +290,7 @@ export function ActiveDrillSession({
       let nextSession = session;
 
       for (const queuedQuestion of unansweredQuestions) {
-        const isCurrentQuestion = queuedQuestion.id === question.id;
+        const isCurrentQuestion = feedback?.recorded !== true && queuedQuestion.id === question.id;
         const interviewMath = isInterviewMathQuestion(queuedQuestion, interviewMathMode)
           ? createInterviewMathSubmission(
               isCurrentQuestion ? equationOptionId : "",
@@ -309,7 +309,7 @@ export function ActiveDrillSession({
           session: nextSession,
           question: queuedQuestion,
           rawInput: "",
-          timeTakenSeconds: queuedQuestion.id === question.id
+          timeTakenSeconds: isCurrentQuestion
             ? elapsedSeconds(questionStartedAt, Math.min(Date.now(), sessionStartedAtMs + (getTimeLimitSeconds(session.settings) ?? 0) * 1000))
             : 0,
           timedOut: true
@@ -321,6 +321,7 @@ export function ActiveDrillSession({
     },
     [
       equationOptionId,
+      feedback?.recorded,
       interpretationOptionId,
       interviewMathMode,
       locale,
@@ -609,6 +610,7 @@ export function ActiveDrillSession({
   }
 
   function handleSkip() {
+    if (writeConflict) return;
     const skippedAtMs = currentTimestampMs();
     const skipTimer = timerAt(skippedAtMs);
 
@@ -665,6 +667,11 @@ export function ActiveDrillSession({
   }
 
   function handleNextQuestion() {
+    if (writeConflict) return;
+    if (session.settings.timeMode === "session" && timerAt(Date.now()).isExpired && currentQuestion !== undefined) {
+      recordSessionTimeout(currentQuestion);
+      return;
+    }
     if (isDrillSessionComplete(session)) {
       setSession(completeDrillSession({ session, questions: questionQueue }));
       return;
@@ -674,7 +681,12 @@ export function ActiveDrillSession({
   }
 
   function handleRetrySimilar() {
-    if (feedback?.recorded !== true || similarQuestion === undefined) {
+    if (writeConflict || feedback?.recorded !== true || similarQuestion === undefined) {
+      return;
+    }
+
+    if (session.settings.timeMode === "session" && timerAt(Date.now()).isExpired) {
+      if (currentQuestion !== undefined) recordSessionTimeout(currentQuestion);
       return;
     }
 

@@ -113,3 +113,21 @@ test("@browser-smoke native atomic callback failures roll back writes and genera
   });
   expect(outcome).toEqual({ rejected: true, rows: [], token: { generation: 0, revision: 0, exists: false } });
 });
+
+test("@browser-smoke generation checks and recovery reads need no writes under a quota fault", async ({ page }) => {
+  await prepare(page);
+  const outcome = await page.evaluate(async () => {
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    const generation = await storage.getGeneration();
+    const original = IDBObjectStore.prototype.put;
+    IDBObjectStore.prototype.put = () => { throw new DOMException("Synthetic write quota fault", "QuotaExceededError"); };
+    try {
+      const records = await storage.atomic({ stores: [], reads: { drill_sessions: "all" }, expectedGeneration: generation }, (view) => ({ operations: [], result: view.getAll("drill_sessions").length }));
+      let writeRejected = false;
+      try { await storage.put("market_sizing_attempts", { id: "quota-write", templateId: "sizing", startedAt: new Date().toISOString() }); }
+      catch { writeRejected = true; }
+      return { records, writeRejected, generation: (await storage.getDrillSession("missing")).token.generation };
+    } finally { IDBObjectStore.prototype.put = original; storage.close(); }
+  });
+  expect(outcome).toEqual({ records: 0, writeRejected: true, generation: 0 });
+});
