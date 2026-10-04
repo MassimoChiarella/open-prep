@@ -147,6 +147,20 @@ describe("QuestionPackBuilder", () => {
     ]);
   });
 
+  it("opens and focuses the surviving editor after removal and then permits collapse", () => {
+    render(<QuestionPackBuilder onPreview={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add Question" }));
+    const survivor = screen.getAllByTestId("builder-question")[1]!;
+    expect(screen.queryByLabelText("Question 2 prompt")).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Remove Question 1" }));
+
+    expect(survivor).toHaveAttribute("open");
+    expect(screen.getByLabelText("Question 1 prompt")).toHaveFocus();
+    setEditorOpen(survivor, false);
+    expect(screen.queryByLabelText("Question 1 prompt")).not.toBeInTheDocument();
+  });
+
   it("keeps single and batch additions within the configured question ceiling", () => {
     expect(canAddQuestionBatch(questionPackMaxQuestions - 1, 1)).toBe(true);
     expect(canAddQuestionBatch(questionPackMaxQuestions, 1)).toBe(false);
@@ -197,6 +211,7 @@ describe("QuestionPackBuilder", () => {
     expect(error).toHaveTextContent("Use a unique question ID.");
     expect(visibleDuplicateId).toHaveAttribute("aria-invalid", "true");
     expect(visibleDuplicateId).toHaveAttribute("aria-describedby", error.id);
+    expect(visibleDuplicateId).toHaveFocus();
     expect(onPreview).not.toHaveBeenCalled();
   });
 

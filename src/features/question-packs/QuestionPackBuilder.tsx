@@ -84,6 +84,7 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
   const [license, setLicense] = useState("");
   const [questions, setQuestions] = useState<QuestionDraft[]>([createQuestionDraft(1)]);
   const [questionErrors, setQuestionErrors] = useState<Record<number, QuestionDraftErrors>>({});
+  const [questionToFocus, setQuestionToFocus] = useState<number>();
   const questionsRef = useRef(questions);
   useEffect(() => {
     questionsRef.current = questions;
@@ -93,7 +94,7 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
     const key = Object.keys(questionErrors)[0];
     if (key === undefined) return;
     const editor = formRef.current?.querySelector<HTMLDetailsElement>(`[data-question-key="${key}"]`);
-    const field = editor?.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(':invalid, [aria-invalid="true"]');
+    const field = editor?.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>('input:invalid, textarea:invalid, select:invalid, [aria-invalid="true"]');
     if (field !== null && field !== undefined) {
       revealContainingDetails(field);
       field.focus();
@@ -112,6 +113,8 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
       current.map((question) => (question.key === key ? { ...question, ...update } : question))
     );
   }, []);
+
+  const finishQuestionFocus = useCallback(() => setQuestionToFocus(undefined), []);
 
   function addQuestions(count: number) {
     if (!canAddQuestionBatch(questions.length, count)) return;
@@ -135,13 +138,7 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
       number: formatNumber(index + 1)
     }))) return;
     const nextIndex = index < currentQuestions.length - 1 ? index + 1 : index - 1;
-    const nextEditor = formRef.current?.querySelectorAll<HTMLDetailsElement>('[data-testid="builder-question"]')[nextIndex];
-    if (nextEditor !== undefined) {
-      nextEditor.open = true;
-      window.requestAnimationFrame(() => {
-        window.requestAnimationFrame(() => nextEditor.querySelector<HTMLTextAreaElement>("textarea")?.focus());
-      });
-    }
+    setQuestionToFocus(currentQuestions[nextIndex]?.key);
     setQuestions((current) => current.filter((question) => question.key !== key));
     setQuestionErrors({});
     markDirty();
@@ -333,9 +330,11 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
               key={question.key}
               onChange={updateQuestion}
               onDuplicate={duplicateQuestion}
+              onFocusHandled={finishQuestionFocus}
               onMove={moveQuestion}
               onRemove={removeQuestion}
               question={question}
+              shouldFocus={questionToFocus === question.key}
               canMoveDown={index < questions.length - 1}
               validationErrors={questionErrors[question.key]}
             />
@@ -387,9 +386,11 @@ const QuestionEditor = memo(function QuestionEditor({
   index,
   onChange: updateQuestion,
   onDuplicate,
+  onFocusHandled,
   onMove,
   onRemove,
   question,
+  shouldFocus,
   validationErrors
 }: {
   canDuplicate: boolean;
@@ -398,14 +399,22 @@ const QuestionEditor = memo(function QuestionEditor({
   index: number;
   onChange(key: number, update: Partial<QuestionDraft>): void;
   onDuplicate(key: number): void;
+  onFocusHandled(): void;
   onMove(key: number, direction: -1 | 1): void;
   onRemove(key: number): void;
   question: QuestionDraft;
+  shouldFocus: boolean;
   validationErrors?: QuestionDraftErrors;
 }) {
   const number = index + 1;
   const { formatNumber, t } = useI18n();
   const [isOpen, setIsOpen] = useState(index === 0);
+  const editorRef = useRef<HTMLDetailsElement>(null);
+
+  useEffect(() => {
+    if (!shouldFocus) return;
+    editorRef.current?.querySelector<HTMLTextAreaElement>("textarea")?.focus();
+  }, [shouldFocus]);
 
   function onChange(update: Partial<QuestionDraft>) {
     setIsOpen(true);
@@ -418,8 +427,18 @@ const QuestionEditor = memo(function QuestionEditor({
       data-question-key={question.key}
       data-question-id={question.id}
       data-testid="builder-question"
-      onToggle={(event) => setIsOpen(event.currentTarget.open)}
-      open={isOpen || validationErrors !== undefined}
+      onFocus={() => {
+        if (shouldFocus) {
+          setIsOpen(true);
+          onFocusHandled();
+        }
+      }}
+      onToggle={(event) => {
+        setIsOpen(event.currentTarget.open);
+        if (shouldFocus) onFocusHandled();
+      }}
+      open={isOpen || shouldFocus || validationErrors !== undefined}
+      ref={editorRef}
     >
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 p-4 font-semibold text-ink transition-colors hover:bg-paper focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-teal">
         <span>{t("Question {number}", { number: formatNumber(number) })}</span>
@@ -427,7 +446,7 @@ const QuestionEditor = memo(function QuestionEditor({
           {question.prompt.trim() || question.id}
         </span>
       </summary>
-      {isOpen || validationErrors !== undefined ? (
+      {isOpen || shouldFocus || validationErrors !== undefined ? (
       <fieldset className="grid min-w-0 gap-4 border-t border-ink/15 p-4">
         <legend className="sr-only">{t("Question {number}", { number: formatNumber(number) })}</legend>
         <div className="flex min-w-0 flex-wrap justify-end gap-2">
