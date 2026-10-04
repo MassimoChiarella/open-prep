@@ -3,6 +3,173 @@ import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 type Translations = readonly [string, string, string, string, string, string, string, string, string];
 
 const keys: Record<string, Translations> = {
+  "Use 100,000 characters or fewer for target firms.": [
+    "Usa un máximo de 100.000 caracteres para las empresas objetivo.", "Utilisez au maximum 100 000 caractères pour les cabinets visés.",
+    "Verwenden Sie höchstens 100.000 Zeichen für die Zielfirmen.", "Use no máximo 100.000 caracteres para as empresas-alvo.",
+    "目标公司请使用不超过 100,000 个字符。", "目標公司請使用不超過 100,000 個字元。", "志望企業は100,000文字以内で入力してください。",
+    "استخدم ١٠٠٬٠٠٠ حرف أو أقل للشركات المستهدفة.", "लक्षित कंपनियों के लिए 100,000 या उससे कम वर्णों का उपयोग करें।"
+  ],
+  "Saved data was replaced or cleared. Reload this page before reviewing recovery.": [
+    "Los datos guardados se reemplazaron o borraron. Recarga esta página antes de revisar la recuperación.", "Les données enregistrées ont été remplacées ou effacées. Rechargez cette page avant d’examiner la récupération.",
+    "Gespeicherte Daten wurden ersetzt oder gelöscht. Laden Sie diese Seite neu, bevor Sie die Wiederherstellung prüfen.", "Os dados salvos foram substituídos ou apagados. Recarregue esta página antes de revisar a recuperação.",
+    "已保存的数据已被替换或清除。查看修复方案前，请重新加载此页面。", "已儲存的資料已被取代或清除。檢視修復方案前，請重新載入此頁面。", "保存済みのデータが置き換えまたは消去されました。修復内容を確認する前にページを再読み込みしてください。",
+    "تم استبدال البيانات المحفوظة أو مسحها. أعد تحميل هذه الصفحة قبل مراجعة الإصلاح.", "सहेजा गया डेटा बदला या साफ़ किया गया है। सुधार की समीक्षा से पहले यह पृष्ठ फिर से लोड करें।"
+  ],
+  "Reload page": ["Recargar página", "Recharger la page", "Seite neu laden", "Recarregar página", "重新加载页面", "重新載入頁面", "ページを再読み込み", "إعادة تحميل الصفحة", "पृष्ठ फिर से लोड करें"],
+  "Saved data is incompatible with backups. Review individual records in recovery.": [
+    "Los datos guardados son incompatibles con las copias. Revisa los registros individuales en la sección de recuperación.", "Les données enregistrées sont incompatibles avec les sauvegardes. Examinez les enregistrements dans la section de récupération.",
+    "Gespeicherte Daten sind mit Sicherungen inkompatibel. Prüfen Sie einzelne Datensätze im Wiederherstellungsbereich.", "Os dados salvos são incompatíveis com backups. Revise os registros individuais na seção de recuperação.",
+    "已保存的数据与备份不兼容。请在修复区域查看单条记录。", "已儲存的資料與備份不相容。請在修復區域檢視個別紀錄。", "保存済みのデータはバックアップに対応していません。修復欄で個別の記録を確認してください。",
+    "البيانات المحفوظة غير متوافقة مع النسخ الاحتياطية. راجع السجلات المنفردة في قسم الإصلاح.", "सहेजा गया डेटा बैकअप के अनुकूल नहीं है। सुधार अनुभाग में अलग-अलग रिकॉर्ड की समीक्षा करें।"
+  ],
+  "This record's ownership could not be verified. Automatic removal is unavailable.": [
+    "No se pudo verificar a qué intento pertenece este registro. La eliminación automática no está disponible.", "L’appartenance de cet enregistrement n’a pas pu être vérifiée. La suppression automatique n’est pas disponible.",
+    "Die Zuordnung dieses Datensatzes konnte nicht bestätigt werden. Eine automatische Entfernung ist nicht verfügbar.", "Não foi possível verificar a qual tentativa este registro pertence. A remoção automática não está disponível.",
+    "无法确认此记录的归属，不能自动删除。", "無法確認此紀錄的歸屬，不能自動刪除。", "この記録の所属を確認できませんでした。自動削除は利用できません。",
+    "تعذّر التحقق من تبعية هذا السجل. الإزالة التلقائية غير متاحة.", "इस रिकॉर्ड का स्वामित्व सत्यापित नहीं हो सका। अपने आप हटाना उपलब्ध नहीं है।"
+  ],
+  "Local data changed. Reload before saving new work.": [
+    "Los datos locales cambiaron. Recarga antes de guardar trabajo nuevo.", "Les données locales ont changé. Rechargez la page avant d’enregistrer un nouveau travail.",
+    "Lokale Daten wurden geändert. Laden Sie die Seite neu, bevor Sie neue Arbeit speichern.", "Os dados locais mudaram. Recarregue antes de salvar novo trabalho.",
+    "本地数据已更改。保存新内容前，请重新加载页面。", "本機資料已變更。儲存新內容前，請重新載入頁面。", "ローカルデータが変更されました。新しい内容を保存する前に再読み込みしてください。",
+    "تغيّرت البيانات المحلية. أعد التحميل قبل حفظ عمل جديد.", "स्थानीय डेटा बदल गया है। नया काम सहेजने से पहले पृष्ठ फिर से लोड करें।"
+  ],
+  "This attempt changed in another tab. Review the saved attempt or keep your work separately.": [
+    "Este intento cambió en otra pestaña. Revisa el intento guardado o conserva tu trabajo por separado.", "Cette tentative a changé dans un autre onglet. Examinez la tentative enregistrée ou conservez votre travail séparément.",
+    "Dieser Versuch wurde in einem anderen Tab geändert. Prüfen Sie den gespeicherten Versuch oder behalten Sie Ihre Arbeit separat.", "Esta tentativa mudou em outra aba. Revise a tentativa salva ou mantenha seu trabalho separado.",
+    "此练习已在另一个标签页中更改。请查看已保存的练习，或单独保留你的内容。", "此練習已在另一個分頁中變更。請檢視已儲存的練習，或另外保留你的內容。", "この練習は別のタブで変更されました。保存済みの練習を確認するか、自分の内容を別に保存してください。",
+    "تغيّرت هذه المحاولة في علامة تبويب أخرى. راجع المحاولة المحفوظة أو احتفظ بعملك بشكل منفصل.", "यह प्रयास दूसरे टैब में बदल गया है। सहेजे गए प्रयास की समीक्षा करें या अपना काम अलग रखें।"
+  ],
+  "Text contains {length} code units; the backup limit is {limit}.": [
+    "El texto contiene {length} unidades de código; el límite de la copia es {limit}.", "Le texte contient {length} unités de code ; la limite de sauvegarde est de {limit}.",
+    "Der Text enthält {length} Codeeinheiten; die Sicherungsgrenze beträgt {limit}.", "O texto contém {length} unidades de código; o limite do backup é {limit}.",
+    "文本包含 {length} 个代码单元；备份上限为 {limit}。", "文字包含 {length} 個碼元；備份上限為 {limit}。", "テキストは{length}コード単位です。バックアップの上限は{limit}です。",
+    "يحتوي النص على {length} وحدة ترميز؛ حد النسخ الاحتياطي هو {limit}.", "पाठ में {length} कोड इकाइयाँ हैं; बैकअप की सीमा {limit} है।"
+  ],
+  "Number is not finite.": ["El número no es finito.", "Le nombre n’est pas fini.", "Die Zahl ist nicht endlich.", "O número não é finito.", "数值不是有限数。", "數值不是有限數。", "数値が有限ではありません。", "العدد ليس منتهيًا.", "संख्या परिमित नहीं है।"],
+  "Value is not compatible with JSON backups.": ["El valor no es compatible con las copias JSON.", "La valeur n’est pas compatible avec les sauvegardes JSON.", "Der Wert ist mit JSON-Sicherungen nicht kompatibel.", "O valor não é compatível com backups JSON.", "此值与 JSON 备份不兼容。", "此值與 JSON 備份不相容。", "この値はJSONバックアップに対応していません。", "القيمة غير متوافقة مع نسخ JSON الاحتياطية.", "मान JSON बैकअप के अनुकूल नहीं है।"],
+  "Circular references are not compatible with backups.": ["Las referencias circulares no son compatibles con las copias.", "Les références circulaires ne sont pas compatibles avec les sauvegardes.", "Zirkelverweise sind mit Sicherungen nicht kompatibel.", "Referências circulares não são compatíveis com backups.", "循环引用与备份不兼容。", "循環參照與備份不相容。", "循環参照はバックアップに対応していません。", "المراجع الدائرية غير متوافقة مع النسخ الاحتياطية.", "चक्रीय संदर्भ बैकअप के अनुकूल नहीं हैं।"],
+  "Value exceeds the supported backup nesting limit.": ["El valor supera el límite de anidamiento de la copia.", "La valeur dépasse la profondeur d’imbrication prise en charge par la sauvegarde.", "Der Wert überschreitet die unterstützte Verschachtelungstiefe der Sicherung.", "O valor excede o limite de aninhamento do backup.", "此值超出备份支持的嵌套深度。", "此值超出備份支援的巢狀深度。", "値がバックアップで対応する入れ子の深さを超えています。", "تتجاوز القيمة حد التداخل المدعوم للنسخ الاحتياطي.", "मान बैकअप के समर्थित नेस्टिंग स्तर से अधिक है।"],
+  "Collection exceeds the backup limit of 10,000 items.": ["La colección supera el límite de 10.000 elementos de la copia.", "La collection dépasse la limite de sauvegarde de 10 000 éléments.", "Die Sammlung überschreitet die Sicherungsgrenze von 10.000 Elementen.", "A coleção excede o limite de 10.000 itens do backup.", "集合超出备份的 10,000 项上限。", "集合超出備份的 10,000 項上限。", "コレクションがバックアップの上限10,000項目を超えています。", "تتجاوز المجموعة حد النسخ الاحتياطي البالغ ١٠٬٠٠٠ عنصر.", "संग्रह बैकअप की 10,000 आइटम की सीमा से अधिक है।"],
+  "Value is not a plain backup object.": ["El valor no es un objeto simple compatible con la copia.", "La valeur n’est pas un objet simple compatible avec la sauvegarde.", "Der Wert ist kein einfaches Sicherungsobjekt.", "O valor não é um objeto simples compatível com o backup.", "此值不是备份支持的普通对象。", "此值不是備份支援的一般物件。", "値がバックアップ用の通常のオブジェクトではありません。", "القيمة ليست كائنًا بسيطًا متوافقًا مع النسخ الاحتياطي.", "मान साधारण बैकअप ऑब्जेक्ट नहीं है।"],
+  "Array contains a missing value that JSON would replace with null.": [
+    "La matriz contiene un valor ausente que JSON sustituiría por null.", "Le tableau contient une valeur manquante que JSON remplacerait par null.",
+    "Das Array enthält einen fehlenden Wert, den JSON durch null ersetzen würde.", "A matriz contém um valor ausente que JSON substituiria por null.",
+    "数组包含缺失值，JSON 会将其替换为 null。", "陣列包含遺漏值，JSON 會將其取代為 null。", "配列に欠損値があり、JSONではnullに置き換えられます。",
+    "تحتوي المصفوفة على قيمة مفقودة سيستبدلها JSON بالقيمة null.", "ऐरे में अनुपस्थित मान है जिसे JSON null से बदल देगा।"
+  ],
+  "Property name exceeds the backup text limit.": ["El nombre de propiedad supera el límite de texto de la copia.", "Le nom de propriété dépasse la limite de texte de la sauvegarde.", "Der Eigenschaftsname überschreitet die Textgrenze der Sicherung.", "O nome da propriedade excede o limite de texto do backup.", "属性名称超出备份文本长度上限。", "屬性名稱超出備份文字長度上限。", "プロパティ名がバックアップのテキスト上限を超えています。", "يتجاوز اسم الخاصية حد النص للنسخ الاحتياطي.", "गुण का नाम बैकअप की पाठ सीमा से अधिक है।"],
+  "Note has an invalid saved value.": ["La nota tiene un valor guardado no válido.", "La note contient une valeur enregistrée non valide.", "Die Notiz enthält einen ungültigen gespeicherten Wert.", "A nota tem um valor salvo inválido.", "笔记包含无效的已保存值。", "筆記包含無效的已儲存值。", "メモに保存された値が無効です。", "تحتوي الملاحظة على قيمة محفوظة غير صالحة.", "नोट में सहेजा गया मान अमान्य है।"],
+  "Record has invalid or missing fields.": ["El registro tiene campos no válidos o ausentes.", "L’enregistrement comporte des champs non valides ou manquants.", "Der Datensatz enthält ungültige oder fehlende Felder.", "O registro tem campos inválidos ou ausentes.", "记录包含无效或缺失的字段。", "紀錄包含無效或遺漏的欄位。", "記録に無効または欠落した項目があります。", "يحتوي السجل على حقول غير صالحة أو مفقودة.", "रिकॉर्ड में अमान्य या अनुपस्थित फ़ील्ड हैं।"],
+  "Installed pack has invalid or non-canonical saved fields.": [
+    "El paquete instalado tiene campos guardados no válidos o no normalizados.", "Le pack installé comporte des champs enregistrés non valides ou non normalisés.",
+    "Das installierte Paket enthält ungültige oder nicht normalisierte gespeicherte Felder.", "O pacote instalado tem campos salvos inválidos ou fora do formato padrão.",
+    "已安装题包包含无效或格式不规范的已保存字段。", "已安裝題包包含無效或格式不規範的已儲存欄位。", "インストール済みのパックに無効または標準形式でない保存項目があります。",
+    "تحتوي الحزمة المثبتة على حقول محفوظة غير صالحة أو غير مطابقة للصيغة المعتمدة.", "इंस्टॉल किए गए पैक में अमान्य या मानक रूप से अलग सहेजे गए फ़ील्ड हैं।"
+  ],
+  "The stored key is invalid. Automatic removal is unavailable for this record.": [
+    "La clave guardada no es válida. Este registro no puede eliminarse automáticamente.", "La clé enregistrée est non valide. La suppression automatique n’est pas disponible pour cet enregistrement.",
+    "Der gespeicherte Schlüssel ist ungültig. Dieser Datensatz kann nicht automatisch entfernt werden.", "A chave salva é inválida. A remoção automática não está disponível para este registro.",
+    "存储键无效，无法自动删除此记录。", "儲存鍵無效，無法自動刪除此紀錄。", "保存されたキーが無効です。この記録は自動削除できません。",
+    "المفتاح المحفوظ غير صالح. لا تتوفر الإزالة التلقائية لهذا السجل.", "सहेजी गई कुंजी अमान्य है। इस रिकॉर्ड को अपने आप हटाना उपलब्ध नहीं है।"
+  ],
+  "This record points to different source attempts. Automatic removal would have ambiguous ownership.": [
+    "Este registro apunta a distintos intentos de origen. No está claro a cuál pertenece y no puede eliminarse automáticamente.", "Cet enregistrement renvoie à plusieurs tentatives d’origine. Son appartenance est ambiguë pour une suppression automatique.",
+    "Dieser Datensatz verweist auf verschiedene Ursprungsversuche. Seine Zuordnung ist für eine automatische Entfernung nicht eindeutig.", "Este registro aponta para diferentes tentativas de origem. A remoção automática teria uma associação ambígua.",
+    "此记录指向不同的来源练习，归属不明确，无法自动删除。", "此紀錄指向不同的來源練習，歸屬不明確，無法自動刪除。", "この記録は複数の元の練習を参照しています。所属が曖昧なため自動削除できません。",
+    "يشير هذا السجل إلى محاولات مصدر مختلفة، مما يجعل تبعيته غير واضحة عند الإزالة التلقائية.", "यह रिकॉर्ड अलग-अलग मूल प्रयासों की ओर इशारा करता है। अपने आप हटाने के लिए इसका स्वामित्व स्पष्ट नहीं है।"
+  ],
+  "This record contains a value that cannot be archived losslessly.": [
+    "Este registro contiene un valor que no puede archivarse sin pérdida.", "Cet enregistrement contient une valeur qui ne peut pas être archivée sans perte.", "Dieser Datensatz enthält einen Wert, der sich nicht verlustfrei archivieren lässt.",
+    "Este registro contém um valor que não pode ser arquivado sem perda.", "此记录包含无法无损归档的值。", "此紀錄包含無法無損封存的值。", "この記録には、情報を失わずにアーカイブできない値が含まれています。",
+    "يحتوي هذا السجل على قيمة لا يمكن أرشفتها دون فقدان معلومات.", "इस रिकॉर्ड में ऐसा मान है जिसे बिना जानकारी खोए संग्रहित नहीं किया जा सकता।"
+  ],
+  "This record type cannot be archived losslessly. No records were changed.": [
+    "Este tipo de registro no puede archivarse sin pérdida. No se modificó ningún registro.", "Ce type d’enregistrement ne peut pas être archivé sans perte. Aucun enregistrement n’a été modifié.",
+    "Dieser Datensatztyp lässt sich nicht verlustfrei archivieren. Es wurden keine Datensätze geändert.", "Este tipo de registro não pode ser arquivado sem perda. Nenhum registro foi alterado.",
+    "此类型的记录无法无损归档。未更改任何记录。", "此類型的紀錄無法無損封存。未變更任何紀錄。", "この種類の記録は情報を失わずにアーカイブできません。記録は変更されていません。",
+    "لا يمكن أرشفة هذا النوع من السجلات دون فقدان معلومات. لم تتغيّر أي سجلات.", "इस प्रकार के रिकॉर्ड को बिना जानकारी खोए संग्रहित नहीं किया जा सकता। कोई रिकॉर्ड नहीं बदला गया।"
+  ],
+  "Recover individual records": ["Recuperar registros individuales", "Récupérer des enregistrements individuels", "Einzelne Datensätze wiederherstellen", "Recuperar registros individuais", "修复单条记录", "修復個別紀錄", "個別の記録を修復", "إصلاح سجلات منفردة", "अलग-अलग रिकॉर्ड सुधारें"],
+  "Find saved records that prevent a backup, then review one attempt at a time. Checking changes nothing.": [
+    "Busca los registros que impiden crear una copia y revisa un intento a la vez. La comprobación no modifica nada.",
+    "Repérez les enregistrements qui empêchent la sauvegarde, puis examinez une tentative à la fois. La vérification ne modifie rien.",
+    "Suchen Sie gespeicherte Datensätze, die eine Sicherung verhindern, und prüfen Sie jeden Versuch einzeln. Die Prüfung ändert nichts.",
+    "Encontre os registros que impedem o backup e revise uma tentativa por vez. A verificação não altera nada.",
+    "查找导致备份失败的已保存记录，然后逐一检查练习。检查不会更改任何数据。", "找出導致備份失敗的已儲存紀錄，再逐一檢查練習。檢查不會變更任何資料。",
+    "バックアップを妨げる保存済みの記録を見つけ、練習ごとに確認します。確認だけではデータは変更されません。",
+    "ابحث عن السجلات المحفوظة التي تمنع النسخ الاحتياطي، ثم راجع كل محاولة على حدة. الفحص لا يغيّر أي بيانات.",
+    "बैकअप रोकने वाले सहेजे गए रिकॉर्ड खोजें, फिर एक-एक प्रयास की समीक्षा करें। जाँच से कोई बदलाव नहीं होता।"
+  ],
+  "Checking local records...": ["Comprobando registros locales...", "Vérification des enregistrements locaux...", "Lokale Datensätze werden geprüft...", "Verificando registros locais...", "正在检查本地记录…", "正在檢查本機紀錄…", "ローカルの記録を確認中…", "جارٍ فحص السجلات المحلية...", "स्थानीय रिकॉर्ड जाँचे जा रहे हैं..."],
+  "Check local records": ["Comprobar registros locales", "Vérifier les enregistrements locaux", "Lokale Datensätze prüfen", "Verificar registros locais", "检查本地记录", "檢查本機紀錄", "ローカルの記録を確認", "فحص السجلات المحلية", "स्थानीय रिकॉर्ड जाँचें"],
+  "No incompatible records found.": ["No se encontraron registros incompatibles.", "Aucun enregistrement incompatible trouvé.", "Keine inkompatiblen Datensätze gefunden.", "Nenhum registro incompatível encontrado.", "未发现不兼容的记录。", "未發現不相容的紀錄。", "互換性のない記録は見つかりませんでした。", "لم يُعثر على سجلات غير متوافقة.", "कोई असंगत रिकॉर्ड नहीं मिला।"],
+  "Review recovery": ["Revisar recuperación", "Examiner la récupération", "Wiederherstellung prüfen", "Revisar recuperação", "查看修复方案", "檢視修復方案", "修復内容を確認", "مراجعة الإصلاح", "सुधार की समीक्षा करें"],
+  "Remove the incompatible note only": ["Eliminar solo la nota incompatible", "Supprimer uniquement la note incompatible", "Nur die inkompatible Notiz entfernen", "Remover apenas a nota incompatível", "仅删除不兼容的笔记", "僅刪除不相容的筆記", "互換性のないメモのみ削除", "إزالة الملاحظة غير المتوافقة فقط", "केवल असंगत नोट हटाएँ"],
+  "Remove this attempt and its owned records": ["Eliminar este intento y sus registros asociados", "Supprimer cette tentative et les enregistrements qui lui appartiennent", "Diesen Versuch und die zugehörigen Datensätze entfernen", "Remover esta tentativa e seus registros vinculados", "删除此练习及其所属记录", "刪除此練習及其所屬紀錄", "この練習とその練習に属する記録を削除", "إزالة هذه المحاولة والسجلات التابعة لها", "यह प्रयास और इसके स्वामित्व वाले रिकॉर्ड हटाएँ"],
+  "The attempt and its score will remain saved.": ["El intento y su puntuación seguirán guardados.", "La tentative et son score resteront enregistrés.", "Der Versuch und seine Punktzahl bleiben gespeichert.", "A tentativa e sua pontuação continuarão salvas.", "练习及其分数将继续保留。", "練習及其分數將繼續保留。", "練習とスコアは保存されたままになります。", "ستبقى المحاولة ودرجتها محفوظتين.", "प्रयास और उसका स्कोर सहेजे रहेंगे।"],
+  "Independent later attempts and unrelated saved data will remain saved.": [
+    "Los intentos posteriores independientes y los datos no relacionados seguirán guardados.", "Les tentatives ultérieures indépendantes et les données sans rapport resteront enregistrées.",
+    "Unabhängige spätere Versuche und nicht zugehörige Daten bleiben gespeichert.", "Tentativas posteriores independentes e dados não relacionados continuarão salvos.",
+    "后续独立练习和无关的已保存数据将继续保留。", "後續獨立練習及無關的已儲存資料將繼續保留。", "後の独立した練習や無関係の保存済みデータは残ります。",
+    "ستبقى المحاولات اللاحقة المستقلة والبيانات المحفوظة غير المرتبطة بها.", "बाद के स्वतंत्र प्रयास और असंबंधित सहेजे गए डेटा सुरक्षित रहेंगे।"
+  ],
+  "Existing review totals cannot be reversed reliably and will remain unchanged.": [
+    "Los totales de repaso existentes no pueden revertirse de forma fiable y no cambiarán.", "Les totaux de révision existants ne peuvent pas être annulés de manière fiable et resteront inchangés.",
+    "Bestehende Wiederholungssummen lassen sich nicht zuverlässig rückgängig machen und bleiben unverändert.", "Os totais de revisão existentes não podem ser revertidos com segurança e permanecerão inalterados.",
+    "现有复习总数无法可靠地回退，将保持不变。", "現有複習總數無法可靠地回復，將維持不變。", "既存の復習集計は確実に取り消せないため、変更されません。",
+    "لا يمكن التراجع عن إجماليات المراجعة الحالية بشكل موثوق، لذا ستبقى دون تغيير.", "मौजूदा समीक्षा के कुल आँकड़े भरोसेमंद ढंग से वापस नहीं किए जा सकते, इसलिए वे नहीं बदलेंगे।"
+  ],
+  "The recovery archive may contain private text. It is a diagnostic file, not a restorable backup.": [
+    "El archivo de recuperación puede contener texto privado. Es un archivo de diagnóstico, no una copia restaurable.", "L’archive de récupération peut contenir du texte privé. Il s’agit d’un fichier de diagnostic, pas d’une sauvegarde restaurable.",
+    "Das Wiederherstellungsarchiv kann privaten Text enthalten. Es ist eine Diagnosedatei, keine wiederherstellbare Sicherung.", "O arquivo de recuperação pode conter texto privado. É um arquivo de diagnóstico, não um backup restaurável.",
+    "修复归档可能包含私人文字。它是诊断文件，不能用于还原备份。", "修復封存檔可能包含私人文字。它是診斷檔案，無法用於還原備份。", "修復用アーカイブには私的な文章が含まれる場合があります。診断用ファイルであり、復元可能なバックアップではありません。",
+    "قد يحتوي أرشيف الإصلاح على نص خاص. إنه ملف تشخيص، وليس نسخة احتياطية قابلة للاستعادة.", "सुधार संग्रह में निजी पाठ हो सकता है। यह जाँच के लिए फ़ाइल है, बहाल किया जा सकने वाला बैकअप नहीं।"
+  ],
+  "Download original-data archive": ["Descargar archivo de datos originales", "Télécharger l’archive des données d’origine", "Archiv der Originaldaten herunterladen", "Baixar arquivo dos dados originais", "下载原始数据归档", "下載原始資料封存檔", "元のデータのアーカイブをダウンロード", "تنزيل أرشيف البيانات الأصلية", "मूल डेटा का संग्रह डाउनलोड करें"],
+  "Remove without an archive; I accept losing the original records.": [
+    "Eliminar sin archivo; acepto perder los registros originales.", "Supprimer sans archive ; j’accepte de perdre les enregistrements d’origine.", "Ohne Archiv entfernen; ich akzeptiere den Verlust der Originaldatensätze.",
+    "Remover sem arquivo; aceito perder os registros originais.", "不保留归档并删除；我接受原始记录丢失。", "不保留封存檔並刪除；我接受原始紀錄遺失。", "アーカイブを作らずに削除します。元の記録が失われることに同意します。",
+    "الإزالة دون أرشيف؛ أوافق على فقدان السجلات الأصلية.", "संग्रह के बिना हटाएँ; मैं मूल रिकॉर्ड खोने के लिए सहमत हूँ।"
+  ],
+  "I have saved the archive or chosen to continue without it, and confirm this removal.": [
+    "He guardado el archivo o he elegido continuar sin él y confirmo esta eliminación.", "J’ai enregistré l’archive ou choisi de continuer sans elle, et je confirme cette suppression.",
+    "Ich habe das Archiv gespeichert oder mich entschieden, ohne es fortzufahren, und bestätige die Entfernung.", "Salvei o arquivo ou escolhi continuar sem ele e confirmo esta remoção.",
+    "我已保存归档或选择不保留归档，并确认删除。", "我已儲存封存檔或選擇不保留封存檔，並確認刪除。", "アーカイブを保存したか、保存せずに続行することを選び、この削除を確認します。",
+    "حفظت الأرشيف أو اخترت المتابعة دونه، وأؤكد هذه الإزالة.", "मैंने संग्रह सहेज लिया है या उसके बिना आगे बढ़ना चुना है, और इस हटाने की पुष्टि करता हूँ।"
+  ],
+  "Confirm scoped removal": ["Confirmar eliminación seleccionada", "Confirmer la suppression ciblée", "Gezielte Entfernung bestätigen", "Confirmar remoção selecionada", "确认删除所选记录", "確認刪除所選紀錄", "対象の削除を確認", "تأكيد إزالة العناصر المحددة", "चुने हुए रिकॉर्ड हटाने की पुष्टि करें"],
+  "Saved data changed. Check the records again before confirming recovery.": [
+    "Los datos guardados cambiaron. Comprueba los registros de nuevo antes de confirmar la recuperación.", "Les données enregistrées ont changé. Vérifiez à nouveau les enregistrements avant de confirmer la récupération.",
+    "Gespeicherte Daten wurden geändert. Prüfen Sie die Datensätze erneut, bevor Sie die Wiederherstellung bestätigen.", "Os dados salvos mudaram. Verifique os registros novamente antes de confirmar a recuperação.",
+    "已保存的数据已更改。确认修复前，请重新检查记录。", "已儲存的資料已變更。確認修復前，請重新檢查紀錄。", "保存済みのデータが変更されました。修復を確定する前に記録を再確認してください。",
+    "تغيّرت البيانات المحفوظة. افحص السجلات مجددًا قبل تأكيد الإصلاح.", "सहेजा गया डेटा बदल गया है। सुधार की पुष्टि से पहले रिकॉर्ड फिर से जाँचें।"
+  ],
+  "Recovery could not be completed. Check the records again before retrying.": [
+    "No se pudo completar la recuperación. Comprueba los registros de nuevo antes de reintentarlo.", "La récupération n’a pas pu être terminée. Vérifiez à nouveau les enregistrements avant de réessayer.",
+    "Die Wiederherstellung konnte nicht abgeschlossen werden. Prüfen Sie vor einem erneuten Versuch die Datensätze nochmals.", "Não foi possível concluir a recuperação. Verifique os registros novamente antes de tentar de novo.",
+    "无法完成修复。重试前，请重新检查记录。", "無法完成修復。重試前，請重新檢查紀錄。", "修復を完了できませんでした。再試行する前に記録を再確認してください。",
+    "تعذّر إكمال الإصلاح. افحص السجلات مجددًا قبل إعادة المحاولة.", "सुधार पूरा नहीं हो सका। दोबारा प्रयास करने से पहले रिकॉर्ड फिर से जाँचें।"
+  ],
+  "The recovery archive could not be downloaded. No records were changed.": [
+    "No se pudo descargar el archivo de recuperación. No se modificó ningún registro.", "L’archive de récupération n’a pas pu être téléchargée. Aucun enregistrement n’a été modifié.",
+    "Das Wiederherstellungsarchiv konnte nicht heruntergeladen werden. Es wurden keine Datensätze geändert.", "Não foi possível baixar o arquivo de recuperação. Nenhum registro foi alterado.",
+    "无法下载修复归档。未更改任何记录。", "無法下載修復封存檔。未變更任何紀錄。", "修復用アーカイブをダウンロードできませんでした。記録は変更されていません。",
+    "تعذّر تنزيل أرشيف الإصلاح. لم تتغيّر أي سجلات.", "सुधार संग्रह डाउनलोड नहीं हो सका। कोई रिकॉर्ड नहीं बदला गया।"
+  ],
+  "Recovery completed. Refresh this page before preparing a new backup.": [
+    "Recuperación completada. Actualiza esta página antes de preparar una nueva copia.", "Récupération terminée. Actualisez cette page avant de préparer une nouvelle sauvegarde.",
+    "Wiederherstellung abgeschlossen. Laden Sie diese Seite neu, bevor Sie eine neue Sicherung vorbereiten.", "Recuperação concluída. Atualize esta página antes de preparar um novo backup.",
+    "修复已完成。准备新备份前，请刷新此页面。", "修復已完成。準備新備份前，請重新整理此頁面。", "修復が完了しました。新しいバックアップを準備する前にページを再読み込みしてください。",
+    "اكتمل الإصلاح. أعد تحميل هذه الصفحة قبل إعداد نسخة احتياطية جديدة.", "सुधार पूरा हुआ। नया बैकअप तैयार करने से पहले यह पृष्ठ रीफ़्रेश करें।"
+  ],
+  "Some saved records are incompatible with backups. Review the affected records below.": [
+    "Algunos registros guardados son incompatibles con las copias de seguridad. Revisa los registros afectados abajo.", "Certains enregistrements sont incompatibles avec les sauvegardes. Examinez les enregistrements concernés ci-dessous.",
+    "Einige gespeicherte Datensätze sind mit Sicherungen inkompatibel. Prüfen Sie die betroffenen Datensätze unten.", "Alguns registros salvos são incompatíveis com backups. Revise os registros afetados abaixo.",
+    "部分已保存记录与备份不兼容。请在下方查看受影响的记录。", "部分已儲存紀錄與備份不相容。請在下方檢視受影響的紀錄。", "一部の保存済みの記録はバックアップに対応していません。以下で該当する記録を確認してください。",
+    "بعض السجلات المحفوظة غير متوافقة مع النسخ الاحتياطية. راجع السجلات المتأثرة أدناه.", "कुछ सहेजे गए रिकॉर्ड बैकअप के अनुकूल नहीं हैं। नीचे प्रभावित रिकॉर्ड की समीक्षा करें।"
+  ],
+  "Review incompatible records": ["Revisar registros incompatibles", "Examiner les enregistrements incompatibles", "Inkompatible Datensätze prüfen", "Revisar registros incompatíveis", "查看不兼容的记录", "檢視不相容的紀錄", "互換性のない記録を確認", "مراجعة السجلات غير المتوافقة", "असंगत रिकॉर्ड की समीक्षा करें"],
   "This attempt changed in another tab. Your answers are still here. Choose which attempt to keep working with.": [
     "Este intento cambió en otra pestaña. Tus respuestas siguen aquí. Elige con qué intento quieres continuar.",
     "Cette tentative a été modifiée dans un autre onglet. Vos réponses sont toujours ici. Choisissez la tentative à poursuivre.",
