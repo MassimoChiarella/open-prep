@@ -19,7 +19,7 @@ import {
 } from "@/lib/storage/appStorageTypes";
 import { AppStorageConflictError } from "@/lib/storage/appStorageTypes";
 import { createAtomicView } from "@/lib/storage/storageCoordination";
-import { assertPersistableRecord } from "@/lib/validation/inputLimits";
+import { assertPersistableRecord, maxStoredPackDepth } from "@/lib/validation/inputLimits";
 
 export class MemoryAppStorage implements AppStorage {
   private readonly stores = new Map<AppStoreName, Map<IDBValidKey, AppDatabaseSchema[AppStoreName]>>();
@@ -127,7 +127,7 @@ export class MemoryAppStorage implements AppStorage {
 
   async put<TStore extends AppStoreName>(storeName: TStore, value: AppStoreValue<TStore>): Promise<void> {
     // Direct writes also seed fault-injection fixtures before a failing multi-write transaction.
-    assertPersistableRecord(value);
+    assertPersistableRecord(value, storeName === "question_packs" ? { maxDepth: maxStoredPackDepth } : {});
     this.seedLegacy(storeName, value);
   }
 
@@ -175,7 +175,7 @@ export class MemoryAppStorage implements AppStorage {
         store.delete(operation.key);
         if (operation.storeName === "drill_sessions") revisions.delete(String(operation.key));
       } else {
-        assertPersistableRecord(operation.value);
+        assertPersistableRecord(operation.value, operation.storeName === "question_packs" ? { maxDepth: maxStoredPackDepth } : {});
         store.set(operation.value.id, structuredClone(operation.value));
         if (operation.storeName === "drill_sessions") revisions.set(operation.value.id, (revisions.get(operation.value.id) ?? 0) + 1);
       }

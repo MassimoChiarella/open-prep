@@ -67,4 +67,17 @@ describe("case practice records", () => {
     await deleteFitStory(storage, story.id);
     expect(await loadFitStories(storage)).toEqual([]);
   });
+
+  it("caps newly saved target firms as one text field without narrowing legacy import bounds", async () => {
+    const storage = new MemoryAppStorage();
+    const profile = { experienceLevel: "intermediate" as const, targetFirms: ["x".repeat(49999), "y".repeat(49999)], updatedAt: "2026-09-22T00:00:00.000Z", weeklySessions: 5 };
+    await savePrepProfile(storage, profile);
+    const before = await loadPrepProfile(storage);
+    await expect(savePrepProfile(storage, { ...profile, targetFirms: [...profile.targetFirms, "z"] })).rejects.toThrow("100,000");
+    expect(await loadPrepProfile(storage)).toEqual(before);
+    // Direct old-record restore remains governed by the existing backup envelope, not the new input cap.
+    const legacy = { ...before!, targetFirms: ["x".repeat(100000), "y"] };
+    await storage.put("practice_records", legacy);
+    expect(await loadPrepProfile(storage)).toEqual(legacy);
+  });
 });

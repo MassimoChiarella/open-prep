@@ -22,7 +22,7 @@ import {
   type AppStoreValue
 } from "@/lib/storage/appStorageTypes";
 import { createAtomicView, lifecycleMetadataKey, sessionRevisionKey } from "@/lib/storage/storageCoordination";
-import { assertPersistableRecord } from "@/lib/validation/inputLimits";
+import { assertPersistableRecord, maxStoredPackDepth } from "@/lib/validation/inputLimits";
 
 // One document lifecycle, including adapters created later by an already-open form.
 // A successful destructive action navigates through the existing invalidation shell.
@@ -281,8 +281,8 @@ class IndexedDbAppStorage implements AppStorage {
     const reads = options.reads ?? {};
     const storeNames = [...new Set([...options.stores, ...Object.keys(reads) as AppStoreName[]])];
     return new Promise<TResult>((resolve, reject) => {
-      const transaction = database.transaction([...storeNames, appCoordinationStoreName], "readwrite");
-      this.trackWrite(transaction);
+      const transaction = database.transaction([...storeNames, appCoordinationStoreName], options.stores.length === 0 && !options.advanceGeneration ? "readonly" : "readwrite");
+      if (transaction.mode === "readwrite") this.trackWrite(transaction);
       const metadata = transaction.objectStore(appCoordinationStoreName);
       let result: TResult;
       let failure: unknown;
@@ -304,7 +304,9 @@ class IndexedDbAppStorage implements AppStorage {
             try {
               const decision = decide(createAtomicView(records, reads, generation, revisions));
               if (typeof (decision as unknown as { then?: unknown }).then === "function") throw new Error("Atomic decisions must be synchronous.");
-              for (const operation of decision.operations) if (operation.type === "put") assertPersistableRecord(operation.value);
+              for (const operation of decision.operations) if (operation.type === "put") {
+                assertPersistableRecord(operation.value, operation.storeName === "question_packs" ? { maxDepth: maxStoredPackDepth } : {});
+              }
               result = decision.result;
               const nextGeneration = generation + (options.advanceGeneration ? 1 : 0);
               let index = 0;
@@ -342,7 +344,7 @@ class IndexedDbAppStorage implements AppStorage {
                   if (index < decision.operations.length && last !== undefined) last.onsuccess = enqueue;
                 } catch (error) { abort(error); }
               };
-              metadata.put({ id: lifecycleMetadataKey, generation: nextGeneration });
+              if (options.advanceGeneration) metadata.put({ id: lifecycleMetadataKey, generation: nextGeneration });
               enqueue();
             } catch (error) { abort(error); }
           };

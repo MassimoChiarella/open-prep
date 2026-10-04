@@ -1,5 +1,6 @@
 import { isPrivatePracticeRecord, preservePrivateData, privatePreservationStoreNames } from "@/features/settings/privateDataPreservation";
 import { publishLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
+import { assertBackupCompatibleRecords, inspectStoredRecord, IncompatibleStoredRecordError, type StoredRecordIssue } from "@/features/settings/recordDiagnostics";
 import { isFullCaseDraftRecord } from "@/features/case-practice/simulation/fullCaseDraft";
 import {
   appDatabaseName,
@@ -71,6 +72,7 @@ export async function createLocalProgressExport(
     );
     stores.market_sizing_attempts = stores.market_sizing_attempts.map(({ note: _note, ...record }) => record);
   }
+  assertBackupCompatibleRecords(stores);
 
   const exported: LocalProgressExportV1 = {
     app: localProgressExportAppId,
@@ -83,6 +85,7 @@ export async function createLocalProgressExport(
     sourceBytes: new TextEncoder().encode(serializeLocalProgressExport(exported)).byteLength
   });
   if (validation.status === "invalid") {
+    assertValidProgressRecords(stores);
     throw new Error("Standard export exceeds its limits or contains invalid records. Use Complete Backup for larger histories.");
   }
   return exported;
@@ -260,6 +263,25 @@ const storeRecordValidators: Record<ProgressStoreName, (record: Record<string, u
   retry_schedules: isRetryScheduleRecord,
   user_settings: isUserSettingsRecord
 };
+
+/** Check a record independently of whole-history capacity and export-envelope limits. */
+export function inspectProgressRecord(storeName: ProgressStoreName, record: unknown): StoredRecordIssue[] {
+  const issues = inspectStoredRecord(storeName, record);
+  if (issues.length > 0 || (isRecord(record) && storeRecordValidators[storeName](record))) return issues;
+  const noteOnly = storeName === "market_sizing_attempts" && isRecord(record) &&
+    storeRecordValidators.market_sizing_attempts({ ...record, note: undefined });
+  return [{
+    storeName, recordId: isRecord(record) && typeof record.id === "string" ? record.id : "(invalid record ID)",
+    path: noteOnly ? "note" : "", reason: noteOnly ? "Note has an invalid saved value." : "Record has invalid or missing fields."
+  }];
+}
+
+export function assertValidProgressRecords(stores: LocalProgressExportStores): void {
+  for (const storeName of progressStoreNames) for (const record of stores[storeName]) {
+    const issues = inspectProgressRecord(storeName, record);
+    if (issues.length > 0) throw new IncompatibleStoredRecordError(issues);
+  }
+}
 
 function isStoredDrillSession(value: Record<string, unknown>): boolean {
   return (
@@ -603,7 +625,6 @@ function validateResourceBounds(value: unknown, addError: (error: string) => voi
       addError("Import file must not contain circular data.");
       return;
     }
-    seen.add(item);
 
     if (depth > 20) {
       addError("Import file nesting is too deep.");
@@ -619,7 +640,9 @@ function validateResourceBounds(value: unknown, addError: (error: string) => voi
       return;
     }
 
+    seen.add(item);
     children.forEach((child) => visit(child, depth + 1));
+    seen.delete(item);
   };
 
   visit(value, 0);

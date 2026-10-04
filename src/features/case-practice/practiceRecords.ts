@@ -5,6 +5,18 @@ import type {
   PrepProfileRecord
 } from "@/features/case-practice/practiceTypes";
 import type { AppStorage } from "@/lib/storage/appStorageTypes";
+import { maxStoredStringLength } from "@/lib/validation/inputLimits";
+
+export const prepProfileFirmsLimitMessage = "Use 100,000 characters or fewer for target firms.";
+
+export function arePrepProfileFirmsWithinLimit(firms: readonly string[]): boolean {
+  let length = Math.max(0, firms.length - 1) * 2;
+  for (const firm of firms) {
+    length += firm.length;
+    if (length > maxStoredStringLength) return false;
+  }
+  return length <= maxStoredStringLength;
+}
 
 export async function savePracticeAttempt(
   storage: AppStorage,
@@ -36,6 +48,7 @@ export async function savePrepProfile(
   storage: AppStorage,
   profile: Omit<PrepProfileRecord, "id" | "kind">
 ): Promise<PrepProfileRecord> {
+  if (!arePrepProfileFirmsWithinLimit(profile.targetFirms)) throw new Error(prepProfileFirmsLimitMessage);
   const record: PrepProfileRecord = { ...profile, id: "prep-profile", kind: "prep_profile" };
   await storage.put("practice_records", record);
   return record;

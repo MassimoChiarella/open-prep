@@ -1,6 +1,10 @@
 /** Limits are UTF-16 code units, matching JavaScript strings and browser inputs. */
 export const maxNumericInputLength = 4096;
 export const maxStoredStringLength = 100000;
+export const maxStoredCollectionItems = 10000;
+// Complete Backup's depth20 envelope places progress records at depth5, packs at depth3.
+export const maxStoredRecordDepth = 15;
+export const maxStoredPackDepth = 17;
 export const numericInputLimitMessage = "Use 4,096 characters or fewer for a numeric answer.";
 
 export function assertNumericInput(value: string): void {
@@ -8,9 +12,9 @@ export function assertNumericInput(value: string): void {
 }
 
 /** Reject values that would be corrupted by JSON or exceed supported backup strings. */
-export function assertPersistableRecord(value: unknown): void {
+export function assertPersistableRecord(value: unknown, options: { maxDepth?: number } = {}): void {
   const ancestors = new Set<object>();
-  function visit(item: unknown): void {
+  function visit(item: unknown, depth: number): void {
     if (typeof item === "number" && !Number.isFinite(item)) {
       throw new Error("Stored numbers must be finite.");
     }
@@ -22,9 +26,22 @@ export function assertPersistableRecord(value: unknown): void {
     }
     if (item === null || typeof item !== "object") return;
     if (ancestors.has(item)) throw new Error("Stored records cannot contain circular references.");
+    if (depth > (options.maxDepth ?? maxStoredRecordDepth)) throw new Error("Stored record nesting exceeds supported backup depth.");
+    if (!Array.isArray(item) && Object.getPrototypeOf(item) !== Object.prototype && Object.getPrototypeOf(item) !== null) {
+      throw new Error("Stored records must contain plain JSON objects.");
+    }
+    if ((Array.isArray(item) ? item.length : Object.keys(item).length) > maxStoredCollectionItems) {
+      throw new Error("Stored collections must contain 10,000 items or fewer.");
+    }
+    if (Array.isArray(item)) for (let index = 0; index < item.length; index += 1) {
+      if (!Object.hasOwn(item, index) || item[index] === undefined) throw new Error("Stored arrays cannot contain missing values.");
+    }
     ancestors.add(item);
-    for (const child of Object.values(item)) visit(child);
+    for (const [key, child] of Object.entries(item)) {
+      if (key.length > maxStoredStringLength) throw new Error("Stored property names must contain 100,000 characters or fewer.");
+      visit(child, depth + 1);
+    }
     ancestors.delete(item);
   }
-  visit(value);
+  visit(value, 0);
 }

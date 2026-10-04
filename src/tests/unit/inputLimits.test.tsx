@@ -56,5 +56,25 @@ describe("exportable input boundaries", () => {
     const cyclic: { self?: unknown } = {};
     cyclic.self = cyclic;
     expect(() => assertPersistableRecord(cyclic)).toThrow("circular");
+    expect(() => assertPersistableRecord({ values: [undefined] })).toThrow("missing values");
+    expect(() => assertPersistableRecord({ values: Array(1) })).toThrow("missing values");
+    const shared = { value: 3, optional: undefined };
+    expect(() => assertPersistableRecord({ first: shared, second: shared })).not.toThrow();
+  });
+
+  it("bounds nested collections and object keys without narrowing legal backup strings", () => {
+    expect(() => assertPersistableRecord({ values: Array(10000).fill("firm") })).not.toThrow();
+    expect(() => assertPersistableRecord({ values: Array(10001).fill("firm") })).toThrow("10,000");
+    expect(() => assertPersistableRecord(Object.fromEntries(Array.from({ length: 10001 }, (_, index) => [String(index), 1])))).toThrow("10,000");
+    expect(() => assertPersistableRecord({ ["x".repeat(100001)]: 1 })).toThrow("property names");
+    expect(() => assertPersistableRecord({ values: new Map([["key", 1]]) })).toThrow("plain JSON");
+  });
+
+  it("reserves the Complete Backup envelope depth for progress and pack records", () => {
+    const nested = (depth: number) => Array.from({ length: depth }).reduce<unknown>((value) => ({ child: value }), {});
+    expect(() => assertPersistableRecord(nested(15))).not.toThrow();
+    expect(() => assertPersistableRecord(nested(16))).toThrow("nesting");
+    expect(() => assertPersistableRecord(nested(17), { maxDepth: 17 })).not.toThrow();
+    expect(() => assertPersistableRecord(nested(18), { maxDepth: 17 })).toThrow("nesting");
   });
 });

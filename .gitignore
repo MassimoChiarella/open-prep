@@ -20,6 +20,7 @@ playwright/.auth/
 # Downloaded learner progress and private backups
 open-prep-complete-backup-*.json
 open-prep-progress-*.json
+open-prep-recovery-*.json
 math-drill-progress-*.json
 
 # Next.js and generated builds

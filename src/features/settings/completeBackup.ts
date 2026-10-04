@@ -1,4 +1,5 @@
 import { isPrivatePracticeRecord } from "@/features/settings/privateDataPreservation";
+import { assertBackupCompatibleRecords, inspectStoredRecord, IncompatibleStoredRecordError, type StoredRecordIssue } from "@/features/settings/recordDiagnostics";
 import { isLocalePreference, localePreferenceStorageKey, type LocalePreference } from "@/features/i18n/i18n";
 import { validateQuestionPackPayload } from "@/features/question-packs/questionPack";
 import {
@@ -15,6 +16,7 @@ import {
 import {
   localProgressExportAppId,
   localProgressExportSchemaVersion,
+  assertValidProgressRecords,
   validateLocalProgressImportPayload,
   type LocalProgressExportV1,
   type LocalProgressExportStores
@@ -97,16 +99,20 @@ export async function createCompleteBackup(
   const selectedOptionalScopes = normalizeCreationScopes(options.selectedOptionalScopes ?? []);
   const includePrivateText = selectedOptionalScopes.includes("private_text");
   const exportedAt = options.exportedAt ?? new Date().toISOString();
-  const normalizedSnapshot = toJsonValue(snapshot) as CompleteBackupSnapshot;
-  const sections: CompleteBackupSections = {
-    progress: createProgressSection(normalizedSnapshot, exportedAt, includePrivateText),
+  const progress = createProgressSection(snapshot, exportedAt, includePrivateText);
+  assertBackupCompatibleRecords({
+    ...progress.stores,
+    ...(selectedOptionalScopes.includes("packs") ? { question_packs: snapshot.question_packs } : {})
+  });
+  const sections: CompleteBackupSections = toJsonValue({
+    progress,
     ...(selectedOptionalScopes.includes("packs")
-      ? { packs: normalizedSnapshot.question_packs }
+      ? { packs: snapshot.question_packs }
       : {}),
     ...(selectedOptionalScopes.includes("preferences")
       ? { preferences: normalizePreferences(options.preferences) }
       : {})
-  };
+  });
   const unsigned: CompleteBackupUnsignedV1 = {
     app: completeBackupAppId,
     format: completeBackupFormat,
@@ -126,6 +132,11 @@ export async function createCompleteBackup(
   const validation = await validateCompleteBackupPayload(backup, { sourceBytes });
 
   if (validation.status === "invalid") {
+    assertValidProgressRecords(progress.stores);
+    for (const pack of sections.packs ?? []) {
+      const issues = inspectBackupPackRecord(pack);
+      if (issues.length > 0) throw new IncompatibleStoredRecordError(issues);
+    }
     throw new Error(validation.errors[0] ?? "Complete backup is invalid.");
   }
 
@@ -451,6 +462,17 @@ function validatePacks(value: unknown, addError: (error: string) => void): Quest
   });
 
   return packs.length === value.length ? packs : undefined;
+}
+
+export function inspectBackupPackRecord(record: unknown): StoredRecordIssue[] {
+  const issues = inspectStoredRecord("question_packs", record);
+  if (issues.length > 0) return issues;
+  const errors: string[] = [];
+  validatePacks([toJsonValue(record)], (error) => errors.push(error));
+  return errors.length === 0 ? [] : [{
+    storeName: "question_packs", recordId: isPlainRecord(record) && typeof record.id === "string" ? record.id : "(invalid record ID)",
+    path: "", reason: "Installed pack has invalid or non-canonical saved fields."
+  }];
 }
 
 function validateCatalogProvenance(
