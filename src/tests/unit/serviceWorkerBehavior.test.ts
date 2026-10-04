@@ -15,6 +15,28 @@ const currentReadyKey = `/__${cacheVersion}-ready`;
 const previousCacheName = "math-drill-offline-previous:static";
 
 describe("service worker cache lifecycle", () => {
+  it.each(["worker", "sharedworker"] as const)("preserves requested bootstrap parameters for a cached %s", async (destination) => {
+    const pathname = "/_next/static/chunks/turbopack-worker.js";
+    const harness = createHarness({ precacheDependencies: [pathname], fetch: vi.fn().mockRejectedValue(new TypeError("offline")) });
+    const cached = new Response("worker bootstrap", {
+      headers: { "Content-Type": "text/javascript", "X-Fixture": "intact" }, status: 200, statusText: "OK"
+    });
+    Object.defineProperty(cached, "url", { value: `${appOrigin}${pathname}` });
+    await harness.put(currentCacheName, pathname, cached);
+
+    const response = await harness.dispatchFetch(`${pathname}#params=%5B%22entry.js%22%5D`, "same-origin", destination);
+
+    // Fetch uses the original worker URL when a synthetic response has no URL.
+    expect(response.url).toBe("");
+    expect(response.status).toBe(200);
+    expect(response.statusText).toBe("OK");
+    expect(response.headers.get("Content-Type")).toBe("text/javascript");
+    expect(response.headers.get("X-Fixture")).toBe("intact");
+    expect(await response.text()).toBe("worker bootstrap");
+    const ordinaryScript = await harness.dispatchFetch(pathname, "cors", "script");
+    expect(ordinaryScript.url).toBe(`${appOrigin}${pathname}`);
+  });
+
   for (const failure of ["open", "match", "put"] as const) {
     it.each(["/_next/static/chunks/runtime.js", "/question-pack-author-guide.md"])(
       `preserves a successful response for %s when runtime cache ${failure} fails`,
@@ -298,11 +320,12 @@ function createHarness(options: HarnessOptions = {}) {
   return {
     cacheNames: () => cacheStorage.keys(),
     failRuntimeCache: (operation: "open" | "match" | "put") => { cacheStorage.failure = operation; },
-    dispatchFetch: async (pathname: string, mode: RequestMode = "navigate") => {
+    dispatchFetch: async (pathname: string, mode: RequestMode = "navigate", destination: RequestDestination = "") => {
       let responsePromise: Promise<Response> | undefined;
       const lifetimePromises: Promise<unknown>[] = [];
       const event: MockEvent = {
         request: {
+          destination,
           headers: new Headers(),
           method: "GET",
           mode,
@@ -339,6 +362,7 @@ function createHarness(options: HarnessOptions = {}) {
 
 interface MockEvent {
   request?: {
+    destination: RequestDestination;
     headers: Headers;
     method: string;
     mode: string;
@@ -398,13 +422,20 @@ class MockCache {
 
   async match(key: RequestInfo | URL): Promise<Response | undefined> {
     if (this.failure() === "match") throw new Error("cache match failed");
-    return this.responses.get(normalizeCacheKey(key))?.clone();
+    const response = this.responses.get(normalizeCacheKey(key));
+    return response === undefined ? undefined : cloneCachedResponse(response);
   }
 
   async put(key: RequestInfo | URL, response: Response): Promise<void> {
     if (this.failure() === "put") throw new Error("cache put failed");
-    this.responses.set(normalizeCacheKey(key), response.clone());
+    this.responses.set(normalizeCacheKey(key), cloneCachedResponse(response));
   }
+}
+
+function cloneCachedResponse(response: Response): Response {
+  const clone = response.clone();
+  Object.defineProperty(clone, "url", { value: response.url });
+  return clone;
 }
 
 function normalizeCacheKey(input: RequestInfo | URL): string {

@@ -213,6 +213,10 @@ async function cacheFirst(request, cacheKey) {
   const cached = await matchFromCurrentCache(cacheKey);
 
   if (cached !== undefined) {
+    if (request.destination === "worker" || request.destination === "sharedworker") {
+      // An empty response URL keeps the worker's requested bootstrap fragment.
+      return new Response(cached.body, { headers: cached.headers, status: cached.status, statusText: cached.statusText });
+    }
     return cached;
   }
 

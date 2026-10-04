@@ -1,12 +1,12 @@
 import { expect, test } from "@playwright/test";
 
-test("complete backup preparation and download work with the bundled worker offline", async ({ context, page }) => {
+test("complete backup preparation and download work with the bundled worker offline", { tag: "@browser-smoke" }, async ({ context, page }) => {
   await page.goto("/settings/");
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.reload();
   await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
   await context.setOffline(true);
-  await page.getByTestId("settings-local-data").locator("summary").click();
+  await page.getByTestId("settings-local-data").locator(":scope > summary").click();
   const workerCreated = page.waitForEvent("worker");
   await page.getByRole("button", { name: "Prepare Complete Backup", exact: true }).click();
   const worker = await workerCreated;
@@ -43,7 +43,7 @@ test("canceling or changing scopes terminates preparation before accepting a lat
     });
   });
   await page.goto("/settings/");
-  await page.getByTestId("settings-local-data").locator("summary").click();
+  await page.getByTestId("settings-local-data").locator(":scope > summary").click();
   const prepare = page.getByRole("button", { name: "Prepare Complete Backup", exact: true });
   await prepare.click();
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
