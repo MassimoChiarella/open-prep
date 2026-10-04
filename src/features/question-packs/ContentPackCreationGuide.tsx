@@ -111,6 +111,7 @@ export function ContentPackCreationGuide() {
               <h3 className="min-w-0 text-sm font-semibold text-ink">{t(step.title)}</h3>
               <InfoHint
                 align={index === 0 ? "start" : index < 3 ? "center" : "end"}
+                alignEndOnMobile
                 label={t("About {step}", { step: t(step.title) })}
               >
                 {t(step.help)}

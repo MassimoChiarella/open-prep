@@ -4,6 +4,19 @@ import { describe, expect, it } from "vitest";
 import { InfoHint } from "@/components/InfoHint";
 
 describe("InfoHint", () => {
+  it("keeps shared alignment and opts into mobile end alignment only when requested", () => {
+    const { rerender } = render(<InfoHint align="start" label="Position">Help</InfoHint>);
+    fireEvent.focus(screen.getByRole("button"));
+    expect(screen.getByRole("tooltip")).toHaveClass("start-0");
+    expect(screen.getByRole("tooltip")).not.toHaveClass("end-0");
+    rerender(<InfoHint align="start" alignEndOnMobile label="Position">Help</InfoHint>);
+    expect(screen.getByRole("tooltip")).toHaveClass("end-0", "sm:start-0");
+    rerender(<InfoHint align="center" label="Position">Help</InfoHint>);
+    expect(screen.getByRole("tooltip")).toHaveClass("start-1/2", "-translate-x-1/2", "rtl:translate-x-1/2");
+    rerender(<InfoHint align="end" label="Position">Help</InfoHint>);
+    expect(screen.getByRole("tooltip")).toHaveClass("end-0");
+  });
+
   it("exposes help on focus and closes it with Escape", () => {
     render(<InfoHint label="About this step">Helpful context</InfoHint>);
 

@@ -175,6 +175,12 @@ describe("QuestionPackBuilder", () => {
     const onPreview = vi.fn();
     render(<QuestionPackBuilder onPreview={onPreview} />);
 
+    fireEvent.change(screen.getByLabelText("Pack title"), { target: { value: "Duplicate IDs" } });
+    for (const [label, value] of [
+      ["Question 1 prompt", "What is 1 + 1?"], ["Question 1 answer value", "2"],
+      ["Question 1 explanation summary", "Add the values."], ["Question 1 explanation steps", "1 + 1 = 2."]
+    ]) fireEvent.change(screen.getByLabelText(label), { target: { value } });
+
     fireEvent.click(screen.getByRole("button", { name: "Add Question" }));
     setEditorOpen(screen.getAllByTestId("builder-question")[1]!, true);
     const duplicateId = screen.getByLabelText("Question 2 ID");

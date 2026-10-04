@@ -89,6 +89,18 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
     questionsRef.current = questions;
   }, [questions]);
 
+  useEffect(() => {
+    const key = Object.keys(questionErrors)[0];
+    if (key === undefined) return;
+    const editor = formRef.current?.querySelector<HTMLDetailsElement>(`[data-question-key="${key}"]`);
+    const field = editor?.querySelector<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(':invalid, [aria-invalid="true"]');
+    if (field !== null && field !== undefined) {
+      revealContainingDetails(field);
+      field.focus();
+      field.reportValidity();
+    }
+  }, [questionErrors]);
+
   const markDirty = useCallback(() => {
     markUnsaved();
     onDraftChange?.();
@@ -191,21 +203,21 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    // Validate metadata first, then every question in order, including unmounted editors.
+    const metadataField = Array.from(event.currentTarget.querySelectorAll<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>("input, textarea, select"))
+      .find((field) => field.closest('[data-testid="builder-question"]') === null && !field.checkValidity());
+    if (metadataField !== undefined) {
+      revealContainingDetails(metadataField);
+      metadataField.focus();
+      metadataField.reportValidity();
+      return;
+    }
     const nextErrors = validateQuestionDrafts(questions);
     setQuestionErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) {
-      const key = Object.keys(nextErrors)[0];
-      const editor = formRef.current?.querySelector<HTMLDetailsElement>(`[data-question-key="${key}"]`);
-      if (editor !== null && editor !== undefined) editor.open = true;
-      window.requestAnimationFrame(() => {
-        const invalidField = editor?.querySelector<HTMLElement>(':invalid, [aria-invalid="true"]');
-        invalidField?.focus();
-        if (invalidField instanceof HTMLInputElement || invalidField instanceof HTMLTextAreaElement) {
-          invalidField.reportValidity();
-        }
-      });
       return;
     }
+    if (!event.currentTarget.reportValidity()) return;
 
     onPreview({
       format: "math-drill-question-pack",
@@ -233,10 +245,10 @@ export function QuestionPackBuilder({ onDraftChange, onPreview }: QuestionPackBu
 
       <form
         className="mt-5 grid min-w-0 gap-5"
+        noValidate
         onChange={markDirty}
         onInvalid={(event) => {
-          const collapsedSection = (event.target as HTMLElement).closest<HTMLDetailsElement>("details");
-          if (collapsedSection !== null) collapsedSection.open = true;
+          revealContainingDetails(event.target as HTMLElement);
         }}
         onSubmit={handleSubmit}
         ref={formRef}
@@ -796,7 +808,7 @@ function validateQuestionDrafts(questions: QuestionDraft[]): Record<number, Ques
   const ids = new Set<string>();
 
   for (const question of questions) {
-    const id = question.id.trim();
+    const id = question.id;
     if (id === "") {
       return { [question.key]: { id: "empty" } };
     }
@@ -807,9 +819,6 @@ function validateQuestionDrafts(questions: QuestionDraft[]): Record<number, Ques
       return { [question.key]: { id: "duplicate" } };
     }
     ids.add(id);
-  }
-
-  for (const question of questions) {
     if (hasInvalidNativeField(question)) {
       return { [question.key]: { invalid: true } };
     }
@@ -857,4 +866,12 @@ function hasInvalidNativeField(question: QuestionDraft): boolean {
   }
 
   return false;
+}
+
+function revealContainingDetails(field: HTMLElement): void {
+  let section = field.closest<HTMLDetailsElement>("details");
+  while (section !== null) {
+    section.open = true;
+    section = section.parentElement?.closest<HTMLDetailsElement>("details") ?? null;
+  }
 }

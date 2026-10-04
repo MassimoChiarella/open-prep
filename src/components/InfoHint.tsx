@@ -7,6 +7,12 @@ import { cx } from "@/components/uiStyles";
 type InfoHintAlignment = "center" | "end" | "start";
 
 const alignmentClasses: Record<InfoHintAlignment, string> = {
+  center: "start-1/2 -translate-x-1/2 rtl:translate-x-1/2",
+  end: "end-0",
+  start: "start-0"
+};
+
+const mobileEndAlignmentClasses: Record<InfoHintAlignment, string> = {
   center: "end-0 sm:end-auto sm:start-1/2 sm:-translate-x-1/2 sm:rtl:translate-x-1/2",
   end: "end-0",
   start: "end-0 sm:end-auto sm:start-0"
@@ -14,10 +20,12 @@ const alignmentClasses: Record<InfoHintAlignment, string> = {
 
 export function InfoHint({
   align = "start",
+  alignEndOnMobile = false,
   children,
   label
 }: {
   align?: InfoHintAlignment;
+  alignEndOnMobile?: boolean;
   children: ReactNode;
   label: string;
 }) {
@@ -86,7 +94,7 @@ export function InfoHint({
         <span
           className={cx(
             "absolute top-full z-20 mt-1 w-64 max-w-[calc(100vw-2rem)] border border-ink/20 bg-ink px-3 py-2 text-start text-xs font-normal leading-5 text-white shadow-sm",
-            alignmentClasses[align]
+            alignEndOnMobile ? mobileEndAlignmentClasses[align] : alignmentClasses[align]
           )}
           id={tooltipId}
           role="tooltip"

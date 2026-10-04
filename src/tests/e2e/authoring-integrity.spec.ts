@@ -91,6 +91,8 @@ for (const locale of ["en", "ar"] as const) {
   for (const { fontSize, width } of [
     { fontSize: "100%", width: 320 },
     { fontSize: "100%", width: 390 },
+    { fontSize: "100%", width: 844 },
+    { fontSize: "100%", width: 1280 },
     { fontSize: "200%", width: 768 }
   ]) {
     test(`authoring hints stay inside the ${width}px viewport at ${fontSize} text in ${locale}`, async ({ page }) => {
