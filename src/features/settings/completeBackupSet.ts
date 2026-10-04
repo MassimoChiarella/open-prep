@@ -7,6 +7,7 @@ import {
   type CompleteBackupV1
 } from "@/features/settings/completeBackup";
 import { isPrivatePracticeRecord } from "@/features/settings/privateDataPreservation";
+import { assertBackupCompatibleRecords } from "@/features/settings/recordDiagnostics";
 import { completeBackupLimits } from "@/features/settings/localDataInventory";
 import { appStoreNames, type AppStoreName } from "@/lib/storage/appStorageTypes";
 
@@ -26,6 +27,11 @@ export interface CompleteBackupPart {
 }
 
 export type CompleteBackupFile = CompleteBackupV1 | CompleteBackupPart;
+export interface SerializedCompleteBackupFile {
+  file: CompleteBackupFile;
+  fileBytes: number;
+  serialized: string;
+}
 export type CompleteBackupSetValidation =
   | { backups: CompleteBackupV1[]; files: CompleteBackupFile[]; sourceBytes: number; status: "valid" }
   | { errors: string[]; status: "invalid" };
@@ -49,12 +55,24 @@ export async function createCompleteBackupSet(
   snapshot: CompleteBackupSnapshot,
   options: CompleteBackupCreationOptions = {}
 ): Promise<CompleteBackupFile[]> {
+  return (await createSerializedCompleteBackupSet(snapshot, options)).map(({ file }) => file);
+}
+
+export async function createSerializedCompleteBackupSet(
+  snapshot: CompleteBackupSnapshot,
+  options: CompleteBackupCreationOptions = {},
+  signal?: AbortSignal
+): Promise<SerializedCompleteBackupFile[]> {
+  signal?.throwIfAborted();
   const exportedAt = options.exportedAt ?? new Date().toISOString();
   const scopes = options.selectedOptionalScopes ?? [];
   const chunks: CompleteBackupSnapshot[] = [];
   let chunk = emptySnapshot();
   let count = 0;
   let estimatedBytes = 0;
+  let minimumSetBytes = 0;
+  let recordsSinceYield = 0;
+  let batchStarted = performance.now();
   const flush = () => {
     chunks.push(chunk);
     if (chunks.length > completeBackupSetLimits.maxParts) throw capacityError();
@@ -71,35 +89,47 @@ export async function createCompleteBackupSet(
       const includedRecord = !scopes.includes("private_text") && storeName === "market_sizing_attempts" && "note" in record
         ? Object.fromEntries(Object.entries(record).filter(([key]) => key !== "note"))
         : record;
+      assertBackupCompatibleRecords({ [storeName]: [includedRecord] });
       const serialized = JSON.stringify(includedRecord, null, 2);
-      const recordBytes = new TextEncoder().encode(serialized).byteLength + serialized.split("\n").length * 10;
+      const serializedBytes = new TextEncoder().encode(serialized).byteLength;
+      // Wrapping records only adds bytes. Reject a certainly oversized set before
+      // copying and validating every part; final exact bounds remain below.
+      minimumSetBytes += serializedBytes;
+      if (minimumSetBytes > completeBackupSetLimits.maxBytes) throw capacityError();
+      const recordBytes = serializedBytes + serialized.split("\n").length * 10;
       if (count > 0 && (count >= recordsPerPart || estimatedBytes + recordBytes > targetPartBytes ||
         (storeName === "question_packs" && chunk.question_packs.length >= completeBackupLimits.maxQuestionPacks))) flush();
       (chunk[storeName] as unknown[]).push(includedRecord);
       count += 1;
       estimatedBytes += recordBytes;
+      recordsSinceYield += 1;
+      if (recordsSinceYield >= 250 || performance.now() - batchStarted >= 8) {
+        await yieldToBrowser(signal);
+        recordsSinceYield = 0;
+        batchStarted = performance.now();
+      }
     }
   }
   if (count > 0 || chunks.length === 0) flush();
 
   const backups: CompleteBackupV1[] = [];
   for (const partSnapshot of chunks) {
+    await yieldToBrowser(signal);
     backups.push(await createCompleteBackup(partSnapshot, { ...options, exportedAt }));
   }
   if (backups.length === 1) {
     const files = [backups[0]];
-    ensureSetBounds(files);
-    return files;
+    return serializeAndCheckSetBounds(files, signal);
   }
 
   const setId = await calculateCompleteBackupChecksum(backups.map((backup) => backup.checksum.value));
   const files: CompleteBackupPart[] = [];
   for (const [index, backup] of backups.entries()) {
+    await yieldToBrowser(signal);
     const unsigned = { format: partFormat, schemaVersion: 1, setId, part: index + 1, parts: backups.length, backup } as const;
     files.push({ ...unsigned, checksum: { algorithm: "SHA-256", value: await calculateCompleteBackupChecksum(unsigned) } });
   }
-  ensureSetBounds(files);
-  return files;
+  return serializeAndCheckSetBounds(files, signal);
 }
 
 export async function validateCompleteBackupSet(
@@ -184,14 +214,27 @@ export async function validateCompleteBackupSet(
   }
 }
 
-function ensureSetBounds(files: CompleteBackupFile[]) {
+async function serializeAndCheckSetBounds(files: CompleteBackupFile[], signal?: AbortSignal): Promise<SerializedCompleteBackupFile[]> {
   let bytes = 0;
+  const prepared: SerializedCompleteBackupFile[] = [];
   for (const file of files) {
-    const fileBytes = new TextEncoder().encode(serializeCompleteBackupFile(file)).byteLength;
+    await yieldToBrowser(signal);
+    const serialized = serializeCompleteBackupFile(file);
+    const fileBytes = new TextEncoder().encode(serialized).byteLength;
     if (fileBytes > completeBackupLimits.maxFileBytes) throw new Error("A backup record exceeds the 40 MiB file limit.");
     bytes += fileBytes;
+    if (bytes > completeBackupSetLimits.maxBytes) throw capacityError();
+    prepared.push({ file, fileBytes, serialized });
   }
   if (files.length > completeBackupSetLimits.maxParts || bytes > completeBackupSetLimits.maxBytes) throw capacityError();
+  signal?.throwIfAborted();
+  return prepared;
+}
+
+async function yieldToBrowser(signal?: AbortSignal): Promise<void> {
+  signal?.throwIfAborted();
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
+  signal?.throwIfAborted();
 }
 
 function capacityError(): Error {

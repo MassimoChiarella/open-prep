@@ -5,6 +5,7 @@ import { createDrillSettings } from "@/features/drills/drillSettings";
 import { localePreferenceStorageKey } from "@/features/i18n/i18n";
 import { createCompleteBackupFromStorage, createCompleteBackupFilesFromStorage } from "@/features/settings/completeBackupStorage";
 import { serializeCompleteBackupFile } from "@/features/settings/completeBackupSet";
+import { publishLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import { createLocalProgressExport, serializeLocalProgressExport } from "@/features/settings/localProgressExport";
 import { createUserSettingsRecord } from "@/features/settings/settingsPersistence";
 import { LocalSettingsView } from "@/features/settings/LocalSettingsView";
@@ -361,6 +362,38 @@ describe("LocalSettingsView", () => {
     expect(within(localData).queryByRole("button", { name: "Restore Selected Sections" })).not.toBeInTheDocument();
   });
 
+  it("cancels pending preparation immediately and can prepare a fresh backup", async () => {
+    const storage = new MemoryAppStorage();
+    render(<LocalSettingsView storageFactory={() => storage} />);
+    await screen.findByText(/Built-in defaults initialize/);
+    openDisclosure("settings-local-data");
+    const original = storage.getSnapshot.bind(storage);
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    vi.spyOn(storage, "getSnapshot").mockImplementation(async (stores) => { await gate; return original(stores); });
+    fireEvent.click(screen.getByRole("button", { name: "Prepare Complete Backup" }));
+    expect(screen.getByRole("button", { name: "Preparing backup..." })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.getByRole("button", { name: "Prepare Complete Backup" })).toBeEnabled();
+    await act(async () => { release(); await new Promise((resolve) => setTimeout(resolve, 0)); });
+    expect(screen.queryByTestId("complete-backup-export-preview")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Prepare Complete Backup" }));
+    expect(await screen.findByTestId("complete-backup-export-preview")).toBeInTheDocument();
+  });
+
+  it("discards prepared bytes and confirmation when local data is invalidated", async () => {
+    const storage = new MemoryAppStorage();
+    render(<LocalSettingsView storageFactory={() => storage} />);
+    openDisclosure("settings-local-data");
+    fireEvent.click(screen.getByRole("button", { name: "Prepare Complete Backup" }));
+    const preview = await screen.findByTestId("complete-backup-export-preview");
+    fireEvent.click(within(preview).getByRole("checkbox"));
+    await act(async () => { publishLocalDataInvalidation("progress_replaced", { broadcastChannelFactory: null }); });
+    expect(screen.queryByTestId("complete-backup-export-preview")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Prepare Complete Backup" }));
+    expect(within(await screen.findByTestId("complete-backup-export-preview")).getByRole("button", { name: "Download Complete Backup" })).toBeDisabled();
+  });
+
   it("downloads numbered parts explicitly and requires the complete set before restoring", async () => {
     const source = new MemoryAppStorage();
     for (let index = 0; index < 5_001; index += 1) {
@@ -372,7 +405,7 @@ describe("LocalSettingsView", () => {
     const sourceView = render(<LocalSettingsView storageFactory={() => source} />);
     openDisclosure("settings-local-data");
     fireEvent.click(screen.getByRole("button", { name: "Prepare Complete Backup" }));
-    const firstDownload = await screen.findByRole("button", { name: "Download Part 1 of 2" });
+    const firstDownload = await screen.findByRole("button", { name: "Download Part 1 of 2" }, { timeout: 5_000 });
     expect(firstDownload).toBeDisabled();
     fireEvent.click(screen.getByLabelText("I understand this download contains the selected cleartext data."));
     fireEvent.click(firstDownload);

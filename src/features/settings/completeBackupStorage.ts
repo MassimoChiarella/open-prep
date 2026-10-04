@@ -9,7 +9,10 @@ import {
   type CompleteBackupV1
 } from "@/features/settings/completeBackup";
 import {
+  backupFromFile,
+  buildCompleteBackupPartFileName,
   createCompleteBackupSet,
+  createSerializedCompleteBackupSet,
   validateCompleteBackupSet,
   type CompleteBackupFile
 } from "@/features/settings/completeBackupSet";
@@ -48,6 +51,45 @@ export interface CompleteBackupSummary {
   privateEntryCount: number;
   progressRecordCount: number;
   schemaVersion: number;
+}
+
+export interface PreparedCompleteBackup {
+  files: { blob: Blob; fileName: string }[];
+  summary: CompleteBackupSummary;
+}
+
+/** Prepare the exact download bytes once; React never receives the history tree. */
+export async function prepareCompleteBackupFilesFromStorage(
+  storage: AppStorage,
+  options: CompleteBackupCreationOptions = {},
+  expectedGeneration?: number,
+  signal?: AbortSignal
+): Promise<PreparedCompleteBackup> {
+  signal?.throwIfAborted();
+  const generation = expectedGeneration ?? await storage.getGeneration();
+  const checkGeneration = () => storage.atomic({ stores: [], expectedGeneration: generation }, () => ({ operations: [], result: undefined }));
+  await checkGeneration();
+  const snapshot = await storage.getSnapshot(completeBackupStoreNames);
+  signal?.throwIfAborted();
+  const serializedFiles = await createSerializedCompleteBackupSet(snapshot, options, signal);
+  const files: PreparedCompleteBackup["files"] = [];
+  const summaries: CompleteBackupSummary[] = [];
+  for (const { file, fileBytes, serialized } of serializedFiles) {
+    signal?.throwIfAborted();
+    files.push({ blob: new Blob([serialized], { type: "application/json" }), fileName: buildCompleteBackupPartFileName(file) });
+    summaries.push(createCompleteBackupSummary(backupFromFile(file), fileBytes));
+    await yieldToBrowser();
+  }
+  await checkGeneration();
+  signal?.throwIfAborted();
+  const summary = summaries.reduce((total, part) => ({
+    ...total,
+    fileBytes: total.fileBytes + part.fileBytes,
+    packCount: total.packCount + part.packCount,
+    privateEntryCount: total.privateEntryCount + part.privateEntryCount,
+    progressRecordCount: total.progressRecordCount + part.progressRecordCount
+  }), { ...summaries[0], fileBytes: 0, packCount: 0, privateEntryCount: 0, progressRecordCount: 0 });
+  return { files, summary };
 }
 
 export async function createCompleteBackupFromStorage(
