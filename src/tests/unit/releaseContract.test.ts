@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readFile, rm, symlink, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 
@@ -102,6 +102,8 @@ describe("release output freshness", () => {
     await writeFile(path.join(projectDirectory, "package.json"), JSON.stringify({ version: source.version }));
     await writeFile(path.join(outputDirectory, "_next/static/chunks/lazy.js"), "const lazy = true;");
     await writeFile(path.join(outputDirectory, "_next/static/chunks/app.css"), "body { color: black; }");
+    await writeFile(path.join(outputDirectory, "_next/static/chunks/lazy.js.map"), "C:\\Users\\person\\private-source");
+    await writeFile(path.join(outputDirectory, "_next/static/chunks/app.css.map"), "private stylesheet source");
     await writeFile(path.join(outputDirectory, "__next._full.txt"), "navigation payload");
     await writeFile(path.join(outputDirectory, "index.txt"), "root navigation payload");
     await writeFile(path.join(outputDirectory, "authoring.md"), "optional download");
@@ -121,6 +123,12 @@ describe("release output freshness", () => {
       expect(generatedWorker).toContain(`"/${asset}"`);
     }
     expect(state.corePaths).not.toContain("authoring.md");
+    expect(state.corePaths.some((asset: string) => asset.endsWith(".map"))).toBe(false);
+    expect(generatedWorker).not.toContain(".map");
+    for (const map of ["lazy.js.map", "app.css.map"]) {
+      await expect(readFile(path.join(outputDirectory, "_next/static/chunks", map))).rejects.toMatchObject({ code: "ENOENT" });
+    }
+    expect(await readFile(path.join(outputDirectory, "_next/static/chunks/lazy.js"), "utf8")).toBe("const lazy = true;");
     expect(await readFile(path.join(outputDirectory, "_headers"), "utf8")).toContain("Content-Security-Policy:");
 
     const finalized = runFinalizer(projectDirectory, "finalize", outputDirectory, statePath);
@@ -132,7 +140,7 @@ describe("release output freshness", () => {
     })).resolves.toMatchObject({ marker: { artifact: { cacheId: state.cacheId } } });
   });
 
-  it("does not write a marker when output changes after worker generation", async () => {
+  it.each(["index.html", "_next/static/chunks/app.js.map"])("does not write a marker when %s changes after worker generation", async (changedPath) => {
     const projectDirectory = await createTemporaryOutput();
     const outputDirectory = await seedStaticOutput(path.join(projectDirectory, "out"));
     const statePath = path.join(projectDirectory, ".next", "open-prep-build-state.json");
@@ -144,11 +152,11 @@ describe("release output freshness", () => {
     ].join("\n"));
 
     expect(runFinalizer(projectDirectory, "worker", outputDirectory, statePath).status).toBe(0);
-    await writeFile(path.join(outputDirectory, "index.html"), "changed after generation");
+    await writeFile(path.join(outputDirectory, changedPath), "changed after generation");
 
     const finalized = runFinalizer(projectDirectory, "finalize", outputDirectory, statePath);
     expect(finalized.status).not.toBe(0);
-    expect(finalized.stderr).toContain("Static output changed after service-worker generation");
+    expect(finalized.stderr).toContain(changedPath.endsWith(".map") ? "Release artifact path is not allowed" : "Static output changed after service-worker generation");
     await expect(readFile(path.join(outputDirectory, RELEASE_MARKER_FILENAME))).rejects.toMatchObject({ code: "ENOENT" });
   });
 });
@@ -222,9 +230,26 @@ describe("release inventory and marker", () => {
 });
 
 describe("release privacy and path safety", () => {
+  it("refuses linked Next directories without deleting source maps outside the output", async () => {
+    const projectDirectory = await createTemporaryOutput();
+    const outputDirectory = await seedStaticOutput(path.join(projectDirectory, "out"));
+    const externalDirectory = await createTemporaryOutput();
+    const externalMap = path.join(externalDirectory, "private.js.map");
+    await writeFile(externalMap, "original private source");
+    await symlink(externalDirectory, path.join(outputDirectory, "_next/static/chunks/linked"), "junction");
+    await writeFile(path.join(projectDirectory, "package.json"), JSON.stringify({ version: source.version }));
+
+    const worker = runFinalizer(projectDirectory, "worker", outputDirectory, path.join(projectDirectory, ".next", "state.json"));
+    expect(worker.status).not.toBe(0);
+    expect(worker.stderr).toContain("Release artifacts cannot contain symbolic links");
+    expect(await readFile(externalMap, "utf8")).toBe("original private source");
+  });
+
   it("rejects nonportable paths and absolute provenance fields", () => {
     expect(() => assertPortableArtifactPath("../private.txt")).toThrow("not portable");
     expect(() => assertPortableArtifactPath("C:\\Users\\person\\private.txt")).toThrow("not portable");
+    expect(() => assertPortableArtifactPath("_next/static/chunks/app.js.map")).toThrow("not allowed");
+    expect(() => assertPortableArtifactPath("private.js.map")).toThrow("not allowed");
     expect(() => createReleaseProvenance({
       ...source,
       sourceRef: "C:\\Users\\person\\project",

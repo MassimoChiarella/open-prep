@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { lstat, mkdir, readFile, readdir, unlink, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -22,6 +22,7 @@ const statePath = path.resolve(options.get("state") ?? ".next/open-prep-build-st
 const packageJson = JSON.parse(await readFile(path.resolve("package.json"), "utf8"));
 
 if (command === "worker") {
+  await removeGeneratedNextSourceMaps();
   await writeStaticSecurityHeaders(outputDirectory);
   const workerPath = path.join(outputDirectory, "sw.js");
   const workerSource = await readFile(workerPath, "utf8");
@@ -100,6 +101,30 @@ if (command === "worker") {
   console.log(`Finalized ${marker.product} ${marker.version} (${marker.artifact.files} files).`);
 } else {
   throw new Error("Usage: node scripts/finalize-web-build.mjs <worker|finalize> [--output DIR] [--state FILE]");
+}
+
+async function removeGeneratedNextSourceMaps() {
+  const nextDirectory = path.join(outputDirectory, "_next");
+  const staticDirectory = path.join(nextDirectory, "static");
+  // Never follow linked output directories while removing generated files.
+  for (const directory of [outputDirectory, nextDirectory, staticDirectory]) {
+    const stats = await lstat(directory).catch((error) => {
+      if (error.code === "ENOENT") return undefined;
+      throw error;
+    });
+    if (stats?.isSymbolicLink()) throw new Error("Release artifacts cannot contain symbolic links.");
+    if (!stats?.isDirectory()) return;
+  }
+  await visit(staticDirectory);
+
+  async function visit(directory) {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      const entryPath = path.join(directory, entry.name);
+      if (entry.isSymbolicLink()) throw new Error("Release artifacts cannot contain symbolic links.");
+      if (entry.isDirectory()) await visit(entryPath);
+      else if (entry.isFile() && /\.(?:js|css)\.map$/.test(entry.name)) await unlink(entryPath);
+    }
+  }
 }
 
 function readCorePrecacheUrls(workerSource) {
