@@ -7,6 +7,25 @@ import { publishLocalDataInvalidation } from "@/features/settings/localDataInval
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("PrepPlanView", () => {
+  it("retains oversized target-firm text for correction without saving a partial profile", async () => {
+    const storage = new MemoryAppStorage();
+    const put = vi.spyOn(storage, "put");
+    render(<PrepPlanView storageFactory={() => storage} />);
+    const firms = await screen.findByRole("textbox", { name: /^Target firms/ });
+    const value = `${"x".repeat(50000)},${"y".repeat(50000)}`;
+    fireEvent.change(firms, { target: { value } });
+    expect(firms).toHaveValue(value);
+    expect(firms).toBeInvalid();
+    expect(screen.getByRole("alert")).toHaveTextContent("Use 100,000 characters or fewer for target firms.");
+    fireEvent.submit(firms.closest("form")!);
+    expect(put).not.toHaveBeenCalled();
+    fireEvent.change(firms, { target: { value: "Retained firm" } });
+    expect(firms).toBeValid();
+    fireEvent.click(screen.getByRole("button", { name: "Save Profile" }));
+    await screen.findByText("Your preparation profile and weekly target are saved.");
+    expect(await storage.get("practice_records", "prep-profile")).toMatchObject({ targetFirms: ["Retained firm"] });
+  });
+
   it("locks every editable control and permits only one pending save", async () => {
     const storage = new MemoryAppStorage();
     const originalPut = storage.put.bind(storage);

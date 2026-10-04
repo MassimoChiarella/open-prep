@@ -9,7 +9,7 @@ import { LoadingState } from "@/components/LoadingState";
 import { LocalSaveNotice } from "@/components/LocalSaveNotice";
 import { PageHeader } from "@/components/PageHeader";
 import { badgeClass, buttonClass, cx, uiInputs, uiText } from "@/components/uiStyles";
-import { loadPracticeAttempts, loadPrepProfile, savePrepProfile } from "@/features/case-practice/practiceRecords";
+import { arePrepProfileFirmsWithinLimit, loadPracticeAttempts, loadPrepProfile, prepProfileFirmsLimitMessage, savePrepProfile } from "@/features/case-practice/practiceRecords";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import type {
   PracticeAttemptRecord,
@@ -24,9 +24,11 @@ import {
   type WeeklyPrepRoadmap
 } from "@/features/case-practice/plan/prepPlan";
 import { loadProgressSummary, type ProgressSummary } from "@/features/progress/progressAggregation";
+import { loadBrowserProgressSummary } from "@/features/progress/browserProgress";
 import { subscribeToLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import type { AppStorage } from "@/lib/storage/appStorageTypes";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
+import { maxStoredStringLength } from "@/lib/validation/inputLimits";
 
 interface ProfileDraft {
   experienceLevel: PrepExperienceLevel;
@@ -79,50 +81,48 @@ export function PrepPlanView({
   }, []);
 
   useEffect(() => {
-    let cancelled = false;
-    let storage: AppStorage | undefined;
-    const now = new Date();
-
-    try {
-      storage = storageFactory();
-
-      void Promise.all([
-        loadPrepProfile(storage),
-        loadProgressSummary(storage, { now: now.toISOString() }),
-        loadPracticeAttempts(storage)
-      ])
-        .then(([profile, progress, attempts]) => {
-          if (cancelled) {
-            return;
-          }
-
-          if (profile !== undefined) {
-            setDraft(toDraft(profile));
-            setHasSavedProfile(true);
-          }
-
+    let active: AbortController | undefined;
+    const load = () => {
+      active?.abort();
+      const controller = new AbortController();
+      active = controller;
+      const now = new Date();
+      void (async () => {
+        let storage: AppStorage | undefined;
+        try {
+          storage = storageFactory();
+          const [profile, progress, attempts] = await Promise.all([
+            loadPrepProfile(storage),
+            storageFactory === createIndexedDbAppStorage
+              ? loadBrowserProgressSummary({ now: now.toISOString() }, controller.signal)
+              : loadProgressSummary(storage, { now: now.toISOString() }),
+            loadPracticeAttempts(storage)
+          ]);
+          if (controller.signal.aborted) return;
+          setDraft(profile === undefined ? defaultDraft : toDraft(profile));
+          setHasSavedProfile(profile !== undefined);
           setLoadState({ attempts, progress, status: "ready", today: localDateKey(now) });
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setLoadState({ status: "error" });
-          }
-        })
-        .finally(() => storage?.close());
-    } catch {
-      void Promise.resolve().then(() => {
-        if (!cancelled) {
-          setLoadState({ status: "error" });
+        } catch {
+          if (!controller.signal.aborted) setLoadState({ status: "error" });
+        } finally {
+          storage?.close();
         }
-      });
-    }
+      })();
+    };
+    const unsubscribe = subscribeToLocalDataInvalidation(() => {
+      setLoadState({ status: "loading" });
+      load();
+    });
+    load();
 
     return () => {
-      cancelled = true;
+      unsubscribe();
+      active?.abort();
     };
   }, [storageFactory]);
 
   const profile = useMemo(() => toPlanProfile(draft), [draft]);
+  const firmsTooLong = draft.targetFirms.length > maxStoredStringLength || !arePrepProfileFirmsWithinLimit(profile.targetFirms);
   const roadmap = useMemo(
     () =>
       loadState.status === "ready"
@@ -138,7 +138,7 @@ export function PrepPlanView({
 
   async function handleSave(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (saveInFlight.current) return;
+    if (saveInFlight.current || firmsTooLong) return;
     saveInFlight.current = true;
     const revision = lifecycleRevision.current;
     setSaveStatus("saving");
@@ -245,7 +245,8 @@ export function PrepPlanView({
                 <label className={cx(uiText.controlLabel, "grid gap-2 sm:col-span-2")}>
                   {t("Target firms (optional)")}
                   <input
-                    aria-describedby="target-firms-help prep-profile-shared-device-disclosure"
+                    aria-describedby={`target-firms-help prep-profile-shared-device-disclosure${firmsTooLong ? " target-firms-error" : ""}`}
+                    aria-invalid={firmsTooLong || undefined}
                     className={uiInputs.base}
                     dir="auto"
                     onChange={(event) => {
@@ -257,6 +258,7 @@ export function PrepPlanView({
                     type="text"
                     value={draft.targetFirms}
                   />
+                  {firmsTooLong ? <span id="target-firms-error" role="alert">{t(prepProfileFirmsLimitMessage)}</span> : null}
                   <span className={uiText.dense} id="target-firms-help">
                       {t("Separate firm names with commas. These are reference notes and do not change your practice priorities.")}
                   </span>
@@ -296,7 +298,7 @@ export function PrepPlanView({
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <button className={buttonClass("primary")} disabled={saveStatus === "saving"} type="submit">
+                <button className={buttonClass("primary")} disabled={saveStatus === "saving" || firmsTooLong} type="submit">
                   {saveStatus === "saving" ? t("Saving...") : hasSavedProfile ? t("Update Profile") : t("Save Profile")}
                 </button>
                 <p className={uiText.dense}>{t("Saved only in this browser.")}</p>

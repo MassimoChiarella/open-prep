@@ -12,7 +12,9 @@ import { buildRetryMissedDrillHref, buildReviewDrillHref } from "@/features/dril
 import { buildWeaknessModeDrillHref } from "@/features/drills/weaknessMode";
 import { FirstRunChoices } from "@/features/progress/FirstRunChoices";
 import type { PersonalBestRecord } from "@/features/progress/personalBests";
-import { loadProgressSummary, type ProgressSummary } from "@/features/progress/progressAggregation";
+import type { ProgressSummary } from "@/features/progress/progressAggregation";
+import { loadBrowserProgressSummary } from "@/features/progress/browserProgress";
+import { subscribeToLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import type {
   WholeProductActivitySummary,
   WholeProductRecentActivity
@@ -25,7 +27,6 @@ import {
 import { useI18n } from "@/features/i18n/I18nProvider";
 import type { ErrorType, SkillCategory, SkillTag } from "@/lib/domain";
 import { formatLabel as formatTag } from "@/lib/format";
-import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 import type { MistakeNotebookRecord } from "@/lib/storage/appStorageTypes";
 
 type LoadState =
@@ -162,33 +163,32 @@ function ProgressDataLoader({
     typeof action === "function" ? action(state.status === "loaded" ? state.summary : undefined) : action;
 
   useEffect(() => {
-    let cancelled = false;
-
-    try {
-      const storage = createIndexedDbAppStorage();
-
-      void loadProgressSummary(storage)
+    let active: AbortController | undefined;
+    const load = () => {
+      active?.abort();
+      const controller = new AbortController();
+      active = controller;
+      void loadBrowserProgressSummary({}, controller.signal)
         .then((summary) => {
-          if (!cancelled) {
+          if (!controller.signal.aborted) {
             setState({ status: "loaded", summary });
           }
         })
         .catch(() => {
-          if (!cancelled) {
+          if (!controller.signal.aborted) {
             setState({ status: "error" });
           }
-        })
-        .finally(() => storage.close());
-    } catch {
-      void Promise.resolve().then(() => {
-        if (!cancelled) {
-          setState({ status: "error" });
-        }
-      });
-    }
+        });
+    };
+    const unsubscribe = subscribeToLocalDataInvalidation(() => {
+      setState({ status: "loading" });
+      load();
+    });
+    load();
 
     return () => {
-      cancelled = true;
+      unsubscribe();
+      active?.abort();
     };
   }, []);
 
