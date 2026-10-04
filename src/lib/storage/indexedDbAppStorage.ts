@@ -26,7 +26,8 @@ import { assertPersistableRecord, maxStoredPackDepth } from "@/lib/validation/in
 
 // One document lifecycle, including adapters created later by an already-open form.
 // A successful destructive action navigates through the existing invalidation shell.
-const documentGenerations = new WeakMap<IDBFactory, Promise<number>>();
+// Retain native factory wrappers so collection cannot erase a stale document's generation.
+const documentGenerations = new Map<IDBFactory, Promise<number>>();
 
 export interface IndexedDbAppStorageOptions {
   indexedDB?: IDBFactory | null;

@@ -72,7 +72,15 @@ test("@browser-smoke a reset blocks fresh stale-page adapters without notificati
   await prepare(page);
   const second = await context.newPage();
   await prepare(second);
-  await second.evaluate(async () => { const storage = window.storageTestApi.createIndexedDbAppStorage(); await storage.getGeneration(); storage.close(); });
+  const originalGeneration = await second.evaluate(async () => {
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    const generation = await storage.getGeneration();
+    storage.close();
+    return generation;
+  });
+  expect(originalGeneration).toBe(0);
+  // Closing every adapter must not let garbage collection forget the document generation.
+  await second.requestGC();
   await page.evaluate(async () => { const storage = window.storageTestApi.createIndexedDbAppStorage(); await storage.clearAll(); storage.close(); });
   const outcome = await second.evaluate(async () => {
     const api = window.storageTestApi;
@@ -87,7 +95,7 @@ test("@browser-smoke a reset blocks fresh stale-page adapters without notificati
     storage.close();
     return { blocked, defaultGeneration, savedToken };
   });
-  expect(outcome.blocked).toBe("generation");
+  expect(outcome.blocked, JSON.stringify(outcome)).toBe("generation");
   expect(outcome.defaultGeneration).toBe(0);
   expect(outcome.savedToken).toEqual({ generation: 1, revision: 1, exists: true });
 });
