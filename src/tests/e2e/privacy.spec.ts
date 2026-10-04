@@ -2,7 +2,7 @@ import { expect, test } from "@playwright/test";
 
 test("the privacy disclosure is reachable from local-data settings @browser-smoke", async ({ page }) => {
   await page.goto("/settings/");
-  await page.getByTestId("settings-local-data").locator("summary").click();
+  await page.getByTestId("settings-local-data").locator(":scope > summary").click();
   const disclosure = page.getByRole("link", { name: "Privacy and analytics (English)" });
   await disclosure.focus();
   await disclosure.press("Enter");

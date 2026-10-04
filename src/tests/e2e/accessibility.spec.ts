@@ -147,7 +147,7 @@ test.describe("WCAG 2.2 route and state coverage", () => {
 
   test("expanded Settings and reset confirmation have no tagged A/AA axe violations", async ({ page }) => {
     await openState(page, findState("settings:default"));
-    await page.getByTestId("settings-local-data").locator("summary").click();
+    await page.getByTestId("settings-local-data").locator(":scope > summary").click();
     await expectNoWcagViolations(page, "settings:local-data-expanded");
 
     await page.locator("summary").filter({ hasText: "Reset local data" }).click();
@@ -163,7 +163,7 @@ test.describe("WCAG 2.2 route and state coverage", () => {
     await page.reload();
     await expect(page.getByRole("heading", { level: 1, name: "Local App Settings" })).toBeVisible();
 
-    const localDataSummary = page.getByTestId("settings-local-data").locator("summary");
+    const localDataSummary = page.getByTestId("settings-local-data").locator(":scope > summary");
     await localDataSummary.click();
     await page.getByRole("button", { name: "Prepare Complete Backup" }).click();
     await expect(page.getByTestId("complete-backup-export-preview")).toBeVisible();

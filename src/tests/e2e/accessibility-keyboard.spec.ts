@@ -317,7 +317,7 @@ test("a keyboard user protects storage and round-trips local backups", async ({ 
 
   await page.goto("/settings");
 
-  const localDataSummary = page.getByTestId("settings-local-data").locator("summary");
+  const localDataSummary = page.getByTestId("settings-local-data").locator(":scope > summary");
   await tabTo(page, localDataSummary);
   await page.keyboard.press("Enter");
   await expect(localDataSummary.locator("..")).toHaveAttribute("open", "");

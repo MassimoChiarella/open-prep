@@ -36,7 +36,7 @@ async function createChromiumBackup(baseURL: string): Promise<Buffer> {
       await expect(page).toHaveURL(/timingAccommodation=double_time/u);
 
       await page.goto(new URL("/settings/", baseURL).href);
-      await page.getByTestId("settings-local-data").locator("summary").click();
+      await page.getByTestId("settings-local-data").locator(":scope > summary").click();
       await page.locator('select:has(option[value="dark"])').selectOption("dark");
       await page.locator('select:has(option[value="fr"])').selectOption("fr");
       await expect(page.locator("html")).toHaveAttribute("lang", "fr");
@@ -74,7 +74,7 @@ async function restoreAndVerify(browser: Browser, baseURL: string, backup: Buffe
     const unexpectedRequests = monitorUnexpectedRequests(page, baseURL);
 
     await page.goto(new URL("/settings/", baseURL).href);
-    await page.getByTestId("settings-local-data").locator("summary").click();
+    await page.getByTestId("settings-local-data").locator(":scope > summary").click();
 
     const restoreSection = page.locator('section[aria-labelledby="restore-complete-backup-heading"]');
     await restoreSection.locator('input[type="file"]').setInputFiles({

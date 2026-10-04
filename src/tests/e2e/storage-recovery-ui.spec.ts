@@ -68,7 +68,7 @@ test("legacy record recovery archives originals, requires confirmation, and pres
     };
   }), { name: appDatabaseName, records: seeded });
   await page.reload();
-  await page.getByTestId("settings-local-data").locator("summary").click();
+  await page.getByTestId("settings-local-data").locator(":scope > summary").click();
   await page.getByRole("button", { name: "Export Local Progress", exact: true }).click();
   await page.getByRole("link", { name: "Review incompatible records", exact: true }).click();
   await page.getByRole("button", { name: "Check local records", exact: true }).click();
@@ -98,7 +98,7 @@ test("legacy record recovery archives originals, requires confirmation, and pres
   for (const store of appStoreNames.filter((name) => name !== "practice_records")) expect(await readStore(page, store)).toEqual([]);
   expect(await readStore(page, "practice_records")).toEqual([sentinel]);
   await page.goto("/settings");
-  await page.getByTestId("settings-local-data").locator("summary").click();
+  await page.getByTestId("settings-local-data").locator(":scope > summary").click();
   const progressDownload = page.waitForEvent("download");
   await page.getByRole("button", { name: "Export Local Progress", exact: true }).click();
   const progress = await progressDownload;

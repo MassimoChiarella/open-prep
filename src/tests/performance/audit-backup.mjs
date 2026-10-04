@@ -41,7 +41,7 @@ try {
     await done; db.close();
   }, { count, variant });
   await page.reload({ waitUntil: 'networkidle' });
-  await page.getByTestId('settings-local-data').locator('summary').click();
+  await page.getByTestId('settings-local-data').locator(':scope > summary').click();
   const prepare = page.getByRole('button', { name: 'Prepare Complete Backup', exact: true });
   await prepare.waitFor();
   const cdp = await context.newCDPSession(page);
