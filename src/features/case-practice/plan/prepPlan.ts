@@ -4,7 +4,7 @@ import type {
   PrepExperienceLevel,
   PrepProfileRecord
 } from "@/features/case-practice/practiceTypes";
-import type { ProgressSummary } from "@/features/progress/progressAggregation";
+import type { PracticeAttemptSummary, ProgressSummary } from "@/features/progress/progressAggregation";
 
 export const minimumWeeklySessions = 1;
 export const maximumWeeklySessions = 14;
@@ -201,6 +201,8 @@ export function scorePreparationPriorities(input: PrepPlanInput): PrepPlanPriori
 
   addWeakCategoryEvidence(input.progress, "exhibit_math", "exhibits", "exhibit", addEvidence);
   addWeakCategoryEvidence(input.progress, "market_sizing", "market_sizing", "market-sizing", addEvidence);
+  addCompletedModuleEvidence(input.progress.additionalPractice?.exhibits, "exhibits", "exhibit", addEvidence);
+  addCompletedModuleEvidence(input.progress.additionalPractice?.marketSizing, "market_sizing", "market-sizing", addEvidence);
 
   const setupErrors = errorCount(input.progress, "formula_error") + errorCount(input.progress, "setup_error");
   if (setupErrors >= 2) {
@@ -306,6 +308,21 @@ function errorCount(
   errorType: ProgressSummary["errorBreakdown"][number]["errorType"]
 ): number {
   return progress.errorBreakdown.find((item) => item.errorType === errorType)?.count ?? 0;
+}
+
+function addCompletedModuleEvidence(
+  summary: PracticeAttemptSummary | undefined,
+  focusId: PrepPlanFocusId,
+  label: string,
+  addEvidence: (id: PrepPlanFocusId, points: number, reason: string) => void
+): void {
+  if (summary === undefined || summary.completedCount < 3 || summary.averageScorePercent === undefined) return;
+  const average = Math.min(1, Math.max(0, summary.averageScorePercent / 100));
+  if (average < 0.6) {
+    addEvidence(focusId, 70, `Your completed ${label} score averages ${formatPercent(average)}, so focus there first.`);
+  } else if (average < 0.8) {
+    addEvidence(focusId, 35, `Your completed ${label} score averages ${formatPercent(average)}, so reinforce it this week.`);
+  }
 }
 
 function recentAttemptAverage(

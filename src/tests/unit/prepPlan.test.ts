@@ -7,10 +7,33 @@ import {
   type PrepPlanInput,
   type PrepPlanProfile
 } from "@/features/case-practice/plan/prepPlan";
-import type { ProgressSummary } from "@/features/progress/progressAggregation";
+import { loadProgressSummary, type ProgressSummary } from "@/features/progress/progressAggregation";
 import { createWholeProductActivitySummary } from "@/features/progress/wholeProductActivity";
+import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("preparation roadmap", () => {
+  it("prioritizes poor completed exhibit and market-sizing attempts from their actual stores", async () => {
+    const poor = createWeeklyPrepRoadmap(input({ progress: await storedModuleProgress(0) }));
+    const strong = createWeeklyPrepRoadmap(input({ progress: await storedModuleProgress(100) }));
+    for (const id of ["exhibits", "market_sizing"] as const) {
+      expect(scoreOf(poor.priorities, id) - scoreOf(strong.priorities, id)).toBe(70);
+      expect(poor.items.map((item) => item.id)).toContain(id);
+      expect(poor.priorities.find((priority) => priority.id === id)?.reason).toContain("0%");
+      expect(strong.items.map((item) => item.id)).not.toContain(id);
+    }
+  });
+
+  it("requires three completed attempts and uses the normalized moderate-score threshold", async () => {
+    const insufficient = scorePreparationPriorities(input({ progress: await storedModuleProgress(0, 2) }));
+    const moderate = scorePreparationPriorities(input({ progress: await storedModuleProgress(70) }));
+    const stable = scorePreparationPriorities(input({ progress: await storedModuleProgress(80) }));
+    for (const id of ["exhibits", "market_sizing"] as const) {
+      expect(scoreOf(insufficient, id)).toBe(scoreOf(stable, id));
+      expect(scoreOf(moderate, id) - scoreOf(stable, id)).toBe(35);
+      expect(moderate.find((priority) => priority.id === id)?.reason).toContain("70%");
+    }
+  });
+
   it("starts a new user with a benchmark and allocates the full weekly target", () => {
     const roadmap = createWeeklyPrepRoadmap(input());
 
@@ -101,6 +124,24 @@ describe("preparation roadmap", () => {
     );
   });
 });
+
+async function storedModuleProgress(scorePercent: number, completedCount = 3): Promise<ProgressSummary> {
+  const storage = new MemoryAppStorage();
+  for (let index = 0; index < 5; index += 1) {
+    const timestamps = {
+      startedAt: "2026-08-10T10:00:00.000Z",
+      ...(index < completedCount ? { completedAt: "2026-08-10T10:01:00.000Z" } : {})
+    };
+    await storage.put("exhibit_attempts", {
+      ...timestamps, id: `exhibit-${index}`, exhibitId: "example", score: index < completedCount ? scorePercent : 0
+    });
+    await storage.put("market_sizing_attempts", {
+      ...timestamps, id: `sizing-${index}`, templateId: "example", maxScore: 20,
+      score: index < completedCount ? scorePercent / 5 : 0
+    });
+  }
+  return loadProgressSummary(storage);
+}
 
 function input(overrides: Partial<PrepPlanInput> = {}): PrepPlanInput {
   return {
