@@ -14,7 +14,7 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 1 | A01 privacy | Persist guided note identities; filter Standard/Complete scopes; count, clear and preserve notes; cover legacy and removed packs. | Complete: 7 focused privacy/backup files / 64 tests passed. |
 | 2 | A02 draft concurrency | Atomic draft save/delete revisions; stale resume protection; preserve local text; prevent stale recreation. | Pending |
 | 3 | A03 drill recovery | Resolve recovery before accepting answer/skip/timer actions; retain matching session token. | Complete: four focused component suites / 29 tests passed, including delayed recovery and deadline expiry. |
-| 4 | A04 benchmark locale | Stable run identity; retain unsent input and completed summaries across locale changes. | Pending |
+| 4 | A04 benchmark locale | Stable run identity; retain unsent input and completed summaries across locale changes. | Complete: locale/timing/session suites, 2 files / 23 tests passed. |
 | 5 | A05/A07 Fit state | Retain active story/prompt and review identity; prevent stale initial reads from hiding later saves. | Pending |
 | 6 | A06 backup bounds | Align Complete inner limits; total record-byte safeguards; existing oversized-record recovery; private roundtrip. | Pending |
 | 7 | A08 composed IDs | Align derived identifier limits with maximum legal pack IDs/versions and generated question suffixes. | Pending |
@@ -31,6 +31,8 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 18 | Integration | Full check, engine matrix, meaningful performance comparisons; document physical/PWA/assistive-technology gates. | Pending |
 
 ## Commit timeline
+
+- `fix(benchmark): retain sessions across locale changes`: A04: run identity, unsent answers and completed summaries survive language changes.
 
 A01: `fix(privacy): classify guided market-sizing notes` applies one shared privacy classifier to export, scope selection, preservation, inventory and clearing; metadata does not depend on an installed pack.
 

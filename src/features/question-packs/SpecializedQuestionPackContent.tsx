@@ -193,7 +193,7 @@ export function QuestionPackBenchmarkSession({
   builtInBenchmarks: readonly BenchmarkTest[];
   timingAccommodation?: TimingAccommodation;
 }) {
-  const { formatDuration: formatLocaleDuration, formatNumber, t } = useI18n();
+  const { t } = useI18n();
   const state = useInstalledPack(packId, "benchmark", storageFactory);
 
   if (state.status === "loading" || state.status === "error") {
@@ -224,15 +224,38 @@ export function QuestionPackBenchmarkSession({
     );
   }
 
-  const created = createBenchmarkSessionResult(benchmark, timingAccommodation);
+  return (
+    <QuestionPackContentBoundary pack={boundaryPack}>
+      <LockedBenchmarkSession
+        key={JSON.stringify([benchmark.id, packId, timingAccommodation])}
+        backHref={backHref}
+        benchmark={benchmark}
+        storageFactory={storageFactory}
+        timingAccommodation={timingAccommodation}
+      />
+    </QuestionPackContentBoundary>
+  );
+}
+
+function LockedBenchmarkSession({
+  backHref,
+  benchmark,
+  storageFactory,
+  timingAccommodation
+}: {
+  backHref: string;
+  benchmark: BenchmarkTest;
+  storageFactory: () => AppStorage;
+  timingAccommodation: TimingAccommodation;
+}) {
+  const { formatDuration: formatLocaleDuration, formatNumber, t } = useI18n();
+  const [created] = useState(() => createBenchmarkSessionResult(benchmark, timingAccommodation));
   if (created.status === "error") {
     return (
-      <QuestionPackContentBoundary pack={boundaryPack}>
-        <BenchmarkSessionError
-          backHref={backHref}
-          message={created.message}
-        />
-      </QuestionPackContentBoundary>
+      <BenchmarkSessionError
+        backHref={backHref}
+        message={created.message}
+      />
     );
   }
 
@@ -250,9 +273,7 @@ export function QuestionPackBenchmarkSession({
     : [t("This accommodated practice result is saved but excluded from Standard comparisons and personal bests.")];
 
   return (
-    <QuestionPackContentBoundary pack={boundaryPack}>
       <ActiveDrillSession
-        key={created.session.id}
         benchmarkId={benchmark.id}
         initialSession={created.session}
         lockedModeSummary={[
@@ -280,12 +301,12 @@ export function QuestionPackBenchmarkSession({
               standard: formatLocaleDuration(standardDurationSeconds)
             })}
         sessionTitle={benchmark.title}
+        storageFactory={storageFactory}
         warnings={[
           t("Benchmark mode is locked with end-of-session feedback."),
           ...accommodatedWarning
         ]}
       />
-    </QuestionPackContentBoundary>
   );
 }
 
