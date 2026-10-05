@@ -22,7 +22,7 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 9 | A10 benchmark import | Accept, validate and preserve supported currency metadata. | Complete: importer/persistence suites, 2 files / 16 tests passed. |
 | 10 | A11 monetary example | Correct sample flag; synchronize distributed copies; test generated monetary grading. | Complete: sample/authoring suites, 3 files / 76 tests passed; 16 variants at two difficulties earn full currency credit. |
 | 11 | A12 unitless sizing | Award correct no-unit output full unit credit; preserve physical/currency omission penalties. | Complete: evaluation/scoring suites, 2 files / 19 tests passed. |
-| 12 | A13 dependencies | Compatible framework/config patch; fresh advisory inventory; assess remaining reachable tooling paths. | Pending |
+| 12 | A13 dependencies | Compatible framework/config patch; fresh advisory inventory; assess remaining reachable tooling paths. | Patched: Next/config 16.3.8; brace-expansion 1.1.21 / 5.0.12. Fresh inventory: zero critical, seven high package entries share the unpatched braces tooling advisory. Integrated checks pending. |
 | 13 | A14/I03 backup performance | Worker restore validation; cancellation/identity; reuse Standard serialized output; preserve integrity and atomic restore. | Pending |
 | 14 | A15 Settings performance | Lazy inventory; bounded/native counts; correct loading/refresh/clear safeguards. | Pending |
 | 15 | A16 decimal precision | Align range validation, generation, formatting and capacity; finite bundled sweep. | Complete: generator/import range suites, 4 files / 72 tests passed, including 7,680 bundled variants. |
@@ -31,6 +31,8 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 18 | Integration | Full check, engine matrix, meaningful performance comparisons; document physical/PWA/assistive-technology gates. | Pending |
 
 ## Commit timeline
+
+- `chore(deps): patch framework and brace expansion`: A13 updates compatible locked versions; advisory inventory drops from one critical/eight high to zero critical/seven high entries sharing one unpatched tooling advisory. Lint and type checking are part of integration validation.
 
 - `fix(drills): evaluate deadlines immediately after recovery`: A03 boundary follow-up: recovered clocks are updated immediately; 8 drill component files / 45 tests passed.
 
@@ -66,6 +68,14 @@ The commit subject identifies each milestone. Add the exact verification and any
 - A09: `fix(grading): classify tolerated values consistently` — numeric acceptance now gates all numeric error classifications; unit-only partial credit and error history are covered across tolerance types.
 
 ## Open decisions and release gates
+
+### Dependency reachability and remaining upstream advisory
+
+Compatible patches remove the critical Next advisory and the brace-expansion advisories. npm resolves the requested compatible Next patch to 16.3.8; the framework and matching ESLint config are locked together. The remaining seven affected package entries (`braces`, `micromatch`, `fast-glob`, `chokidar`, `tailwindcss`, `@next/eslint-plugin-next`, `eslint-config-next`) all trace to one [unpatched braces advisory](https://github.com/advisories/GHSA-vfj7-8cjw-p6xm). The [brace-expansion advisory](https://github.com/advisories/GHSA-q2hr-2g5m-vwhr) is resolved by the locked patches.
+
+Reachability review: Tailwind reads the repository-controlled `./src/**/*.{ts,tsx}` content glob; its watch path uses repository configuration. The Next ESLint rule also resolves repository paths. These packages run during local development/build/lint and are absent from the exported browser runtime. Imported practice packs are browser-local data and never supply these tooling glob patterns. This is a reviewed residual tooling risk, not a demonstrated remotely reachable app defect and not a zero-advisory claim.
+
+Do not apply npm's suggested Next-config downgrade or Tailwind 4 major migration as an incidental security patch. Reassess when upstream provides a supported fix, or undertake a separately validated tooling migration if accepting untrusted build configuration becomes a requirement. Evidence: `.runtime-cache/audit-2026-10-04/dependency-audit-remediated.json`, `npm ls`, local Tailwind content/watch implementation, and static `next.config.mjs`.
 
 I04: the user chose independent calculation credit, with deductions limited to unit points when the calculation is correct. Implement this as an explicit policy milestone with rubric tests and documentation.
 
