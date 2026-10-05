@@ -3,6 +3,7 @@ import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 type Translations = readonly [string, string, string, string, string, string, string, string, string];
 
 const keys: Record<string, Translations> = {
+  "Checking backup files...": ["Comprobando archivos de copia de seguridad...", "Vérification des fichiers de sauvegarde…", "Sicherungsdateien werden geprüft…", "Verificando arquivos de backup...", "正在检查备份文件…", "正在檢查備份檔案…", "バックアップファイルを確認中…", "جارٍ التحقق من ملفات النسخة الاحتياطية...", "बैकअप फ़ाइलों की जाँच हो रही है..."],
   "The private draft changed or was deleted in another tab. Your current work remains here. Reload to review the saved draft before saving again.": [
     "El borrador privado cambió o se eliminó en otra pestaña. Tu trabajo actual sigue aquí. Recarga para revisar el borrador guardado antes de volver a guardar.",
     "Le brouillon privé a été modifié ou supprimé dans un autre onglet. Votre travail actuel reste ici. Rechargez pour vérifier le brouillon enregistré avant de sauvegarder à nouveau.",

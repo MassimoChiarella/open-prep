@@ -71,6 +71,48 @@ describe("LocalSettingsView", () => {
     expect(await within(contentPacks).findByTestId("question-pack-pool-settings")).toBeInTheDocument();
   });
 
+  it("defers history inventory until a data disclosure opens and refreshes after reopening", async () => {
+    const storage = new MemoryAppStorage();
+    const count = vi.spyOn(storage, "count");
+    const scan = vi.spyOn(storage, "scan");
+    const snapshot = vi.spyOn(storage, "getSnapshot");
+    render(<LocalSettingsView storageFactory={() => storage} />);
+    await screen.findByText(/Built-in defaults initialize/);
+    expect(count).not.toHaveBeenCalled();
+    expect(scan).not.toHaveBeenCalled();
+    expect(snapshot).not.toHaveBeenCalled();
+
+    const disclosure = openDisclosure("settings-reset");
+    await within(disclosure).findByText("IndexedDB records");
+    expect(count).toHaveBeenCalledTimes(appStoreNames.length);
+    expect(scan).toHaveBeenCalledTimes(2);
+    expect(snapshot).not.toHaveBeenCalled();
+    fireEvent.click(disclosure.querySelector("summary") as HTMLElement);
+    await waitFor(() => expect(disclosure).not.toHaveAttribute("open"));
+    await storage.put("practice_records", { id: "new-story", kind: "fit_story" } as never);
+    openDisclosure("settings-reset");
+    await waitFor(() => expect(disclosure).toHaveTextContent("Fit stories1"));
+    expect(count).toHaveBeenCalledTimes(appStoreNames.length * 2);
+  });
+
+  it("keeps personal and all-data confirmations disabled while inventory is still reading", async () => {
+    const storage = new MemoryAppStorage();
+    await seedPersonalData(storage);
+    const originalCount = storage.count.bind(storage);
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => { release = resolve; });
+    vi.spyOn(storage, "count").mockImplementation(async (store) => { await pending; return originalCount(store); });
+    render(<LocalSettingsView storageFactory={() => storage} />);
+    const disclosure = openDisclosure("settings-reset");
+    const personal = within(disclosure).getByLabelText("I understand this removes only the personal text listed above.");
+    const allData = within(disclosure).getByLabelText("I understand this clears all saved app data from this browser.");
+    expect(personal).toBeDisabled();
+    expect(allData).toBeDisabled();
+    await act(async () => { release(); });
+    await waitFor(() => expect(personal).toBeEnabled());
+    expect(allData).toBeEnabled();
+  });
+
   it("opens and mounts question-pool settings after a hash change", async () => {
     render(<LocalSettingsView storageFactory={() => new MemoryAppStorage()} />);
 
@@ -319,6 +361,7 @@ describe("LocalSettingsView", () => {
     openDisclosure("settings-local-data");
     const input = screen.getByLabelText("Choose a complete backup file");
     fireEvent.change(input, { target: { files: [oldFile] } });
+    await waitFor(() => expect(typeof resolveOld).toBe("function"));
     fireEvent.change(input, { target: { files: [testFile(JSON.stringify(newer), "new.json")] } });
     const preview = await screen.findByTestId("complete-backup-restore-preview");
     fireEvent.click(within(preview).getByLabelText("I understand the selected sections will be replaced on this device."));

@@ -31,6 +31,7 @@ export interface CompleteBackupStorageCreationOptions extends Omit<CompleteBacku
 }
 
 export interface CompleteBackupRestoreOptions {
+  expectedGeneration?: number;
   preferenceStorage?: PreferenceWriter;
   sourceBytes?: number;
   sourceSizes?: readonly number[];
@@ -142,6 +143,19 @@ export async function restoreCompleteBackupFiles(
     throw new Error(validation.errors[0] ?? "Complete backup is invalid.");
   }
 
+  const backup = await replaceValidatedCompleteBackupSet(storage, validation, options.expectedGeneration);
+  const preferences = restoreCompleteBackupPreferences(backup.selectedScopes.includes("preferences") ? backup.sections.preferences : undefined, options.preferenceStorage);
+  publishLocalDataInvalidation("progress_replaced");
+  return { backup, preferences };
+}
+
+/** Accept only the output of full schema/set/checksum validation, kept inside the restore worker. */
+export async function replaceValidatedCompleteBackupSet(
+  storage: AppStorage,
+  validation: Extract<Awaited<ReturnType<typeof validateCompleteBackupSet>>, { status: "valid" }>,
+  expectedGeneration?: number
+): Promise<CompleteBackupRestoreResult["backup"]> {
+
   const first = validation.backups[0];
   const progressStores = Object.fromEntries(
     progressStoreNames.map((storeName) => [storeName, []])
@@ -178,7 +192,7 @@ export async function restoreCompleteBackupFiles(
   await storage.replaceSnapshot({
     ...progress,
     ...packs
-  }, includesPrivateText ? {} : {
+  }, { expectedGeneration, ...(includesPrivateText ? {} : {
     readStores: privatePreservationStoreNames,
     preserve: (current) => ({
       ...preservePrivateData(progress, {
@@ -186,23 +200,17 @@ export async function restoreCompleteBackupFiles(
       }),
       ...packs
     })
-  });
+  }) });
+  return backup;
+}
 
-  if (!backup.selectedScopes.includes("preferences")) {
-    publishLocalDataInvalidation("progress_replaced");
-    return { backup, preferences: { failedKeys: [], status: "not_selected" } };
-  }
-
-  const failedKeys = writePreferences(options.preferenceStorage ?? getLocalStorage(), backup.sections.preferences!);
-  publishLocalDataInvalidation("progress_replaced");
-
-  return {
-    backup,
-    preferences: {
-      failedKeys,
-      status: failedKeys.length === 0 ? "restored" : "partial"
-    }
-  };
+export function restoreCompleteBackupPreferences(
+  preferences: CompleteBackupPreferences | undefined,
+  storage: PreferenceWriter | undefined = getLocalStorage()
+): CompleteBackupRestoreResult["preferences"] {
+  if (preferences === undefined) return { failedKeys: [], status: "not_selected" };
+  const failedKeys = writePreferences(storage, preferences);
+  return { failedKeys, status: failedKeys.length === 0 ? "restored" : "partial" };
 }
 
 export function createCompleteBackupSummary(

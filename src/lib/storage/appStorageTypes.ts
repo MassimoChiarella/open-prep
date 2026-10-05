@@ -398,6 +398,7 @@ export interface AppStorage {
   clear<TStore extends AppStoreName>(storeName: TStore): Promise<void>;
   mutate(operations: readonly AppStorageMutation[], options?: Pick<AppStorageAtomicOptions, "expectedGeneration" | "advanceGeneration">): Promise<void>;
   replaceSnapshot(snapshot: AppStorageReplacement, options?: {
+    expectedGeneration?: number;
     preserve?: (current: AppStorageReplacement) => AppStorageReplacement;
     readStores?: readonly AppStoreName[];
   }): Promise<void>;

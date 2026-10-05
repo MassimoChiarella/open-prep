@@ -19,7 +19,19 @@ export interface PersonalDataClearPreview {
 export async function previewPersonalDataClear(
   storage: AppStorage
 ): Promise<PersonalDataClearPreview> {
-  return countPersonalData(await storage.getSnapshot(personalDataStoreNames));
+  const preview: PersonalDataClearPreview = { fitStories: 0, fullCaseDrafts: 0, marketSizingNotes: 0, preparationProfiles: 0, totalItems: 0 };
+  await Promise.all([
+    storage.scan("practice_records", (record) => {
+      if (record.kind === "fit_story") preview.fitStories += 1;
+      if (record.kind === "full_case_draft") preview.fullCaseDrafts += 1;
+      if (record.kind === "prep_profile") preview.preparationProfiles += 1;
+    }),
+    storage.scan("market_sizing_attempts", (record) => {
+      if (hasPrivateMarketSizingText(record)) preview.marketSizingNotes += 1;
+    })
+  ]);
+  preview.totalItems = preview.fitStories + preview.fullCaseDrafts + preview.marketSizingNotes + preview.preparationProfiles;
+  return preview;
 }
 
 export async function clearPersonalData(

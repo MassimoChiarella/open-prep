@@ -20,7 +20,7 @@ export async function parseBackupJsonFiles(
   return parsed;
 }
 
-function readFileText(file: File): Promise<string> {
+export function readFileText(file: File): Promise<string> {
   if (typeof file.text === "function") return file.text();
 
   return new Promise((resolve, reject) => {

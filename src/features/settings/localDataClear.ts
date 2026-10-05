@@ -6,12 +6,8 @@ import {
   localPreferenceKeys,
   type LocalDataInvalidationKind
 } from "@/features/settings/localDataInventory";
-import { countPersonalData } from "@/features/settings/personalDataClear";
-import {
-  appStoreNames,
-  type AppStorage,
-  type AppStorageSnapshot
-} from "@/lib/storage/appStorageTypes";
+import { readLocalDataRecordInventory, type LocalDataRecordInventory } from "@/features/settings/localDataRecordInventory";
+import type { AppStorage } from "@/lib/storage/appStorageTypes";
 
 type LocalPreferenceKey = (typeof localPreferenceKeys)[number];
 type PreferenceStorage = Pick<Storage, "getItem" | "removeItem">;
@@ -49,15 +45,21 @@ export async function previewAllSavedAppData(
   storage: AppStorage,
   options: Pick<ClearAllSavedAppDataOptions, "preferenceStorage"> = {}
 ): Promise<ClearAllSavedAppDataPreview> {
-  const snapshot = await storage.getSnapshot(appStoreNames);
+  return createAllSavedAppDataPreview(await readLocalDataRecordInventory(storage), options);
+}
+
+export function createAllSavedAppDataPreview(
+  inventory: LocalDataRecordInventory,
+  options: Pick<ClearAllSavedAppDataOptions, "preferenceStorage"> = {}
+): ClearAllSavedAppDataPreview {
   const preferenceStorage = options.preferenceStorage === undefined
     ? getLocalStorage()
     : options.preferenceStorage ?? undefined;
 
   return {
-    indexedDbRecords: countSnapshotRecords(snapshot),
-    installedPacks: snapshot.question_packs.length,
-    personalItems: countPersonalData(snapshot).totalItems,
+    indexedDbRecords: inventory.indexedDbRecords,
+    installedPacks: inventory.installedPacks,
+    personalItems: inventory.personal.totalItems,
     preferenceCount: preferenceStorage === undefined
       ? 0
       : localPreferenceKeys.filter((key) => preferenceStorage.getItem(key) !== null).length,
@@ -105,10 +107,6 @@ export async function clearAllSavedAppData(
       status: "partial"
     };
   }
-}
-
-function countSnapshotRecords(snapshot: AppStorageSnapshot<typeof appStoreNames>): number {
-  return appStoreNames.reduce((total, storeName) => total + snapshot[storeName].length, 0);
 }
 
 function getLocalStorage(): PreferenceStorage | undefined {

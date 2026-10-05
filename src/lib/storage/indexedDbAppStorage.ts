@@ -250,13 +250,14 @@ class IndexedDbAppStorage implements AppStorage {
   }
 
   async replaceSnapshot(snapshot: AppStorageReplacement, options: {
+    expectedGeneration?: number;
     preserve?: (current: AppStorageReplacement) => AppStorageReplacement;
     readStores?: readonly AppStoreName[];
   } = {}): Promise<void> {
     const storeNames = Object.keys(snapshot) as AppStoreName[];
     const readStores = options.readStores ?? [];
     await this.atomic({
-      stores: storeNames, advanceGeneration: true,
+      stores: storeNames, advanceGeneration: true, expectedGeneration: options.expectedGeneration,
       reads: Object.fromEntries(readStores.map((name) => [name, "all" as const]))
     }, (view) => {
       const current = Object.fromEntries(readStores.map((name) => [name, view.getAll(name)])) as AppStorageReplacement;

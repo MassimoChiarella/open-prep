@@ -1,4 +1,5 @@
 import type { CompleteBackupCreationOptions } from "@/features/settings/completeBackup";
+import { createBackupWorker } from "@/features/settings/backupWorkerRequest";
 import {
   prepareCompleteBackupFilesFromStorage,
   type PreparedCompleteBackup
@@ -39,9 +40,7 @@ export async function prepareCompleteBackup(
     if (storageFactory !== createIndexedDbAppStorage || typeof Worker === "undefined") {
       return await prepareCompleteBackupFilesFromStorage(storage, options, expectedGeneration, signal);
     }
-    worker = new Worker(new URL("./completeBackupPreparation.worker.ts", import.meta.url), {
-      type: "module", name: "complete-backup-preparation"
-    });
+    worker = createBackupWorker("complete-backup-preparation");
     const prepared = await runPreparationWorker(worker, { options, expectedGeneration }, signal);
     signal.throwIfAborted();
     // getGeneration() is document-cached. This transaction reads the current token

@@ -1,37 +1,33 @@
 "use client";
 
 import Link from "next/link";
-import { type ChangeEvent, useEffect, useMemo, useRef, useState } from "react";
+import { type ChangeEvent, useEffect, useRef, useState } from "react";
 
 import { LocalSaveNotice } from "@/components/LocalSaveNotice";
 import { PageHeader } from "@/components/PageHeader";
 import { LocalRecordRecoveryPanel } from "@/features/settings/LocalRecordRecoveryPanel";
 import { IncompatibleStoredRecordError } from "@/features/settings/recordDiagnostics";
 import { getCurrentConnectionState } from "@/features/offline/OfflineStatusIndicator";
-import { parseBackupJsonFiles } from "@/features/settings/backupFileParsing";
 import { prepareCompleteBackup } from "@/features/settings/completeBackupPreparation";
+import { prepareCompleteRestore, type PreparedCompleteRestore } from "@/features/settings/completeBackupRestorePreparation";
+import { prepareStandardProgressExport } from "@/features/settings/standardProgressPreparation";
 import { localePreferenceStorageKey } from "@/features/i18n/i18n";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { QuestionPackPoolSettings } from "@/features/question-packs/QuestionPackPoolSettings";
 import { questionPackPoolPreferenceStorageKey } from "@/features/question-packs/questionPackPoolPreference";
 import {
-  backupFromFile,
-  completeBackupSetLimits,
-  serializeCompleteBackupFile,
-  validateCompleteBackupSet,
-  type CompleteBackupFile
+  completeBackupSetLimits
 } from "@/features/settings/completeBackupSet";
 import {
-  createCompleteBackupSummary,
-  restoreCompleteBackupFiles,
   type CompleteBackupSummary,
   type PreparedCompleteBackup
 } from "@/features/settings/completeBackupStorage";
 import {
   clearAllSavedAppData,
-  previewAllSavedAppData,
+  createAllSavedAppDataPreview,
   type ClearAllSavedAppDataPreview
 } from "@/features/settings/localDataClear";
+import { prepareLocalDataInventory } from "@/features/settings/localDataInventoryPreparation";
 import { publishLocalDataInvalidation, subscribeToLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import {
   completeBackupLimits,
@@ -39,19 +35,15 @@ import {
   type CompleteBackupOptionalScope
 } from "@/features/settings/localDataInventory";
 import {
-  buildLocalProgressExportFileName,
-  createLocalProgressExport,
   createLocalProgressImportSummary,
   localProgressImportLimits,
   replaceLocalProgressWithImport,
-  serializeLocalProgressExport,
   validateLocalProgressImportPayload,
   type LocalProgressExport,
   type LocalProgressImportSummary
 } from "@/features/settings/localProgressExport";
 import {
   clearPersonalData,
-  previewPersonalDataClear,
   type PersonalDataClearPreview
 } from "@/features/settings/personalDataClear";
 import { loadUserDrillSettings, resetLocalData } from "@/features/settings/settingsPersistence";
@@ -71,16 +63,11 @@ type SettingsStatus = "error" | "loading" | "ready" | "reset" | "resetting";
 type ExportStatus = "error" | "exported" | "exporting" | "idle";
 type ImportStatus = "error" | "idle" | "imported" | "importing" | "invalid" | "ready";
 type CompleteExportStatus = "downloaded" | "error" | "idle" | "prepared" | "preparing";
-type CompleteRestoreStatus = "error" | "idle" | "invalid" | "partial" | "ready" | "restored" | "restoring";
+type CompleteRestoreStatus = "checking" | "error" | "idle" | "invalid" | "partial" | "ready" | "restored" | "restoring";
 type PersistenceUiStatus = "checking" | "requesting" | StoragePersistenceStatus;
 type PersonalClearStatus = "cleared" | "clearing" | "error" | "loading" | "partial" | "ready";
 type AllClearStatus = "cleared" | "clearing" | "error" | "loading" | "partial_invalidation" | "partial_preferences" | "ready";
 type ConnectionState = ReturnType<typeof getCurrentConnectionState>;
-
-interface PendingCompleteRestore {
-  files: CompleteBackupFile[];
-  sourceSizes: number[];
-}
 
 const settingsPanelClass =
   "min-w-0 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6";
@@ -122,7 +109,7 @@ export function LocalSettingsView({
   const [importSummary, setImportSummary] = useState<LocalProgressImportSummary | undefined>();
   const [importStatus, setImportStatus] = useState<ImportStatus>("idle");
   const [pendingImport, setPendingImport] = useState<LocalProgressExport | undefined>();
-  const [pendingCompleteRestore, setPendingCompleteRestore] = useState<PendingCompleteRestore>();
+  const [pendingCompleteRestore, setPendingCompleteRestore] = useState<PreparedCompleteRestore>();
   const [personalClearConfirmed, setPersonalClearConfirmed] = useState(false);
   const [personalClearPreview, setPersonalClearPreview] = useState<PersonalDataClearPreview>();
   const [personalClearStatus, setPersonalClearStatus] = useState<PersonalClearStatus>("loading");
@@ -138,12 +125,21 @@ export function LocalSettingsView({
   const [status, setStatus] = useState<SettingsStatus>("loading");
   const importRequest = useRef(0);
   const restoreRequest = useRef(0);
+  const restoreAbort = useRef<AbortController>();
+  const exportRequest = useRef(0);
+  const exportAbort = useRef<AbortController>();
   const preparationRequest = useRef(0);
   const preparationAbort = useRef<AbortController>();
   const [inventoryRevision, setInventoryRevision] = useState(0);
+  const [localDataOpened, setLocalDataOpened] = useState(false);
+  const [resetOpened, setResetOpened] = useState(false);
+  const inventoryOpened = localDataOpened || resetOpened;
 
   useEffect(() => {
     const unsubscribe = subscribeToLocalDataInvalidation(() => {
+      exportRequest.current += 1;
+      exportAbort.current?.abort();
+      setExportStatus("idle");
       preparationRequest.current += 1;
       preparationAbort.current?.abort();
       setPreparedCompleteBackup(undefined);
@@ -154,6 +150,9 @@ export function LocalSettingsView({
       unsubscribe();
       importRequest.current += 1;
       restoreRequest.current += 1;
+      restoreAbort.current?.abort();
+      exportRequest.current += 1;
+      exportAbort.current?.abort();
       preparationRequest.current += 1;
       preparationAbort.current?.abort();
     };
@@ -234,46 +233,42 @@ export function LocalSettingsView({
   }, [storageFactory]);
 
   useEffect(() => {
+    if (!inventoryOpened) return;
     let cancelled = false;
-    let storage: AppStorage | undefined;
-
-    try {
-      storage = storageFactory();
-      void Promise.all([
-        previewPersonalDataClear(storage),
-        previewAllSavedAppData(storage)
-      ])
-        .then(([personalPreview, completePreview]) => {
-          if (cancelled) return;
-          setAllClearPreview(completePreview);
-          setAllClearStatus("ready");
-          setPersonalClearPreview(personalPreview);
-          setPersonalClearStatus("ready");
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setAllClearStatus("error");
-            setPersonalClearStatus("error");
-          }
-        })
-        .finally(() => storage?.close());
-    } catch {
-      void Promise.resolve().then(() => {
-        if (!cancelled) {
-          setAllClearStatus("error");
-          setPersonalClearStatus("error");
-        }
+    const controller = new AbortController();
+    void prepareLocalDataInventory(storageFactory, controller.signal)
+      .then((inventory) => {
+        if (cancelled) return;
+        setAllClearPreview(createAllSavedAppDataPreview(inventory));
+        setAllClearStatus("ready");
+        setPersonalClearPreview(inventory.personal);
+        setPersonalClearStatus("ready");
+      }).catch(() => {
+        if (!cancelled) { setAllClearStatus("error"); setPersonalClearStatus("error"); }
       });
-    }
+    return () => { cancelled = true; controller.abort(); };
+  }, [storageFactory, inventoryRevision, inventoryOpened]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [storageFactory, inventoryRevision]);
+  function toggleInventoryDisclosure(section: "local" | "reset", opened: boolean) {
+    if (opened && !inventoryOpened) {
+      setAllClearConfirmed(false);
+      setPersonalClearConfirmed(false);
+      setAllClearPreview(undefined);
+      setPersonalClearPreview(undefined);
+      setAllClearStatus("loading");
+      setPersonalClearStatus("loading");
+    }
+    if (section === "local") setLocalDataOpened(opened);
+    else setResetOpened(opened);
+  }
 
   function refreshInventory() {
     setAllClearConfirmed(false);
     setPersonalClearConfirmed(false);
+    setAllClearStatus("loading");
+    setPersonalClearStatus("loading");
+    setAllClearPreview(undefined);
+    setPersonalClearPreview(undefined);
     preparationRequest.current += 1;
     preparationAbort.current?.abort();
     setPreparedCompleteBackup(undefined);
@@ -304,28 +299,26 @@ export function LocalSettingsView({
   }
 
   async function handleExport() {
+    exportAbort.current?.abort();
+    const controller = new AbortController();
+    exportAbort.current = controller;
+    const request = ++exportRequest.current;
     setExportStatus("exporting");
     setExportError(undefined);
     setExportNeedsRecovery(false);
 
-    let storage: AppStorage | undefined;
-
     try {
-      storage = storageFactory();
-      const exported = await createLocalProgressExport(
-        storage
-      );
-
-      downloadLocalProgressExport(exported);
+      const exported = await prepareStandardProgressExport(storageFactory, controller.signal);
+      if (request !== exportRequest.current) return;
+      downloadBlob(exported.blob, exported.fileName);
       setExportStatus("exported");
     } catch (error) {
+      if (request !== exportRequest.current) return;
       setExportStatus("error");
       setExportNeedsRecovery(error instanceof IncompatibleStoredRecordError);
       setExportError(error instanceof IncompatibleStoredRecordError
         ? "Some saved records are incompatible with backups. Review the affected records below."
         : error instanceof Error ? error.message : undefined);
-    } finally {
-      storage?.close();
     }
   }
 
@@ -396,6 +389,7 @@ export function LocalSettingsView({
 
   async function handleCompleteBackupFile(event: ChangeEvent<HTMLInputElement>) {
     if (completeRestoreStatus === "restoring") return;
+    restoreAbort.current?.abort();
     const request = ++restoreRequest.current;
     const files = Array.from(event.currentTarget.files ?? []);
 
@@ -418,10 +412,10 @@ export function LocalSettingsView({
     }
 
     try {
-      const parsed = await parseBackupJsonFiles(files, () => request === restoreRequest.current);
-      if (request !== restoreRequest.current) return;
-      const sourceSizes = files.map((file) => file.size);
-      const validation = await validateCompleteBackupSet(parsed, sourceSizes);
+      const controller = new AbortController();
+      restoreAbort.current = controller;
+      setCompleteRestoreStatus("checking");
+      const validation = await prepareCompleteRestore(files, storageFactory, controller.signal);
       if (request !== restoreRequest.current) return;
 
       if (validation.status === "invalid") {
@@ -430,11 +424,11 @@ export function LocalSettingsView({
         return;
       }
 
-      setPendingCompleteRestore({ files: validation.files, sourceSizes });
+      setPendingCompleteRestore(validation.prepared);
       setCompleteRestoreStatus("ready");
-    } catch {
+    } catch (error) {
       if (request !== restoreRequest.current) return;
-      setCompleteRestoreErrors(["Complete backup must contain valid JSON."]);
+      setCompleteRestoreErrors([error instanceof Error ? error.message : "Complete backup must contain valid JSON."]);
       setCompleteRestoreStatus("invalid");
     }
   }
@@ -444,39 +438,33 @@ export function LocalSettingsView({
 
     setCompleteRestoreStatus("restoring");
     setPreferenceRestoreFailures([]);
-    let storage: AppStorage | undefined;
-
     try {
-      storage = storageFactory();
-      const result = await restoreCompleteBackupFiles(storage, pendingCompleteRestore.files, {
-        sourceSizes: pendingCompleteRestore.sourceSizes
-      });
-      setSavedSettings(result.backup.sections.progress.stores.user_settings[0]?.settings);
+      const result = await pendingCompleteRestore.restore();
+      setSavedSettings(result.savedSettings);
+      setPendingCompleteRestore(undefined);
       setCompleteRestoreConfirmed(false);
-      setPreferenceRestoreFailures(result.preferences.failedKeys);
-      setCompleteRestoreStatus(result.preferences.status === "partial" ? "partial" : "restored");
+      setPreferenceRestoreFailures(result.preferenceResult.failedKeys);
+      setCompleteRestoreStatus(result.preferenceResult.status === "partial" ? "partial" : "restored");
       refreshInventory();
 
       if (
-        result.backup.sections.preferences !== undefined ||
-        result.backup.selectedScopes.includes("packs")
+        result.preferences !== undefined ||
+        result.selectedScopes.includes("packs")
       ) {
         setQuestionPackPoolRevision((current) => current + 1);
       }
-      if (result.backup.sections.preferences !== undefined) {
+      if (result.preferences !== undefined) {
         for (const key of localPreferenceKeys) {
-          if (!result.preferences.failedKeys.includes(key)) {
+          if (!result.preferenceResult.failedKeys.includes(key)) {
             window.dispatchEvent(new StorageEvent("storage", {
               key,
-              newValue: result.backup.sections.preferences[key]
+              newValue: result.preferences[key]
             }));
           }
         }
       }
     } catch {
       setCompleteRestoreStatus("error");
-    } finally {
-      storage?.close();
     }
   }
 
@@ -617,9 +605,7 @@ export function LocalSettingsView({
   }
 
   const preparedBackupSummary = preparedCompleteBackup?.summary;
-  const restoreBackupSummary = useMemo(() => pendingCompleteRestore === undefined
-    ? undefined
-    : summarizeBackupFiles(pendingCompleteRestore.files, pendingCompleteRestore.sourceSizes), [pendingCompleteRestore]);
+  const restoreBackupSummary = pendingCompleteRestore?.summary;
   const allClearHasData = allClearPreview !== undefined && (
     allClearPreview.indexedDbRecords > 0 ||
     allClearPreview.preferenceCount > 0 ||
@@ -691,7 +677,7 @@ export function LocalSettingsView({
         />
       </section>
 
-      <details className={settingsDetailsClass} data-testid="settings-local-data">
+      <details className={settingsDetailsClass} data-testid="settings-local-data" onToggle={(event) => toggleInventoryDisclosure("local", event.currentTarget.open)}>
         <summary className={settingsSummaryClass}>
           <span>
             <span className="block text-sm font-semibold uppercase tracking-wide text-coral">{t("Local Data")}</span>
@@ -988,7 +974,7 @@ export function LocalSettingsView({
         </div>
       </details>
 
-      <details className={settingsDetailsClass} data-testid="settings-reset">
+      <details className={settingsDetailsClass} data-testid="settings-reset" onToggle={(event) => toggleInventoryDisclosure("reset", event.currentTarget.open)}>
         <summary className={settingsSummaryClass}>
           <span>
             <span className="block text-sm font-semibold uppercase tracking-wide text-coral">{t("Reset")}</span>
@@ -1022,7 +1008,7 @@ export function LocalSettingsView({
               <input
                 checked={personalClearConfirmed}
                 className="h-4 w-4 shrink-0 accent-coral"
-                disabled={(personalClearPreview?.totalItems ?? 0) === 0}
+                disabled={personalClearStatus === "loading" || personalClearStatus === "clearing" || (personalClearPreview?.totalItems ?? 0) === 0}
                 onChange={(event) => setPersonalClearConfirmed(event.currentTarget.checked)}
                 type="checkbox"
               />
@@ -1030,7 +1016,7 @@ export function LocalSettingsView({
             </label>
             <button
               className={confirmationButtonClass}
-              disabled={!personalClearConfirmed || personalClearStatus === "clearing"}
+              disabled={!personalClearConfirmed || personalClearPreview === undefined || personalClearStatus === "loading" || personalClearStatus === "clearing"}
               onClick={() => void handlePersonalDataClear()}
               type="button"
             >
@@ -1101,7 +1087,7 @@ export function LocalSettingsView({
               <input
                 checked={allClearConfirmed}
                 className="h-4 w-4 shrink-0 accent-coral"
-                disabled={!allClearHasData || allClearStatus === "clearing"}
+                disabled={!allClearHasData || allClearStatus === "loading" || allClearStatus === "clearing"}
                 onChange={(event) => setAllClearConfirmed(event.currentTarget.checked)}
                 type="checkbox"
               />
@@ -1109,7 +1095,7 @@ export function LocalSettingsView({
             </label>
             <button
               className={confirmationButtonClass}
-              disabled={!allClearConfirmed || allClearStatus === "clearing"}
+              disabled={!allClearConfirmed || allClearPreview === undefined || allClearStatus === "loading" || allClearStatus === "clearing"}
               onClick={() => void handleAllDataClear()}
               type="button"
             >
@@ -1218,6 +1204,7 @@ function CompleteRestoreStatusMessage({
 }) {
   const { t } = useI18n();
 
+  if (status === "checking") return <LocalSaveNotice detail={t("Checking backup files...")} label={t("Restore Complete Backup")} tone="neutral" />;
   if (status === "idle" || status === "ready" || status === "restoring") return null;
   if (status === "invalid") {
     return (
@@ -1311,19 +1298,6 @@ const preferenceLabelByStorageKey: Readonly<Record<string, string>> = {
   [themePreferenceStorageKey]: "Theme",
   [timingAccommodationPreferenceKey]: "Timing"
 };
-
-function summarizeBackupFiles(files: CompleteBackupFile[], sizes?: number[]): CompleteBackupSummary {
-  const summaries = files.map((file, index) => createCompleteBackupSummary(
-    backupFromFile(file), sizes?.[index] ?? new TextEncoder().encode(serializeCompleteBackupFile(file)).byteLength
-  ));
-  return summaries.reduce((summary, part) => ({
-    ...summary,
-    fileBytes: summary.fileBytes + part.fileBytes,
-    packCount: summary.packCount + part.packCount,
-    privateEntryCount: summary.privateEntryCount + part.privateEntryCount,
-    progressRecordCount: summary.progressRecordCount + part.progressRecordCount
-  }), { ...summaries[0], fileBytes: 0, packCount: 0, privateEntryCount: 0, progressRecordCount: 0 });
-}
 
 function SettingsStat({ label, value }: { label: string; value: string }) {
   const { t } = useI18n();
@@ -1423,14 +1397,6 @@ function ImportSummary({ summary }: { summary: LocalProgressImportSummary }) {
       <SettingsStat label={t("Skill Scores")} value={formatNumber(summary.skillScores)} />
     </dl>
   );
-}
-
-function downloadLocalProgressExport(exported: LocalProgressExport): void {
-  downloadJson(serializeLocalProgressExport(exported), buildLocalProgressExportFileName(exported.exportedAt));
-}
-
-function downloadJson(contents: string, fileName: string): void {
-  downloadBlob(new Blob([contents], { type: "application/json" }), fileName);
 }
 
 function downloadBlob(blob: Blob, fileName: string): void {

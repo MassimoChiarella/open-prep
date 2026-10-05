@@ -96,7 +96,7 @@ describe("personal data clear", () => {
     });
     expect(result).toEqual(preview);
     expect(storage.mutationCalls).toBe(1);
-    expect(storage.snapshotCalls).toBe(1);
+    expect(storage.snapshotCalls).toBe(0);
     expect(storage.lastOperations.map((operation) => operation.storeName).sort()).toEqual([
       "market_sizing_attempts",
       "market_sizing_attempts",

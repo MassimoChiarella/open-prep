@@ -23,14 +23,16 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 10 | A11 monetary example | Correct sample flag; synchronize distributed copies; test generated monetary grading. | Complete: sample/authoring suites, 3 files / 76 tests passed; 16 variants at two difficulties earn full currency credit. |
 | 11 | A12 unitless sizing | Award correct no-unit output full unit credit; preserve physical/currency omission penalties. | Complete: evaluation/scoring suites, 2 files / 19 tests passed. |
 | 12 | A13 dependencies | Compatible framework/config patch; fresh advisory inventory; assess remaining reachable tooling paths. | Patched: Next/config 16.3.8; brace-expansion 1.1.21 / 5.0.12. Fresh inventory: zero critical, seven high package entries share the unpatched braces tooling advisory. Integrated checks pending. |
-| 13 | A14/I03 backup performance | Worker restore validation; cancellation/identity; reuse Standard serialized output; preserve integrity and atomic restore. | Pending |
-| 14 | A15 Settings performance | Lazy inventory; bounded/native counts; correct loading/refresh/clear safeguards. | Pending |
+| 13 | A14/I03 backup performance | Worker restore validation; cancellation/identity; reuse Standard serialized output; preserve integrity and atomic restore. | Implemented: 9 focused files / 80 tests; strict TypeScript and scoped lint passed. Production measurement pending phase 18. |
+| 14 | A15 Settings performance | Lazy inventory; bounded/native counts; correct loading/refresh/clear safeguards. | Implemented: 4 focused files / 35 tests; native counts and compact worker lifecycle verified. Production measurement pending phase 18. |
 | 15 | A16 decimal precision | Align range validation, generation, formatting and capacity; finite bundled sweep. | Complete: generator/import range suites, 4 files / 72 tests passed, including 7,680 bundled variants. |
 | 16 | I01 prep plan | Include actual completed sizing/exhibit scores with explicit minimum sample and weakness thresholds. | Complete: plan/view suites, 2 files / 12 tests passed using actual persisted module shapes. |
 | 17 | I02/I04 guidance | Synchronize template grading docs. Retain current Interview Math rubric unless product policy is explicitly changed. | Complete: synchronized guides; 4 authoring/public-pack files / 83 tests passed. Approved I04 rubric implemented and tested. |
 | 18 | Integration | Full check, engine matrix, meaningful performance comparisons; document physical/PWA/assistive-technology gates. | Pending |
 
 ## Commit timeline
+
+- `perf(settings): share workers for backups and inventory`: A14/I03/A15 share one bundled worker entry. Validated restore trees remain there until atomic apply; only compact summaries, metadata and Standard export Blobs reach the document. Opening Local Data/Reset loads inventory through native counts and private-bearing cursor scans. These coupled worker changes ship together to avoid duplicate bundles or incomplete operation dispatchers.
 
 - `fix(privacy): enforce imported progress scopes`: independent review found that Standard imports could claim an excluded private scope while including private records. Validation now rejects explicit private content and safely normalizes historical unclassified text without changing checksum inputs. Six scoped backup files / 59 tests passed; actual cookbook persistence covers private text and numeric-looking notes. Near-32-MiB envelope acceptance also passes.
 

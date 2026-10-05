@@ -6,7 +6,7 @@ import { appStoreNames, type AppStoreName } from "@/lib/storage/appStorageTypes"
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("clear all saved app data", () => {
-  it("previews every affected data category from one storage snapshot", async () => {
+  it("previews every affected category with native counts and bounded private scans", async () => {
     const storage = new MemoryAppStorage();
     const preferences = new TestPreferenceStorage();
     await seedEveryStore(storage);
@@ -24,6 +24,9 @@ describe("clear all saved app data", () => {
     } as never);
     preferences.setItem(localPreferenceKeys[0], "fr");
     preferences.setItem(localPreferenceKeys[2], "untimed");
+    const snapshot = vi.spyOn(storage, "getSnapshot");
+    const count = vi.spyOn(storage, "count");
+    const scan = vi.spyOn(storage, "scan");
 
     await expect(previewAllSavedAppData(storage, { preferenceStorage: preferences })).resolves.toEqual({
       indexedDbRecords: appStoreNames.length + 3,
@@ -32,6 +35,9 @@ describe("clear all saved app data", () => {
       preferenceCount: 2,
       preferencesAvailable: true
     });
+    expect(snapshot).not.toHaveBeenCalled();
+    expect(count.mock.calls.map(([storeName]) => storeName)).toEqual(appStoreNames);
+    expect(scan.mock.calls.map(([storeName]) => storeName)).toEqual(["practice_records", "market_sizing_attempts"]);
   });
 
   it("atomically clears every store, then every preference, and publishes success", async () => {

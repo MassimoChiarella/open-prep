@@ -61,11 +61,24 @@ export interface LocalProgressImportValidationOptions {
   maxFileBytes?: number;
 }
 
+export interface PreparedStandardProgressExport {
+  blob: Blob;
+  fileName: string;
+}
+
 export async function createLocalProgressExport(
   storage: AppStorage,
   exportedAt = new Date().toISOString(),
   privacyScope: LocalProgressExportPrivacyScope = "standard"
 ): Promise<LocalProgressExportV1> {
+  return (await createSerializedLocalProgressExport(storage, exportedAt, privacyScope)).exported;
+}
+
+export async function createSerializedLocalProgressExport(
+  storage: AppStorage,
+  exportedAt = new Date().toISOString(),
+  privacyScope: LocalProgressExportPrivacyScope = "standard"
+): Promise<{ exported: LocalProgressExportV1; serialized: string }> {
   const stores = await storage.getSnapshot(localProgressExportStoreNames);
 
   if (privacyScope === "standard") {
@@ -83,14 +96,29 @@ export async function createLocalProgressExport(
     schemaVersion: localProgressExportSchemaVersion,
     stores
   };
+  const serialized = serializeLocalProgressExport(exported);
   const validation = validateLocalProgressImportPayload(exported, {
-    sourceBytes: new TextEncoder().encode(serializeLocalProgressExport(exported)).byteLength
+    sourceBytes: new TextEncoder().encode(serialized).byteLength
   });
   if (validation.status === "invalid") {
     assertValidProgressRecords(stores);
     throw new Error("Standard export exceeds its limits or contains invalid records. Use Complete Backup for larger histories.");
   }
-  return exported;
+  return { exported, serialized };
+}
+
+export async function prepareStandardProgressExportFromStorage(
+  storage: AppStorage,
+  expectedGeneration: number,
+  signal?: AbortSignal
+): Promise<PreparedStandardProgressExport> {
+  signal?.throwIfAborted();
+  await storage.atomic({ stores: [], expectedGeneration }, () => ({ operations: [], result: undefined }));
+  const { exported, serialized } = await createSerializedLocalProgressExport(storage);
+  signal?.throwIfAborted();
+  await storage.atomic({ stores: [], expectedGeneration }, () => ({ operations: [], result: undefined }));
+  signal?.throwIfAborted();
+  return { blob: new Blob([serialized], { type: "application/json" }), fileName: buildLocalProgressExportFileName(exported.exportedAt) };
 }
 
 export async function replaceLocalProgressWithImport(
