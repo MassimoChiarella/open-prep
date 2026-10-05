@@ -85,6 +85,38 @@ describe("validateAnswer", () => {
     });
   });
 
+  it.each<AnswerSpec["tolerance"]>([
+    { type: "absolute", value: 5 },
+    { type: "percentage", value: 0.05 },
+    { type: "range", min: 95, max: 105 }
+  ])("does not classify an accepted number as a numeric error with tolerance %j", (tolerance) => {
+    const answer: AnswerSpec = { value: 100, unit: "users", tolerance };
+    expect(validateAnswer("102 years", answer, { selectedUnit: "users" })).toMatchObject({
+      isCorrect: false,
+      numericMatch: true,
+      errorTypes: ["unit_error"],
+      feedbackMessage: "The number is correct, but the unit does not match."
+    });
+    expect(validateAnswer("106 years", answer, { selectedUnit: "users" })).toMatchObject({
+      numericMatch: false,
+      errorTypes: ["unit_error", "arithmetic_error"]
+    });
+  });
+
+  it("does not apply overlapping numeric checks to tolerated values with wrong units", () => {
+    const answer: AnswerSpec = {
+      value: 100,
+      unit: "users",
+      tolerance: { type: "range", min: 10, max: 105 },
+      errorChecks: { percentagePointValue: 10, roundingTolerance: { type: "absolute", value: 95 } }
+    };
+    expect(validateAnswer("10 years", answer).errorTypes).toEqual(["unit_error"]);
+    expect(validateAnswer("103 years", { ...answer, tolerance: undefined }, { acceptWithinTenPercent: true }).errorTypes)
+      .toEqual(["unit_error"]);
+    expect(validateAnswer("103%", { value: 1, unit: "currency", tolerance: { type: "percentage", value: 0.05 } }))
+      .toMatchObject({ numericMatch: true, errorTypes: ["unit_error"] });
+  });
+
   it("normalizes a selected percentage unit for a unitless numeric entry", () => {
     expect(validateAnswer("15", { value: 0.15, unit: "percentage" }, { selectedUnit: "percentage" })).toMatchObject({
       isCorrect: true,

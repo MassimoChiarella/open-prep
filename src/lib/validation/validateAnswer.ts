@@ -178,13 +178,17 @@ function classifyErrors(userValue: number, answer: AnswerSpec, unitError: boolea
     errors.push("unit_error");
   }
 
+  if (numericMatch) {
+    return errors;
+  }
+
   if (isPercentagePointError(userValue, answer)) {
     errors.push("percentage_point_error");
-  } else if (!numericMatch && isRoundingError(userValue, answer)) {
+  } else if (isRoundingError(userValue, answer)) {
     errors.push("rounding_error");
   } else if (isMagnitudeError(userValue, answer.value)) {
     errors.push("magnitude_error");
-  } else if (!unitError || Math.abs(userValue - answer.value) > exactMatchEpsilon) {
+  } else {
     errors.push("arithmetic_error");
   }
 

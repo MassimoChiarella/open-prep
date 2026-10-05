@@ -7,6 +7,23 @@ import { calculateSessionScore, defaultScoringRules, scoreResponse } from "@/fea
 import type { Question, UserResponse } from "@/lib/domain";
 
 describe("scoreResponse", () => {
+  it("retains unit-error partial credit when a non-exact number is accepted by tolerance", () => {
+    const created = createDrillSession({ seed: "tolerated-unit-score", settings: { questionCount: 1 } });
+    const toleratedQuestion = { ...created.questions[0], answer: { value: 100, unit: "users" as const, tolerance: { type: "absolute" as const, value: 5 } } };
+    const submitted = submitAnswer({
+      session: created.session,
+      question: toleratedQuestion,
+      rawInput: "102 years",
+      selectedUnit: "users",
+      timeTakenSeconds: 30
+    });
+    expect(submitted.response.errorTypes).toEqual(["unit_error"]);
+    expect(scoreResponse(submitted.response)).toBe(50);
+    const score = calculateSessionScore(submitted.session, [toleratedQuestion]);
+    expect(score.errorBreakdown).toEqual([{ errorType: "unit_error", count: 1 }]);
+    expect(score.totalScore).toBe(50);
+  });
+
   it("scores correct answers with a speed bonus", () => {
     const response = userResponse({
       isCorrect: true,
