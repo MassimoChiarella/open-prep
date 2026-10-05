@@ -69,7 +69,7 @@ export function evaluateInterviewMath(input: EvaluateInterviewMathInput): Interv
   const score: InterviewMathScore = {
     formulaSelection: equation?.formulaCorrect === true ? interviewMathScoreWeights.formulaSelection : 0,
     equationSetup: equation?.setupCorrect === true ? interviewMathScoreWeights.equationSetup : 0,
-    calculationAccuracy: numericValidation.isCorrect ? interviewMathScoreWeights.calculationAccuracy : 0,
+    calculationAccuracy: numericValidation.numericMatch === true ? interviewMathScoreWeights.calculationAccuracy : 0,
     unitsMagnitude: unitAndMagnitudeCorrect ? interviewMathScoreWeights.unitsMagnitude : 0,
     interpretationSelection:
       interpretation?.isCorrect === true ? interviewMathScoreWeights.interpretationSelection : 0,

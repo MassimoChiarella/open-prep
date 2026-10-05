@@ -32,6 +32,8 @@ Each milestone contains its implementation, compatibility handling, and focused 
 
 ## Commit timeline
 
+- `fix(grading): separate calculation credit from unit penalties`: I04: implements the user-approved independent calculation rubric. Wrong units lose unit points while accepted calculation retains credit; 3 focused files / 40 tests passed.
+
 - `fix(content): support composed full-case draft identifiers`: A08: draft validators allow maximum legal namespaced simulation/question IDs; save, backup and resume regression tests included.
 
 - `fix(storage): guard concurrent private drafts`: A02 adds atomic device-local revisions and deletion tombstones, rereads on resume, and retains local work on a conflict. Existing draft records and backups remain compatible.
