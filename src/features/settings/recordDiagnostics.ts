@@ -1,4 +1,4 @@
-import { maxStoredStringLength, maxStoredCollectionItems, maxStoredRecordDepth, maxStoredPackDepth } from "@/lib/validation/inputLimits";
+import { assertStoredRecordBytes, maxStoredStringLength, maxStoredCollectionItems, maxStoredRecordDepth, maxStoredPackDepth } from "@/lib/validation/inputLimits";
 import type { AppStorageReplacement, AppStoreName } from "@/lib/storage/appStorageTypes";
 
 export interface StoredRecordIssue {
@@ -42,6 +42,10 @@ export function inspectStoredRecord(storeName: AppStoreName, record: unknown): S
     ancestors.delete(value);
   }
   visit(record, "", 0);
+  if (issues.length === 0) {
+    try { assertStoredRecordBytes(record); }
+    catch (error) { add("", error instanceof Error ? error.message : "Record exceeds supported backup bytes."); }
+  }
   return issues;
 }
 

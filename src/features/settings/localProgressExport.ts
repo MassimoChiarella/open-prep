@@ -57,6 +57,8 @@ export interface LocalProgressImportSummary {
 
 export interface LocalProgressImportValidationOptions {
   sourceBytes?: number;
+  /** Complete Backup has a larger envelope than Standard Progress Export. */
+  maxFileBytes?: number;
 }
 
 export async function createLocalProgressExport(
@@ -143,11 +145,12 @@ export function validateLocalProgressImportPayload(
     }
   };
 
-  if (options.sourceBytes !== undefined && options.sourceBytes > localProgressImportLimits.maxFileBytes) {
-    addError(`Import file must be ${localProgressImportLimits.maxFileBytes} bytes or smaller.`);
+  const maxFileBytes = options.maxFileBytes ?? localProgressImportLimits.maxFileBytes;
+  if (options.sourceBytes !== undefined && options.sourceBytes > maxFileBytes) {
+    addError(`Import file must be ${maxFileBytes} bytes or smaller.`);
   }
 
-  validateResourceBounds(payload, addError);
+  validateResourceBounds(payload, addError, maxFileBytes);
 
   if (!isRecord(payload)) {
     addError("Import file must contain a JSON object.");
@@ -604,7 +607,7 @@ function isInterpretationOption(value: unknown): boolean {
   return isRecord(value) && isNonEmptyString(value.id) && isString(value.label) && typeof value.isCorrect === "boolean";
 }
 
-function validateResourceBounds(value: unknown, addError: (error: string) => void): void {
+function validateResourceBounds(value: unknown, addError: (error: string) => void, maxFileBytes: number): void {
   const seen = new WeakSet<object>();
 
   const visit = (item: unknown, depth: number) => {
@@ -652,8 +655,8 @@ function validateResourceBounds(value: unknown, addError: (error: string) => voi
     const serialized = JSON.stringify(value);
     const bytes = new TextEncoder().encode(serialized).byteLength;
 
-    if (bytes > localProgressImportLimits.maxFileBytes) {
-      addError(`Import file must be ${localProgressImportLimits.maxFileBytes} bytes or smaller.`);
+    if (bytes > maxFileBytes) {
+      addError(`Import file must be ${maxFileBytes} bytes or smaller.`);
     }
   } catch {
     addError("Import file must contain serializable JSON data.");

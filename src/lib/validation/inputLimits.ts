@@ -5,6 +5,9 @@ export const maxStoredCollectionItems = 10000;
 // Complete Backup's depth20 envelope places progress records at depth5, packs at depth3.
 export const maxStoredRecordDepth = 15;
 export const maxStoredPackDepth = 17;
+// Leaves 8 MiB for the Complete file envelope and indentation. Count the pretty
+// record plus its maximum ten-space outer indentation, matching backup packing.
+export const maxStoredRecordBytes = 32 * 1024 * 1024;
 export const numericInputLimitMessage = "Use 4,096 characters or fewer for a numeric answer.";
 
 export function assertNumericInput(value: string): void {
@@ -44,4 +47,13 @@ export function assertPersistableRecord(value: unknown, options: { maxDepth?: nu
     ancestors.delete(item);
   }
   visit(value, 0);
+  assertStoredRecordBytes(value);
+}
+
+export function assertStoredRecordBytes(value: unknown): void {
+  const serialized = JSON.stringify(value, null, 2) ?? "";
+  const bytes = new TextEncoder().encode(serialized).byteLength + serialized.split("\n").length * 10;
+  if (bytes > maxStoredRecordBytes) {
+    throw new Error("A saved record must fit within the 32 MiB backup record limit. Shorten its text before saving.");
+  }
 }

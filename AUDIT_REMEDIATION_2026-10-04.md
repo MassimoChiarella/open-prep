@@ -16,7 +16,7 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 3 | A03 drill recovery | Resolve recovery before accepting answer/skip/timer actions; retain matching session token. | Complete: four focused component suites / 29 tests passed, including delayed recovery and deadline expiry. |
 | 4 | A04 benchmark locale | Stable run identity; retain unsent input and completed summaries across locale changes. | Complete: locale/timing/session suites, 2 files / 23 tests passed. |
 | 5 | A05/A07 Fit state | Retain active story/prompt and review identity; prevent stale initial reads from hiding later saves. | Complete: Fit lifecycle/shared save suites, 4 files / 49 tests passed; targeted lint passed. |
-| 6 | A06 backup bounds | Align Complete inner limits; total record-byte safeguards; existing oversized-record recovery; private roundtrip. | Pending |
+| 6 | A06 backup bounds | Align Complete inner limits; total record-byte safeguards; existing oversized-record recovery; private roundtrip. | Complete: boundary/backup/recovery suites, 5 files / 53 tests passed; 17 MiB private record roundtrip verified. |
 | 7 | A08 composed IDs | Align derived identifier limits with maximum legal pack IDs/versions and generated question suffixes. | Pending |
 | 8 | A09 tolerated answers | Classify accepted numeric values consistently; retain real outside-tolerance errors and unit partial credit. | Complete: validator/scoring regressions, 2 files / 31 tests passed. |
 | 9 | A10 benchmark import | Accept, validate and preserve supported currency metadata. | Complete: importer/persistence suites, 2 files / 16 tests passed. |
@@ -31,6 +31,8 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 18 | Integration | Full check, engine matrix, meaningful performance comparisons; document physical/PWA/assistive-technology gates. | Pending |
 
 ## Commit timeline
+
+- `fix(backup): align persisted record and file limits`: A06: Complete progress uses its 40 MiB bound; writes reserve envelope space within a 32 MiB record bound; old oversized records have lossless recovery archives. Historical authenticated progress-only files normalize unknown text without breaking checksum verification.
 
 - `feat(plan): prioritize weak completed module results`: I01: sizing/exhibit priorities use at least three completed scores; incomplete work is excluded and scores are normalized.
 
