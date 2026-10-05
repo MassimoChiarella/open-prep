@@ -7,10 +7,20 @@ describe("resolveTemplateVariables", () => {
   it.each([
     [0.1, 0.3, 0.1, 0.3], [-0.3, -0.1, 0.1, -0.1], [0.1, 0.29, 0.1, 0.2],
     [1e-13, 3e-13, 1e-13, 3e-13], [-3e-13, -1e-13, 1e-13, -1e-13],
-    [1.25e-13, 3.25e-13, 1e-13, 3.25e-13], [1e-110, 3e-110, 1e-110, 3e-110]
+    [1.25e-13, 3.25e-13, 1e-13, 3.25e-13], [1e-110, 3e-110, 1e-110, 3e-110],
+    [-3e-300, 9.999999999999999e-301, 1e-300, 0],
+    [5e-324, 1.5e-323, 5e-324, 1.5e-323],
+    [1e308, 1.0000000000000004e308, 1e292, 1.0000000000000004e308]
   ])("includes only valid range endpoints %s to %s by %s", (min, max, step, expected) => {
     const random = { ...createSeededRandom("audit-variable-range"), integer: (_minimum: number, maximum: number) => maximum };
     expect(resolveTemplateVariables({ value: { type: "decimal", min, max, step } }, random).value).toBe(expected);
+  });
+
+  it("preserves exact declared native-number minima before resolving the range", () => {
+    const random = { ...createSeededRandom("min-bound"), integer: () => 0 };
+    for (const min of [1.0000000000000001e-11, 1.0000000000000001e-298]) {
+      expect(resolveTemplateVariables({ value: { type: "decimal", min, max: min * 2, step: min / 100 } }, random).value).toBe(min);
+    }
   });
 
   it("resolves fixed value lists deterministically", () => {
