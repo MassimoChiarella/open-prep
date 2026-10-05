@@ -72,6 +72,15 @@ describe("LocalSettingsView", () => {
     expect(await within(contentPacks).findByTestId("question-pack-pool-settings")).toBeInTheDocument();
   });
 
+  it("opens local data and individual recovery when addressed by a history recovery link", async () => {
+    window.history.replaceState(null, "", "/settings#record-recovery");
+    render(<LocalSettingsView storageFactory={() => new MemoryAppStorage()} />);
+    expect(screen.getByTestId("settings-local-data")).toHaveAttribute("open");
+    expect(document.getElementById("record-recovery")).toHaveAttribute("open");
+    expect(await screen.findByRole("button", { name: "Check local records" })).toBeVisible();
+    window.history.replaceState(null, "", "/settings");
+  });
+
   it("defers history inventory until a data disclosure opens and refreshes after reopening", async () => {
     const storage = new MemoryAppStorage();
     const count = vi.spyOn(storage, "count");

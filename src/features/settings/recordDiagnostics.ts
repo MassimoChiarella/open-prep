@@ -1,4 +1,4 @@
-import { assertStoredRecordBytes, maxStoredStringLength, maxStoredCollectionItems, maxStoredRecordDepth, maxStoredPackDepth } from "@/lib/validation/inputLimits";
+import { assertStoredRecordBytes, isWellFormedUnicode, maxStoredStringLength, maxStoredCollectionItems, maxStoredRecordDepth, maxStoredPackDepth } from "@/lib/validation/inputLimits";
 import type { AppStorageReplacement, AppStoreName } from "@/lib/storage/appStorageTypes";
 
 export interface StoredRecordIssue {
@@ -15,6 +15,12 @@ export function inspectStoredRecord(storeName: AppStoreName, record: unknown): S
   const maxDepth = storeName === "question_packs" ? maxStoredPackDepth : maxStoredRecordDepth;
   const ancestors = new Set<object>();
   const add = (path: string, reason: string) => { if (issues.length < 50) issues.push({ storeName, recordId, path, reason }); };
+  if (record !== null && typeof record === "object") {
+    for (const field of ["id", "sessionId"] as const) {
+      const identifier = (record as Record<string, unknown>)[field];
+      if (typeof identifier === "string" && !isWellFormedUnicode(identifier)) add(field, "Record has invalid or missing fields.");
+    }
+  }
   function visit(value: unknown, path: string, depth: number): void {
     if (typeof value === "number" && !Number.isFinite(value)) add(path, "Number is not finite.");
     if (typeof value === "string" && value.length > maxStoredStringLength) add(path, `Text contains ${value.length} code units; the backup limit is ${maxStoredStringLength}.`);

@@ -10,12 +10,25 @@ export const maxStoredPackDepth = 17;
 export const maxStoredRecordBytes = 32 * 1024 * 1024;
 export const numericInputLimitMessage = "Use 4,096 characters or fewer for a numeric answer.";
 
+/** Unicode-mode matching excludes paired surrogates, which URI encoding accepts. */
+export function isWellFormedUnicode(value: string): boolean {
+  return !/[\uD800-\uDFFF]/u.test(value);
+}
+
 export function assertNumericInput(value: string): void {
   if (value.length > maxNumericInputLength) throw new Error(numericInputLimitMessage);
 }
 
 /** Reject values that would be corrupted by JSON or exceed supported backup strings. */
 export function assertPersistableRecord(value: unknown, options: { maxDepth?: number } = {}): void {
+  if (value !== null && typeof value === "object") {
+    for (const field of ["id", "sessionId"] as const) {
+      const identifier = (value as Record<string, unknown>)[field];
+      if (typeof identifier === "string" && !isWellFormedUnicode(identifier)) {
+        throw new Error("Stored identifiers must contain well-formed Unicode.");
+      }
+    }
+  }
   const ancestors = new Set<object>();
   function visit(item: unknown, depth: number): void {
     if (typeof item === "number" && !Number.isFinite(item)) {

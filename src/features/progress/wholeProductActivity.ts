@@ -3,6 +3,7 @@ import type {
   PracticeRecord
 } from "@/features/case-practice/practiceTypes";
 import { localDateKey } from "@/features/progress/localCalendar";
+import { createDrillSummaryLink } from "@/features/drills/drillSummaryLink";
 import type {
   BenchmarkResultRecord,
   ExhibitAttemptRecord,
@@ -214,10 +215,9 @@ export function createWholeProductActivityAccumulator(
     mathStats.totalTimeSeconds += averageTimeSeconds * questionCount;
     sessionsById.set(session.id, {
       activity: {
-        href: `/drills/summary?id=${encodeURIComponent(session.id)}`,
+        ...createDrillSummaryLink(session.id, "Math drill"),
         id: `drill:${session.id}`,
         kind: "drill",
-        label: "Math drill",
         timestamp: timestamp.iso
       }
     });

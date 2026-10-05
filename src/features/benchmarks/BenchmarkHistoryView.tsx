@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 import { EmptyState } from "@/components/EmptyState";
+import { createDrillSummaryLink } from "@/features/drills/drillSummaryLink";
 import { LoadingState } from "@/components/LoadingState";
 import { getBenchmarkScoreBand } from "@/features/benchmarks/benchmarkScoring";
 import {
@@ -339,6 +340,7 @@ function HistoryTable({
           </thead>
           <tbody>
             {results.map((result) => {
+              const summaryLink = createDrillSummaryLink(result.sessionId, "Review");
               const benchmark = benchmarkById.get(result.benchmarkId);
               const timingAccommodation = normalizeTimingAccommodation(result.timingAccommodation);
               const isStandard = isStandardComparisonEligible(timingAccommodation);
@@ -359,9 +361,9 @@ function HistoryTable({
                   <td className="px-3 py-2">
                     <Link
                       className="inline-flex min-h-11 items-center font-semibold text-teal underline decoration-teal/40 underline-offset-4 hover:text-ink"
-                      href={`/drills/summary?id=${encodeURIComponent(result.sessionId)}`}
+                      href={summaryLink.href}
                     >
-                      {t("Review")}
+                      {t(summaryLink.label)}
                     </Link>
                   </td>
                 </tr>

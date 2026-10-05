@@ -8,6 +8,7 @@ import { LoadingState } from "@/components/LoadingState";
 import { PageHeader } from "@/components/PageHeader";
 import { badgeClass, buttonClass, cx, panelClass, uiText, type StatusTone } from "@/components/uiStyles";
 import { buildDailyWorkoutHref } from "@/features/drills/dailyWorkout";
+import { createDrillSummaryLink } from "@/features/drills/drillSummaryLink";
 import { buildRetryMissedDrillHref, buildReviewDrillHref } from "@/features/drills/mistakeRetry";
 import { buildWeaknessModeDrillHref } from "@/features/drills/weaknessMode";
 import { FirstRunChoices } from "@/features/progress/FirstRunChoices";
@@ -615,6 +616,7 @@ function MetricGrid({ summary }: { summary: ProgressSummary }) {
 function LastSessionPanel({ summary }: { summary: ProgressSummary }) {
   const { formatNumber, formatPercent, t } = useI18n();
   const lastSession = summary.dashboard.lastSession;
+  const summaryLink = lastSession === undefined ? undefined : createDrillSummaryLink(lastSession.id, "Summary");
 
   return (
     <section className="grid content-start gap-5 border border-ink/15 border-t-2 border-t-coral bg-white p-5 sm:p-6">
@@ -625,12 +627,12 @@ function LastSessionPanel({ summary }: { summary: ProgressSummary }) {
             {t("Last Session")}
           </h2>
         </div>
-        {lastSession !== undefined ? (
+        {summaryLink !== undefined ? (
           <Link
             className={buttonClass("secondary", "min-h-10 px-3")}
-            href={`/drills/summary?id=${encodeURIComponent(lastSession.id)}`}
+            href={summaryLink.href}
           >
-            {t("Summary")}
+            {t(summaryLink.label)}
           </Link>
         ) : null}
       </div>
@@ -1094,7 +1096,9 @@ function RecentSessionsList({ sessions }: { sessions: readonly ProgressSummary["
               </tr>
             </thead>
             <tbody className="divide-y divide-ink/10 bg-white">
-              {sessions.map((session) => (
+              {sessions.map((session) => {
+                const summaryLink = createDrillSummaryLink(session.id, "View Summary");
+                return (
                 <tr className="align-top text-ink/75" key={session.id}>
                   <th className="px-3 py-3 font-semibold text-ink" scope="row">
                     {formatDate(new Date(session.endedAt ?? session.startedAt))}
@@ -1126,13 +1130,14 @@ function RecentSessionsList({ sessions }: { sessions: readonly ProgressSummary["
                   <td className="px-3 py-3">
                     <Link
                       className="font-semibold text-teal underline-offset-4 hover:underline"
-                      href={`/drills/summary?id=${encodeURIComponent(session.id)}`}
+                      href={summaryLink.href}
                     >
-                      {t("View Summary")}
+                      {t(summaryLink.label)}
                     </Link>
                   </td>
                 </tr>
-              ))}
+                );
+              })}
             </tbody>
           </table>
         </div>

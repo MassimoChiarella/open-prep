@@ -2,6 +2,7 @@ import { isPrivatePracticeRecord, preservePrivateData, privatePreservationStoreN
 import { publishLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import { assertBackupCompatibleRecords, inspectStoredRecord, IncompatibleStoredRecordError, type StoredRecordIssue } from "@/features/settings/recordDiagnostics";
 import { isFullCaseDraftRecord } from "@/features/case-practice/simulation/fullCaseDraft";
+import { isWellFormedUnicode } from "@/lib/validation/inputLimits";
 import {
   appDatabaseName,
   progressStoreNames,
@@ -737,7 +738,7 @@ function isString(value: unknown): value is string {
 }
 
 function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
+  return typeof value === "string" && value.trim().length > 0 && isWellFormedUnicode(value);
 }
 
 function isDateString(value: unknown): value is string {

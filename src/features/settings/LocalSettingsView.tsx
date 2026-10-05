@@ -159,7 +159,17 @@ export function LocalSettingsView({
   }, []);
 
   useEffect(() => {
-    const openQuestionPoolSettings = () => {
+    const openSettingsDisclosure = () => {
+      if (window.location.hash === "#record-recovery") {
+        const recovery = document.getElementById("record-recovery");
+        if (recovery instanceof HTMLDetailsElement) {
+          recovery.open = true;
+          const localData = recovery.parentElement?.closest("details");
+          if (localData instanceof HTMLDetailsElement) localData.open = true;
+          setLocalDataOpened(true);
+        }
+        return;
+      }
       if (window.location.hash !== "#question-pool-settings") return;
 
       const disclosure = document.getElementById("question-pool-settings");
@@ -167,10 +177,10 @@ export function LocalSettingsView({
       setQuestionPackPoolOpened(true);
     };
 
-    openQuestionPoolSettings();
-    window.addEventListener("hashchange", openQuestionPoolSettings);
+    openSettingsDisclosure();
+    window.addEventListener("hashchange", openSettingsDisclosure);
 
-    return () => window.removeEventListener("hashchange", openQuestionPoolSettings);
+    return () => window.removeEventListener("hashchange", openSettingsDisclosure);
   }, []);
 
   useEffect(() => {
