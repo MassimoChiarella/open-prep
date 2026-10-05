@@ -32,6 +32,7 @@ describe("benchmark locale transitions", () => {
     );
     const view = render(content());
     await waitFor(() => expect(screen.getByLabelText("Answer")).toBeEnabled());
+    await waitFor(async () => expect(await storage.getAll("drill_sessions")).toHaveLength(1));
     const original = (await storage.getAll("drill_sessions"))[0];
     fireEvent.change(screen.getByLabelText("Answer"), { target: { value: "987654321" } });
     view.rerender(content());
