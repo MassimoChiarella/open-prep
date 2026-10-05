@@ -158,6 +158,7 @@ test.describe("WCAG 2.2 route and state coverage", () => {
 
   test("Settings backup and destructive-data states have no tagged A/AA axe violations", async ({ page }) => {
     await openState(page, findState("settings:default"));
+    await page.getByTestId("settings-reset").locator(":scope > summary").click();
     await page.getByTestId("settings-reset").getByText("No saved personal text was found.").waitFor({ state: "attached" });
     await seedSettingsPersonalData(page);
     await page.reload();

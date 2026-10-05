@@ -97,6 +97,7 @@ test("clear all removes every record and preference and invalidates every open p
 async function seedLocalData(page: Page): Promise<void> {
   await page.goto("/settings");
   await expect(page.getByRole("heading", { level: 1, name: "Local App Settings" })).toBeVisible();
+  await page.getByTestId("settings-reset").locator(":scope > summary").click();
   await page.getByTestId("settings-reset").getByText("No saved personal text was found.").waitFor({ state: "attached" });
 
   await page.evaluate(({ databaseName, databaseVersion, pack, records }) => new Promise<void>((resolve, reject) => {
