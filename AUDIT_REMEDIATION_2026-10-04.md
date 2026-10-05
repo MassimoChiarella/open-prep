@@ -21,7 +21,7 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 8 | A09 tolerated answers | Classify accepted numeric values consistently; retain real outside-tolerance errors and unit partial credit. | Complete: validator/scoring regressions, 2 files / 31 tests passed. |
 | 9 | A10 benchmark import | Accept, validate and preserve supported currency metadata. | Complete: importer/persistence suites, 2 files / 16 tests passed. |
 | 10 | A11 monetary example | Correct sample flag; synchronize distributed copies; test generated monetary grading. | Complete: sample/authoring suites, 3 files / 76 tests passed; 16 variants at two difficulties earn full currency credit. |
-| 11 | A12 unitless sizing | Award correct no-unit output full unit credit; preserve physical/currency omission penalties. | Pending |
+| 11 | A12 unitless sizing | Award correct no-unit output full unit credit; preserve physical/currency omission penalties. | Complete: evaluation/scoring suites, 2 files / 19 tests passed. |
 | 12 | A13 dependencies | Compatible framework/config patch; fresh advisory inventory; assess remaining reachable tooling paths. | Pending |
 | 13 | A14/I03 backup performance | Worker restore validation; cancellation/identity; reuse Standard serialized output; preserve integrity and atomic restore. | Pending |
 | 14 | A15 Settings performance | Lazy inventory; bounded/native counts; correct loading/refresh/clear safeguards. | Pending |
@@ -35,6 +35,7 @@ Each milestone contains its implementation, compatibility handling, and focused 
 The commit subject identifies each milestone. Add the exact verification and any compatibility decisions to its entry before committing. Order independent fixes by readiness while preserving dependent storage migrations in safe commits.
 
 - Baseline: `docs(audit): record findings and remediation milestones` — report and execution plan; repository identity verified.
+- `fix(sizing): award unit credit to unitless outputs` — A12: plain correct unitless answers receive full unit credit; real missing currency and wrong units retain penalties.
 - `fix(content): correct Interview Math monetary example` — A11: monetary flag and generated authoring copies synchronized; every sample variant checked.
 - `fix(packs): retain benchmark currency metadata` — A10: shared currency metadata is accepted and preserved; invalid units and metadata still reject.
 - `fix(drills): wait for recovery before accepting answers` — A03: inputs, handlers, focus and timer activity wait for recovered state and its matching token.

@@ -9,6 +9,17 @@ import {
 const coffeeTemplate = marketSizingTemplates[0];
 
 describe("market sizing evaluation", () => {
+  it("explicitly validates a no-unit output while rejecting conflicting typed units", () => {
+    const template = { ...coffeeTemplate, outputUnit: "none" as const };
+    expect(evaluateMarketSizingFinalAnswer(template, 5, "5")).toMatchObject({
+      status: "match", validation: { numericMatch: true, unitStatus: "compatible", errorTypes: ["none"] }
+    });
+    expect(evaluateMarketSizingFinalAnswer(template, 5, "$5")).toMatchObject({
+      status: "mismatch", validation: { numericMatch: true, unitStatus: "incompatible", errorTypes: ["unit_error"] }
+    });
+    expect(evaluateMarketSizingFinalAnswer(coffeeTemplate, 5, "5").validation?.unitStatus).toBe("omitted");
+  });
+
   it("calculates a deterministic result from parsed in-range assumptions", () => {
     const evaluation = evaluateMarketSizingDraft({
       template: coffeeTemplate,

@@ -126,7 +126,7 @@ export function evaluateMarketSizingFinalAnswer(
     unit: template.outputUnit,
     tolerance: template.finalFormula.tolerance,
     roundingRule: template.finalFormula.roundingRule
-  }, { acceptWithinTenPercent, locale });
+  }, { acceptWithinTenPercent, locale, ...(template.outputUnit === "none" ? { selectedUnit: "none" } : {}) });
 
   if (validation.normalizedUserValue === undefined) {
     return {

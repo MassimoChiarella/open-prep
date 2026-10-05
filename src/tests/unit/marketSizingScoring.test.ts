@@ -7,6 +7,17 @@ import { scoreMarketSizingAttempt } from "@/features/market-sizing/marketSizingS
 const coffeeTemplate = marketSizingTemplates[0];
 
 describe("market sizing scoring", () => {
+  it("awards all unit points for a correct plain number when the template needs no unit", () => {
+    const template = { ...coffeeTemplate, outputUnit: "none" as const };
+    const stepValues = validCoffeeStepValues();
+    const evaluation = evaluateMarketSizingDraft({ template, stepValues, finalAnswer: "2628000000" });
+    const score = scoreMarketSizingAttempt({ template, stepValues, evaluation, interpretationId: "plausible" });
+    expect(evaluation.finalAnswer.validation?.unitStatus).toBe("compatible");
+    expect(pointsFor(score, "units")).toBe(10);
+    expect(score.totalScore).toBe(100);
+    expect(score.errorTypes).toEqual(["none"]);
+  });
+
   it.each([0.1, 0.6, 1.6])("caps fractional rubric dimensions at their authored %s points", (maxPoints) => {
     const template = { ...coffeeTemplate, rubric: coffeeTemplate.rubric.map((dimension) => ({ ...dimension, maxPoints })) };
     for (const stepValues of [validCoffeeStepValues(), { ...validCoffeeStepValues(), coffee_drinker_rate: "95%", sense_check: false }]) {
