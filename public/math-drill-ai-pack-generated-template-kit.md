@@ -50,6 +50,8 @@ Each template defines 1 to 20 case-sensitive variables. Variable names must be i
 
 Variable types are `integer`, `decimal`, `percentage`, and `currency`. Integer values and range fields are whole numbers. A range has at most 10,001 reachable values. The default step is 1 for integer and 0.1 otherwise, but an explicit step is clearer.
 
+Range generation preserves authored decimal precision, including scientific notation in JSON variable numbers. The importer rejects steps too small to produce distinct representable finite values at the bounds. Formula numeric literals still use ordinary digits and a decimal point, rather than scientific notation.
+
 Percentage variables are display numbers: use `25` when the prompt shows 25%, then use `rate / 100` in the formula. Variable `unit` is metadata and does not rescale the number.
 
 Formula expressions allow only numeric literals, declared variables, parentheses, unary signs, and `+ - * / ^`. They do not allow functions, assignments, comparisons, commas, JavaScript, or a `%` operator. Every identifier must resolve. Every reachable combination must produce a finite number without division by zero.
@@ -66,6 +68,8 @@ Placeholders render raw stored values without commas, currency conversion, perce
 
 Generated answers default to a tolerance that accepts a correctly calculated value rounded to two displayed decimal places: absolute `0.005` for ordinary display values and `0.00005` for canonical percentage fractions (half of `0.01` percentage point). A template can override this with `tolerance` using the same `absolute`, relative `percentage`, or inclusive `range` shapes as fixed numeric answers. Absolute tolerance must be between `0` and `1000000000`; relative percentage tolerance must be between `0` and `1`; range endpoints must be finite and ordered. Optional `roundingRule` is learner-facing guidance and does not alter grading by itself. Omit both fields for the safe two-decimal default, set `tolerance` explicitly for a different comparison policy, and use `fixed_numeric` when each authored question needs a different answer rule.
 
+Set `answerCurrency: true` for monetary answers with unit `currency`, `k`, `m`, or `b`, including prompts requesting `$M`. For exact grading, set `tolerance: { "type": "absolute", "value": 0 }`; `roundingRule: "exact"` alone keeps the default tolerance.
+
 ## Optional Interview Math
 
 Either omit `caseStyle` from every template or include it on every template. An Interview Math pack requires `category: "case_math"` throughout.
@@ -79,6 +83,8 @@ Either omit `caseStyle` from every template or include it on every template. An 
 - 2 to 10 unique interpretation choices, exactly one with `isCorrect: true`.
 
 Other equation choices may recognize the formula while applying an incorrect setup. Choice labels can use valid variable placeholders and are shuffled locally.
+
+The rubric awards formula selection 20, equation setup 20, calculation accuracy 30, units and magnitude 15, and interpretation selection 15 points. Calculation accuracy is independent of unit correctness: an accepted number retains its 30 calculation points when the typed or selected unit is wrong, while units and magnitude receive zero. With all other components correct, that answer earns 85/100 and remains marked incorrect with `unit_error`. A numerical error outside the accepted tolerance still loses calculation credit.
 
 ## Authoring quality check
 

@@ -27,10 +27,12 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 14 | A15 Settings performance | Lazy inventory; bounded/native counts; correct loading/refresh/clear safeguards. | Pending |
 | 15 | A16 decimal precision | Align range validation, generation, formatting and capacity; finite bundled sweep. | Complete: generator/import range suites, 4 files / 72 tests passed, including 7,680 bundled variants. |
 | 16 | I01 prep plan | Include actual completed sizing/exhibit scores with explicit minimum sample and weakness thresholds. | Complete: plan/view suites, 2 files / 12 tests passed using actual persisted module shapes. |
-| 17 | I02/I04 guidance | Synchronize template grading docs. Retain current Interview Math rubric unless product policy is explicitly changed. | Pending |
+| 17 | I02/I04 guidance | Synchronize template grading docs. Retain current Interview Math rubric unless product policy is explicitly changed. | Complete: synchronized guides; 4 authoring/public-pack files / 83 tests passed. Approved I04 rubric implemented and tested. |
 | 18 | Integration | Full check, engine matrix, meaningful performance comparisons; document physical/PWA/assistive-technology gates. | Pending |
 
 ## Commit timeline
+
+- `docs(authoring): align template grading guidance`: I02: tolerance defaults, explicit rounding, decimal precision and currency flags documented consistently; authoring sync check passed.
 
 - `fix(grading): separate calculation credit from unit penalties`: I04: implements the user-approved independent calculation rubric. Wrong units lose unit points while accepted calculation retains credit; 3 focused files / 40 tests passed.
 

@@ -74,6 +74,8 @@ Each template uses the existing deterministic `QuestionTemplate` shape:
 | `formula` | Yes | Arithmetic expression that computes the answer. |
 | `answerUnit` | No | One supported unit value; omit it for no required unit. |
 | `answerCurrency` | No | Boolean. Set `true` for monetary answers whose unit is `currency`, `k`, `m`, or `b`, so typed currency symbols are compatible with the scale. |
+| `tolerance` | No | Grading comparison policy; overrides the default two-decimal tolerance. |
+| `roundingRule` | No | Learner-facing rounding instruction; does not change the comparison policy. |
 | `explanationTemplate` | Yes | One to ten generated explanation steps and an optional shortcut. |
 | `caseStyle` | No | Interview Math configuration described below. |
 
@@ -96,6 +98,8 @@ Define each variable with exactly one source:
 - `integer` values and range numbers must be whole numbers.
 - `decimal`, `percentage`, and `currency` values are ordinary JSON numbers. A percentage variable uses the number shown in the prompt: use `25` for 25%, then divide by `100` in the formula when a fraction is needed.
 - Optional variable `unit` metadata does not rescale the stored number.
+
+Range generation preserves the decimal precision of `min` and `step`, including scientific notation in JSON numbers. A positive step must produce distinct representable finite numbers at both bounds; the importer rejects ranges whose step is too small at that magnitude. Prefer practical display values, since placeholders render raw numbers.
 
 The app chooses variables with a seeded local generator. The same seed and pack version produce the same sequence. Generated question IDs include the resolved values, and duplicate variants are skipped. Import evaluates up to 256 deterministic representative combinations, including range boundaries, values nearest zero, and bounded single-variable and pairwise probes. This is not an exhaustive proof for a large Cartesian product, so every reachable combination must still be safe. Runtime generation reports an actionable pack error if an unprobed combination fails. Provide enough value combinations for the largest drill users may request.
 
@@ -125,7 +129,18 @@ Placeholders use exact, case-sensitive `{identifier}` syntax. Rendered prompt, e
 
 An output name must be a valid non-reserved identifier and cannot duplicate a variable name. Every placeholder must resolve. Keep `{answer}` and the output name out of the prompt because they reveal the answer. The first explanation step is also used as the short hint or summary.
 
-The formula result is stored directly as the answer. If `answerUnit` is `percentage`, the formula must return the canonical fraction (`0.25` for 25%); `percentage_points` returns the point count (`5` for five points). Generated templates currently produce exact answers and do not define tolerance or rounding fields.
+The formula result is stored directly as the answer. If `answerUnit` is `percentage`, the formula must return the canonical fraction (`0.25` for 25%); `percentage_points` returns the point count (`5` for five points). If `answerUnit` is `k`, `m`, or `b`, the formula returns the displayed scaled number (`12` with `m` means 12 million). Set `answerCurrency: true` for monetary scale answers that accept notation such as `$12M`.
+
+Generated answers default to a tolerance that accepts rounding to two displayed decimal places: absolute `0.005` for ordinary display values and `0.00005` for canonical percentage fractions (half of `0.01` percentage point). Override it with the fixed-numeric `absolute`, relative `percentage`, or inclusive `range` shapes. Absolute tolerance is between `0` and `1000000000`, relative percentage tolerance between `0` and `1`, and range endpoints must be finite and ordered. Optional `roundingRule` uses the fixed-numeric enum and is display guidance only. For example, these optional template fields accept rounding to a whole displayed unit:
+
+```json
+{
+  "tolerance": { "type": "absolute", "value": 0.5 },
+  "roundingRule": "nearest_whole"
+}
+```
+
+For exact comparison, set `tolerance` to `{ "type": "absolute", "value": 0 }`; setting `roundingRule: "exact"` alone keeps the default tolerance.
 
 ### Optional Interview Math
 
@@ -140,6 +155,8 @@ Omit `caseStyle` from every template for a standard generated pack. If it is inc
 - `interviewMath.interpretationOptions`: 2 to 10 unique choices with `id`, `label`, and `isCorrect`.
 
 Exactly one equation choice must have `setupCorrect: true`, and that choice must also have `formulaCorrect: true`. Other choices may still recognize the right formula while representing an incorrect setup. Exactly one interpretation choice must have `isCorrect: true`. IDs and labels must be unique within their choice list. Labels may contain valid placeholders and are shuffled locally when a question is generated.
+
+The rubric awards formula selection 20, equation setup 20, calculation accuracy 30, units and magnitude 15, and interpretation selection 15 points. Calculation accuracy is independent of unit correctness: an accepted number retains its 30 calculation points when the typed or selected unit is wrong, while units and magnitude receive zero. With all other components correct, that answer earns 85/100 and remains marked incorrect with `unit_error`. A numerical error outside the accepted tolerance still loses calculation credit.
 
 ## Exhibit packs
 

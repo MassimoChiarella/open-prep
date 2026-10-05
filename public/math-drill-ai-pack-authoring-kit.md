@@ -119,7 +119,7 @@ Before returning a file, answer yes to every applicable item:
 - Every formula identifier resolves, every required numeric market-sizing variable is referenced, and every reachable input combination produces a finite result without division by zero.
 - Generated variables define exactly one values source or range source, ranges contain no more than 10,001 reachable values, every Cartesian-product combination is valid, and the pack provides enough combinations for useful generation.
 - Dependent variable pairs were split into separate templates; same-position values are never assumed to be zipped.
-- Every generated result is practical to enter exactly; any answer requiring accepted rounding uses a fixed-numeric question instead.
+- Every generated result is practical to enter within its default two-decimal tolerance or authored comparison policy; add an explicit tolerance when a different rounding rule is required.
 - Interview Math is either absent from every generated template or present on every template; all such templates use case_math, expectedUnit matches answerUnit or none, and each choice list has exactly one required correct selection.
 - Exhibit row keys exactly match column IDs, cell types match column roles, chart references resolve to suitable columns, plotted values are numeric metrics, scatterplots define one Y series, and percentage pies total 99%–101%. Authored line/index/waterfall order is intentional, index values are already rebased if desired, and waterfall totals follow the documented zero-start/no-reset behavior. Stored values and visible labels use consistent scales.
 - Numeric answers use the unit field required by their selected schema; omitting a generated template's optional `answerUnit` is equivalent to `none`. Correct choice IDs resolve. Tolerances and ranges are ordered and non-negative as required. A displayed rounding rule has a matching tolerance whenever approximation should be accepted.
@@ -227,6 +227,9 @@ Each template uses the existing deterministic `QuestionTemplate` shape:
 | `variables` | Yes | One to twenty named variable specifications. |
 | `formula` | Yes | Arithmetic expression that computes the answer. |
 | `answerUnit` | No | One supported unit value; omit it for no required unit. |
+| `answerCurrency` | No | Boolean. Set `true` for monetary answers whose unit is `currency`, `k`, `m`, or `b`, so typed currency symbols are compatible with the scale. |
+| `tolerance` | No | Grading comparison policy; overrides the default two-decimal tolerance. |
+| `roundingRule` | No | Learner-facing rounding instruction; does not change the comparison policy. |
 | `explanationTemplate` | Yes | One to ten generated explanation steps and an optional shortcut. |
 | `caseStyle` | No | Interview Math configuration described below. |
 
@@ -249,6 +252,8 @@ Define each variable with exactly one source:
 - `integer` values and range numbers must be whole numbers.
 - `decimal`, `percentage`, and `currency` values are ordinary JSON numbers. A percentage variable uses the number shown in the prompt: use `25` for 25%, then divide by `100` in the formula when a fraction is needed.
 - Optional variable `unit` metadata does not rescale the stored number.
+
+Range generation preserves the decimal precision of `min` and `step`, including scientific notation in JSON numbers. A positive step must produce distinct representable finite numbers at both bounds; the importer rejects ranges whose step is too small at that magnitude. Prefer practical display values, since placeholders render raw numbers.
 
 The app resolves every variable independently. Multiple `values` lists and ranges form a Cartesian product; entries at the same array position are not paired or zipped. Every reachable combination must be mathematically and semantically valid, including ordering relationships and denominators. Exclude zero from every possible denominator. If values must remain paired or one variable depends on another, use separate templates rather than parallel arrays.
 
@@ -286,7 +291,7 @@ An output name must be a valid non-reserved identifier and cannot duplicate a va
 
 All template placeholders render the raw stored number with `String(value)`: they do not add commas, currency signs, percent conversion, scale labels, units, or rounding. Put required formatting in surrounding text, such as `${price}`, `{growthRate}%`, or `{marketSize} million`. For a canonical percentage answer of `0.25`, `{answer}` renders `0.25`, not `25%`.
 
-The formula result is stored directly as the answer. If `answerUnit` is `percentage`, the formula must return the canonical fraction (`0.25` for 25%); `percentage_points` returns the point count (`5` for five points). If `answerUnit` is `k`, `m`, or `b`, the formula returns the displayed scaled number (`12` with `m` means 12 million). Generated answers default to absolute tolerance `0.005`, so a correct value rounded to two decimals is accepted. Templates may override this with the fixed-numeric `tolerance` shapes and may add a learner-facing `roundingRule`; the instruction never changes grading without a matching tolerance. Absolute tolerance is capped at `1000000000`, relative percentage tolerance at `1`, and ranges must have finite ordered endpoints.
+The formula result is stored directly as the answer. If `answerUnit` is `percentage`, the formula must return the canonical fraction (`0.25` for 25%); `percentage_points` returns the point count (`5` for five points). If `answerUnit` is `k`, `m`, or `b`, the formula returns the displayed scaled number (`12` with `m` means 12 million). Set `answerCurrency: true` for monetary scale answers that accept notation such as `$12M`. Generated answers default to absolute tolerance `0.005` for ordinary display values and `0.00005` for canonical percentage fractions (half of `0.01` percentage point), so a correct value rounded to two displayed decimals is accepted. Templates may override this with the fixed-numeric `tolerance` shapes and may add a learner-facing `roundingRule`; the instruction never changes grading without a matching tolerance. Absolute tolerance is capped at `1000000000`, relative percentage tolerance at `1`, and ranges must have finite ordered endpoints. For exact grading, set `tolerance: { "type": "absolute", "value": 0 }`; `roundingRule: "exact"` alone keeps the default tolerance.
 
 ### Optional Interview Math
 
@@ -303,6 +308,8 @@ Omit `caseStyle` from every template for a standard generated pack. If it is inc
 Exactly one equation choice must have `setupCorrect: true`, and that choice must also have `formulaCorrect: true`. Other choices may still recognize the right formula while representing an incorrect setup. Exactly one interpretation choice must have `isCorrect: true`. IDs and labels must be unique within their choice list. Labels may contain valid placeholders and are shuffled locally when a question is generated.
 
 By default, learners must choose an equation and exact unit; interpretation is optional unless the session setting requires it, but an attempted wrong interpretation still loses its component points. The 100-point score is formula selection 20, equation setup 20, calculation accuracy 30, units and magnitude 15, and interpretation selection 15. Make distractors diagnostically distinct rather than cosmetically different. Use the complete Interview Math example embedded later in this document as the copy-and-edit reference.
+
+Calculation accuracy is independent of unit correctness: an accepted number retains its 30 calculation points when the typed or selected unit is wrong, while units and magnitude receive zero. With all other components correct, that answer earns 85/100 and remains marked incorrect with `unit_error`. A numerical error outside the accepted tolerance still loses calculation credit.
 
 ## Exhibit packs
 
