@@ -32,6 +32,8 @@ Each milestone contains its implementation, compatibility handling, and focused 
 
 ## Commit timeline
 
+- `fix(privacy): enforce imported progress scopes`: independent review found that Standard imports could claim an excluded private scope while including private records. Validation now rejects explicit private content and safely normalizes historical unclassified text without changing checksum inputs. Six scoped backup files / 59 tests passed; actual cookbook persistence covers private text and numeric-looking notes. Near-32-MiB envelope acceptance also passes.
+
 - `fix(content): version the corrected monetary starter`: A11 increments the distributed pack to 1.0.1 and synchronizes both embedded copies; 4 focused sample/importer/authoring files / 106 tests passed.
 
 - `chore(deps): patch framework and brace expansion`: A13 updates compatible locked versions; advisory inventory drops from one critical/eight high to zero critical/seven high entries sharing one unpatched tooling advisory. Lint and type checking are part of integration validation.

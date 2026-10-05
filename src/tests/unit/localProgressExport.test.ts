@@ -337,7 +337,7 @@ describe("local progress export schema", () => {
       title: "",
       updatedAt: "2026-06-02T00:00:00.000Z"
     };
-    const atStringLimit = { ...valid, stores: { ...valid.stores, practice_records: [story] } };
+    const atStringLimit = { ...valid, privacyScope: "complete", stores: { ...valid.stores, practice_records: [story] } };
 
     expect(validateLocalProgressImportPayload(valid, { sourceBytes: localProgressImportLimits.maxFileBytes }).status).toBe("valid");
     expect(

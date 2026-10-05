@@ -402,14 +402,6 @@ function validateProgressSection(
     addError('Complete backup progress privacyScope must match the "private_text" selection.');
   }
   if (!includesPrivateText) {
-    // Historical progress-only backups lack guided note classification. Their
-    // checksum is verified against the original payload; normalize unknown text
-    // conservatively without rejecting an otherwise supported historical file.
-    progress.stores = {
-      ...progress.stores,
-      market_sizing_attempts: progress.stores.market_sizing_attempts.map((record) =>
-        record.noteInputIds === undefined && !hasOwn(record, "note") ? withoutMarketSizingNotes(record) : record)
-    };
     if (progress.stores.practice_records.some((record) => isPrivatePracticeRecord(record))) {
       addError("Complete backup without private text must not contain private practice records.");
     }

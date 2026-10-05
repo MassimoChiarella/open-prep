@@ -192,16 +192,35 @@ export function validateLocalProgressImportPayload(
     return { errors, status: "invalid" };
   }
 
+  const privacyScope = payload.schemaVersion === legacyLocalProgressExportSchemaVersion
+    ? "complete" : payload.privacyScope as LocalProgressExportPrivacyScope;
+  let stores = payload.stores as unknown as LocalProgressExportStores;
+  if (privacyScope === "standard") {
+    if (stores.practice_records.some(isPrivatePracticeRecord)) {
+      addError("Standard progress must not contain private practice records.");
+    }
+    if (stores.market_sizing_attempts.some((record) => Object.hasOwn(record, "note") ||
+      record.noteInputIds?.some((id) => Object.hasOwn(record.inputValues ?? {}, id)))) {
+      addError("Standard progress must not contain market-sizing notes.");
+    }
+    // Historical Standard files predate guided note metadata. Keep the original
+    // payload intact for Complete Backup checksum verification; normalize only
+    // returned records, conservatively treating unclassified input text as private.
+    stores = {
+      ...stores,
+      market_sizing_attempts: stores.market_sizing_attempts.map((record) =>
+        record.noteInputIds === undefined ? withoutMarketSizingNotes(record) : record)
+    };
+  }
+  if (errors.length > 0) return { errors, status: "invalid" };
+
   return {
     exportData: {
       app: localProgressExportAppId,
       exportedAt: payload.exportedAt as string,
-      privacyScope:
-        payload.schemaVersion === legacyLocalProgressExportSchemaVersion
-          ? "complete"
-          : (payload.privacyScope as LocalProgressExportPrivacyScope),
+      privacyScope,
       schemaVersion: localProgressExportSchemaVersion,
-      stores: payload.stores as unknown as LocalProgressExportStores
+      stores
     },
     status: "valid"
   };
