@@ -46,6 +46,7 @@ for (const choice of ["view", "fork"] as const) test(`two tabs retain conflictin
 test("legacy record recovery archives originals, requires confirmation, and preserves unrelated history", { tag: "@browser-smoke" }, async ({ page }) => {
   await page.goto("/settings");
   await expect(page.getByRole("heading", { name: "Local App Settings", exact: true })).toBeVisible();
+  await expect(page.getByText(/Built-in defaults initialize Drill Selection/)).toBeVisible();
   const created = createDrillSession({ seed: "recovery-ui", startedAt: "2026-09-22T12:00:00.000Z", settings: { questionCount: 1 } });
   const answered = submitAnswer({ ...created, question: created.questions[0], rawInput: "wrong", timeTakenSeconds: 1 });
   const session = createStoredDrillSession(completeDrillSession({ session: answered.session, questions: created.questions }), created.questions);
