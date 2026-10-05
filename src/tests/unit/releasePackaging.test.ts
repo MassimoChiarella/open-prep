@@ -45,11 +45,9 @@ describe("portable release packaging", () => {
     const readme = await readFile(path.resolve("README.md"), "utf8");
 
     expect(packageJson.scripts.check.split(" && ")).toEqual([
-      "npm run clean:web",
       "npm run version:check",
       "npm run actions:check",
       "npm run authoring:check",
-      "npm run identity:check",
       "npm run lint",
       "npm run typecheck",
       "npm run test",

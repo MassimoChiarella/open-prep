@@ -31,8 +31,10 @@ moving it between browsers.
 - `npm run e2e` runs the complete functional and visual suite in Playwright
   Chromium. Chromium remains the authoritative visual-baseline environment.
 - `npm run e2e:cross-browser` runs only the stable `@browser-smoke` journeys in
-  Playwright Chromium, Firefox, and WebKit. Failures retain diagnostic traces
-  and screenshots; Firefox and WebKit do not have golden visual baselines.
+  Playwright Firefox and WebKit, including the Chromium-to-browser backup
+  transfers. CI and releases run it after the full Chromium suite. Failures
+  retain diagnostic traces and screenshots; Firefox and WebKit do not have
+  golden visual baselines.
 - Playwright's Chromium, Firefox, and WebKit projects are controlled test
   engines. They are useful compatibility signals, but they are not the branded
   Google Chrome, Microsoft Edge, Mozilla Firefox, or Apple Safari applications.

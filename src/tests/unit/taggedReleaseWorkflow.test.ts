@@ -48,7 +48,7 @@ describe("tagged release workflow", () => {
       "node scripts/check-version-contract.mts --artifacts dist"
     ];
 
-    expect(verify).toContain("node-version: 24.19.0");
+    expect(verify).toContain("node-version-file: .node-version");
     expectInOrder(verify, commands);
     expect(verify).toContain("dist/open-prep-v*.tar.gz");
     expect(verify).toContain("dist/open-prep-v*.provenance.json");

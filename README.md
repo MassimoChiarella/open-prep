@@ -47,7 +47,7 @@ Requirements:
 - Node.js 24.19.0 (the version pinned in `.node-version`; compatible 24.x patch updates are accepted by `engines`).
 - npm 11.17.0 (the version pinned by `packageManager`; compatible 11.x patch updates are accepted by `engines`).
 
-Repository entry commands run a dependency-free toolchain preflight and stop with the required versions when the active terminal resolves an unsupported Node.js or npm installation.
+npm enforces these ranges through `devEngines` before installing dependencies or running repository commands. Entry-command hooks reject legacy npm installations that may ignore `devEngines`; install the pinned toolchain and reopen the terminal if a version check fails.
 
 Install and start the development server:
 
