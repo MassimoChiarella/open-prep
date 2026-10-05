@@ -18,6 +18,9 @@ const privateStoryTitle = "Cross-tab private story";
 const preservedAttemptId = "local-data-safety-attempt";
 const syntheticPackId = "local-data-safety-pack";
 
+// These keyboard-driven, multi-tab journeys include history traversal and reloads.
+test.describe.configure({ timeout: 60_000 });
+
 test(
   "personal clear preserves practice data and invalidates every open private view",
   { tag: "@browser-smoke" },
@@ -154,10 +157,13 @@ async function assertPrivateStoryCannotReturn(page: Page): Promise<void> {
   await expect(page).toHaveURL("/");
   await expect(page.getByRole("heading", { level: 4, name: privateStoryTitle })).toHaveCount(0);
 
-  await page.goto("/case-practice/fit");
+  await page.goto("/case-practice/fit", { waitUntil: "domcontentloaded" });
   await expect(page.getByRole("heading", { level: 1, name: "Fit and Behavioral Practice" })).toBeVisible();
+  await expect(page.getByText("Add a story above, then save it or rehearse without saving.", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { level: 4, name: privateStoryTitle })).toHaveCount(0);
-  await page.reload();
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("heading", { level: 1, name: "Fit and Behavioral Practice" })).toBeVisible();
+  await expect(page.getByText("Add a story above, then save it or rehearse without saving.", { exact: true })).toBeVisible();
   await expect(page.getByRole("heading", { level: 4, name: privateStoryTitle })).toHaveCount(0);
 }
 
