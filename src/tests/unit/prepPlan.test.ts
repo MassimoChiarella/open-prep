@@ -23,7 +23,7 @@ describe("preparation roadmap", () => {
     }
   });
 
-  it("requires three completed attempts and uses the normalized moderate-score threshold", async () => {
+  it("requires three scored completed attempts and uses the normalized moderate-score threshold", async () => {
     const insufficient = scorePreparationPriorities(input({ progress: await storedModuleProgress(0, 2) }));
     const moderate = scorePreparationPriorities(input({ progress: await storedModuleProgress(70) }));
     const stable = scorePreparationPriorities(input({ progress: await storedModuleProgress(80) }));
@@ -31,6 +31,19 @@ describe("preparation roadmap", () => {
       expect(scoreOf(insufficient, id)).toBe(scoreOf(stable, id));
       expect(scoreOf(moderate, id) - scoreOf(stable, id)).toBe(35);
       expect(moderate.find((priority) => priority.id === id)?.reason).toContain("70%");
+    }
+  });
+
+  it.each([0, 1, 2])("does not use unscored legacy completions to satisfy the sample minimum with %i scored attempts", async (scoredCount) => {
+    const progress = await storedModuleProgress(0, 5, scoredCount);
+    for (const summary of Object.values(progress.additionalPractice ?? {})) {
+      expect(summary).toMatchObject({ completedCount: 5, scoredCount });
+      expect(summary.averageScorePercent).toBe(scoredCount === 0 ? undefined : 0);
+    }
+    const mixed = scorePreparationPriorities(input({ progress }));
+    const stable = scorePreparationPriorities(input({ progress: await storedModuleProgress(100) }));
+    for (const id of ["exhibits", "market_sizing"] as const) {
+      expect(scoreOf(mixed, id)).toBe(scoreOf(stable, id));
     }
   });
 
@@ -125,7 +138,7 @@ describe("preparation roadmap", () => {
   });
 });
 
-async function storedModuleProgress(scorePercent: number, completedCount = 3): Promise<ProgressSummary> {
+async function storedModuleProgress(scorePercent: number, completedCount = 3, scoredCount = completedCount): Promise<ProgressSummary> {
   const storage = new MemoryAppStorage();
   for (let index = 0; index < 5; index += 1) {
     const timestamps = {
@@ -133,11 +146,12 @@ async function storedModuleProgress(scorePercent: number, completedCount = 3): P
       ...(index < completedCount ? { completedAt: "2026-08-10T10:01:00.000Z" } : {})
     };
     await storage.put("exhibit_attempts", {
-      ...timestamps, id: `exhibit-${index}`, exhibitId: "example", score: index < completedCount ? scorePercent : 0
+      ...timestamps, id: `exhibit-${index}`, exhibitId: "example",
+      ...(index < scoredCount ? { score: scorePercent } : index >= completedCount ? { score: 0 } : {})
     });
     await storage.put("market_sizing_attempts", {
       ...timestamps, id: `sizing-${index}`, templateId: "example", maxScore: 20,
-      score: index < completedCount ? scorePercent / 5 : 0
+      ...(index < scoredCount ? { score: scorePercent / 5 } : index >= completedCount ? { score: 0 } : {})
     });
   }
   return loadProgressSummary(storage);

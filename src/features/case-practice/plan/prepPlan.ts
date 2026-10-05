@@ -316,7 +316,7 @@ function addCompletedModuleEvidence(
   label: string,
   addEvidence: (id: PrepPlanFocusId, points: number, reason: string) => void
 ): void {
-  if (summary === undefined || summary.completedCount < 3 || summary.averageScorePercent === undefined) return;
+  if (summary === undefined || summary.scoredCount < 3 || summary.averageScorePercent === undefined) return;
   const average = Math.min(1, Math.max(0, summary.averageScorePercent / 100));
   if (average < 0.6) {
     addEvidence(focusId, 70, `Your completed ${label} score averages ${formatPercent(average)}, so focus there first.`);

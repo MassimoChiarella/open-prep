@@ -153,8 +153,8 @@ function populatedSummary(): ProgressSummary {
 
   return {
     additionalPractice: {
-      exhibits: { attemptCount: 4, averageScorePercent: 75, completedCount: 3 },
-      marketSizing: { attemptCount: 2, averageScorePercent: 80, completedCount: 2 }
+      exhibits: { attemptCount: 4, averageScorePercent: 75, completedCount: 3, scoredCount: 3 },
+      marketSizing: { attemptCount: 2, averageScorePercent: 80, completedCount: 2, scoredCount: 2 }
     },
     categoryPerformance: [
       {

@@ -214,8 +214,8 @@ describe("progress aggregation", () => {
   it("returns an empty summary when no local records exist", () => {
     expect(createProgressSummary({ sessions: [] })).toEqual({
       additionalPractice: {
-        exhibits: { attemptCount: 0, completedCount: 0 },
-        marketSizing: { attemptCount: 0, completedCount: 0 }
+        exhibits: { attemptCount: 0, completedCount: 0, scoredCount: 0 },
+        marketSizing: { attemptCount: 0, completedCount: 0, scoredCount: 0 }
       },
       categoryPerformance: [],
       dashboard: {
@@ -271,10 +271,35 @@ describe("progress aggregation", () => {
     });
 
     expect(summary.additionalPractice).toEqual({
-      exhibits: { attemptCount: 2, averageScorePercent: 100, completedCount: 1 },
-      marketSizing: { attemptCount: 1, averageScorePercent: 80, completedCount: 1 }
+      exhibits: { attemptCount: 2, averageScorePercent: 100, completedCount: 1, scoredCount: 1 },
+      marketSizing: { attemptCount: 1, averageScorePercent: 80, completedCount: 1, scoredCount: 1 }
     });
     expect(summary.isEmpty).toBe(false);
+  });
+
+  it("counts only completed scores with a valid denominator as scored sizing evidence", () => {
+    const completed = {
+      completedAt: "2026-06-02T14:05:00.000Z",
+      startedAt: "2026-06-02T14:00:00.000Z",
+      templateId: "market-1"
+    };
+    const summary = createProgressSummary({
+      marketSizingAttempts: [
+        { ...completed, id: "scored", score: 10, maxScore: 20 },
+        { ...completed, id: "legacy-unscored" },
+        { ...completed, id: "legacy-no-denominator", score: 5 },
+        { ...completed, id: "zero-denominator", score: 0, maxScore: 0 },
+        { ...completed, id: "unfinished", completedAt: undefined, score: 0, maxScore: 20 }
+      ],
+      sessions: []
+    });
+
+    expect(summary.additionalPractice?.marketSizing).toEqual({
+      attemptCount: 5,
+      averageScorePercent: 50,
+      completedCount: 4,
+      scoredCount: 1
+    });
   });
 
   it("uses completed case activity for the empty state and whole-product streak", () => {

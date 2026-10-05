@@ -91,6 +91,7 @@ export interface PracticeAttemptSummary {
   attemptCount: number;
   averageScorePercent?: number;
   completedCount: number;
+  scoredCount: number;
 }
 
 export interface AdditionalPracticeSummary {
@@ -290,7 +291,8 @@ function summarizePracticeAttempts<TAttempt extends { completedAt?: string }>(
   return {
     attemptCount: attempts.length,
     ...(scores.length === 0 ? {} : { averageScorePercent: sum(scores) / scores.length }),
-    completedCount: completed.length
+    completedCount: completed.length,
+    scoredCount: scores.length
   };
 }
 
