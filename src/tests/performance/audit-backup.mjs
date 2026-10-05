@@ -22,7 +22,7 @@ try {
   const releaseMarker = await context.request.get(origin + '/open-prep-release.json');
   if (releaseMarker.ok()) results.release = await releaseMarker.json();
   await page.goto(origin + '/settings/', { waitUntil: 'networkidle' });
-  await page.waitForFunction(async () => (await indexedDB.databases()).some(db => db.name === 'consulting_math_drill_tool'));
+  await page.getByText(/Built-in defaults initialize Drill Selection/).waitFor();
   await page.evaluate(async ({ count, variant }) => {
     const db = await new Promise((resolve, reject) => { const r = indexedDB.open('consulting_math_drill_tool'); r.onsuccess = () => resolve(r.result); r.onerror = () => reject(r.error); });
     const tx = db.transaction(['drill_sessions', 'responses'], 'readwrite');
@@ -61,6 +61,7 @@ try {
       await page.getByTestId('complete-backup-export-preview').or(page.locator('section[aria-labelledby="complete-backup-heading"] [role="alert"]')).first().waitFor();
       const result = await page.evaluate(() => {
         const probe = window.backupProbe;
+        probe.tasks.push(...probe.observer.takeRecords().map(({ startTime, duration }) => ({ start: startTime, duration })));
         probe.observer.disconnect(); clearInterval(probe.timer); cancelAnimationFrame(probe.frame);
         return { elapsedMs: performance.now() - probe.start, busyPaintMs: probe.busyPaintMs, maxTaskMs: Math.max(0, ...probe.tasks.map(task => task.duration)), maxFrameGapMs: Math.max(0, ...probe.gaps), maxHeartbeatGapMs: Math.max(0, ...probe.timerGaps), tasks: probe.tasks, preview: document.querySelector('[data-testid="complete-backup-export-preview"]')?.textContent ?? document.querySelector('section[aria-labelledby="complete-backup-heading"] [role="alert"]')?.textContent ?? '' };
       });

@@ -40,6 +40,7 @@ try {
     await context.addInitScript(startProbe);
     const page = await context.newPage(); page.setDefaultTimeout(180000);
     await page.goto(base + '/settings/', { waitUntil: 'networkidle' });
+    await page.getByText(/Built-in defaults initialize Drill Selection/).waitFor();
     await page.evaluate(seed, { count });
     const cdp = await context.newCDPSession(page);
     for (const rate of [1, 4]) {
@@ -50,7 +51,7 @@ try {
         // A fixed observation window includes hydration and preference reads.
         // Inventory must remain absent until a disclosure is opened.
         await page.waitForTimeout(2000);
-        if (await page.getByTestId('settings-all-data-clear').locator('dl').count()) throw new Error('Collapsed Settings read the inventory.');
+        if (await page.getByTestId('settings-all-data-clear').locator('dl').count()) throw new Error('Collapsed Settings rendered the inventory.');
         const measurement = await page.evaluate(stopProbe);
         if (trial >= 0) await save({ operation: 'collapsed-settings', count, rate, trial, ...measurement });
         await page.evaluate(startProbe);
