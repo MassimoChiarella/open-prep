@@ -516,7 +516,7 @@ function FullCaseSession({
             <button id="full-case-discard-draft" className={buttonClass("secondary")} disabled={draftDeleting} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button>
           </div>
         ) : null}
-        {draftStatus === "saved" ? <p role="status" className={uiText.body}>{t("Private draft saved on this device.")}</p> : null}
+        {draftEnabled || draftStatus === "saved" ? <p role="status" className={uiText.body} style={{ visibility: draftStatus === "saved" ? "visible" : "hidden" }}>{t("Private draft saved on this device.")}</p> : null}
         {draftStatus === "error" ? <LocalSaveNotice label={t("Not Saved")} tone="error" detail={t("The local draft could not be read or updated. Keep this page open to preserve your current work.")} /> : null}
         {draftStatus === "conflict" ? <LocalSaveNotice label={t("Not Saved")} tone="error" detail={t("The private draft changed or was deleted in another tab. Your current work remains here. Reload to review the saved draft before saving again.")} /> : null}
         {draftDeleteFailed && pendingDraft === undefined ? <button id="full-case-discard-draft" className={buttonClass("secondary")} disabled={draftDeleting || draftStatus === "conflict"} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button> : null}

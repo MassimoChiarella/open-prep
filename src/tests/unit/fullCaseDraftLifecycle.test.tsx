@@ -22,7 +22,7 @@ describe("full-case draft write lifecycle", () => {
     render(<FullCaseSimulation storageFactory={() => storage} />);
     await waitFor(() => expect(screen.getByRole("checkbox", { name: optInLabel })).toBeEnabled());
     fireEvent.click(screen.getByRole("checkbox", { name: optInLabel }));
-    await screen.findByText("Private draft saved on this device.");
+    await waitFor(() => expect(screen.getByText("Private draft saved on this device.")).toBeVisible());
     const write = vi.spyOn(draftPersistence, "writeFullCaseDraft");
     const input = screen.getAllByPlaceholderText(questionPlaceholder)[0];
 
@@ -59,7 +59,7 @@ describe("full-case draft write lifecycle", () => {
     await storage.put("practice_records", await synthesisDraft());
     render(<FullCaseSimulation storageFactory={storageFactory} />);
     fireEvent.click(await screen.findByRole("button", { name: "Resume draft" }));
-    await screen.findByText("Private draft saved on this device.");
+    await waitFor(() => expect(screen.getByText("Private draft saved on this device.")).toBeVisible());
     const delayed = holdDraftWrites(storage, (draft) => draft.completedAt !== undefined);
     fireEvent.click(screen.getByRole("button", { name: "Complete Case" }));
     await waitFor(() => expect(delayed.started()).toBe(true));
@@ -99,7 +99,7 @@ describe("full-case draft write lifecycle", () => {
     const view = render(<FullCaseSimulation storageFactory={() => storage} />);
     await waitFor(() => expect(screen.getByRole("checkbox", { name: optInLabel })).toBeEnabled());
     fireEvent.click(screen.getByRole("checkbox", { name: optInLabel }));
-    await screen.findByText("Private draft saved on this device.");
+    await waitFor(() => expect(screen.getByText("Private draft saved on this device.")).toBeVisible());
     const delayed = holdDraftWrites(storage, () => true);
     fireEvent.change(screen.getAllByPlaceholderText(questionPlaceholder)[0], { target: { value: "Private content being discarded" } });
     await waitFor(() => expect(delayed.started()).toBe(true));
@@ -115,7 +115,7 @@ describe("full-case draft write lifecycle", () => {
     const view = render(<FullCaseSimulation simulation={brightCartFullCase} storageFactory={storageFactory} />);
     await waitFor(() => expect(screen.getByRole("checkbox", { name: optInLabel })).toBeEnabled());
     fireEvent.click(screen.getByRole("checkbox", { name: optInLabel }));
-    await screen.findByText("Private draft saved on this device.");
+    await waitFor(() => expect(screen.getByText("Private draft saved on this device.")).toBeVisible());
     const read = vi.spyOn(storage, "get");
     view.rerender(<FullCaseSimulation simulation={structuredClone(brightCartFullCase)} storageFactory={storageFactory} />);
     await act(async () => { await fullCaseContentKey(brightCartFullCase); });
@@ -133,7 +133,7 @@ describe("full-case draft write lifecycle", () => {
     const first = render(<FullCaseSimulation storageFactory={storageFactory} />);
     await waitFor(() => expect(screen.getByRole("checkbox", { name: optInLabel })).toBeEnabled());
     fireEvent.click(screen.getByRole("checkbox", { name: optInLabel }));
-    await screen.findByText("Private draft saved on this device.");
+    await waitFor(() => expect(screen.getByText("Private draft saved on this device.")).toBeVisible());
     const delayed = holdDraftWrites(storage, () => true);
     fireEvent.change(screen.getAllByPlaceholderText(questionPlaceholder)[0], { target: { value: "Discarded before remount" } });
     await waitFor(() => expect(delayed.started()).toBe(true));

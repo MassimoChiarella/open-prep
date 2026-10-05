@@ -58,7 +58,7 @@ describe("full-case private drafts", () => {
     const resumeButton = await screen.findByRole("button", { name: "Resume draft" });
     if (resume) {
       fireEvent.click(resumeButton);
-      await screen.findByText("Private draft saved on this device.");
+      await waitFor(() => expect(screen.getByText("Private draft saved on this device.")).toBeVisible());
     }
     const originalWrite = draftPersistence.writeFullCaseDraft;
     let release!: () => void;
@@ -83,7 +83,7 @@ describe("full-case private drafts", () => {
     await storage.put("practice_records", saved);
     render(<FullCaseSimulation storageFactory={() => storage} />);
     fireEvent.click(await screen.findByRole("button", { name: "Resume draft" }));
-    await screen.findByText("Private draft saved on this device.");
+    await waitFor(() => expect(screen.getByText("Private draft saved on this device.")).toBeVisible());
     vi.spyOn(draftPersistence, "writeFullCaseDraft").mockRejectedValueOnce(new Error("Temporary storage failure"));
     fireEvent.click(screen.getByRole("checkbox", { name: "Save a private draft on this device so I can resume this case." }));
     fireEvent.click(await screen.findByRole("button", { name: "Discard draft" }));
