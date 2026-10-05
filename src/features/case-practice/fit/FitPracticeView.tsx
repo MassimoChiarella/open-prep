@@ -71,18 +71,22 @@ export function FitPracticeView({
   const [rememberTimingAccommodation, setRememberTimingAccommodation] = useState(false);
   const [activeTimingAccommodation, setActiveTimingAccommodation] = useState<TimingAccommodation>();
   const [activeDurationSeconds, setActiveDurationSeconds] = useState<number | null>();
+  const [activePrompt, setActivePrompt] = useState<FitPracticePrompt>();
   const [phase, setPhase] = useState<RehearsalPhase>("idle");
   const [completedCriteria, setCompletedCriteria] = useState<FitReviewCriterionId[]>([]);
   const { saveState: reviewStatus, saveAttempt, retrySave, resetSave } = usePracticeAttemptSave(storageFactory);
   const elapsedSecondsRef = useRef(0);
   const rehearsalStartedAt = useRef(0);
   const timingAccommodationTouched = useRef(false);
+  const storyChanges = useRef(new Map<string, FitStoryRecord | undefined>());
 
   const selectedStory = selectedStoryId === unsavedStoryId
     ? unsavedStory
     : stories.find((story) => story.id === selectedStoryId);
   const availablePrompts = prompts.filter((prompt) => prompt.competency === selectedStory?.competency);
-  const selectedPrompt = availablePrompts.find((prompt) => prompt.id === selectedPromptId) ?? availablePrompts[0];
+  const selectedPrompt = phase === "idle"
+    ? availablePrompts.find((prompt) => prompt.id === selectedPromptId) ?? availablePrompts[0]
+    : activePrompt;
   const reviewScore = scoreFitReview(completedCriteria);
   const selectedDurationSeconds = getEffectiveDurationSeconds(durationSeconds, timingAccommodation);
   const displayedDurationSeconds = phase === "idle" ? selectedDurationSeconds : activeDurationSeconds;
@@ -100,29 +104,32 @@ export function FitPracticeView({
         .then((loadedStories) => {
           if (cancelled) return;
 
-          setStories(loadedStories);
-          setStoryStatus("idle");
-
-          const firstStory = loadedStories[0];
-          if (firstStory !== undefined) {
-            setSelectedStoryId(firstStory.id);
-            setSelectedPromptId(firstPromptId(prompts, firstStory.competency));
+          const storyById = new Map(loadedStories.map((story) => [story.id, story]));
+          for (const [id, story] of storyChanges.current) {
+            if (story === undefined) storyById.delete(id);
+            else storyById.set(id, story);
           }
+          const recoveredStories = [...storyById.values()].sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
+          setStories(recoveredStories);
+          setStoryStatus((current) => current === "loading" ? "idle" : current);
+          setSelectedStoryId((current) => current === unsavedStoryId || recoveredStories.some((story) => story.id === current)
+            ? current
+            : recoveredStories[0]?.id ?? "");
         })
         .catch(() => {
-          if (!cancelled) setStoryStatus("error");
+          if (!cancelled) setStoryStatus((current) => current === "loading" ? "error" : current);
         })
         .finally(() => storage?.close());
     } catch {
       void Promise.resolve().then(() => {
-        if (!cancelled) setStoryStatus("error");
+        if (!cancelled) setStoryStatus((current) => current === "loading" ? "error" : current);
       });
     }
 
     return () => {
       cancelled = true;
     };
-  }, [prompts, storageFactory]);
+  }, [storageFactory]);
 
   useEffect(() => {
     let cancelled = false;
@@ -186,6 +193,7 @@ export function FitPracticeView({
       const record = createFitStoryRecord(draft, new Date().toISOString(), editingStoryId);
       storage = storageFactory();
       await saveFitStory(storage, record);
+      storyChanges.current.set(record.id, record);
       setStories((current) => [record, ...current.filter((story) => story.id !== record.id)]);
       setSelectedStoryId((current) => current === "" || current === unsavedStoryId ? record.id : current);
 
@@ -271,6 +279,7 @@ export function FitPracticeView({
     try {
       storage = storageFactory();
       await deleteFitStory(storage, story.id);
+      storyChanges.current.set(story.id, undefined);
 
       const remainingStories = stories.filter((candidate) => candidate.id !== story.id);
       setStories(remainingStories);
@@ -328,6 +337,7 @@ export function FitPracticeView({
     setElapsedSeconds(0);
     setActiveDurationSeconds(undefined);
     setActiveTimingAccommodation(undefined);
+    setActivePrompt(undefined);
     setPhase("idle");
     setCompletedCriteria([]);
     resetSave();
@@ -342,6 +352,7 @@ export function FitPracticeView({
     setElapsedSeconds(0);
     setActiveDurationSeconds(effectiveDurationSeconds);
     setActiveTimingAccommodation(timingAccommodation);
+    setActivePrompt(selectedPrompt);
     setCompletedCriteria([]);
     resetSave();
     setPhase("running");

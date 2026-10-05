@@ -15,7 +15,7 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 2 | A02 draft concurrency | Atomic draft save/delete revisions; stale resume protection; preserve local text; prevent stale recreation. | Pending |
 | 3 | A03 drill recovery | Resolve recovery before accepting answer/skip/timer actions; retain matching session token. | Complete: four focused component suites / 29 tests passed, including delayed recovery and deadline expiry. |
 | 4 | A04 benchmark locale | Stable run identity; retain unsent input and completed summaries across locale changes. | Complete: locale/timing/session suites, 2 files / 23 tests passed. |
-| 5 | A05/A07 Fit state | Retain active story/prompt and review identity; prevent stale initial reads from hiding later saves. | Pending |
+| 5 | A05/A07 Fit state | Retain active story/prompt and review identity; prevent stale initial reads from hiding later saves. | Complete: Fit lifecycle/shared save suites, 4 files / 49 tests passed; targeted lint passed. |
 | 6 | A06 backup bounds | Align Complete inner limits; total record-byte safeguards; existing oversized-record recovery; private roundtrip. | Pending |
 | 7 | A08 composed IDs | Align derived identifier limits with maximum legal pack IDs/versions and generated question suffixes. | Pending |
 | 8 | A09 tolerated answers | Classify accepted numeric values consistently; retain real outside-tolerance errors and unit partial credit. | Complete: validator/scoring regressions, 2 files / 31 tests passed. |
@@ -31,6 +31,8 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 18 | Integration | Full check, engine matrix, meaningful performance comparisons; document physical/PWA/assistive-technology gates. | Pending |
 
 ## Commit timeline
+
+- `fix(fit): preserve rehearsal identity and loaded edits`: A05/A07: rehearsal identity is captured; late reads cannot erase saved stories or resurrect deleted ones.
 
 - `fix(benchmark): retain sessions across locale changes`: A04: run identity, unsent answers and completed summaries survive language changes.
 

@@ -200,7 +200,7 @@ export function CasePracticeQuestionPackContent({
         description="Build evidence-rich stories, rehearse under time pressure, and record a structured self-review."
         title="Fit and Behavioral Practice"
       >
-        <FitPracticeView key={contentKey} prompts={content.fitPrompts} />
+        <FitPracticeView key={contentKey} prompts={content.fitPrompts} storageFactory={storageFactory} />
       </ExerciseShell>
     );
   }
