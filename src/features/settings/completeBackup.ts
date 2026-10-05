@@ -248,7 +248,7 @@ function createProgressSection(
     stores.practice_records = stores.practice_records.filter(
       (record) => !isPrivatePracticeRecord(record)
     );
-    stores.market_sizing_attempts = stores.market_sizing_attempts.map(({ note: _note, ...record }) => record);
+    stores.market_sizing_attempts = stores.market_sizing_attempts.map(withoutMarketSizingNotes);
   }
 
   return {
@@ -405,7 +405,8 @@ function validateProgressSection(
     if (progress.stores.practice_records.some((record) => isPrivatePracticeRecord(record))) {
       addError("Complete backup without private text must not contain private practice records.");
     }
-    if (progress.stores.market_sizing_attempts.some((record) => hasOwn(record, "note"))) {
+    if (progress.stores.market_sizing_attempts.some((record) => hasOwn(record, "note") ||
+      marketSizingNoteInputIds(record).some((id) => Object.hasOwn(record.inputValues ?? {}, id)))) {
       addError("Complete backup without private text must not contain market-sizing notes.");
     }
   }
@@ -713,3 +714,4 @@ function isDateString(value: unknown): value is string {
 function hasOwn(value: object, property: string): boolean {
   return Object.prototype.hasOwnProperty.call(value, property);
 }
+import { marketSizingNoteInputIds, withoutMarketSizingNotes } from "@/features/market-sizing/marketSizingNote";

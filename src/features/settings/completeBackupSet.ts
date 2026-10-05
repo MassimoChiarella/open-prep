@@ -86,8 +86,8 @@ export async function createSerializedCompleteBackupSet(
     for (const record of snapshot[storeName]) {
       if (!scopes.includes("private_text") && storeName === "practice_records" &&
         "kind" in record && isPrivatePracticeRecord(record)) continue;
-      const includedRecord = !scopes.includes("private_text") && storeName === "market_sizing_attempts" && "note" in record
-        ? Object.fromEntries(Object.entries(record).filter(([key]) => key !== "note"))
+      const includedRecord = !scopes.includes("private_text") && storeName === "market_sizing_attempts"
+        ? withoutMarketSizingNotes(record as import("@/lib/storage/appStorageTypes").MarketSizingAttemptRecord)
         : record;
       assertBackupCompatibleRecords({ [storeName]: [includedRecord] });
       const serialized = JSON.stringify(includedRecord, null, 2);
@@ -248,3 +248,4 @@ function emptySnapshot(): CompleteBackupSnapshot {
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+import { withoutMarketSizingNotes } from "@/features/market-sizing/marketSizingNote";

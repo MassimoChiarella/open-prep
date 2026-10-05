@@ -1004,6 +1004,7 @@ export function LocalSettingsView({
               <h3 className={uiSectionTitleClass} id="personal-data-clear-heading">{t("Personal Data")}</h3>
               <p className="mt-1 text-sm leading-6 text-ink/65">
                 {t("This removes saved Fit/PEI stories, preparation profiles, full-case drafts, and market-sizing note text. Practice attempts, scores, installed packs, and preferences remain.")}
+                {" "}{t("Older market-sizing attempts do not identify note fields, so their text assumptions are treated as private too.")}
               </p>
             </div>
             {personalClearPreview === undefined ? null : (

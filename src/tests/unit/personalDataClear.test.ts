@@ -49,6 +49,7 @@ describe("personal data clear", () => {
       finalAnswer: "125k",
       id: "market-1",
       inputValues: { households: "50000", includeBusiness: true },
+      noteInputIds: [],
       note: "Explain the household assumption more clearly.",
       score: 8,
       startedAt: timestamp,
@@ -110,6 +111,7 @@ describe("personal data clear", () => {
         finalAnswer: "125k",
         id: "market-1",
         inputValues: { households: "50000", includeBusiness: true },
+        noteInputIds: [],
         score: 8,
         startedAt: timestamp,
         templateId: "market-template-1"

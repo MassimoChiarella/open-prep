@@ -217,6 +217,7 @@ export interface MarketSizingAttemptRecord {
   errorTypes?: ErrorType[];
   finalAnswer?: string;
   inputValues?: Record<string, boolean | string | undefined>;
+  noteInputIds?: string[];
   interpretationId?: string;
   maxScore?: number;
   normalizedFinalAnswer?: number;

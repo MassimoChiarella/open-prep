@@ -1,5 +1,5 @@
 import type { LocalProgressExportStores } from "@/features/settings/localProgressExport";
-import { hasSavedMarketSizingNote } from "@/features/market-sizing/marketSizingNote";
+import { hasPrivateMarketSizingText, preserveMarketSizingNotes } from "@/features/market-sizing/marketSizingNote";
 import type { AppStorageSnapshot } from "@/lib/storage/appStorageTypes";
 
 export const privatePreservationStoreNames = [
@@ -18,9 +18,9 @@ export function preservePrivateData(
 
   const marketSizingAttempts = new Map(imported.market_sizing_attempts.map((record) => [record.id, record]));
   for (const record of existing.market_sizing_attempts) {
-    if (!hasSavedMarketSizingNote(record.note)) continue;
+    if (!hasPrivateMarketSizingText(record)) continue;
     const importedRecord = marketSizingAttempts.get(record.id);
-    marketSizingAttempts.set(record.id, importedRecord === undefined ? record : { ...importedRecord, note: record.note });
+    marketSizingAttempts.set(record.id, importedRecord === undefined ? record : preserveMarketSizingNotes(importedRecord, record));
   }
 
   return {

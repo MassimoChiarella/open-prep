@@ -1,6 +1,7 @@
 import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 
 const keys = {
+  "Older market-sizing attempts do not identify note fields, so their text assumptions are treated as private too.": ["Los intentos antiguos de estimación de mercado no identifican los campos de notas; sus supuestos de texto también se tratan como privados.", "Les anciennes tentatives d’estimation de marché n’identifient pas les champs de notes ; leurs hypothèses textuelles sont donc aussi traitées comme privées.", "Ältere Marktgrößenversuche kennzeichnen Notizfelder nicht; ihre Textannahmen werden daher ebenfalls als privat behandelt.", "As tentativas antigas de dimensionamento de mercado não identificam os campos de notas; suas premissas em texto também são tratadas como privadas.", "较早的市场规模估算记录未标识备注字段，因此其中的文本假设也按私密数据处理。", "較早的市場規模估算紀錄未標示備註欄位，因此其中的文字假設也視為私人資料。", "以前の市場規模推定にはメモ欄の識別情報がないため、テキストの仮定も非公開データとして扱います。", "لا تحدد محاولات تقدير حجم السوق القديمة حقول الملاحظات، لذلك تُعامل افتراضاتها النصية أيضًا كبيانات خاصة.", "पुराने बाज़ार आकार अभ्यासों में नोट फ़ील्ड चिह्नित नहीं हैं, इसलिए उनकी पाठ्य मान्यताओं को भी निजी माना जाता है।"],
   Appearance: ["Apariencia", "Apparence", "Erscheinungsbild", "Aparência", "外观", "外觀", "外観", "المظهر", "दिखावट"],
   Dark: ["Oscuro", "Sombre", "Dunkel", "Escuro", "深色", "深色", "ダーク", "داكن", "गहरा"],
   Light: ["Claro", "Clair", "Hell", "Claro", "浅色", "淺色", "ライト", "فاتح", "हल्का"],

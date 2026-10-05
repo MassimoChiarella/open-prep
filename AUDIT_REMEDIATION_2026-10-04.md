@@ -11,7 +11,7 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | Phase | Finding | Subphases / required behavior | Status / evidence |
 | --- | --- | --- | --- |
 | 0 | Audit baseline | Preserve the audit, establish this plan, fetch and compare main. | Complete: clean source; main matched origin/main. |
-| 1 | A01 privacy | Persist guided note identities; filter Standard/Complete scopes; count, clear and preserve notes; cover legacy and removed packs. | Pending |
+| 1 | A01 privacy | Persist guided note identities; filter Standard/Complete scopes; count, clear and preserve notes; cover legacy and removed packs. | Complete: 7 focused privacy/backup files / 64 tests passed. |
 | 2 | A02 draft concurrency | Atomic draft save/delete revisions; stale resume protection; preserve local text; prevent stale recreation. | Pending |
 | 3 | A03 drill recovery | Resolve recovery before accepting answer/skip/timer actions; retain matching session token. | Complete: four focused component suites / 29 tests passed, including delayed recovery and deadline expiry. |
 | 4 | A04 benchmark locale | Stable run identity; retain unsent input and completed summaries across locale changes. | Pending |
@@ -32,6 +32,8 @@ Each milestone contains its implementation, compatibility handling, and focused 
 
 ## Commit timeline
 
+A01: `fix(privacy): classify guided market-sizing notes` applies one shared privacy classifier to export, scope selection, preservation, inventory and clearing; metadata does not depend on an installed pack.
+
 The commit subject identifies each milestone. Add the exact verification and any compatibility decisions to its entry before committing. Order independent fixes by readiness while preserving dependent storage migrations in safe commits.
 
 - Baseline: `docs(audit): record findings and remediation milestones` — report and execution plan; repository identity verified.
@@ -43,6 +45,8 @@ The commit subject identifies each milestone. Add the exact verification and any
 
 ## Open decisions and release gates
 
-I04 concerns whether Interview Math calculation accuracy should be scored independently of units. It is a product-policy question, not a confirmed bug. This remediation retains the current rubric and tests/documentation must make that behavior explicit.
+I04: the user chose independent calculation credit, with deductions limited to unit points when the calculation is correct. Implement this as an explicit policy milestone with rubric tests and documentation.
+
+Legacy sizing records did not retain note-field identities. Their unclassified text assumptions are conservatively private, including numeric-looking text and records from removed packs. Standard exports exclude that text, private Complete backups retain it, progress-only replacement preserves it, and personal clearing removes it. The clearing UI explains this compatibility behavior. New attempts retain durable note-field IDs, so their numeric/choice assumptions remain ordinary progress.
 
 Physical iOS/Android, branded Safari/Edge, actual browser zoom, OS PWA installation/update, and NVDA/VoiceOver require human/device evidence. Automated emulation must not mark these release gates passed. This development task does not publish an official release.

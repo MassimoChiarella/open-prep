@@ -1,5 +1,5 @@
 import { isPrivatePracticeRecord, preservePrivateData, privatePreservationStoreNames } from "@/features/settings/privateDataPreservation";
-import { hasSavedMarketSizingNote } from "@/features/market-sizing/marketSizingNote";
+import { hasPrivateMarketSizingText } from "@/features/market-sizing/marketSizingNote";
 import {
   createCompleteBackup,
   serializeCompleteBackup,
@@ -217,7 +217,7 @@ export function createCompleteBackupSummary(
     preferencesIncluded: backup.selectedScopes.includes("preferences"),
     privateEntryCount: backup.selectedScopes.includes("private_text")
       ? progress.practice_records.filter((record) => isPrivatePracticeRecord(record)).length +
-        progress.market_sizing_attempts.filter((record) => hasSavedMarketSizingNote(record.note)).length
+        progress.market_sizing_attempts.filter(hasPrivateMarketSizingText).length
       : 0,
     progressRecordCount: progressStoreNames.reduce((total, storeName) => total + progress[storeName].length, 0),
     schemaVersion: backup.schemaVersion

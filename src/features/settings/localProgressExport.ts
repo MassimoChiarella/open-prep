@@ -70,7 +70,7 @@ export async function createLocalProgressExport(
     stores.practice_records = stores.practice_records.filter(
       (record) => !isPrivatePracticeRecord(record)
     );
-    stores.market_sizing_attempts = stores.market_sizing_attempts.map(({ note: _note, ...record }) => record);
+    stores.market_sizing_attempts = stores.market_sizing_attempts.map(withoutMarketSizingNotes);
   }
   assertBackupCompatibleRecords(stores);
 
@@ -367,6 +367,7 @@ function isMarketSizingAttempt(value: Record<string, unknown>): boolean {
     optional(value.maxScore, isFiniteNumber) &&
     optional(value.normalizedFinalAnswer, isFiniteNumber) &&
     optional(value.note, isString) &&
+    optional(value.noteInputIds, (ids) => isArrayOf(ids, isNonEmptyString) && new Set(ids as string[]).size === (ids as string[]).length) &&
     optional(value.score, isFiniteNumber) &&
     optional(value.scoreBreakdown, (items) => isArrayOf(items, isMarketSizingScoreDimension))
   );
@@ -735,3 +736,4 @@ const caseIndustries = [
   "airlines", "banking", "consumer_goods", "healthcare", "insurance", "manufacturing", "marketplaces",
   "retail", "saas", "telecom"
 ] as const;
+import { withoutMarketSizingNotes } from "@/features/market-sizing/marketSizingNote";

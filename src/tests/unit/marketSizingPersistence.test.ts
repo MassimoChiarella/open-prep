@@ -49,6 +49,7 @@ describe("market sizing persistence", () => {
       finalAnswer: "$2.628B",
       id: "attempt-1",
       inputValues: { population: "3000000", sense_check: true },
+      noteInputIds: [],
       interpretationId: "plausible",
       maxScore: 100,
       normalizedFinalAnswer: 2_628_000_000,

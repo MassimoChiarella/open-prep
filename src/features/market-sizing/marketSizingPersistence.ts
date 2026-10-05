@@ -41,6 +41,7 @@ export async function persistMarketSizingAttempt(options: PersistMarketSizingAtt
     errorTypes: options.score.errorTypes,
     finalAnswer: normalizeOptionalText(options.finalAnswer),
     inputValues: { ...options.stepValues },
+    noteInputIds: options.template.inputSteps.filter((step) => step.inputKind === "note").map((step) => step.id),
     interpretationId: normalizeOptionalText(options.interpretationId),
     maxScore: options.score.maxScore,
     normalizedFinalAnswer: options.evaluation.finalAnswer.normalizedValue,

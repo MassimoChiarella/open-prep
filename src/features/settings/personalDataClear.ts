@@ -1,4 +1,4 @@
-import { hasSavedMarketSizingNote } from "@/features/market-sizing/marketSizingNote";
+import { hasPrivateMarketSizingText, withoutMarketSizingNotes } from "@/features/market-sizing/marketSizingNote";
 import { isPrivatePracticeRecord } from "@/features/settings/privateDataPreservation";
 import {
   type AppStorage,
@@ -42,9 +42,8 @@ export async function clearPersonalData(
     }
 
     for (const attempt of snapshot.market_sizing_attempts) {
-      if (!Object.hasOwn(attempt, "note")) continue;
-      const { note: _note, ...attemptWithoutNote } = attempt;
-      operations.push({ storeName: "market_sizing_attempts", type: "put", value: attemptWithoutNote });
+      if (!hasPrivateMarketSizingText(attempt) && !Object.hasOwn(attempt, "note")) continue;
+      operations.push({ storeName: "market_sizing_attempts", type: "put", value: withoutMarketSizingNotes(attempt) });
     }
 
     return { operations, result: preview };
@@ -60,7 +59,7 @@ export function countPersonalData(
     (record) => record.kind === "prep_profile"
   ).length;
   const marketSizingNotes = snapshot.market_sizing_attempts.filter((attempt) =>
-    hasSavedMarketSizingNote(attempt.note)
+    hasPrivateMarketSizingText(attempt)
   ).length;
 
   return {
