@@ -31,14 +31,14 @@ test("historical malformed session IDs retain native history and open usable ind
     await page.goto(route, { waitUntil: "domcontentloaded" });
     const history = page.getByTestId("recent-sessions-table");
     await expect(history.locator("tbody tr")).toHaveCount(2);
-    await expect(history.getByRole("link", { name: "View Summary", exact: true })).toHaveAttribute("href", `/drills/summary?id=${encodeURIComponent(valid.id)}`);
-    await expect(history.getByRole("link", { name: "Review recovery", exact: true })).toHaveAttribute("href", "/settings#record-recovery");
+    await expect(history.getByRole("link", { name: "View Summary", exact: true })).toHaveAttribute("href", `/drills/summary/?id=${encodeURIComponent(valid.id)}`);
+    await expect(history.getByRole("link", { name: "Review recovery", exact: true })).toHaveAttribute("href", "/settings/#record-recovery");
   }
   await page.goto("/benchmark", { waitUntil: "domcontentloaded" });
   await page.getByTestId("benchmark-history-disclosure").locator(":scope > summary").click();
   const benchmarkHistory = page.getByTestId("benchmark-history-results-table");
   await expect(benchmarkHistory.locator("tbody tr")).toHaveCount(2);
-  await expect(benchmarkHistory.getByRole("link", { name: "Review", exact: true })).toHaveAttribute("href", `/drills/summary?id=${encodeURIComponent(valid.id)}`);
+  await expect(benchmarkHistory.getByRole("link", { name: "Review", exact: true })).toHaveAttribute("href", `/drills/summary/?id=${encodeURIComponent(valid.id)}`);
   await benchmarkHistory.getByRole("link", { name: "Review recovery", exact: true }).click();
   await expect(page).toHaveURL(/\/settings\/?#record-recovery$/);
   await expect(page.getByTestId("settings-local-data")).toHaveAttribute("open", "");
