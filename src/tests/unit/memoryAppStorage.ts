@@ -18,12 +18,12 @@ import {
   type AppStoreValue,
 } from "@/lib/storage/appStorageTypes";
 import { AppStorageConflictError } from "@/lib/storage/appStorageTypes";
-import { createAtomicView } from "@/lib/storage/storageCoordination";
+import { createAtomicView, isPrivateDraftKey } from "@/lib/storage/storageCoordination";
 import { assertPersistableRecord, maxStoredPackDepth } from "@/lib/validation/inputLimits";
 
 export class MemoryAppStorage implements AppStorage {
   private readonly stores = new Map<AppStoreName, Map<IDBValidKey, AppDatabaseSchema[AppStoreName]>>();
-  private readonly coordination = { generation: 0, revisions: new Map<string, number>() };
+  private readonly coordination = { generation: 0, revisions: new Map<string, number>(), practiceRevisions: new Map<string, number>() };
 
   constructor(private readonly failMutationAt?: number) {
     for (const storeName of appStoreNames) {
@@ -52,7 +52,7 @@ export class MemoryAppStorage implements AppStorage {
       const keys = reads[storeName]!;
       (records as Record<string, unknown[]>)[storeName] = this.peekAll(storeName).filter((record) => keys === "all" || keys.includes(record.id as never));
     }
-    const decision = decide(createAtomicView(records, reads, this.coordination.generation, this.coordination.revisions));
+    const decision = decide(createAtomicView(records, reads, this.coordination.generation, this.coordination.revisions, this.coordination.practiceRevisions));
     if (typeof (decision as unknown as { then?: unknown }).then === "function") throw new Error("Atomic decisions must be synchronous.");
     for (const operation of decision.operations) {
       if (!options.stores.includes(operation.storeName)) throw new Error(`Atomic write store was not declared: ${operation.storeName}.`);
@@ -135,6 +135,7 @@ export class MemoryAppStorage implements AppStorage {
   seedLegacy<TStore extends AppStoreName>(storeName: TStore, value: AppStoreValue<TStore>): void {
     this.getStore(storeName).set(value.id, structuredClone(value));
     if (storeName === "drill_sessions") this.coordination.revisions.set(value.id, (this.coordination.revisions.get(value.id) ?? 0) + 1);
+    if (storeName === "practice_records" && isPrivateDraftKey(value.id)) this.coordination.practiceRevisions.set(value.id, (this.coordination.practiceRevisions.get(value.id) ?? 0) + 1);
   }
 
   async delete<TStore extends AppStoreName>(storeName: TStore, key: AppStoreKey<TStore>): Promise<void> {
@@ -152,6 +153,7 @@ export class MemoryAppStorage implements AppStorage {
   private applyOperations(operations: readonly AppStorageMutation[]): void {
     const staged = new Map<AppStoreName, Map<IDBValidKey, AppDatabaseSchema[AppStoreName]>>();
     const revisions = new Map(this.coordination.revisions);
+    const practiceRevisions = new Map(this.coordination.practiceRevisions);
 
     for (const storeName of new Set(operations.map((operation) => operation.storeName))) {
       staged.set(storeName, new Map(this.getStore(storeName)));
@@ -160,6 +162,10 @@ export class MemoryAppStorage implements AppStorage {
     for (const [index, operation] of operations.entries()) {
       if (index === this.failMutationAt) {
         throw new Error(`Injected atomic mutation failure at operation ${index}.`);
+      }
+      if (operation.storeName === "practice_records" && operation.type !== "clear") {
+        const id = String(operation.type === "put" ? operation.value.id : operation.key);
+        if (isPrivateDraftKey(id)) practiceRevisions.set(id, (practiceRevisions.get(id) ?? 0) + 1);
       }
 
       const store = staged.get(operation.storeName);
@@ -185,6 +191,7 @@ export class MemoryAppStorage implements AppStorage {
       this.stores.set(storeName, store);
     }
     this.coordination.revisions = revisions;
+    this.coordination.practiceRevisions = practiceRevisions;
   }
 
   async replaceSnapshot(snapshot: AppStorageReplacement, options: {

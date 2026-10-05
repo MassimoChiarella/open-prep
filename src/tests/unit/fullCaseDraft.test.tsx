@@ -1,16 +1,18 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
-import { beforeAll, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 
 import { brightCartFullCase } from "@/data/casePractice/fullCaseSimulations";
 import type { FullCaseDraftRecord } from "@/features/case-practice/practiceTypes";
 import { FullCaseSimulation } from "@/features/case-practice/simulation/FullCaseSimulation";
 import { canResumeFullCaseDraft, fullCaseContentKey, fullCaseDraftId, isFullCaseDraftRecord } from "@/features/case-practice/simulation/fullCaseDraft";
+import * as draftPersistence from "@/features/case-practice/simulation/fullCaseDraftPersistence";
 import { getFullCaseCalculationQuestion } from "@/features/case-practice/simulation/fullCaseScoring";
 import { createWholeProductActivitySummary } from "@/features/progress/wholeProductActivity";
 import type { AppStoreName, AppStoreValue } from "@/lib/storage/appStorageTypes";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 beforeAll(() => Object.defineProperty(HTMLElement.prototype, "scrollIntoView", { configurable: true, value: vi.fn() }));
+afterEach(() => vi.restoreAllMocks());
 
 async function draft(): Promise<FullCaseDraftRecord> {
   return {
@@ -30,7 +32,7 @@ describe("full-case private drafts", () => {
     const resume = await screen.findByRole("button", { name: "Resume draft" });
     resume.focus();
     fireEvent.click(resume);
-    expect(document.getElementById(stage === 0 ? "questioning-stage-heading" : "structure-stage-heading")).toHaveFocus();
+    await waitFor(() => expect(document.getElementById(stage === 0 ? "questioning-stage-heading" : "structure-stage-heading")).toHaveFocus());
   });
 
   it("returns focus to the retry after failed deletion and to opt-in after successful discard", async () => {
@@ -38,7 +40,7 @@ describe("full-case private drafts", () => {
     await storage.put("practice_records", await draft());
     render(<FullCaseSimulation storageFactory={() => storage} />);
     const discard = await screen.findByRole("button", { name: "Discard draft" });
-    vi.spyOn(storage, "delete").mockRejectedValueOnce(new Error("Temporary storage failure"));
+    vi.spyOn(draftPersistence, "writeFullCaseDraft").mockRejectedValueOnce(new Error("Temporary storage failure"));
     discard.focus();
     fireEvent.click(discard);
     await screen.findByText("The local draft could not be read or updated. Keep this page open to preserve your current work.");
@@ -58,10 +60,10 @@ describe("full-case private drafts", () => {
       fireEvent.click(resumeButton);
       await screen.findByText("Private draft saved on this device.");
     }
-    const originalDelete = storage.delete.bind(storage);
+    const originalWrite = draftPersistence.writeFullCaseDraft;
     let release!: () => void;
     const pending = new Promise<void>((resolve) => { release = resolve; });
-    vi.spyOn(storage, "delete").mockImplementation(async (store, key) => { await pending; await originalDelete(store, key); });
+    vi.spyOn(draftPersistence, "writeFullCaseDraft").mockImplementation(async (...args) => { await pending; return originalWrite(...args); });
     fireEvent.click(resume
       ? screen.getByRole("checkbox", { name: "Save a private draft on this device so I can resume this case." })
       : screen.getByRole("button", { name: "Discard draft" }));
@@ -82,7 +84,7 @@ describe("full-case private drafts", () => {
     render(<FullCaseSimulation storageFactory={() => storage} />);
     fireEvent.click(await screen.findByRole("button", { name: "Resume draft" }));
     await screen.findByText("Private draft saved on this device.");
-    vi.spyOn(storage, "delete").mockRejectedValueOnce(new Error("Temporary storage failure"));
+    vi.spyOn(draftPersistence, "writeFullCaseDraft").mockRejectedValueOnce(new Error("Temporary storage failure"));
     fireEvent.click(screen.getByRole("checkbox", { name: "Save a private draft on this device so I can resume this case." }));
     fireEvent.click(await screen.findByRole("button", { name: "Discard draft" }));
     await waitFor(async () => expect(await storage.get("practice_records", saved.id)).toBeUndefined());
@@ -116,7 +118,7 @@ describe("full-case private drafts", () => {
     first.unmount();
     render(<FullCaseSimulation storageFactory={storageFactory} />);
     fireEvent.click(await screen.findByRole("button", { name: "Resume draft" }));
-    expect(screen.getAllByPlaceholderText("Type a question you would ask the interviewer")[0]).toHaveValue("Keep this private question");
+    await waitFor(() => expect(screen.getAllByPlaceholderText("Type a question you would ask the interviewer")[0]).toHaveValue("Keep this private question"));
     expect(screen.getByRole("checkbox", { name: "Save a private draft on this device so I can resume this case." })).toBeChecked();
   });
 

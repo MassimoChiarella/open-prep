@@ -21,7 +21,7 @@ import {
   type AppStoreName,
   type AppStoreValue
 } from "@/lib/storage/appStorageTypes";
-import { createAtomicView, lifecycleMetadataKey, sessionRevisionKey } from "@/lib/storage/storageCoordination";
+import { createAtomicView, isPrivateDraftKey, lifecycleMetadataKey, practiceRevisionKey, sessionRevisionKey } from "@/lib/storage/storageCoordination";
 import { assertPersistableRecord, maxStoredPackDepth } from "@/lib/validation/inputLimits";
 
 // One document lifecycle, including adapters created later by an already-open form.
@@ -298,12 +298,13 @@ class IndexedDbAppStorage implements AppStorage {
           if (generation !== expectedGeneration) throw new AppStorageConflictError("generation");
           const records: AppStorageReplacement = {};
           const revisions = new Map<string, number>();
+          const practiceRevisions = new Map<string, number>();
           let remaining = 1;
           const done = () => {
             remaining -= 1;
             if (remaining !== 0) return;
             try {
-              const decision = decide(createAtomicView(records, reads, generation, revisions));
+              const decision = decide(createAtomicView(records, reads, generation, revisions, practiceRevisions));
               if (typeof (decision as unknown as { then?: unknown }).then === "function") throw new Error("Atomic decisions must be synchronous.");
               for (const operation of decision.operations) if (operation.type === "put") {
                 assertPersistableRecord(operation.value, operation.storeName === "question_packs" ? { maxDepth: maxStoredPackDepth } : {});
@@ -322,8 +323,8 @@ class IndexedDbAppStorage implements AppStorage {
                     if (operation.type === "clear") {
                       last = store.clear();
                       if (operation.storeName === "drill_sessions") {
-                        metadata.clear();
                         revisions.clear();
+                        metadata.delete(IDBKeyRange.bound("session:", "session;", false, true));
                         metadata.put({ id: lifecycleMetadataKey, generation: nextGeneration });
                       }
                     } else if (operation.type === "delete") {
@@ -338,6 +339,19 @@ class IndexedDbAppStorage implements AppStorage {
                           const revision = (revisions.get(id) ?? request.result?.revision ?? 0) + 1;
                           revisions.set(id, revision);
                           metadata.put({ id: sessionRevisionKey(id), revision });
+                        };
+                      }
+                    }
+                    if (operation.storeName === "practice_records" && operation.type !== "clear") {
+                      const id = String(operation.type === "put" ? operation.value.id : operation.key);
+                      if (isPrivateDraftKey(id)) {
+                        const request = metadata.get(practiceRevisionKey(id));
+                        request.onsuccess = () => {
+                          const revision = (practiceRevisions.get(id) ?? request.result?.revision ?? 0) + 1;
+                          practiceRevisions.set(id, revision);
+                          // Keep a revision after deletion: an old absent-record token
+                          // must not recreate a draft after another tab opts out.
+                          metadata.put({ id: practiceRevisionKey(id), revision });
                         };
                       }
                     }
@@ -377,6 +391,24 @@ class IndexedDbAppStorage implements AppStorage {
                 remaining += 1;
                 const request = metadata.get(sessionRevisionKey(id));
                 request.onsuccess = () => { revisions.set(id, request.result?.revision ?? 0); done(); };
+              }
+              done();
+            }
+          }
+          const practiceKeys = reads.practice_records;
+          if (practiceKeys !== undefined) {
+            remaining += 1;
+            if (practiceKeys === "all") {
+              const request = metadata.getAll();
+              request.onsuccess = () => {
+                for (const record of request.result) if (record.id.startsWith("practice:")) practiceRevisions.set(record.id.slice(9), record.revision);
+                done();
+              };
+            } else {
+              for (const id of practiceKeys) {
+                remaining += 1;
+                const request = metadata.get(practiceRevisionKey(id));
+                request.onsuccess = () => { practiceRevisions.set(id, request.result?.revision ?? 0); done(); };
               }
               done();
             }

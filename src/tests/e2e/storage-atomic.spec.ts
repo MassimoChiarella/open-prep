@@ -21,6 +21,73 @@ async function prepare(page: Page) {
   await page.addScriptTag({ content: bundle });
 }
 
+test("@browser-smoke native private drafts reject stale overwrite, deletion and delete/recreate ABA", async ({ context, page }) => {
+  await prepare(page);
+  const second = await context.newPage();
+  await prepare(second);
+  const fixture = await page.evaluate(async () => {
+    const api = window.storageTestApi;
+    const simulation = api.brightCartFullCase;
+    const draft = {
+      id: api.fullCaseDraftId(simulation.id), simulationId: simulation.id, kind: "full_case_draft" as const,
+      contentKey: await api.fullCaseContentKey(simulation), updatedAt: "2026-10-04T00:00:00Z", startedAt: "2026-10-04T00:00:00Z",
+      locale: "en", stage: 0, questions: [{ id: "question-1", text: "Original private text" }],
+      includeQuestionRanking: false, hypothesisId: "", branchIds: [], calculationInput: "", ideaIds: [], priorityIdeaIds: [], synthesis: {}
+    };
+    const storage = api.createIndexedDbAppStorage();
+    try {
+      const absent = (await api.readFullCaseDraft(storage, simulation.id)).token;
+      const shared = await api.writeFullCaseDraft(storage, simulation.id, absent, draft);
+      return { draft, absent, shared };
+    } finally { storage.close(); }
+  });
+  const captured = await second.evaluate(async ({ draft }) => {
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    try { return await window.storageTestApi.readFullCaseDraft(storage, draft.simulationId); }
+    finally { storage.close(); }
+  }, fixture);
+  expect(captured.token).toEqual(fixture.shared);
+  const latest = await page.evaluate(async ({ draft, shared }) => {
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    try { return await window.storageTestApi.writeFullCaseDraft(storage, draft.simulationId, shared, { ...draft, questions: [{ id: "question-1", text: "Newest private text" }] }); }
+    finally { storage.close(); }
+  }, fixture);
+  const conflicts = await second.evaluate(async ({ draft, shared }) => {
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    const reasons: unknown[] = [];
+    try {
+      for (const value of [draft, undefined]) {
+        try { await window.storageTestApi.writeFullCaseDraft(storage, draft.simulationId, shared, value); reasons.push("unexpected success"); }
+        catch (error) { reasons.push((error as { reason?: string }).reason); }
+      }
+      return { reasons, current: await window.storageTestApi.readFullCaseDraft(storage, draft.simulationId) };
+    } finally { storage.close(); }
+  }, fixture);
+  expect(conflicts.reasons).toEqual(["practice", "practice"]);
+  expect(conflicts.current.draft).toMatchObject({ questions: [{ id: "question-1", text: "Newest private text" }] });
+  const deleted = await page.evaluate(async ({ draft, token }) => {
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    try {
+      const deleted = await window.storageTestApi.writeFullCaseDraft(storage, draft.simulationId, token);
+      await storage.clear("drill_sessions");
+      return deleted;
+    } finally { storage.close(); }
+  }, { draft: fixture.draft, token: latest });
+  const outcome = await second.evaluate(async ({ draft, absent, shared }) => {
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    const reasons: unknown[] = [];
+    try {
+      for (const token of [absent, shared]) {
+        try { await window.storageTestApi.writeFullCaseDraft(storage, draft.simulationId, token, draft); reasons.push("unexpected success"); }
+        catch (error) { reasons.push((error as { reason?: string }).reason); }
+      }
+      return { reasons, current: await window.storageTestApi.readFullCaseDraft(storage, draft.simulationId) };
+    } finally { storage.close(); }
+  }, fixture);
+  expect(outcome.reasons).toEqual(["practice", "practice"]);
+  expect(outcome.current).toEqual({ draft: undefined, token: deleted });
+});
+
 test("@browser-smoke rejects stale tabs and serializes completion in native IndexedDB", async ({ context, page }) => {
   await prepare(page);
   const second = await context.newPage();

@@ -11,7 +11,8 @@ import {
 import { BrainstormingResponseFields } from "@/features/case-practice/brainstorming/BrainstormingDrill";
 import type { FullCaseDraftRecord } from "@/features/case-practice/practiceTypes";
 import { usePracticeAttemptSave, type PracticeAttemptSaveState } from "@/features/case-practice/usePracticeAttemptSave";
-import { canResumeFullCaseDraft, fullCaseContentKey, fullCaseDraftId, isFullCaseDraftRecord } from "@/features/case-practice/simulation/fullCaseDraft";
+import { canResumeFullCaseDraft, fullCaseContentKey, fullCaseDraftId } from "@/features/case-practice/simulation/fullCaseDraft";
+import { readFullCaseDraft, writeFullCaseDraft } from "@/features/case-practice/simulation/fullCaseDraftPersistence";
 import { QuestioningResponseFields } from "@/features/case-practice/questioning/QuestioningPractice";
 import type { CaseQuestioningQuestion } from "@/features/case-practice/questioning/questioningScoring";
 import {
@@ -33,7 +34,7 @@ import { ExhibitTableRenderer } from "@/features/exhibits/ExhibitTableRenderer";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { subscribeToLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import { formatLabel } from "@/lib/format";
-import type { AppStorage } from "@/lib/storage/appStorageTypes";
+import { AppStorageConflictError, type AppStorage, type DrillSessionWriteToken } from "@/lib/storage/appStorageTypes";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 
 interface FullCaseSimulationProps {
@@ -93,12 +94,15 @@ function FullCaseSession({
   const [pendingDraft, setPendingDraft] = useState<FullCaseDraftRecord>();
   const [resumeFocusRequest, setResumeFocusRequest] = useState(0);
   const [contentKey, setContentKey] = useState<string>();
-  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error" | "incompatible">("idle");
+  const [draftStatus, setDraftStatus] = useState<"idle" | "saving" | "saved" | "error" | "incompatible" | "conflict">("idle");
+  const [draftResuming, setDraftResuming] = useState(false);
   const [draftDeleting, setDraftDeleting] = useState(false);
   const [draftDeleteFailed, setDraftDeleteFailed] = useState(false);
   const draftFocusReturn = useRef<HTMLElement | null>(null);
   const [attemptLocale, setAttemptLocale] = useState<string>(locale);
   const draftRevision = useRef(0);
+  const draftToken = useRef<DrillSessionWriteToken | undefined>(undefined);
+  const draftConflicted = useRef(false);
   const runRevision = useRef(0);
   const lifecycleRevision = useRef(0);
   const dataRevision = useRef(0);
@@ -129,8 +133,9 @@ function FullCaseSession({
       const storage = storageFactory();
       try {
         await pendingDraftWrites.get(fullCaseDraftId(simulation.id))?.catch(() => undefined);
-        const saved = await storage.get("practice_records", fullCaseDraftId(simulation.id));
+        const { draft: saved, token } = await readFullCaseDraft(storage, simulation.id);
         if (cancelled) return;
+        draftToken.current = token;
         setContentKey(key);
         if (saved !== undefined) {
           if (canResumeFullCaseDraft(saved, simulation, key)) setPendingDraft(saved);
@@ -152,13 +157,11 @@ function FullCaseSession({
     try { storage = storageFactory(); } catch (error) { storageError = error; }
     const pending = (pendingDraftWrites.get(id) ?? Promise.resolve()).catch(() => undefined).then(async () => {
       if (draft !== undefined && (data !== dataRevision.current || run !== runRevision.current)) throw new Error("The draft is no longer active.");
+      if (draftConflicted.current) throw new AppStorageConflictError("practice");
       if (revision === draftRevision.current) setDraftStatus("saving");
       if (storage === undefined) throw storageError;
-      if (draft === undefined) await storage.delete("practice_records", id);
-      else {
-        if (!isFullCaseDraftRecord(draft)) throw new Error("Full-case draft exceeds supported limits.");
-        await storage.put("practice_records", draft);
-      }
+      if (draftToken.current === undefined) throw new Error("The draft has not finished loading.");
+      draftToken.current = await writeFullCaseDraft(storage, simulation.id, draftToken.current, draft);
     }).finally(() => { storage?.close(); });
     pendingDraftWrites.set(id, pending);
     const clearPending = () => { if (pendingDraftWrites.get(id) === pending) pendingDraftWrites.delete(id); };
@@ -168,9 +171,10 @@ function FullCaseSession({
         setDraftStatus(draft === undefined ? "idle" : "saved");
         if (draft === undefined) setDraftDeleteFailed(false);
       }
-    }, () => {
+    }, (error: unknown) => {
+      if (error instanceof AppStorageConflictError) draftConflicted.current = true;
       if (revision === draftRevision.current) {
-        setDraftStatus("error");
+        setDraftStatus(draftConflicted.current ? "conflict" : "error");
         if (draft === undefined) setDraftDeleteFailed(true);
       }
     });
@@ -235,10 +239,29 @@ function FullCaseSession({
   }
 
   async function resumeDraft(): Promise<void> {
-    if (pendingDraft === undefined || draftDeleting || draftDeleteFailed) return;
+    if (pendingDraft === undefined || draftDeleting || draftDeleteFailed || draftResuming) return;
     const run = runRevision.current;
     const lifecycle = lifecycleRevision.current;
-    const draft = pendingDraft;
+    setDraftResuming(true);
+    let storage: AppStorage | undefined;
+    let draft: FullCaseDraftRecord;
+    try {
+      storage = storageFactory();
+      const current = await readFullCaseDraft(storage, simulation.id);
+      if (run !== runRevision.current || lifecycle !== lifecycleRevision.current) return;
+      if (current.draft === undefined) {
+        draftConflicted.current = true;
+        setDraftStatus("conflict");
+        return;
+      }
+      if (!canResumeFullCaseDraft(current.draft, simulation, contentKey!)) { setDraftStatus("incompatible"); setPendingDraft(undefined); return; }
+      draftToken.current = current.token;
+      draft = current.draft;
+    } catch { if (run === runRevision.current && lifecycle === lifecycleRevision.current) setDraftStatus("error"); return; }
+    finally {
+      storage?.close();
+      if (run === runRevision.current && lifecycle === lifecycleRevision.current) setDraftResuming(false);
+    }
     setStage(draft.stage); setQuestions(draft.questions); setIncludeQuestionRanking(draft.includeQuestionRanking);
     setHypothesisId(draft.hypothesisId); setBranchIds(draft.branchIds); setCalculationInput(draft.calculationInput);
     setIdeaIds(draft.ideaIds); setPriorityIdeaIds(draft.priorityIdeaIds); setSynthesis(draft.synthesis);
@@ -473,7 +496,7 @@ function FullCaseSession({
 
       <section aria-label={t("Local case draft")} className="grid gap-3 border border-ink/15 bg-white p-4">
         <label className="flex items-start gap-3 text-sm text-ink">
-          <input id="full-case-draft-opt-in" type="checkbox" checked={draftEnabled} disabled={contentKey === undefined || pendingDraft !== undefined || draftDeleting || draftDeleteFailed || draftStatus === "incompatible" || result !== undefined}
+          <input id="full-case-draft-opt-in" type="checkbox" checked={draftEnabled} disabled={contentKey === undefined || pendingDraft !== undefined || draftDeleting || draftResuming || draftDeleteFailed || draftStatus === "incompatible" || draftStatus === "conflict" || result !== undefined}
             onChange={(event) => {
               if (event.currentTarget.checked) { markStarted(); setDraftEnabled(true); }
               else void discardDraft();
@@ -483,8 +506,8 @@ function FullCaseSession({
         {pendingDraft !== undefined ? (
           <div className="flex flex-wrap items-center gap-3">
             <p className={uiText.body}>{t("A saved case draft is available.")}</p>
-            <button className={buttonClass("primary")} disabled={draftDeleting || draftDeleteFailed} type="button" onClick={() => void resumeDraft()}>{t("Resume draft")}</button>
-            <button id="full-case-discard-draft" className={buttonClass("secondary")} disabled={draftDeleting} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button>
+            <button className={buttonClass("primary")} disabled={draftDeleting || draftDeleteFailed || draftResuming || draftStatus === "conflict"} type="button" onClick={() => void resumeDraft()}>{t("Resume draft")}</button>
+            <button id="full-case-discard-draft" className={buttonClass("secondary")} disabled={draftDeleting || draftResuming || draftStatus === "conflict"} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button>
           </div>
         ) : null}
         {draftStatus === "incompatible" ? (
@@ -495,7 +518,8 @@ function FullCaseSession({
         ) : null}
         {draftStatus === "saved" ? <p role="status" className={uiText.body}>{t("Private draft saved on this device.")}</p> : null}
         {draftStatus === "error" ? <LocalSaveNotice label={t("Not Saved")} tone="error" detail={t("The local draft could not be read or updated. Keep this page open to preserve your current work.")} /> : null}
-        {draftDeleteFailed && pendingDraft === undefined ? <button id="full-case-discard-draft" className={buttonClass("secondary")} disabled={draftDeleting} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button> : null}
+        {draftStatus === "conflict" ? <LocalSaveNotice label={t("Not Saved")} tone="error" detail={t("The private draft changed or was deleted in another tab. Your current work remains here. Reload to review the saved draft before saving again.")} /> : null}
+        {draftDeleteFailed && pendingDraft === undefined ? <button id="full-case-discard-draft" className={buttonClass("secondary")} disabled={draftDeleting || draftStatus === "conflict"} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button> : null}
       </section>
 
       {result === undefined ? (

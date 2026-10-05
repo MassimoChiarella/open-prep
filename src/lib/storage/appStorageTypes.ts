@@ -344,6 +344,7 @@ export interface AppStorageAtomicView {
   get<TStore extends AppStoreName>(storeName: TStore, key: AppStoreKey<TStore>): AppStoreValue<TStore> | undefined;
   getAll<TStore extends AppStoreName>(storeName: TStore): AppStoreValue<TStore>[];
   sessionToken(id: string): DrillSessionWriteToken;
+  practiceRecordToken(id: string): DrillSessionWriteToken;
 }
 
 export interface AppStorageAtomicOptions {
@@ -359,7 +360,7 @@ export interface AppStorageAtomicDecision<TResult> {
 }
 
 export class AppStorageConflictError extends Error {
-  constructor(readonly reason: "generation" | "session") {
+  constructor(readonly reason: "generation" | "session" | "practice") {
     super(reason === "generation"
       ? "Local data changed. Reload before saving new work."
       : "This attempt changed in another tab. Review the saved attempt or keep your work separately.");

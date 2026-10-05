@@ -3,6 +3,17 @@ import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 type Translations = readonly [string, string, string, string, string, string, string, string, string];
 
 const keys: Record<string, Translations> = {
+  "The private draft changed or was deleted in another tab. Your current work remains here. Reload to review the saved draft before saving again.": [
+    "El borrador privado cambió o se eliminó en otra pestaña. Tu trabajo actual sigue aquí. Recarga para revisar el borrador guardado antes de volver a guardar.",
+    "Le brouillon privé a été modifié ou supprimé dans un autre onglet. Votre travail actuel reste ici. Rechargez pour vérifier le brouillon enregistré avant de sauvegarder à nouveau.",
+    "Der private Entwurf wurde in einem anderen Tab geändert oder gelöscht. Ihre aktuelle Arbeit bleibt hier. Laden Sie neu, um den gespeicherten Entwurf vor dem erneuten Speichern zu prüfen.",
+    "O rascunho privado foi alterado ou excluído em outra aba. Seu trabalho atual permanece aqui. Recarregue para revisar o rascunho salvo antes de salvar novamente.",
+    "私密草稿已在另一个标签页中更改或删除。当前内容仍保留在此页面。请重新加载并查看已保存的草稿，然后再保存。",
+    "私人草稿已在另一個分頁中變更或刪除。目前內容仍保留在此頁面。請重新載入並檢查已儲存的草稿，然後再儲存。",
+    "非公開の下書きが別のタブで変更または削除されました。現在の作業はこのページに残っています。再読み込みして保存済みの下書きを確認してから保存してください。",
+    "تغيرت المسودة الخاصة أو حُذفت في علامة تبويب أخرى. يبقى عملك الحالي هنا. أعد التحميل لمراجعة المسودة المحفوظة قبل الحفظ مجددًا.",
+    "निजी ड्राफ्ट दूसरे टैब में बदला या हटाया गया है। आपका वर्तमान काम यहाँ मौजूद है। दोबारा सहेजने से पहले पेज री लोड करके सहेजा गया ड्राफ्ट देखें।"
+  ],
   "Use 100,000 characters or fewer for target firms.": [
     "Usa un máximo de 100.000 caracteres para las empresas objetivo.", "Utilisez au maximum 100 000 caractères pour les cabinets visés.",
     "Verwenden Sie höchstens 100.000 Zeichen für die Zielfirmen.", "Use no máximo 100.000 caracteres para as empresas-alvo.",

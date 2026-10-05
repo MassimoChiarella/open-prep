@@ -5,6 +5,7 @@ import { brightCartFullCase } from "@/data/casePractice/fullCaseSimulations";
 import type { FullCaseDraftRecord } from "@/features/case-practice/practiceTypes";
 import { FullCaseSimulation } from "@/features/case-practice/simulation/FullCaseSimulation";
 import { fullCaseContentKey, fullCaseDraftId, isFullCaseDraftRecord } from "@/features/case-practice/simulation/fullCaseDraft";
+import * as draftPersistence from "@/features/case-practice/simulation/fullCaseDraftPersistence";
 import { publishLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
@@ -22,7 +23,7 @@ describe("full-case draft write lifecycle", () => {
     await waitFor(() => expect(screen.getByRole("checkbox", { name: optInLabel })).toBeEnabled());
     fireEvent.click(screen.getByRole("checkbox", { name: optInLabel }));
     await screen.findByText("Private draft saved on this device.");
-    const write = vi.spyOn(storage, "put");
+    const write = vi.spyOn(draftPersistence, "writeFullCaseDraft");
     const input = screen.getAllByPlaceholderText(questionPlaceholder)[0];
 
     fireEvent.change(input, { target: { value: "First edit" } });
@@ -30,7 +31,7 @@ describe("full-case draft write lifecycle", () => {
     fireEvent.change(input, { target: { value: "Newest edit" } });
 
     await waitFor(() => expect(
-      write.mock.calls.filter(([store]) => store === "practice_records")
+      write.mock.calls.filter(([target]) => target === storage)
     ).toHaveLength(1));
     expect(await storage.get("practice_records", draftId)).toMatchObject({
       questions: expect.arrayContaining([expect.objectContaining({ text: "Newest edit" })])
@@ -158,13 +159,13 @@ function holdDraftWrites(storage: MemoryAppStorage, predicate: (draft: FullCaseD
   let release!: () => void;
   let started = false;
   const gate = new Promise<void>((resolve) => { release = resolve; });
-  const original = storage.put.bind(storage);
-  const spy = vi.spyOn(storage, "put").mockImplementation(async (store, value) => {
-    if (store === "practice_records" && isFullCaseDraftRecord(value) && predicate(value)) {
+  const original = draftPersistence.writeFullCaseDraft;
+  const spy = vi.spyOn(draftPersistence, "writeFullCaseDraft").mockImplementation(async (target, simulationId, token, value) => {
+    if (target === storage && isFullCaseDraftRecord(value) && predicate(value)) {
       started = true;
       await gate;
     }
-    await original(store, value);
+    return original(target, simulationId, token, value);
   });
   return { release, spy, started: () => started };
 }

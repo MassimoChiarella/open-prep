@@ -12,7 +12,7 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | --- | --- | --- | --- |
 | 0 | Audit baseline | Preserve the audit, establish this plan, fetch and compare main. | Complete: clean source; main matched origin/main. |
 | 1 | A01 privacy | Persist guided note identities; filter Standard/Complete scopes; count, clear and preserve notes; cover legacy and removed packs. | Complete: 7 focused privacy/backup files / 64 tests passed. |
-| 2 | A02 draft concurrency | Atomic draft save/delete revisions; stale resume protection; preserve local text; prevent stale recreation. | Pending |
+| 2 | A02 draft concurrency | Atomic draft save/delete revisions; stale resume protection; preserve local text; prevent stale recreation. | Complete: 35 focused unit tests; 15 native IndexedDB engine tests; strict TypeScript passed. Integrated UI regressions scheduled for phase 18. |
 | 3 | A03 drill recovery | Resolve recovery before accepting answer/skip/timer actions; retain matching session token. | Complete: four focused component suites / 29 tests passed, including delayed recovery and deadline expiry. |
 | 4 | A04 benchmark locale | Stable run identity; retain unsent input and completed summaries across locale changes. | Complete: locale/timing/session suites, 2 files / 23 tests passed. |
 | 5 | A05/A07 Fit state | Retain active story/prompt and review identity; prevent stale initial reads from hiding later saves. | Complete: Fit lifecycle/shared save suites, 4 files / 49 tests passed; targeted lint passed. |
@@ -31,6 +31,8 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 18 | Integration | Full check, engine matrix, meaningful performance comparisons; document physical/PWA/assistive-technology gates. | Pending |
 
 ## Commit timeline
+
+- `fix(storage): guard concurrent private drafts`: A02 adds atomic device-local revisions and deletion tombstones, rereads on resume, and retains local work on a conflict. Existing draft records and backups remain compatible.
 
 - `fix(backup): align persisted record and file limits`: A06: Complete progress uses its 40 MiB bound; writes reserve envelope space within a 32 MiB record bound; old oversized records have lossless recovery archives. Historical authenticated progress-only files normalize unknown text without breaking checksum verification.
 

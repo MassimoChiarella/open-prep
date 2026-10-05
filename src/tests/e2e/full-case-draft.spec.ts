@@ -3,6 +3,35 @@ import { expect, test, type Page } from "@playwright/test";
 import type { PracticeRecord } from "../../features/case-practice/practiceTypes";
 import { appDatabaseName, appDatabaseVersion } from "../../lib/storage/appStorageTypes";
 
+test("@browser-smoke full-case resume reads newer work and stale tabs cannot overwrite or recreate it", async ({ context, page }) => {
+  await page.goto("/case-practice/simulation");
+  const optInName = "Save a private draft on this device so I can resume this case.";
+  const questionPlaceholder = "Type a question you would ask the interviewer";
+  await page.getByRole("checkbox", { name: optInName }).check();
+  await expect(page.getByText("Private draft saved on this device.")).toBeVisible();
+  const second = await context.newPage();
+  await second.goto("/case-practice/simulation");
+  await expect(second.getByRole("button", { name: "Resume draft" })).toBeVisible();
+  const latestQuestion = "Newer private question from the first tab.";
+  await page.getByPlaceholder(questionPlaceholder).first().fill(latestQuestion);
+  await expect.poll(async () => (await readPracticeRecords(page)).find((record) => record.kind === "full_case_draft")?.questions[0].text).toBe(latestQuestion);
+  await second.getByRole("button", { name: "Resume draft" }).click();
+  await expect(second.getByPlaceholder(questionPlaceholder).first()).toHaveValue(latestQuestion);
+  await expect(second.getByText("Private draft saved on this device.")).toBeVisible();
+
+  const localQuestion = "Keep this unsaved local text in the first tab.";
+  await page.getByPlaceholder(questionPlaceholder).first().fill(localQuestion);
+  await expect(page.getByText("The private draft changed or was deleted in another tab. Your current work remains here. Reload to review the saved draft before saving again.")).toBeVisible();
+  await expect(page.getByPlaceholder(questionPlaceholder).first()).toHaveValue(localQuestion);
+  expect((await readPracticeRecords(page)).find((record) => record.kind === "full_case_draft")?.questions[0].text).toBe(latestQuestion);
+  await second.getByRole("checkbox", { name: optInName }).uncheck();
+  await expect.poll(() => readPracticeRecords(page)).toEqual([]);
+  await page.getByPlaceholder(questionPlaceholder).first().fill("Still local after the draft was deleted.");
+  await page.waitForTimeout(400);
+  expect(await readPracticeRecords(page)).toEqual([]);
+  await expect(page.getByPlaceholder(questionPlaceholder).first()).toHaveValue("Still local after the draft was deleted.");
+});
+
 test("a private full-case draft opts in, resumes its stage, and is discarded", { tag: "@browser-smoke" }, async ({ page }) => {
   await page.goto("/case-practice/simulation");
   const optIn = page.getByRole("checkbox", { name: "Save a private draft on this device so I can resume this case." });
