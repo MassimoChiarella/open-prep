@@ -1,6 +1,6 @@
 import type { VariableSpec } from "@/lib/domain";
 import type { SeededRandom } from "@/lib/random/seededRandom";
-import { rangeStepCount } from "@/lib/math/steppedRange";
+import { rangeStepCount, rangeValueAt } from "@/lib/math/steppedRange";
 
 export type ResolvedVariables = Record<string, number>;
 
@@ -36,15 +36,10 @@ function resolveVariable(name: string, spec: VariableSpec, random: SeededRandom)
   }
 
   const stepCount = rangeStepCount(spec.min, spec.max, step);
-  const value = spec.min + random.integer(0, stepCount) * step;
-
-  return roundResolvedValue(value);
+  return rangeValueAt(spec.min, step, random.integer(0, stepCount));
 }
 
 function defaultStepForVariable(spec: VariableSpec): number {
   return spec.type === "integer" ? 1 : 0.1;
 }
 
-function roundResolvedValue(value: number): number {
-  return Number(value.toFixed(12));
-}

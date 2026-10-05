@@ -25,12 +25,14 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 12 | A13 dependencies | Compatible framework/config patch; fresh advisory inventory; assess remaining reachable tooling paths. | Pending |
 | 13 | A14/I03 backup performance | Worker restore validation; cancellation/identity; reuse Standard serialized output; preserve integrity and atomic restore. | Pending |
 | 14 | A15 Settings performance | Lazy inventory; bounded/native counts; correct loading/refresh/clear safeguards. | Pending |
-| 15 | A16 decimal precision | Align range validation, generation, formatting and capacity; finite bundled sweep. | Pending |
+| 15 | A16 decimal precision | Align range validation, generation, formatting and capacity; finite bundled sweep. | Complete: generator/import range suites, 4 files / 72 tests passed, including 7,680 bundled variants. |
 | 16 | I01 prep plan | Include actual completed sizing/exhibit scores with explicit minimum sample and weakness thresholds. | Pending |
 | 17 | I02/I04 guidance | Synchronize template grading docs. Retain current Interview Math rubric unless product policy is explicitly changed. | Pending |
 | 18 | Integration | Full check, engine matrix, meaningful performance comparisons; document physical/PWA/assistive-technology gates. | Pending |
 
 ## Commit timeline
+
+- `fix(generator): preserve authored decimal range precision`: A16: one precision-aware grid helper serves validation and generation; unrepresentable steps reject before install.
 
 - `fix(fit): preserve rehearsal identity and loaded edits`: A05/A07: rehearsal identity is captured; late reads cannot erase saved stories or resurrect deleted ones.
 

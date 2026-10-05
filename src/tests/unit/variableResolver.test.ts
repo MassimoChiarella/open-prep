@@ -5,7 +5,9 @@ import { createSeededRandom } from "@/lib/random/seededRandom";
 
 describe("resolveTemplateVariables", () => {
   it.each([
-    [0.1, 0.3, 0.1, 0.3], [-0.3, -0.1, 0.1, -0.1], [0.1, 0.29, 0.1, 0.2]
+    [0.1, 0.3, 0.1, 0.3], [-0.3, -0.1, 0.1, -0.1], [0.1, 0.29, 0.1, 0.2],
+    [1e-13, 3e-13, 1e-13, 3e-13], [-3e-13, -1e-13, 1e-13, -1e-13],
+    [1.25e-13, 3.25e-13, 1e-13, 3.25e-13], [1e-110, 3e-110, 1e-110, 3e-110]
   ])("includes only valid range endpoints %s to %s by %s", (min, max, step, expected) => {
     const random = { ...createSeededRandom("audit-variable-range"), integer: (_minimum: number, maximum: number) => maximum };
     expect(resolveTemplateVariables({ value: { type: "decimal", min, max, step } }, random).value).toBe(expected);

@@ -84,6 +84,25 @@ describe("question generation", () => {
     expect(generateQuestionsFromTemplates([template], settings, "audit-range-capacity").map((question) => question.answer.value).sort()).toEqual([0.1, 0.2, 0.3]);
   });
 
+  it.each([[1e-13, 3e-13], [-3e-13, -1e-13]])("preserves fine range %s..%s in generation, rendering and capacity", (min, max) => {
+    const template: QuestionTemplate = {
+      ...starterQuestionTemplates[0], variables: { a: { type: "decimal", min, max, step: 1e-13 } },
+      formula: { expression: "a * 10000000000000" }, promptTemplate: "Calculate {a} times 10000000000000.",
+      explanationTemplate: { steps: ["The answer is {answer}."] }
+    };
+    const settings = drillSettings({ categories: ["arithmetic"], difficulty: "beginner", questionCount: 3 });
+    expect(getQuestionGenerationCapacity([template], settings)).toBe(3);
+    const questions = generateQuestionsFromTemplates([template], settings, "fine-range");
+    expect(new Set(questions.map(({ id }) => id)).size).toBe(3);
+    for (const question of questions) {
+      const value = question.metadata!.variables!.a;
+      expect(value).toBeGreaterThanOrEqual(min);
+      expect(value).toBeLessThanOrEqual(max);
+      expect(question.prompt).toContain(String(value));
+      expect(Math.abs(question.answer.value)).toBeGreaterThanOrEqual(1);
+    }
+  });
+
   it("requires percentage-point answers for both beginner percentage-point templates", () => {
     const templates = starterQuestionTemplates.filter((template) => /^percentage_points_beginner_/u.test(template.id));
     expect(templates).toHaveLength(2);

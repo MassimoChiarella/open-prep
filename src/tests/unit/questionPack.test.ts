@@ -42,6 +42,26 @@ const publicQuestionPackAssets = [
 ] as const;
 
 describe("validateQuestionPackPayload", () => {
+  it("preserves fine decimal ranges in import and representative formula checks", () => {
+    const template = {
+      ...validCaseTemplate(), variables: { value: { type: "decimal", min: 1e-13, max: 3e-13, step: 1e-13 } },
+      formula: { expression: "value * 10000000000000" }, promptTemplate: "Calculate {value}.",
+      explanationTemplate: { steps: ["The answer is {answer}."] }, caseStyle: undefined
+    };
+    delete template.caseStyle;
+    expect(validateQuestionPackPayload(generatedPayload([template])).status).toBe("valid");
+    const endpointFailure = validateQuestionPackPayload(generatedPayload([{ ...template, formula: { expression: "1 / (value - 0.0000000000003)" } }]));
+    expect(expectInvalidErrors(endpointFailure)).toEqual(expect.arrayContaining([
+      expect.stringContaining("formula.expression fails for representative values (value=3e-13)")
+    ]));
+    const unrepresentable = validateQuestionPackPayload(generatedPayload([{
+      ...template, variables: { value: { type: "decimal", min: 1e16, max: 1e16 + 4, step: 1 } }
+    }]));
+    expect(expectInvalidErrors(unrepresentable)).toContain(
+      "$.templates[0].variables.value.step is too small to produce distinct finite numeric values at these bounds."
+    );
+  });
+
   it("validates formulas at the upper endpoint of decimal stepped ranges", () => {
     const template = {
       ...validCaseTemplate(), variables: { value: { type: "decimal", min: 0.1, max: 0.3, step: 0.1 } },
