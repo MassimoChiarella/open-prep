@@ -17,7 +17,7 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 4 | A04 benchmark locale | Stable run identity; retain unsent input and completed summaries across locale changes. | Complete: locale/timing/session suites, 2 files / 23 tests passed. |
 | 5 | A05/A07 Fit state | Retain active story/prompt and review identity; prevent stale initial reads from hiding later saves. | Complete: Fit lifecycle/shared save suites, 4 files / 49 tests passed; targeted lint passed. |
 | 6 | A06 backup bounds | Align Complete inner limits; total record-byte safeguards; existing oversized-record recovery; private roundtrip. | Complete: boundary/backup/recovery suites, 5 files / 53 tests passed; 17 MiB private record roundtrip verified. |
-| 7 | A08 composed IDs | Align derived identifier limits with maximum legal pack IDs/versions and generated question suffixes. | Pending |
+| 7 | A08 composed IDs | Align derived identifier limits with maximum legal pack IDs/versions and generated question suffixes. | Complete: 6 focused draft/storage/import files / 55 tests passed; maximum composed IDs retain compatibility. |
 | 8 | A09 tolerated answers | Classify accepted numeric values consistently; retain real outside-tolerance errors and unit partial credit. | Complete: validator/scoring regressions, 2 files / 31 tests passed. |
 | 9 | A10 benchmark import | Accept, validate and preserve supported currency metadata. | Complete: importer/persistence suites, 2 files / 16 tests passed. |
 | 10 | A11 monetary example | Correct sample flag; synchronize distributed copies; test generated monetary grading. | Complete: sample/authoring suites, 3 files / 76 tests passed; 16 variants at two difficulties earn full currency credit. |
@@ -31,6 +31,8 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 18 | Integration | Full check, engine matrix, meaningful performance comparisons; document physical/PWA/assistive-technology gates. | Pending |
 
 ## Commit timeline
+
+- `fix(content): support composed full-case draft identifiers`: A08: draft validators allow maximum legal namespaced simulation/question IDs; save, backup and resume regression tests included.
 
 - `fix(storage): guard concurrent private drafts`: A02 adds atomic device-local revisions and deletion tombstones, rereads on resume, and retains local work on a conflict. Existing draft records and backups remain compatible.
 

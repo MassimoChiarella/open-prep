@@ -3,6 +3,11 @@ import type { FullCaseSimulationSpec } from "@/features/case-practice/simulation
 import { SYNTHESIS_DIMENSIONS } from "@/features/case-practice/synthesis/synthesisScoring";
 import { isLocale } from "@/features/i18n/i18n";
 
+// Imported IDs include two 80-character IDs, a percent-encoded 100-character
+// version (up to 900 characters), namespace labels and a generated question suffix.
+// Keep existing stable IDs intact and use the same bound for persistence/backups.
+export const fullCaseDraftIdentifierMaxLength = 1_200;
+
 export function fullCaseDraftId(simulationId: string): string {
   return `full-case-draft:${simulationId}`;
 }
@@ -17,7 +22,7 @@ export async function fullCaseContentKey(simulation: FullCaseSimulationSpec): Pr
 // enter storage; resuming also validates every selection against current content.
 export function isFullCaseDraftRecord(value: unknown): value is FullCaseDraftRecord {
   if (!record(value)) return false;
-  return value.kind === "full_case_draft" && text(value.simulationId, 200) &&
+  return value.kind === "full_case_draft" && text(value.simulationId, fullCaseDraftIdentifierMaxLength) &&
     value.id === fullCaseDraftId(value.simulationId) && typeof value.contentKey === "string" && /^[a-f0-9]{64}$/.test(value.contentKey) &&
     date(value.updatedAt) && date(value.startedAt) && (value.completedAt === undefined || date(value.completedAt)) &&
     text(value.locale, 30) && isLocale(value.locale) && Number.isInteger(value.stage) && Number(value.stage) >= 0 && Number(value.stage) < 5 &&
@@ -25,7 +30,7 @@ export function isFullCaseDraftRecord(value: unknown): value is FullCaseDraftRec
     strings(value.branchIds) && strings(value.ideaIds) && strings(value.priorityIdeaIds) &&
     typeof value.calculationInput === "string" && value.calculationInput.length <= 10_000 &&
     Array.isArray(value.questions) && value.questions.length <= 100 &&
-    value.questions.every((question) => record(question) && text(question.id, 200) && typeof question.text === "string" && question.text.length <= 10_000) &&
+    value.questions.every((question) => record(question) && text(question.id, fullCaseDraftIdentifierMaxLength) && typeof question.text === "string" && question.text.length <= 10_000) &&
     new Set(value.questions.map((question) => question.id)).size === value.questions.length &&
     record(value.synthesis) && Object.entries(value.synthesis).every(([key, option]) =>
       SYNTHESIS_DIMENSIONS.includes(key as typeof SYNTHESIS_DIMENSIONS[number]) && text(option, 200));
