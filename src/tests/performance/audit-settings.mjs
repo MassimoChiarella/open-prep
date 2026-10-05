@@ -25,12 +25,18 @@ function startProbe() {
 }
 function stopProbe() {
   const probe = globalThis.auditProbe;
+  probe.tasks.push(...probe.observer.takeRecords().map(entry => entry.duration));
   probe.observer.disconnect(); cancelAnimationFrame(probe.frame);
   return { elapsedMs: performance.now() - probe.start, maxTaskMs: Math.max(0, ...probe.tasks), blockingMs: probe.tasks.reduce((sum, task) => sum + Math.max(0, task - 50), 0), maxFrameGapMs: Math.max(0, ...probe.gaps) };
 }
 try {
   for (const count of [200, 1000, 5000]) {
     const context = await browser.newContext({ viewport: { width: 1440, height: 1000 }, serviceWorkers: 'block' });
+    if (report.release === undefined) {
+      const marker = await context.request.get(base + '/open-prep-release.json');
+      if (!marker.ok()) throw new Error('Performance probe requires a verified release marker.');
+      report.release = await marker.json();
+    }
     await context.addInitScript(startProbe);
     const page = await context.newPage(); page.setDefaultTimeout(180000);
     await page.goto(base + '/settings/', { waitUntil: 'networkidle' });
@@ -52,6 +58,8 @@ try {
         await page.getByTestId('settings-all-data-clear').locator('dl').waitFor();
         await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
         const inventory = await page.evaluate(stopProbe);
+        const displayedRecords = await page.getByTestId('settings-all-data-clear').locator('dl > div').filter({ hasText: 'IndexedDB records' }).locator('dd').textContent();
+        if (Number(displayedRecords?.replace(/\D/gu, '')) !== count * 21) throw new Error('Settings inventory did not report the seeded record total.');
         if (trial >= 0) await save({ operation: 'opened-settings-inventory', count, rate, trial, ...inventory });
       }
     }
