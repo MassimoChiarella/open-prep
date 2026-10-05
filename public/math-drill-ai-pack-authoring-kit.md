@@ -3058,6 +3058,7 @@ This complete generated-template pack demonstrates the structured Interview Math
         "outputVariable": "annualRevenueMillions"
       },
       "answerUnit": "m",
+      "answerCurrency": true,
       "explanationTemplate": {
         "steps": [
           "Setup: annual revenue equals stores x customers per store per day x operating days x average basket.",

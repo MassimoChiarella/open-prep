@@ -2812,6 +2812,7 @@ Use these files as references while creating one new package. Do not output a sc
         "outputVariable": "annualRevenueMillions"
       },
       "answerUnit": "m",
+      "answerCurrency": true,
       "explanationTemplate": {
         "steps": [
           "Setup: annual revenue equals stores x customers per store per day x operating days x average basket.",

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 
 import { caseStyleQuestionTemplates } from "@/data/questionTemplates/caseStyleTemplates";
 import { evaluateInterviewMath } from "@/features/drills/interviewMathEvaluation";
@@ -16,6 +17,33 @@ import { createCompleteBackupFilesFromStorage, restoreCompleteBackupFiles } from
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("evaluateInterviewMath", () => {
+  it("awards full credit to currency notation for every shipped sample variant and difficulty", () => {
+    const result = validateGeneratedTemplateQuestionPackPayload(JSON.parse(
+      readFileSync("public/question-pack-interview-math-example.mathdrill.json", "utf8")
+    ));
+    expect(result.status).toBe("valid");
+    if (result.status !== "valid") throw new Error(result.errors.join("\n"));
+    const template = result.pack.templates[0];
+    for (const stores of [10, 20]) for (const customersPerStoreDay of [200, 400]) {
+      for (const operatingDays of [250, 300]) for (const averageBasket of [20, 40]) {
+        for (const difficulty of template.difficulty) {
+          const variables = Object.fromEntries(Object.entries({ stores, customersPerStoreDay, operatingDays, averageBasket })
+            .map(([name, value]) => [name, { ...template.variables[name], values: [value] }]));
+          const question = generateQuestionFromTemplate({ ...template, variables }, { difficulty, random: createSeededRandom("sample-currency") });
+          const evaluation = evaluateInterviewMath({
+            question,
+            rawInput: `$${question.answer.value}M`,
+            selectedUnit: "m",
+            equationOptionId: "equation-correct",
+            interpretationOptionId: "interpretation-correct"
+          });
+          expect(evaluation.validation).toMatchObject({ isCorrect: true, unitStatus: "compatible", errorTypes: ["none"] });
+          expect(evaluation.interviewMath.score.total).toBe(100);
+        }
+      }
+    }
+  });
+
   it("awards and preserves full credit for a validated unitless imported question", async () => {
     const result = validateGeneratedTemplateQuestionPackPayload({
       format: "math-drill-question-pack", schemaVersion: 2, packVersion: "1.0", id: "unitless-case", title: "Unitless case",
