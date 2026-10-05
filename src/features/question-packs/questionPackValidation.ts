@@ -102,11 +102,22 @@ export function readQuestionPackEnvelope(
   }
   literal(value.kind, kind, "$.kind", errors);
 
+  const id = readIdProperty(value, "id", "$.id", errors);
+  let packVersion = readTextProperty(value, "packVersion", "$.packVersion", 100, errors);
+  if (packVersion !== undefined) {
+    // Runtime namespaces URI-encode versions; lone UTF-16 surrogates cannot encode.
+    try { encodeURIComponent(packVersion); }
+    catch {
+      errors.push("$.packVersion must contain well-formed Unicode.");
+      packVersion = undefined;
+    }
+  }
+
   return {
     value,
     schemaVersion,
-    id: readIdProperty(value, "id", "$.id", errors),
-    packVersion: readTextProperty(value, "packVersion", "$.packVersion", 100, errors),
+    id,
+    packVersion,
     title: readTextProperty(value, "title", "$.title", 100, errors),
     description: readOptionalTextProperty(value, "description", "$.description", 500, errors),
     publisher: readOptionalTextProperty(value, "publisher", "$.publisher", 100, errors),

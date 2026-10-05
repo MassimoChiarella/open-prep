@@ -18,6 +18,23 @@ import {
 import { validateCasePracticeQuestionPackPayload } from "@/features/question-packs/questionPackCasePractice";
 
 describe("case-practice question packs", () => {
+  it.each(["1.0", " release-2.0 ", "%".repeat(100), "\\ud83d\\ude80", "\\ud800\\udc00", "\\udbff\\udfff", "\\ud83d\\ude80".repeat(50), "版本-1.0"])(
+    "imports and namespaces a legal JSON-escaped full-case version %s without changing content",
+    (escaped) => {
+      const version = JSON.parse(`"${escaped}"`) as string;
+      const payload = { ...validV3Payload(), packVersion: version };
+      const imported = validateQuestionPackPayload(JSON.parse(JSON.stringify(payload)) as unknown);
+      expect(imported.status).toBe("valid");
+      if (imported.status === "invalid") throw new Error(imported.errors.join("\n"));
+      if (imported.pack.kind !== "case_practice") throw new Error("Expected a case-practice pack.");
+      const original = JSON.stringify(imported.pack);
+      const content = toQuestionPackCasePracticeContent(imported.pack);
+      expect(content.fullCases?.[0]?.id).toBe(`question-pack:${imported.pack.id}:version:${encodeURIComponent(version.trim())}:full-case:${brightCartFullCase.id}`);
+      expect(content.fullCases?.[0]?.questioning?.id).toContain(":full-case-questioning:");
+      expect(JSON.stringify(imported.pack)).toBe(original);
+    }
+  );
+
   it("sanitizes every supported case-practice collection", () => {
     const result = validateCasePracticeQuestionPackPayload(
       {

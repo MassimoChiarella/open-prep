@@ -42,6 +42,14 @@ const publicQuestionPackAssets = [
 ] as const;
 
 describe("validateQuestionPackPayload", () => {
+  it.each(publicQuestionPackAssets)("rejects JSON-escaped malformed Unicode versions in the shared envelope for %s", (filename) => {
+    const payload = JSON.parse(readFileSync(resolve(process.cwd(), "public", filename), "utf8")) as Record<string, unknown>;
+    for (const escaped of ["\\ud800", "\\udc00", "\\ud800\\ud800", "\\udc00\\udc00", "\\udc00\\ud800", "1.\\ud83d\\ude80\\ud800"]) {
+      payload.packVersion = JSON.parse(`"${escaped}"`) as string;
+      expect(expectInvalidErrors(validateQuestionPackPayload(payload))).toContain("$.packVersion must contain well-formed Unicode.");
+    }
+  });
+
   it("preserves fine decimal ranges in import and representative formula checks", () => {
     const template = {
       ...validCaseTemplate(), variables: { value: { type: "decimal", min: 1e-13, max: 3e-13, step: 1e-13 } },
