@@ -32,6 +32,8 @@ Each milestone contains its implementation, compatibility handling, and focused 
 
 ## Commit timeline
 
+- `fix(drills): evaluate deadlines immediately after recovery`: A03 boundary follow-up: recovered clocks are updated immediately; 8 drill component files / 45 tests passed.
+
 - `fix(generator): keep decimal grids within authored bounds`: A16 boundary follow-up: native BigInt decimal grids align exact authored step count/value; 48 ordinary, fine, subnormal and huge grids; 5 files / 78 tests and 20,800 bundled question sweep passed.
 
 - `docs(authoring): align template grading guidance`: I02: tolerance defaults, explicit rounding, decimal precision and currency flags documented consistently; authoring sync check passed.

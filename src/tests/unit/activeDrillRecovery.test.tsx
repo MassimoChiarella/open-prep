@@ -71,6 +71,28 @@ describe("drill recovery and timing", () => {
     expect(screen.queryByText(/This attempt changed in another tab/)).not.toBeInTheDocument();
   });
 
+  it("refreshes a fresh timed attempt's clock as soon as a delayed empty recovery resolves", async () => {
+    vi.useFakeTimers();
+    const start = new Date("2026-10-04T00:00:00Z");
+    vi.setSystemTime(start);
+    const storage = new MemoryAppStorage();
+    const created = createDrillSession({ seed: "fresh-delayed-timer", startedAt: start.toISOString(), settings: {
+      questionCount: 2, tags: ["addition"], timeMode: "per_question", secondsPerQuestion: 20
+    } });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const getPage = storage.getPage.bind(storage);
+    vi.spyOn(storage, "getPage").mockImplementationOnce(async (...args) => { await gate; return getPage(...args); });
+    await act(async () => { render(<ActiveDrillSession initialSession={created.session} questions={created.questions} storageFactory={() => storage} />); });
+    vi.setSystemTime(start.getTime() + 25_000);
+    await act(async () => release());
+    expect(screen.getByRole("timer", { name: "Time remaining 0:00" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Answer")).toBeDisabled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(screen.getByTestId("active-feedback-panel")).toHaveTextContent("Timeout");
+    expect((await storage.get("drill_sessions", created.session.id))?.responses[0].timeTakenSeconds).toBe(20);
+  });
+
   it("recovers a final answered draft into its saved summary", async () => {
     const storage = new MemoryAppStorage();
     const created = createDrillSession({ seed: "final-draft", settings: { questionCount: 1, tags: ["addition"] } });

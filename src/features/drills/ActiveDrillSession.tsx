@@ -402,11 +402,15 @@ export function ActiveDrillSession({
         })
         .finally(() => {
           storage.close();
-          if (!cancelled) setDraftLoaded(true);
+          if (!cancelled) {
+            setNowMs(Date.now());
+            setDraftLoaded(true);
+          }
         });
     } catch {
       void Promise.resolve().then(() => {
         if (!cancelled) {
+          setNowMs(Date.now());
           setDraftLoaded(true);
           setDraftSaveFailed(true);
         }

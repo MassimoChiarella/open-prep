@@ -12,7 +12,7 @@ describe("whole-session feedback deadlines", () => {
     vi.setSystemTime(new Date("2026-09-22T12:00:00.000Z"));
     const storage = new MemoryAppStorage();
     const created = createDrillSession({ seed: "feedback-deadline", startedAt: new Date().toISOString(), settings: { questionCount: 3, tags: ["addition"], feedbackMode, timeMode: "session", totalSessionSeconds: 10 } });
-    render(<ActiveDrillSession initialSession={created.session} questions={created.questions} storageFactory={() => storage} />);
+    await act(async () => { render(<ActiveDrillSession initialSession={created.session} questions={created.questions} storageFactory={() => storage} />); });
     await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
     fireEvent.change(screen.getByLabelText("Answer"), { target: { value: String(created.questions[0].answer.value) } });
     fireEvent.click(screen.getByRole("button", { name: "Submit" }));
@@ -38,7 +38,7 @@ describe("whole-session feedback deadlines", () => {
     const created = createDrillSession({ seed: "interview-feedback-deadline", startedAt: new Date().toISOString(), settings: { categories: ["case_math"], questionCount: 2, feedbackMode: "instant", timeMode: "session", totalSessionSeconds: 10, caseRequireEquationSetup: true, caseRequireInterpretation: true } });
     const question = created.questions[0];
     const spec = question.metadata!.caseStyle!.interviewMath;
-    render(<ActiveDrillSession initialSession={created.session} questions={created.questions} storageFactory={() => storage} />);
+    await act(async () => { render(<ActiveDrillSession initialSession={created.session} questions={created.questions} storageFactory={() => storage} />); });
     await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
     fireEvent.click(screen.getByLabelText(spec.equationOptions.find((option) => option.formulaCorrect && option.setupCorrect)!.label));
     fireEvent.click(screen.getByLabelText(spec.interpretationOptions.find((option) => option.isCorrect)!.label));
@@ -61,7 +61,7 @@ describe("whole-session feedback deadlines", () => {
     vi.setSystemTime(new Date("2026-09-22T12:00:00.000Z"));
     const storage = new MemoryAppStorage();
     const created = createDrillSession({ seed: "per-question-feedback", startedAt: new Date().toISOString(), settings: { questionCount: 2, tags: ["addition"], timeMode: "per_question", secondsPerQuestion: 10 } });
-    render(<ActiveDrillSession initialSession={created.session} questions={created.questions} storageFactory={() => storage} />);
+    await act(async () => { render(<ActiveDrillSession initialSession={created.session} questions={created.questions} storageFactory={() => storage} />); });
     await act(async () => { await vi.advanceTimersByTimeAsync(2000); });
     fireEvent.change(screen.getByLabelText("Answer"), { target: { value: String(created.questions[0].answer.value) } });
     fireEvent.click(screen.getByRole("button", { name: "Submit" }));
