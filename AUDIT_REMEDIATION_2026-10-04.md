@@ -13,7 +13,7 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 0 | Audit baseline | Preserve the audit, establish this plan, fetch and compare main. | Complete: clean source; main matched origin/main. |
 | 1 | A01 privacy | Persist guided note identities; filter Standard/Complete scopes; count, clear and preserve notes; cover legacy and removed packs. | Pending |
 | 2 | A02 draft concurrency | Atomic draft save/delete revisions; stale resume protection; preserve local text; prevent stale recreation. | Pending |
-| 3 | A03 drill recovery | Resolve recovery before accepting answer/skip/timer actions; retain matching session token. | Pending |
+| 3 | A03 drill recovery | Resolve recovery before accepting answer/skip/timer actions; retain matching session token. | Complete: four focused component suites / 29 tests passed, including delayed recovery and deadline expiry. |
 | 4 | A04 benchmark locale | Stable run identity; retain unsent input and completed summaries across locale changes. | Pending |
 | 5 | A05/A07 Fit state | Retain active story/prompt and review identity; prevent stale initial reads from hiding later saves. | Pending |
 | 6 | A06 backup bounds | Align Complete inner limits; total record-byte safeguards; existing oversized-record recovery; private roundtrip. | Pending |
@@ -35,6 +35,7 @@ Each milestone contains its implementation, compatibility handling, and focused 
 The commit subject identifies each milestone. Add the exact verification and any compatibility decisions to its entry before committing. Order independent fixes by readiness while preserving dependent storage migrations in safe commits.
 
 - Baseline: `docs(audit): record findings and remediation milestones` — report and execution plan; repository identity verified.
+- `fix(drills): wait for recovery before accepting answers` — A03: inputs, handlers, focus and timer activity wait for recovered state and its matching token.
 - A09: `fix(grading): classify tolerated values consistently` — numeric acceptance now gates all numeric error classifications; unit-only partial credit and error history are covered across tolerance types.
 
 ## Open decisions and release gates

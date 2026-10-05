@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { ActiveDrillSession } from "@/features/drills/ActiveDrillSession";
@@ -7,9 +7,70 @@ import { buildDrillDraftKey, persistInProgressDrillSession } from "@/features/dr
 import { createDrillSession } from "@/features/drills/sessionFactory";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
-afterEach(() => { cleanup(); vi.useRealTimers(); });
+afterEach(() => { cleanup(); vi.restoreAllMocks(); vi.useRealTimers(); });
 
 describe("drill recovery and timing", () => {
+  it("blocks early answers and skips until the recovered session and its token are paired", async () => {
+    const storage = new MemoryAppStorage();
+    const settings = { questionCount: 2, tags: ["addition" as const], feedbackMode: "end_of_session" as const };
+    const saved = createDrillSession({ seed: "recover-saved", sessionId: "saved-attempt", settings });
+    const firstAnswer = submitAnswer({ session: saved.session, question: saved.questions[0], rawInput: String(saved.questions[0].answer.value), timeTakenSeconds: 1 });
+    await persistInProgressDrillSession({
+      draftKey: buildDrillDraftKey(window.location.pathname + window.location.search, saved.session.settings),
+      session: firstAnswer.session, questions: saved.questions, storage
+    });
+    const fresh = createDrillSession({ seed: "recover-fresh", sessionId: "fresh-attempt", settings });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const getPage = storage.getPage.bind(storage);
+    vi.spyOn(storage, "getPage").mockImplementationOnce(async (...args) => { await gate; return getPage(...args); });
+    render(<ActiveDrillSession initialSession={fresh.session} questions={fresh.questions} storageFactory={() => storage} />);
+
+    expect(screen.getByLabelText("Answer")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Skip" })).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Skip" }));
+    fireEvent.submit(screen.getByTestId("active-answer-panel"));
+    expect(await storage.get("drill_sessions", fresh.session.id)).toBeUndefined();
+
+    await act(async () => release());
+    await waitFor(() => expect(screen.getByLabelText("Answer")).toBeEnabled());
+    expect(screen.getByTestId("active-question-prompt")).toHaveTextContent(saved.questions[1].prompt);
+    fireEvent.change(screen.getByLabelText("Answer"), { target: { value: String(saved.questions[1].answer.value) } });
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+    expect(await screen.findByText("Session saved on this device.")).toBeInTheDocument();
+    expect((await storage.get("drill_sessions", saved.session.id))?.responses).toHaveLength(2);
+    expect(await storage.get("drill_sessions", fresh.session.id)).toBeUndefined();
+    expect(screen.queryByText(/This attempt changed in another tab/)).not.toBeInTheDocument();
+  });
+
+  it("waits for recovery before expiring the saved question's original deadline", async () => {
+    vi.useFakeTimers();
+    const start = new Date("2026-10-04T00:00:00Z");
+    vi.setSystemTime(start);
+    const storage = new MemoryAppStorage();
+    const created = createDrillSession({ seed: "delayed-timer", startedAt: start.toISOString(), settings: {
+      questionCount: 2, tags: ["addition"], timeMode: "per_question", secondsPerQuestion: 20
+    } });
+    await persistInProgressDrillSession({
+      draftKey: buildDrillDraftKey(window.location.pathname + window.location.search, created.session.settings),
+      questionStartedAtMs: start.getTime(), session: created.session, questions: created.questions, storage
+    });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => { release = resolve; });
+    const getPage = storage.getPage.bind(storage);
+    vi.spyOn(storage, "getPage").mockImplementationOnce(async (...args) => { await gate; return getPage(...args); });
+    await act(async () => { render(<ActiveDrillSession initialSession={created.session} questions={created.questions} storageFactory={() => storage} />); });
+    await act(async () => { await vi.advanceTimersByTimeAsync(25_000); });
+    expect(screen.getByLabelText("Answer")).toBeDisabled();
+    expect(screen.queryByTestId("active-feedback-panel")).not.toBeInTheDocument();
+    expect((await storage.get("drill_sessions", created.session.id))?.responses).toHaveLength(0);
+    await act(async () => release());
+    await act(async () => { await vi.advanceTimersByTimeAsync(0); });
+    expect(screen.getByTestId("active-feedback-panel")).toHaveTextContent("Timeout");
+    expect((await storage.get("drill_sessions", created.session.id))?.responses[0].timeTakenSeconds).toBe(20);
+    expect(screen.queryByText(/This attempt changed in another tab/)).not.toBeInTheDocument();
+  });
+
   it("recovers a final answered draft into its saved summary", async () => {
     const storage = new MemoryAppStorage();
     const created = createDrillSession({ seed: "final-draft", settings: { questionCount: 1, tags: ["addition"] } });

@@ -198,6 +198,7 @@ export function ActiveDrillSession({
   );
   const timer = useMemo(() => timerAt(nowMs), [nowMs, timerAt]);
   const timerIsActive =
+    draftLoaded &&
     !writeConflict &&
     completedSession?.score === undefined &&
     currentQuestion !== undefined &&
@@ -529,6 +530,7 @@ export function ActiveDrillSession({
   }, [benchmarkId, completedSession, completedSummary, draftLoaded, flagWriteFailure, questionQueue, saveAttempt, storageFactory, writeConflict]);
 
   useEffect(() => {
+    if (!draftLoaded) return;
     if (feedback?.recorded === false) {
       answerInputRef.current?.focus();
       answerInputRef.current?.select();
@@ -547,14 +549,14 @@ export function ActiveDrillSession({
         answerInputRef.current?.focus();
       }
     }
-  }, [currentQuestion, feedback, interviewMathMode, session.settings.caseRequireEquationSetup]);
+  }, [currentQuestion, draftLoaded, feedback, interviewMathMode, session.settings.caseRequireEquationSetup]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const submittedAtMs = currentTimestampMs();
     const submissionTimer = timerAt(submittedAtMs);
 
-    if (writeConflict || answer.length > maxNumericInputLength || currentQuestion === undefined || feedback?.recorded || submissionTimer.isExpired) {
+    if (!draftLoaded || writeConflict || answer.length > maxNumericInputLength || currentQuestion === undefined || feedback?.recorded || submissionTimer.isExpired) {
       if (submissionTimer.isExpired) setNowMs(submittedAtMs);
       return;
     }
@@ -610,7 +612,7 @@ export function ActiveDrillSession({
   }
 
   function handleSkip() {
-    if (writeConflict) return;
+    if (!draftLoaded || writeConflict) return;
     const skippedAtMs = currentTimestampMs();
     const skipTimer = timerAt(skippedAtMs);
 
@@ -667,7 +669,7 @@ export function ActiveDrillSession({
   }
 
   function handleNextQuestion() {
-    if (writeConflict) return;
+    if (!draftLoaded || writeConflict) return;
     if (session.settings.timeMode === "session" && timerAt(Date.now()).isExpired && currentQuestion !== undefined) {
       recordSessionTimeout(currentQuestion);
       return;
@@ -681,7 +683,7 @@ export function ActiveDrillSession({
   }
 
   function handleRetrySimilar() {
-    if (writeConflict || feedback?.recorded !== true || similarQuestion === undefined) {
+    if (!draftLoaded || writeConflict || feedback?.recorded !== true || similarQuestion === undefined) {
       return;
     }
 
@@ -814,7 +816,7 @@ export function ActiveDrillSession({
     : undefined;
   const progressPercent = Math.round((progress.answeredCount / progress.totalQuestions) * 100);
   const displayedQuestionNumber = Math.max(1, questionQueue.findIndex((question) => question.id === displayedQuestion.id) + 1);
-  const inputDisabled = writeConflict || feedback?.recorded === true || timer.isExpired;
+  const inputDisabled = !draftLoaded || writeConflict || feedback?.recorded === true || timer.isExpired;
   const requiresUnit = displayedQuestion.answer.unit !== undefined && displayedQuestion.answer.unit !== "none";
   const requiresEquationSetup = session.settings.caseRequireEquationSetup !== false;
   const requiresInterpretation = session.settings.caseRequireInterpretation === true;
@@ -941,6 +943,7 @@ export function ActiveDrillSession({
                 </div>
               ) : null}
               <form
+                aria-busy={!draftLoaded}
                 aria-describedby="active-question-expectations"
                 aria-labelledby="active-question-prompt"
                 className="border-y border-ink/20 bg-paper/70 p-2 sm:p-4"
@@ -1025,6 +1028,7 @@ export function ActiveDrillSession({
                   {feedback === undefined ? (
                     <button
                       className="inline-flex min-h-11 w-full items-center justify-center rounded-md border border-ink/30 bg-white px-4 text-sm font-semibold text-ink transition hover:border-coral hover:bg-coral/10 hover:text-coral focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-coral focus-visible:ring-offset-2 sm:w-auto sm:min-w-24"
+                      disabled={inputDisabled}
                       onClick={handleSkip}
                       type="button"
                     >

@@ -19,7 +19,7 @@ afterEach(() => {
 });
 
 describe("ActiveDrillSession", () => {
-  it("locks the launch accommodation into the active timer snapshot", () => {
+  it("locks the launch accommodation into the active timer snapshot", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-02T00:00:00.000Z"));
     const created = createDrillSession({
@@ -34,7 +34,7 @@ describe("ActiveDrillSession", () => {
       }
     });
 
-    render(
+    await renderRecoveredSession(
       <ActiveDrillSession
         initialSession={created.session}
         questions={created.questions}
@@ -58,7 +58,7 @@ describe("ActiveDrillSession", () => {
     expect(screen.getByTestId("active-timing-accommodation")).toHaveTextContent("Double time");
   });
 
-  it("keeps Untimed Practice active past the authored deadline", () => {
+  it("keeps Untimed Practice active past the authored deadline", async () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-06-02T00:00:00.000Z"));
     const created = createDrillSession({
@@ -73,7 +73,7 @@ describe("ActiveDrillSession", () => {
       }
     });
 
-    render(
+    await renderRecoveredSession(
       <ActiveDrillSession
         initialSession={created.session}
         questions={created.questions}
@@ -104,7 +104,7 @@ describe("ActiveDrillSession", () => {
         timeMode: "per_question"
       }
     });
-    const first = render(
+    const first = await renderRecoveredSession(
       <ActiveDrillSession
         initialSession={finalSecond.session}
         questions={finalSecond.questions}
@@ -131,7 +131,7 @@ describe("ActiveDrillSession", () => {
         timeMode: "per_question"
       }
     });
-    render(
+    await renderRecoveredSession(
       <ActiveDrillSession
         initialSession={expired.session}
         questions={expired.questions}
@@ -166,7 +166,7 @@ describe("ActiveDrillSession", () => {
       }
     });
 
-    render(
+    await renderRecoveredSession(
       <ActiveDrillSession
         initialSession={created.session}
         questions={created.questions}
@@ -186,7 +186,7 @@ describe("ActiveDrillSession", () => {
     });
   });
 
-  it("shows unit, timing, and rounding expectations beside the prompt", () => {
+  it("shows unit, timing, and rounding expectations beside the prompt", async () => {
     const created = createDrillSession({
       seed: "active-question-expectations",
       startedAt: new Date().toISOString(),
@@ -203,7 +203,7 @@ describe("ActiveDrillSession", () => {
       }
     };
 
-    render(<ActiveDrillSession initialSession={created.session} questions={[question]} />);
+    await renderRecoveredSession(<ActiveDrillSession initialSession={created.session} questions={[question]} />);
 
     const expectations = screen.getByLabelText("Question answer expectations");
 
@@ -229,7 +229,7 @@ describe("ActiveDrillSession", () => {
     });
     storage.failNextCompletedSessionPut = true;
 
-    render(
+    await renderRecoveredSession(
       <ActiveDrillSession
         initialSession={created.session}
         questions={created.questions}
@@ -257,7 +257,7 @@ describe("ActiveDrillSession", () => {
       settings: { feedbackMode: "end_of_session", questionCount: 1, tags: ["addition"] }
     });
 
-    render(
+    await renderRecoveredSession(
       <ActiveDrillSession
         initialSession={created.session}
         questions={created.questions}
@@ -291,7 +291,7 @@ describe("ActiveDrillSession", () => {
       }
     });
 
-    render(
+    await renderRecoveredSession(
       <ActiveDrillSession
         benchmarkId="beginner"
         initialSession={created.session}
@@ -311,14 +311,14 @@ describe("ActiveDrillSession", () => {
     );
   });
 
-  it("keeps feedback on the displayed question and hides future prompts until Next", () => {
+  it("keeps feedback on the displayed question and hides future prompts until Next", async () => {
     const created = createDrillSession({
       seed: "active-feedback-progress",
       startedAt: new Date().toISOString(),
       settings: { questionCount: 2, tags: ["addition"] }
     });
 
-    render(<ActiveDrillSession initialSession={created.session} questions={created.questions} />);
+    await renderRecoveredSession(<ActiveDrillSession initialSession={created.session} questions={created.questions} />);
 
     const queue = screen.getByTestId("active-session-queue");
     expect(within(queue).getAllByRole("listitem")[0]).toHaveClass("min-w-0", "[overflow-wrap:anywhere]");
@@ -368,7 +368,7 @@ describe("ActiveDrillSession", () => {
       startedAt: "2026-06-02T01:00:00.000Z",
       settings: submitted.session.settings
     });
-    render(
+    await renderRecoveredSession(
       <ActiveDrillSession
         initialSession={fresh.session}
         questions={fresh.questions}
@@ -394,7 +394,7 @@ describe("ActiveDrillSession", () => {
     expect((await storage.get("drill_sessions", submitted.session.id))?.draftKey).toBeUndefined();
   });
 
-  it("provides hints, units, scratchpad feedback, and a fresh similar retry", () => {
+  it("provides hints, units, scratchpad feedback, and a fresh similar retry", async () => {
     const created = createDrillSession({
       seed: "active-tools",
       startedAt: new Date().toISOString(),
@@ -410,7 +410,7 @@ describe("ActiveDrillSession", () => {
     });
     const firstPrompt = created.questions[0].prompt;
 
-    render(<ActiveDrillSession initialSession={created.session} questions={created.questions} />);
+    await renderRecoveredSession(<ActiveDrillSession initialSession={created.session} questions={created.questions} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Show hint" }));
     expect(screen.getByText(created.questions[0].explanation.short)).toBeInTheDocument();
@@ -435,14 +435,14 @@ describe("ActiveDrillSession", () => {
     expect(screen.getByLabelText("Private notes for this session")).toHaveValue("Round, then adjust");
   });
 
-  it("does not mix bundled similar questions into question-pack sessions", () => {
+  it("does not mix bundled similar questions into question-pack sessions", async () => {
     const created = createDrillSession({
       seed: "active-pack-tools",
       startedAt: new Date().toISOString(),
       settings: { questionCount: 2, questionPackId: "installed-pack", tags: ["addition"] }
     });
 
-    render(<ActiveDrillSession initialSession={created.session} questions={created.questions} />);
+    await renderRecoveredSession(<ActiveDrillSession initialSession={created.session} questions={created.questions} />);
 
     fireEvent.change(screen.getByLabelText("Answer"), { target: { value: "0" } });
     fireEvent.click(screen.getByRole("button", { name: "Submit" }));
@@ -450,14 +450,14 @@ describe("ActiveDrillSession", () => {
     expect(screen.queryByRole("button", { name: "Retry similar question" })).not.toBeInTheDocument();
   });
 
-  it("records a skipped question and shows it explicitly in feedback", () => {
+  it("records a skipped question and shows it explicitly in feedback", async () => {
     const created = createDrillSession({
       seed: "active-skip",
       startedAt: new Date().toISOString(),
       settings: { questionCount: 2, tags: ["addition"] }
     });
 
-    render(<ActiveDrillSession initialSession={created.session} questions={created.questions} />);
+    await renderRecoveredSession(<ActiveDrillSession initialSession={created.session} questions={created.questions} />);
 
     fireEvent.click(screen.getByRole("button", { name: "Skip" }));
 
@@ -467,7 +467,7 @@ describe("ActiveDrillSession", () => {
     expect(screen.getByTestId("active-session-progress")).toHaveTextContent("1 answered / 1 left");
   });
 
-  it("uses the prompt percentage unit for a natural numeric entry", () => {
+  it("uses the prompt percentage unit for a natural numeric entry", async () => {
     const created = createDrillSession({
       seed: "active-percentage-unit",
       startedAt: new Date().toISOString(),
@@ -478,7 +478,7 @@ describe("ActiveDrillSession", () => {
       }
     });
 
-    render(<ActiveDrillSession initialSession={created.session} questions={created.questions} />);
+    await renderRecoveredSession(<ActiveDrillSession initialSession={created.session} questions={created.questions} />);
 
     fireEvent.change(screen.getByLabelText("Answer"), {
       target: { value: String(created.questions[0].answer.value * 100) }
@@ -488,7 +488,7 @@ describe("ActiveDrillSession", () => {
     expect(screen.getByTestId("active-feedback-panel")).toHaveTextContent("Correct.");
   });
 
-  it("auto-detects Interview Math metadata for retry-compatible specialized scoring", () => {
+  it("auto-detects Interview Math metadata for retry-compatible specialized scoring", async () => {
     const created = createDrillSession({
       seed: "active-case-requirements",
       startedAt: new Date().toISOString(),
@@ -507,7 +507,7 @@ describe("ActiveDrillSession", () => {
       (option) => option.isCorrect
     );
 
-    render(
+    await renderRecoveredSession(
       <ActiveDrillSession
         initialSession={created.session}
         questions={created.questions}
@@ -535,7 +535,7 @@ describe("ActiveDrillSession", () => {
 
   it("exposes unavailable draft storage to the exit navigation", async () => {
     const created = createDrillSession({ seed: "draft-unavailable", settings: { questionCount: 1 } });
-    render(
+    await renderRecoveredSession(
       <ActiveDrillSession
         initialSession={created.session}
         questions={created.questions}
@@ -575,4 +575,10 @@ class PendingCompletedSaveStorage extends MemoryAppStorage {
 
     return super.atomic(options, decide);
   }
+}
+
+async function renderRecoveredSession(ui: Parameters<typeof render>[0]) {
+  let view!: ReturnType<typeof render>;
+  await act(async () => { view = render(ui); });
+  return view;
 }

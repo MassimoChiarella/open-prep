@@ -51,6 +51,7 @@ describe("conflicting drill views", () => {
     const created = createDrillSession({ seed: "committed-before-display", settings: { questionCount: 1, tags: ["addition"], feedbackMode: "end_of_session" } });
     const view = render(<ActiveDrillSession initialSession={created.session} questions={created.questions} storageFactory={() => storage} />);
     const ui = within(view.container);
+    await waitFor(() => expect(ui.getByLabelText("Answer")).toBeEnabled());
     fireEvent.change(ui.getByLabelText("Answer"), { target: { value: String(created.questions[0].answer.value) } });
     fireEvent.click(ui.getByRole("button", { name: "Submit" }));
     expect(await ui.findByText("Session saved on this device.")).toBeInTheDocument();
