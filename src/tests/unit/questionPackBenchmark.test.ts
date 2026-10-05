@@ -2,8 +2,49 @@ import { describe, expect, it } from "vitest";
 
 import { validateBenchmarkQuestionPackPayload } from "@/features/question-packs/questionPackBenchmark";
 import { questionPackMaxFileBytes } from "@/features/question-packs/questionPackValidation";
+import { createBenchmarkSession } from "@/features/benchmarks/benchmarkSession";
+import { toQuestionPackBenchmarkTests } from "@/features/question-packs/questionPack";
+import { submitAnswer } from "@/features/drills/answerSubmission";
 
 describe("validateBenchmarkQuestionPackPayload", () => {
+  it.each(["currency", "k", "m", "b"] as const)("preserves monetary metadata for benchmark unit %s", (unit) => {
+    const result = validateBenchmarkQuestionPackPayload({
+      ...validPayload(),
+      benchmarks: [{
+        ...validBenchmark(),
+        questions: [{ ...validQuestion("money"), answer: { value: 12, unit, currency: true } }]
+      }]
+    });
+    expect(result.status).toBe("valid");
+    if (result.status !== "valid") throw new Error(result.errors.join("\n"));
+    const benchmark = toQuestionPackBenchmarkTests(result.pack)[0];
+    const question = benchmark.questions[0];
+    expect(question.answer).toEqual({ value: 12, unit, currency: true });
+    const created = createBenchmarkSession(benchmark);
+    const submitted = submitAnswer({
+      session: created.session,
+      question,
+      rawInput: `$12${unit === "currency" ? "" : unit.toUpperCase()}`,
+      selectedUnit: unit,
+      timeTakenSeconds: 5
+    });
+    expect(submitted.response).toMatchObject({ isCorrect: true, errorTypes: ["none"], normalizedValue: 12 });
+  });
+
+  it("accepts false currency metadata and rejects invalid or incompatible currency metadata", () => {
+    const payloadWithAnswer = (answer: unknown) => ({
+      ...validPayload(),
+      benchmarks: [{ ...validBenchmark(), questions: [{ ...validQuestion("money"), answer }] }]
+    });
+    const falseCurrency = validateBenchmarkQuestionPackPayload(payloadWithAnswer({ value: 12, unit: "users", currency: false }));
+    expect(falseCurrency.status).toBe("valid");
+    if (falseCurrency.status === "valid") expect(falseCurrency.pack.benchmarks[0].questions[0].answer.currency).toBe(false);
+    expect(expectInvalidErrors(validateBenchmarkQuestionPackPayload(payloadWithAnswer({ value: 12, unit: "m", currency: "true" }))))
+      .toContain("$.benchmarks[0].questions[0].answer.currency must be a boolean.");
+    expect(expectInvalidErrors(validateBenchmarkQuestionPackPayload(payloadWithAnswer({ value: 12, unit: "users", currency: true }))))
+      .toContain("$.benchmarks[0].questions[0].answer.currency requires a currency or k/m/b unit.");
+  });
+
   it("accepts, trims, and rebuilds a strict benchmark pack", () => {
     const result = validateBenchmarkQuestionPackPayload(
       {

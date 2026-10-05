@@ -19,7 +19,7 @@ Each milestone contains its implementation, compatibility handling, and focused 
 | 6 | A06 backup bounds | Align Complete inner limits; total record-byte safeguards; existing oversized-record recovery; private roundtrip. | Pending |
 | 7 | A08 composed IDs | Align derived identifier limits with maximum legal pack IDs/versions and generated question suffixes. | Pending |
 | 8 | A09 tolerated answers | Classify accepted numeric values consistently; retain real outside-tolerance errors and unit partial credit. | Complete: validator/scoring regressions, 2 files / 31 tests passed. |
-| 9 | A10 benchmark import | Accept, validate and preserve supported currency metadata. | Pending |
+| 9 | A10 benchmark import | Accept, validate and preserve supported currency metadata. | Complete: importer/persistence suites, 2 files / 16 tests passed. |
 | 10 | A11 monetary example | Correct sample flag; synchronize distributed copies; test generated monetary grading. | Pending |
 | 11 | A12 unitless sizing | Award correct no-unit output full unit credit; preserve physical/currency omission penalties. | Pending |
 | 12 | A13 dependencies | Compatible framework/config patch; fresh advisory inventory; assess remaining reachable tooling paths. | Pending |
@@ -35,6 +35,7 @@ Each milestone contains its implementation, compatibility handling, and focused 
 The commit subject identifies each milestone. Add the exact verification and any compatibility decisions to its entry before committing. Order independent fixes by readiness while preserving dependent storage migrations in safe commits.
 
 - Baseline: `docs(audit): record findings and remediation milestones` — report and execution plan; repository identity verified.
+- `fix(packs): retain benchmark currency metadata` — A10: shared currency metadata is accepted and preserved; invalid units and metadata still reject.
 - `fix(drills): wait for recovery before accepting answers` — A03: inputs, handlers, focus and timer activity wait for recovered state and its matching token.
 - A09: `fix(grading): classify tolerated values consistently` — numeric acceptance now gates all numeric error classifications; unit-only partial credit and error history are covered across tolerance types.
 

@@ -406,9 +406,15 @@ function readAnswer(value: UnknownRecord, questionPath: string, errors: string[]
   const item = readObject(value.answer, path, errors);
   if (item === undefined) return undefined;
   const errorCount = errors.length;
-  rejectUnknownProperties(item, ["value", "unit", "tolerance", "errorChecks", "roundingRule"], path, errors);
+  rejectUnknownProperties(item, ["value", "unit", "currency", "tolerance", "errorChecks", "roundingRule"], path, errors);
   const answerValue = readFiniteNumberProperty(item, "value", `${path}.value`, errors);
   const unit = readEnumProperty(item, "unit", units, `${path}.unit`, errors);
+  if (hasOwn(item, "currency") && typeof item.currency !== "boolean") {
+    errors.push(`${path}.currency must be a boolean.`);
+  }
+  if (item.currency === true && !["currency", "k", "m", "b"].includes(unit ?? "none")) {
+    errors.push(`${path}.currency requires a currency or k/m/b unit.`);
+  }
   const tolerance = hasOwn(item, "tolerance") ? readTolerance(item.tolerance, `${path}.tolerance`, errors) : undefined;
   const errorChecks = hasOwn(item, "errorChecks")
     ? readErrorChecks(item.errorChecks, `${path}.errorChecks`, errors)
@@ -421,6 +427,7 @@ function readAnswer(value: UnknownRecord, questionPath: string, errors: string[]
   return {
     value: answerValue,
     unit,
+    ...(typeof item.currency === "boolean" ? { currency: item.currency } : {}),
     ...(tolerance === undefined ? {} : { tolerance }),
     ...(errorChecks === undefined ? {} : { errorChecks }),
     ...(roundingRule === undefined ? {} : { roundingRule })
