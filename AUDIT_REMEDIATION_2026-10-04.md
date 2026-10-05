@@ -32,6 +32,8 @@ Each milestone contains its implementation, compatibility handling, and focused 
 
 ## Commit timeline
 
+- `fix(content): version the corrected monetary starter`: A11 increments the distributed pack to 1.0.1 and synchronizes both embedded copies; 4 focused sample/importer/authoring files / 106 tests passed.
+
 - `chore(deps): patch framework and brace expansion`: A13 updates compatible locked versions; advisory inventory drops from one critical/eight high to zero critical/seven high entries sharing one unpatched tooling advisory. Lint and type checking are part of integration validation.
 
 - `fix(drills): evaluate deadlines immediately after recovery`: A03 boundary follow-up: recovered clocks are updated immediately; 8 drill component files / 45 tests passed.

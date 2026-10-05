@@ -2779,7 +2779,7 @@ Use these files as references while creating one new package. Do not output a sc
   "schemaVersion": 2,
   "kind": "generated_template",
   "id": "example-interview-math-retail-revenue",
-  "packVersion": "1.0.0",
+  "packVersion": "1.0.1",
   "title": "Example Interview Math Retail Revenue",
   "description": "An original Interview Math template covering equation selection, exact calculation in millions, units, and interpretation.",
   "publisher": "Example Learning Lab",
