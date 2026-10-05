@@ -59,6 +59,8 @@ export interface LocalProgressImportValidationOptions {
   sourceBytes?: number;
   /** Complete Backup has a larger envelope than Standard Progress Export. */
   maxFileBytes?: number;
+  /** Newly created files and Complete sections must honor their declared scope. */
+  strictPrivacyScope?: boolean;
 }
 
 export interface PreparedStandardProgressExport {
@@ -98,7 +100,8 @@ export async function createSerializedLocalProgressExport(
   };
   const serialized = serializeLocalProgressExport(exported);
   const validation = validateLocalProgressImportPayload(exported, {
-    sourceBytes: new TextEncoder().encode(serialized).byteLength
+    sourceBytes: new TextEncoder().encode(serialized).byteLength,
+    strictPrivacyScope: true
   });
   if (validation.status === "invalid") {
     assertValidProgressRecords(stores);
@@ -220,25 +223,32 @@ export function validateLocalProgressImportPayload(
     return { errors, status: "invalid" };
   }
 
-  const privacyScope = payload.schemaVersion === legacyLocalProgressExportSchemaVersion
+  let privacyScope = payload.schemaVersion === legacyLocalProgressExportSchemaVersion
     ? "complete" : payload.privacyScope as LocalProgressExportPrivacyScope;
   let stores = payload.stores as unknown as LocalProgressExportStores;
   if (privacyScope === "standard") {
-    if (stores.practice_records.some(isPrivatePracticeRecord)) {
-      addError("Standard progress must not contain private practice records.");
+    const privateRecords = stores.practice_records.filter(isPrivatePracticeRecord);
+    const hasGuidedNotes = stores.market_sizing_attempts.some((record) =>
+      record.noteInputIds?.some((id) => Object.hasOwn(record.inputValues ?? {}, id)));
+    const hasNotes = hasGuidedNotes || stores.market_sizing_attempts.some((record) => Object.hasOwn(record, "note"));
+    const legacyPrivateScope = options.strictPrivacyScope !== true &&
+      privateRecords.every((record) => record.kind === "prep_profile") && !hasGuidedNotes &&
+      stores.market_sizing_attempts.every((record) => !Object.hasOwn(record, "note") || record.noteInputIds === undefined);
+    // Early schema-4 Standard exports included profiles and top-level notes.
+    // Recover their actual private scope without discarding saved fields or
+    // changing the original payload used for Complete checksum verification.
+    if ((privateRecords.length > 0 || hasNotes) && legacyPrivateScope) {
+      privacyScope = "complete";
+    } else {
+      if (privateRecords.length > 0) addError("Standard progress must not contain private practice records.");
+      if (hasNotes) addError("Standard progress must not contain market-sizing notes.");
+      // Unclassified historical text stays conservative in progress-only files.
+      stores = {
+        ...stores,
+        market_sizing_attempts: stores.market_sizing_attempts.map((record) =>
+          record.noteInputIds === undefined ? withoutMarketSizingNotes(record) : record)
+      };
     }
-    if (stores.market_sizing_attempts.some((record) => Object.hasOwn(record, "note") ||
-      record.noteInputIds?.some((id) => Object.hasOwn(record.inputValues ?? {}, id)))) {
-      addError("Standard progress must not contain market-sizing notes.");
-    }
-    // Historical Standard files predate guided note metadata. Keep the original
-    // payload intact for Complete Backup checksum verification; normalize only
-    // returned records, conservatively treating unclassified input text as private.
-    stores = {
-      ...stores,
-      market_sizing_attempts: stores.market_sizing_attempts.map((record) =>
-        record.noteInputIds === undefined ? withoutMarketSizingNotes(record) : record)
-    };
   }
   if (errors.length > 0) return { errors, status: "invalid" };
 

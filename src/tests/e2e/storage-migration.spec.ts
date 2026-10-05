@@ -282,7 +282,8 @@ test("authentic supported progress exports pass the current import validator", (
     expect(legacy.exportData).toMatchObject({ privacyScope: "complete", schemaVersion: 4 });
   }
   if (current.status === "valid") {
-    expect(current.exportData).toMatchObject({ privacyScope: "standard", schemaVersion: 4 });
+    expect(current.exportData).toMatchObject({ privacyScope: "complete", schemaVersion: 4 });
+    expect(current.exportData.stores).toEqual((progressExportV4 as { stores: unknown }).stores);
   }
 });
 

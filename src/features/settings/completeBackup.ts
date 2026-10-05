@@ -388,7 +388,10 @@ function validateProgressSection(
     }
   }
 
-  const validation = validateLocalProgressImportPayload(value, { maxFileBytes: completeBackupLimits.maxFileBytes });
+  const validation = validateLocalProgressImportPayload(value, {
+    maxFileBytes: completeBackupLimits.maxFileBytes,
+    strictPrivacyScope: true
+  });
   if (validation.status === "invalid") {
     validation.errors.forEach((error) => addError(`Complete backup progress: ${error}`));
     return undefined;

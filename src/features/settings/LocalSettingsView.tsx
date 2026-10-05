@@ -882,6 +882,11 @@ export function LocalSettingsView({
                 type="file"
               />
             </label>
+            {pendingImport?.privacyScope === "complete" ? <LocalSaveNotice
+              detail={t("Importing this file replaces all saved private data and progress. Private records absent from this file will be removed.")}
+              label={t("Private data")}
+              tone="neutral"
+            /> : null}
             <label className="flex min-h-11 items-center gap-3 rounded-md border border-ink/10 px-3 py-2 text-sm font-medium text-ink has-[:checked]:border-coral has-[:checked]:bg-coral/10">
               <input
                 checked={importConfirmed}

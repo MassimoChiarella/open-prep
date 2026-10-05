@@ -3,6 +3,18 @@ import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 type Translations = readonly [string, string, string, string, string, string, string, string, string];
 
 const keys: Record<string, Translations> = {
+  "Private data": ["Datos privados", "Données privées", "Private Daten", "Dados privados", "私密数据", "私人資料", "非公開データ", "بيانات خاصة", "निजी डेटा"],
+  "Importing this file replaces all saved private data and progress. Private records absent from this file will be removed.": [
+    "La importación de este archivo reemplaza todos los datos privados guardados y el progreso. Los registros privados que no estén en el archivo se eliminarán.",
+    "L’importation de ce fichier remplace toutes les données privées enregistrées et la progression. Les enregistrements privés absents de ce fichier seront supprimés.",
+    "Beim Import dieser Datei werden alle gespeicherten privaten Daten und der Fortschritt ersetzt. Private Datensätze, die in dieser Datei fehlen, werden gelöscht.",
+    "A importação deste arquivo substitui todos os dados privados salvos e o progresso. Os registros privados ausentes neste arquivo serão removidos.",
+    "导入此文件会替换所有已保存的私密数据和练习进度。此文件中没有的私密记录将被删除。",
+    "匯入此檔案會取代所有已儲存的私人資料和練習進度。此檔案中沒有的私人紀錄將被刪除。",
+    "このファイルをインポートすると、保存済みの非公開データと学習進捗がすべて置き換えられます。このファイルに含まれない非公開の記録は削除されます。",
+    "استيراد هذا الملف يستبدل جميع البيانات الخاصة المحفوظة والتقدم. ستُحذف السجلات الخاصة غير الموجودة في هذا الملف.",
+    "इस फ़ाइल को आयात करने से सहेजा गया पूरा निजी डेटा और प्रगति बदल दिए जाते हैं। इस फ़ाइल में मौजूद न होने वाले निजी रिकॉर्ड हटा दिए जाएँगे।"
+  ],
   "Checking backup files...": ["Comprobando archivos de copia de seguridad...", "Vérification des fichiers de sauvegarde…", "Sicherungsdateien werden geprüft…", "Verificando arquivos de backup...", "正在检查备份文件…", "正在檢查備份檔案…", "バックアップファイルを確認中…", "جارٍ التحقق من ملفات النسخة الاحتياطية...", "बैकअप फ़ाइलों की जाँच हो रही है..."],
   "The private draft changed or was deleted in another tab. Your current work remains here. Reload to review the saved draft before saving again.": [
     "El borrador privado cambió o se eliminó en otra pestaña. Tu trabajo actual sigue aquí. Recarga para revisar el borrador guardado antes de volver a guardar.",

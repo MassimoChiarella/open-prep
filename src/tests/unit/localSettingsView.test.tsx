@@ -12,6 +12,7 @@ import { LocalSettingsView } from "@/features/settings/LocalSettingsView";
 import { themePreferenceStorageKey } from "@/features/theme/theme";
 import { timingAccommodationPreferenceKey } from "@/features/timing/timingAccommodationPreference";
 import { appStoreNames } from "@/lib/storage/appStorageTypes";
+import progressExportV4 from "@/tests/fixtures/storage-history/progress-export-v4.json";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("LocalSettingsView", () => {
@@ -322,6 +323,28 @@ describe("LocalSettingsView", () => {
     expect(window.localStorage.getItem(timingAccommodationPreferenceKey)).toBe("double_time");
   });
 
+  it("warns about historical private content before confirming and imports its actual complete scope", async () => {
+    const storage = new MemoryAppStorage();
+    await seedPersonalData(storage);
+    const priorPrivateRecords = storage.peekAll("practice_records");
+    render(<LocalSettingsView storageFactory={() => storage} />);
+    const localData = openDisclosure("settings-local-data");
+    const fileInput = within(localData).getByLabelText("Import Local Progress", { selector: "input" });
+    const confirm = within(localData).getByLabelText("I understand this replaces local progress on this device.");
+    const importButton = within(localData).getByRole("button", { name: "Import And Replace" });
+    fireEvent.change(fileInput, { target: { files: [testFile(JSON.stringify(progressExportV4), "legacy-v4.json")] } });
+    const warning = await within(localData).findByText("Importing this file replaces all saved private data and progress. Private records absent from this file will be removed.");
+    expect(warning.compareDocumentPosition(confirm) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(confirm).not.toBeChecked();
+    expect(importButton).toBeDisabled();
+    expect(storage.peekAll("practice_records")).toEqual(priorPrivateRecords);
+    fireEvent.click(confirm);
+    fireEvent.click(importButton);
+    await within(localData).findByText("Local progress import replaced data on this device.");
+    expect(storage.peekAll("market_sizing_attempts")).toEqual(progressExportV4.stores.market_sizing_attempts);
+    expect(storage.peekAll("practice_records")).toEqual(progressExportV4.stores.practice_records);
+  });
+
   it("ignores obsolete standard file reads and refreshes clear-data inventories", async () => {
     const storage = new MemoryAppStorage();
     const older = await createLocalProgressExport(storage, "2026-09-07T12:00:00.000Z");
@@ -338,6 +361,7 @@ describe("LocalSettingsView", () => {
     fireEvent.change(input, { target: { files: [oldFile] } });
     fireEvent.change(input, { target: { files: [testFile(serializeLocalProgressExport(newer), "new.json")] } });
     await screen.findByText("Import file is valid. Confirm replacement to continue.");
+    expect(screen.queryByText("Importing this file replaces all saved private data and progress. Private records absent from this file will be removed.")).not.toBeInTheDocument();
     const confirm = screen.getByLabelText("I understand this replaces local progress on this device.");
     fireEvent.click(confirm);
     await act(async () => resolveOld(serializeLocalProgressExport(older)));

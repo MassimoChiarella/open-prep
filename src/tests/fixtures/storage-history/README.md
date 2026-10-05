@@ -13,7 +13,7 @@ the cited repository states; they are not current records with older version num
 | `indexeddb-v8.json` | `bc7e9ee8a65cd32fbb80c17b3901b659e3e73907` | The immediate predecessor of database v9: the same stores plus chronological benchmark and question-pack indexes. |
 | `indexeddb-v9.json` | `a54775dad4af2edb6c4a7542a1734f451ba69c20` | The immediate predecessor of database v10: ten learner stores, all four chronological indexes, and no coordination metadata. Historical fictional rows are retained unchanged from the v8 fixture. |
 | `progress-export-v3.json` | `4e8fe70c3eae1deb34f609ad8bf1e002b9745989` | Progress export schema v3: nine progress stores, no `privacyScope`, and all practice/private fields included. |
-| `progress-export-v4.json` | Legacy-compatible schema v4 contract | A historical `privacyScope: "standard"` export that excludes Fit stories but retains preparation profiles and market-sizing notes. These older fields remain accepted on import. |
+| `progress-export-v4.json` | `6096f760a8d2c95ef65c121277c049d31c56a473` schema-v4 writer; fixture retained at `9f02173` | A historical `privacyScope: "standard"` export that excludes Fit stories but retains preparation profiles and market-sizing notes. Import infers its actual complete/private scope and retains these fields. |
 
 Database v8 adds `completed_at_id` on `benchmark_results` with key path
 `["completedAt", "id"]` and `imported_at_id` on `question_packs` with key path
@@ -48,4 +48,9 @@ as a complete export; schema v4 remains the current progress-export envelope.
 
 Current Standard Progress Exports exclude Fit stories, preparation profiles, and
 market-sizing notes. The v4 fixture preserves older import-compatible content,
-not the privacy scope of newly generated Standard Progress Exports.
+not the privacy scope of newly generated Standard Progress Exports. The standalone
+import validator normalizes these legacy private fields to `privacyScope: "complete"`
+without changing the source file. The interface warns that private data will also
+be replaced before confirmation. Complete Backup sections and newly generated
+exports strictly enforce their declared scope; fabricated Standard files containing
+Fit stories, full-case drafts, or classified guided notes remain invalid.
