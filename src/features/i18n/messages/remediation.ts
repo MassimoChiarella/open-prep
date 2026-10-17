@@ -3,6 +3,7 @@ import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 type Translations = readonly [string, string, string, string, string, string, string, string, string];
 
 const keys: Record<string, Translations> = {
+  "Installed": ["Instalado", "Installé", "Installiert", "Instalado", "已安装", "已安裝", "インストール済み", "مثبت", "इंस्टॉल किया गया"],
   "Complete each question using 300 characters or fewer before finishing this case.": [
     "Completa cada pregunta con un máximo de 300 caracteres antes de terminar este caso.",
     "Complétez chaque question en 300 caractères maximum avant de terminer ce cas.",
