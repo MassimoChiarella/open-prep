@@ -18,6 +18,7 @@ import {
 } from "@/features/settings/completeBackupSet";
 import { completeBackupStoreNames, localPreferenceKeys } from "@/features/settings/localDataInventory";
 import { publishLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
+import { normalizeSnapshotTimestamps } from "@/lib/storage/storedTimestamps";
 import {
   progressStoreNames,
   type AppStorage,
@@ -190,12 +191,12 @@ export async function replaceValidatedCompleteBackupSet(
   const includesPrivateText = backup.selectedScopes.includes("private_text");
   const progress = backup.sections.progress.stores;
   const packs = backup.selectedScopes.includes("packs") ? { question_packs: backup.sections.packs ?? [] } : {};
-  await storage.replaceSnapshot({
+  await storage.replaceSnapshot(normalizeSnapshotTimestamps({
     ...progress,
     ...packs
-  }, { expectedGeneration, ...(includesPrivateText ? {} : {
+  }), { expectedGeneration, ...(includesPrivateText ? {} : {
     readStores: privatePreservationStoreNames,
-    preserve: (current) => ({
+    preserve: (current) => normalizeSnapshotTimestamps({
       ...preservePrivateData(progress, {
         practice_records: current.practice_records ?? [], market_sizing_attempts: current.market_sizing_attempts ?? []
       }),
