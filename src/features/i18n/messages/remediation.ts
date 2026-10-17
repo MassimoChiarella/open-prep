@@ -3,6 +3,15 @@ import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 type Translations = readonly [string, string, string, string, string, string, string, string, string];
 
 const keys: Record<string, Translations> = {
+  "The installed pack changed in another tab. Review it again before replacing.": [
+    "El pack instalado cambió en otra pestaña. Revísalo de nuevo antes de reemplazarlo.",
+    "Le pack installé a changé dans un autre onglet. Vérifiez-le à nouveau avant de le remplacer.",
+    "Das installierte Paket wurde in einem anderen Tab geändert. Prüfen Sie es vor dem Ersetzen erneut.",
+    "O pacote instalado mudou em outra aba. Revise-o novamente antes de substituir.",
+    "已安装的内容包在另一个标签页中更改。替换前请重新检查。", "已安裝的內容包在另一個分頁中變更。取代前請重新檢查。",
+    "インストール済みのパックが別のタブで変更されました。置き換える前に再確認してください。",
+    "تغيرت الحزمة المثبتة في علامة تبويب أخرى. راجعها مجددًا قبل استبدالها.", "स्थापित पैक दूसरे टैब में बदला है। बदलने से पहले फिर से जाँचें।"
+  ],
   "Leave this case? A local save or removal is still pending. Keep this page open until it finishes.": [
     "¿Salir de este caso? Aún hay un guardado o borrado local pendiente. Mantén esta página abierta hasta que termine.",
     "Quitter ce cas ? Un enregistrement ou une suppression locale est en cours. Gardez cette page ouverte jusqu’à la fin.",

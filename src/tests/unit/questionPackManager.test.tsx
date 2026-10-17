@@ -533,10 +533,10 @@ describe("QuestionPackManager", () => {
   it("locks preview controls while an installation is committing", async () => {
     const storage = new MemoryAppStorage();
     const save = deferred<void>();
-    const put = storage.put.bind(storage);
-    vi.spyOn(storage, "put").mockImplementation(async (...args) => {
+    const commit = storage.atomic.bind(storage);
+    vi.spyOn(storage, "atomic").mockImplementation(async (options, decide) => {
       await save.promise;
-      await put(...args);
+      return commit(options, decide);
     });
 
     render(<QuestionPackManager storageFactory={() => storage} />);

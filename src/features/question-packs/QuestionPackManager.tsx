@@ -21,6 +21,7 @@ import {
   questionPackMaxFileBytes,
   questionPackMaxInstalledBytes,
   questionPackMaxInstalledPacks,
+  QuestionPackConflictError,
   QuestionPackQuotaError,
   saveQuestionPack,
   serializeQuestionPack,
@@ -79,7 +80,7 @@ export function QuestionPackManager({
   const [moreStatus, setMoreStatus] = useState<MoreStatus>("idle");
   const [nextPageKey, setNextPageKey] = useState<IDBValidKey>();
   const [packs, setPacks] = useState<QuestionPackRecord[]>([]);
-  const [pendingInstalledPack, setPendingInstalledPack] = useState<QuestionPackRecord>();
+  const [pendingInstalledPack, setPendingInstalledPack] = useState<QuestionPackRecord | null>();
   const [pendingPack, setPendingPack] = useState<QuestionPackRecord>();
   const [reviewConfirmed, setReviewConfirmed] = useState(false);
   const [saveError, setSaveError] = useState<string>();
@@ -95,7 +96,7 @@ export function QuestionPackManager({
   const replacedPack = useMemo(
     () => pendingPack === undefined
       ? undefined
-      : pendingInstalledPack ?? packs.find((pack) => pack.id === pendingPack.id),
+      : pendingInstalledPack === undefined ? packs.find((pack) => pack.id === pendingPack.id) : pendingInstalledPack ?? undefined,
     [packs, pendingInstalledPack, pendingPack]
   );
   const replacing = replacedPack !== undefined;
@@ -190,12 +191,17 @@ export function QuestionPackManager({
       storage = storageFactory();
       void storage.get("question_packs", pendingPack.id)
         .then((installed) => {
-          if (!cancelled) setPendingInstalledPack(installed);
+          if (!cancelled) setPendingInstalledPack(installed ?? null);
         })
-        .catch(() => undefined)
+        .catch(() => {
+          if (!cancelled) setImportStatus("error");
+        })
         .finally(() => storage?.close());
     } catch {
       storage?.close();
+      void Promise.resolve().then(() => {
+        if (!cancelled) setImportStatus("error");
+      });
     }
 
     return () => {
@@ -271,7 +277,7 @@ export function QuestionPackManager({
   }
 
   async function handleInstall() {
-    if (pendingPack === undefined || !reviewConfirmed) {
+    if (pendingPack === undefined || pendingInstalledPack === undefined || !reviewConfirmed) {
       return;
     }
 
@@ -281,13 +287,18 @@ export function QuestionPackManager({
 
     try {
       storage = storageFactory();
-      const result = await saveQuestionPack(storage, pendingPack);
+      const result = await saveQuestionPack(storage, pendingPack, { expectedCurrent: pendingInstalledPack });
       setPacks((current) => sortPacks([...current.filter((pack) => pack.id !== pendingPack.id), pendingPack]));
       setInstalledCount(result.installedCount);
       setPendingPack(undefined);
       setReviewConfirmed(false);
       setImportStatus("installed");
     } catch (error) {
+      if (error instanceof QuestionPackConflictError) {
+        setPendingInstalledPack(error.current ?? null);
+        setReviewConfirmed(false);
+        setSaveError(t("The installed pack changed in another tab. Review it again before replacing."));
+      }
       if (error instanceof QuestionPackQuotaError) {
         setSaveError(error.reason === "count"
           ? t("Pack not installed. Remove an installed pack before adding another. This browser can store up to {count} packs.", {
@@ -433,6 +444,10 @@ export function QuestionPackManager({
             <PackPreviewStat label={t("License")} value={pendingPack.license ?? t("Not provided")} />
             <PackPreviewStat label={t(pendingPresentation.coverageLabel)} value={pendingPresentation.coverageValue} />
           </dl>
+          {replacedPack === undefined ? null : <dl className="grid min-w-0 gap-2 text-sm sm:grid-cols-2">
+            <PackPreviewStat label={t("Installed")} value={`${replacedPack.title} (v${replacedPack.packVersion})`} />
+            <PackPreviewStat label={t("Publisher")} value={replacedPack.publisher ?? t("Not provided")} />
+          </dl>}
           {pendingPack.catalogProvenance?.source === "repository_catalog" ? (
             <p className="flex flex-wrap items-center gap-2 text-sm leading-6 text-ink/70">
               <span className={badgeClass("success")}>{t("Repository reviewed")}</span>
@@ -470,7 +485,7 @@ export function QuestionPackManager({
               checked={reviewConfirmed}
               className="mt-1 h-4 w-4"
               data-testid="question-pack-review-confirmation"
-              disabled={importStatus === "saving"}
+              disabled={importStatus === "saving" || pendingInstalledPack === undefined}
               onChange={(event) => setReviewConfirmed(event.currentTarget.checked)}
               type="checkbox"
             />
@@ -481,12 +496,22 @@ export function QuestionPackManager({
           <div className="flex flex-wrap gap-2">
             <button
               className={buttonClass(replacing ? "danger" : "primary")}
-              disabled={importStatus === "saving" || !reviewConfirmed}
+              disabled={importStatus === "saving" || pendingInstalledPack === undefined || !reviewConfirmed}
               onClick={() => void handleInstall()}
               type="button"
             >
               {importStatus === "saving" ? t("Saving...") : t(replacing ? "Replace Pack" : "Install Pack")}
             </button>
+            {importStatus === "error" && pendingInstalledPack === undefined ? <button
+              className={buttonClass("secondary")}
+              onClick={() => {
+                setReviewConfirmed(false);
+                setSaveError(undefined);
+                setImportStatus("ready");
+                setPendingPack({ ...pendingPack });
+              }}
+              type="button"
+            >{t("Retry")}</button> : null}
             <button
               className={buttonClass("secondary")}
               disabled={importStatus === "saving"}

@@ -534,14 +534,32 @@ export async function loadQuestionPackPage(
 
 export async function saveQuestionPack(
   storage: AppStorage,
-  pack: QuestionPackRecord
+  pack: QuestionPackRecord,
+  options: { expectedCurrent?: QuestionPackRecord | null } = {}
 ): Promise<ProjectedQuestionPackUsage> {
+  // Callers without a reviewed target retain intentional programmatic replacement.
+  const expected = options.expectedCurrent === undefined ? undefined : JSON.stringify(options.expectedCurrent);
   return withQuestionPackWriteLock(async () => {
     const usage = await inspectQuestionPackUsage(storage, pack.id);
     const projected = projectQuestionPackUsage(usage, getQuestionPackStoredBytes(pack));
-    await storage.put("question_packs", pack);
+    if (expected === undefined) {
+      await storage.put("question_packs", pack);
+    } else {
+      await storage.atomic({ stores: ["question_packs"], reads: { question_packs: [pack.id] } }, (view) => {
+        const current = view.get("question_packs", pack.id);
+        if (JSON.stringify(current ?? null) !== expected) throw new QuestionPackConflictError(current);
+        return { operations: [{ storeName: "question_packs", type: "put", value: pack }], result: undefined };
+      });
+    }
     return projected;
   });
+}
+
+export class QuestionPackConflictError extends Error {
+  constructor(readonly current: QuestionPackRecord | undefined) {
+    super("The installed pack changed in another tab. Review it again before replacing.");
+    this.name = "QuestionPackConflictError";
+  }
 }
 
 export async function deleteQuestionPack(storage: AppStorage, id: string): Promise<number> {

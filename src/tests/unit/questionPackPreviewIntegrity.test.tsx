@@ -166,11 +166,11 @@ describe("draft preview integrity", () => {
     const { numeric, questioning, storage } = await setup();
     let finish!: () => void;
     const pending = new Promise<void>((resolve) => { finish = resolve; });
-    const put = storage.put.bind(storage);
-    vi.spyOn(storage, "put").mockImplementation(async (...args) => {
+    const commit = storage.atomic.bind(storage);
+    vi.spyOn(storage, "atomic").mockImplementation(async (options, decide) => {
       await pending;
       if (fail) throw new Error("Unavailable storage");
-      await put(...args);
+      return commit(options, decide);
     });
     const current = await preview(numeric);
     fireEvent.click(current.getByRole("button", { name: "Install Pack" }));
