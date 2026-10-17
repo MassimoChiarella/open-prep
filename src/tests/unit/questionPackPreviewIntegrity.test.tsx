@@ -39,6 +39,7 @@ async function setup() {
 async function preview(builder: ReturnType<typeof within>) {
   fireEvent.click(builder.getByRole("button", { name: "Preview Pack" }));
   const element = await screen.findByTestId("question-pack-preview");
+  await waitFor(() => expect(within(element).getByTestId("question-pack-review-confirmation")).toBeEnabled());
   fireEvent.click(within(element).getByTestId("question-pack-review-confirmation"));
   return within(element);
 }
@@ -64,6 +65,7 @@ describe("draft preview integrity", () => {
       target: { files: [{ size: text.length, text: async () => text }] }
     });
     await screen.findByTestId("question-pack-preview");
+    await waitFor(() => expect(screen.getByTestId("question-pack-review-confirmation")).toBeEnabled());
     fireEvent.click(screen.getByTestId("question-pack-review-confirmation"));
     fireEvent.change(numeric.getByLabelText("Question 1 answer value"), { target: { value: "60" } });
     fireEvent.click(questioning.getByRole("button", { name: "Discard changes" }));
@@ -140,6 +142,7 @@ describe("draft preview integrity", () => {
     const current = within(await screen.findByTestId("question-pack-preview"));
     expect(current.getByTestId("question-pack-review-confirmation")).not.toBeChecked();
     expect(current.getByRole("button", { name: "Install Pack" })).toBeDisabled();
+    await waitFor(() => expect(current.getByTestId("question-pack-review-confirmation")).toBeEnabled());
     fireEvent.click(current.getByTestId("question-pack-review-confirmation"));
     fireEvent.click(current.getByRole("button", { name: "Install Pack" }));
     await waitFor(() => expect(storage.peekAll("question_packs")[0]).toMatchObject({

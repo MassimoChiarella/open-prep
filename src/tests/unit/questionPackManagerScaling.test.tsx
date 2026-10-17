@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { QuestionPackManager } from "@/features/question-packs/QuestionPackManager";
 import {
@@ -9,6 +9,9 @@ import {
 } from "@/features/question-packs/questionPack";
 import type { FixedNumericQuestionPackRecord } from "@/lib/storage/appStorageTypes";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
+import * as questionPackPersistence from "@/features/question-packs/questionPack";
+
+afterEach(() => vi.restoreAllMocks());
 
 describe("QuestionPackManager installed-library scaling", () => {
   it("mounts one metadata page from hundreds of legacy packs and loads more on request", async () => {
@@ -59,7 +62,7 @@ describe("QuestionPackManager installed-library scaling", () => {
       target: { files: [jsonFile(packPayload("new-pack", "New pack"))] }
     });
     const preview = await screen.findByTestId("question-pack-preview");
-    fireEvent.click(within(preview).getByRole("checkbox", { name: /I reviewed the answer keys/ }));
+    await confirmPackReview(preview);
     fireEvent.click(within(preview).getByRole("button", { name: "Install Pack" }));
 
     expect(await screen.findByText(
@@ -80,7 +83,7 @@ describe("QuestionPackManager installed-library scaling", () => {
     });
     const preview = await screen.findByTestId("question-pack-preview");
     await waitFor(() => expect(preview).toHaveTextContent("Replace installed pack"));
-    fireEvent.click(within(preview).getByRole("checkbox", { name: /I reviewed the answer keys/ }));
+    await confirmPackReview(preview);
     fireEvent.click(within(preview).getByRole("button", { name: "Replace Pack" }));
 
     await waitFor(() => {
@@ -96,25 +99,37 @@ describe("QuestionPackManager installed-library scaling", () => {
   it("explains how to recover when installed-pack bytes would exceed the quota", async () => {
     const storage = new MemoryAppStorage();
     await storage.put("question_packs", pack(0));
+    const originalPacks = storage.peekAll("question_packs");
 
     render(<QuestionPackManager storageFactory={() => storage} />);
     await screen.findByText("Showing 1 of 1 installed packs.");
+    const lookup = deferred<undefined>();
+    vi.spyOn(storage, "get").mockImplementationOnce(() => lookup.promise);
     fireEvent.change(screen.getByLabelText("Choose a question pack"), {
       target: { files: [jsonFile(packPayload("new-pack", "New pack"))] }
     });
     const preview = await screen.findByTestId("question-pack-preview");
-    fireEvent.click(within(preview).getByRole("checkbox", { name: /I reviewed the answer keys/ }));
-    const encode = vi.spyOn(TextEncoder.prototype, "encode").mockReturnValue({
+    const review = within(preview).getByRole("checkbox", { name: /I reviewed the answer keys/ });
+    expect(review).toBeDisabled();
+    expect(within(preview).getByRole("button", { name: "Install Pack" })).toBeDisabled();
+    await act(async () => lookup.resolve(undefined));
+    await confirmPackReview(preview);
+    vi.spyOn(TextEncoder.prototype, "encode").mockReturnValue({
       byteLength: questionPackMaxInstalledBytes + 1
     } as Uint8Array<ArrayBuffer>);
+    const install = vi.spyOn(questionPackPersistence, "saveQuestionPack");
     fireEvent.click(within(preview).getByRole("button", { name: "Install Pack" }));
+    expect(install).toHaveBeenCalledOnce();
+    await act(async () => {
+      await expect(install.mock.results[0].value).rejects.toMatchObject({ reason: "bytes" });
+    });
 
-    expect(await screen.findByText(
+    expect(screen.getByText(
       "Pack not installed. Remove packs or replace one with a smaller pack. Installed-pack data is limited to 20 MiB."
     )).toBeInTheDocument();
     expect(await storage.count("question_packs")).toBe(1);
     expect(await storage.get("question_packs", "new-pack")).toBeUndefined();
-    encode.mockRestore();
+    expect(storage.peekAll("question_packs")).toEqual(originalPacks);
   });
 
   it("disables a repeated delete and refreshes the installed count from storage", async () => {
@@ -146,6 +161,14 @@ describe("QuestionPackManager installed-library scaling", () => {
     deleteSpy.mockRestore();
   });
 });
+
+async function confirmPackReview(preview: HTMLElement): Promise<void> {
+  const consent = within(preview).getByRole("checkbox", { name: /I reviewed the answer keys/ });
+  await waitFor(() => expect(consent).toBeEnabled());
+  fireEvent.click(consent);
+  expect(consent).toBeChecked();
+  expect(within(preview).getByRole("button", { name: /Install Pack|Replace Pack/ })).toBeEnabled();
+}
 
 function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
   let resolve!: (value: T) => void;

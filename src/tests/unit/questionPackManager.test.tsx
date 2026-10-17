@@ -82,7 +82,7 @@ describe("QuestionPackManager", () => {
 
     const catalogPreview = await screen.findByTestId("question-pack-preview");
     expect(within(catalogPreview).getByText("Repository reviewed")).toBeInTheDocument();
-    confirmPackReview(catalogPreview);
+    await confirmPackReview(catalogPreview);
     fireEvent.click(within(catalogPreview).getByRole("button", { name: "Install Pack" }));
     await waitFor(() => expect(storage.peekAll("question_packs")[0]).toHaveProperty(
       "catalogProvenance.language",
@@ -98,7 +98,7 @@ describe("QuestionPackManager", () => {
     });
     const localPreview = await screen.findByTestId("question-pack-preview");
     expect(within(localPreview).getByText("Reviewed status will be removed")).toBeInTheDocument();
-    confirmPackReview(localPreview);
+    await confirmPackReview(localPreview);
     fireEvent.click(within(localPreview).getByRole("button", { name: "Replace Pack" }));
 
     await waitFor(() => expect(storage.peekAll("question_packs")[0]).not.toHaveProperty("catalogProvenance"));
@@ -135,7 +135,7 @@ describe("QuestionPackManager", () => {
     const preview = await screen.findByTestId("question-pack-preview");
     expect(await within(preview).findByText("Local pack ID conflict")).toBeInTheDocument();
     expect(within(preview).getByRole("button", { name: "Replace Pack" })).toBeDisabled();
-    confirmPackReview(preview);
+    await confirmPackReview(preview);
     fireEvent.click(within(preview).getByRole("button", { name: "Replace Pack" }));
 
     await waitFor(() => expect(storage.peekAll("question_packs")[0]).toHaveProperty(
@@ -179,7 +179,7 @@ describe("QuestionPackManager", () => {
     const preview = await screen.findByTestId("question-pack-preview");
     expect(within(preview).getByText(/Workshop Practice/)).toBeInTheDocument();
     expect(within(preview).getByText(/Answer: 108 units/i)).toBeInTheDocument();
-    confirmPackReview(preview);
+    await confirmPackReview(preview);
     fireEvent.click(within(preview).getByRole("button", { name: "Install Pack" }));
 
     await waitFor(() => expect(storage.peekAll("question_packs")).toHaveLength(1));
@@ -207,7 +207,7 @@ describe("QuestionPackManager", () => {
     expect(within(preview).getByText(/Answer: 25%/)).toBeInTheDocument();
     expect(storage.peekAll("question_packs")).toEqual([]);
 
-    confirmPackReview(preview);
+    await confirmPackReview(preview);
     fireEvent.click(within(preview).getByRole("button", { name: "Install Pack" }));
 
     await waitFor(() => expect(storage.peekAll("question_packs")).toHaveLength(1));
@@ -227,7 +227,7 @@ describe("QuestionPackManager", () => {
     const replacementPreview = await screen.findByTestId("question-pack-preview");
     const replaceButton = within(replacementPreview).getByRole("button", { name: "Replace Pack" });
     expect(replaceButton).toBeDisabled();
-    fireEvent.click(within(replacementPreview).getByRole("checkbox", { name: /I reviewed the answer keys/ }));
+    await confirmPackReview(replacementPreview);
     expect(replaceButton).toBeEnabled();
     fireEvent.click(within(replacementPreview).getByRole("button", { name: "Cancel" }));
 
@@ -296,7 +296,7 @@ describe("QuestionPackManager", () => {
     expect(previewStats[0]).toHaveClass("min-w-0", "[overflow-wrap:anywhere]");
     expect(previewStats[1]).toHaveClass("min-w-0", "[overflow-wrap:anywhere]");
 
-    confirmPackReview(preview);
+    await confirmPackReview(preview);
     fireEvent.click(within(preview).getByRole("button", { name: "Install Pack" }));
 
     await waitFor(() => expect(storage.peekAll("question_packs")).toHaveLength(1));
@@ -356,7 +356,7 @@ describe("QuestionPackManager", () => {
     expect(stringify.mock.calls.some(([, , space]) => space === 2)).toBe(true);
     stringify.mockRestore();
 
-    fireEvent.click(within(preview).getByRole("checkbox", { name: /I reviewed the answer keys/ }));
+    await confirmPackReview(preview);
     expect(within(preview).getByRole("button", { name: "Install Pack" })).toBeEnabled();
     fireEvent.click(within(preview).getByRole("button", { name: "Cancel" }));
 
@@ -389,7 +389,7 @@ describe("QuestionPackManager", () => {
     expect(warningItems[1]).toHaveTextContent(/^Review /);
     expect(install).toBeDisabled();
 
-    fireEvent.click(within(preview).getByRole("checkbox", { name: /I reviewed the answer keys/ }));
+    await confirmPackReview(preview);
     expect(install).toBeEnabled();
     fireEvent.click(install);
 
@@ -486,14 +486,14 @@ describe("QuestionPackManager", () => {
     const input = screen.getByLabelText("Choose a question pack");
     fireEvent.change(input, { target: { files: [jsonFile(first)] } });
     let preview = await screen.findByTestId("question-pack-preview");
-    fireEvent.click(within(preview).getByRole("checkbox", { name: /I reviewed the answer keys/ }));
+    await confirmPackReview(preview);
     expect(within(preview).getByRole("checkbox", { name: /I reviewed the answer keys/ })).toBeChecked();
 
     fireEvent.change(input, { target: { files: [jsonFile(second)] } });
     preview = await screen.findByTestId("question-pack-preview");
     expect(preview).toHaveTextContent("Second package");
     expect(within(preview).getByRole("checkbox", { name: /I reviewed the answer keys/ })).not.toBeChecked();
-    fireEvent.click(within(preview).getByRole("checkbox", { name: /I reviewed the answer keys/ }));
+    await confirmPackReview(preview);
 
     fireEvent.change(input, { target: { files: [textFile("not json")] } });
     expect(await screen.findByText("Question pack file must contain valid JSON.")).toBeInTheDocument();
@@ -545,7 +545,7 @@ describe("QuestionPackManager", () => {
       target: { files: [jsonFile(validPackPayload())] }
     });
     const preview = await screen.findByTestId("question-pack-preview");
-    confirmPackReview(preview);
+    await confirmPackReview(preview);
     fireEvent.click(within(preview).getByRole("button", { name: "Install Pack" }));
 
     expect(await within(preview).findByRole("button", { name: "Saving..." })).toBeDisabled();
@@ -573,7 +573,7 @@ describe("QuestionPackManager", () => {
     const preview = await screen.findByTestId("question-pack-preview");
     expect(within(preview).getByText(/1 generated template/)).toBeInTheDocument();
     expect(within(preview).getByText(/A pop-up shop sells/)).toBeInTheDocument();
-    confirmPackReview(preview);
+    await confirmPackReview(preview);
     fireEvent.click(within(preview).getByRole("button", { name: "Install Pack" }));
 
     const card = await screen.findByTestId("question-pack-example-generated-retail");
@@ -603,7 +603,7 @@ describe("QuestionPackManager", () => {
     expect(within(preview).getByText(new RegExp(brainstormingPrompts[0]!.title))).toBeInTheDocument();
     expect(within(preview).getByText(new RegExp(synthesisPrompts[0]!.title))).toBeInTheDocument();
 
-    confirmPackReview(preview);
+    await confirmPackReview(preview);
     fireEvent.click(within(preview).getByRole("button", { name: "Install Pack" }));
     await waitFor(() => expect(storage.peekAll("question_packs")).toHaveLength(1));
 
@@ -632,7 +632,7 @@ describe("QuestionPackManager", () => {
     expect(within(preview).getByText("Questioning (1)")).toBeInTheDocument();
     expect(within(preview).getByText(/Northline Software Churn/)).toBeInTheDocument();
 
-    confirmPackReview(preview);
+    await confirmPackReview(preview);
     fireEvent.click(within(preview).getByRole("button", { name: "Install Pack" }));
     await waitFor(() => expect(storage.peekAll("question_packs")).toHaveLength(1));
 
@@ -767,10 +767,13 @@ function setClipboard(clipboard: Pick<Clipboard, "writeText"> | undefined): void
   Object.defineProperty(navigator, "clipboard", { configurable: true, value: clipboard });
 }
 
-function confirmPackReview(preview: HTMLElement): void {
+async function confirmPackReview(preview: HTMLElement): Promise<void> {
   const install = within(preview).getByRole("button", { name: /Install Pack|Replace Pack/ });
   expect(install).toBeDisabled();
-  fireEvent.click(within(preview).getByRole("checkbox", { name: /I reviewed the answer keys/ }));
+  const consent = within(preview).getByRole("checkbox", { name: /I reviewed the answer keys/ });
+  await waitFor(() => expect(consent).toBeEnabled());
+  fireEvent.click(consent);
+  expect(consent).toBeChecked();
   expect(install).toBeEnabled();
 }
 
