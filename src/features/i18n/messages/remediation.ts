@@ -3,6 +3,17 @@ import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 type Translations = readonly [string, string, string, string, string, string, string, string, string];
 
 const keys: Record<string, Translations> = {
+  "Repository review claims in backups are not verified. Restored packs are unreviewed; install them from the catalog to verify their review status.": [
+    "Las afirmaciones de revisión del repositorio en las copias no están verificadas. Los packs restaurados no están revisados; instálalos desde el catálogo para verificar su estado.",
+    "Les déclarations de révision du dépôt dans les sauvegardes ne sont pas vérifiées. Les packs restaurés sont non vérifiés ; installez-les depuis le catalogue pour vérifier leur statut.",
+    "Angaben zur Repository-Prüfung in Sicherungen sind nicht verifiziert. Wiederhergestellte Pakete sind ungeprüft; installieren Sie sie aus dem Katalog, um den Prüfstatus zu verifizieren.",
+    "As declarações de revisão do repositório nos backups não são verificadas. Pacotes restaurados não são revisados; instale-os pelo catálogo para verificar o status.",
+    "备份中的仓库审核声明未经验证。恢复的内容包视为未审核；请从目录安装以验证其审核状态。",
+    "備份中的儲存庫審核聲明未經驗證。還原的內容包視為未審核；請從目錄安裝以驗證其審核狀態。",
+    "バックアップ内のリポジトリ審査の申告は検証されていません。復元したパックは未審査扱いです。カタログからインストールして審査状況を確認してください。",
+    "لم يتم التحقق من ادعاءات مراجعة المستودع في النسخ الاحتياطية. الحزم المستعادة غير مراجعة؛ ثبّتها من الكتالوج للتحقق من حالة مراجعتها.",
+    "बैकअप में रिपॉजिटरी समीक्षा के दावे सत्यापित नहीं हैं। बहाल पैक असमीक्षित हैं; समीक्षा स्थिति सत्यापित करने के लिए कैटलॉग से स्थापित करें।"
+  ],
   "Story changed": ["Historia modificada", "Récit modifié", "Beispiel geändert", "História alterada", "故事已更改", "故事已變更", "ストーリーが変更されました", "تغيرت القصة", "कहानी बदल गई"],
   "Keep my draft as a new story": ["Conservar mi borrador como una historia nueva", "Conserver mon brouillon comme nouveau récit", "Meinen Entwurf als neues Beispiel behalten", "Manter meu rascunho como nova história", "将我的草稿保留为新故事", "將我的草稿保留為新故事", "下書きを新しいストーリーとして残す", "الاحتفاظ بمسودتي كقصة جديدة", "मेरा ड्राफ्ट नई कहानी के रूप में रखें"],
   "This story changed in another tab. Your edits are still here. Keep them as a new story or reload to review the saved version.": [

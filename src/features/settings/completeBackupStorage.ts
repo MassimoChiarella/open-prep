@@ -181,8 +181,9 @@ export async function replaceValidatedCompleteBackupSet(
       ...first.sections.progress,
       stores: progressStores
     },
+    // File integrity does not establish repository review; only catalog installation does.
     ...(first.selectedScopes.includes("packs")
-      ? { packs: validation.backups.flatMap((part) => part.sections.packs ?? []) }
+      ? { packs: validation.backups.flatMap((part) => part.sections.packs ?? []).map(({ catalogProvenance: _unverifiedClaim, ...pack }) => pack) }
       : {})
   };
   const backup = { exportedAt: first.exportedAt, selectedScopes: first.selectedScopes, sections };

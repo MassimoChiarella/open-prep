@@ -833,6 +833,9 @@ export function LocalSettingsView({
               <p className="mt-1 text-sm leading-6 text-ink/65">
                 {t("This backup will replace selected sections. Sections not included in the file stay unchanged.")}
               </p>
+              <p className="mt-1 text-sm leading-6 text-ink/65">
+                {t("Repository review claims in backups are not verified. Restored packs are unreviewed; install them from the catalog to verify their review status.")}
+              </p>
             </div>
             <label className="grid gap-2 text-sm font-semibold text-ink/75">
               {t("Choose a complete backup file")}
