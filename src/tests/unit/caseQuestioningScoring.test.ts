@@ -59,6 +59,19 @@ const prompt: CaseQuestioningPrompt = {
 };
 
 describe("case questioning scoring", () => {
+  it("assigns every bundled reference to its authored intent", () => {
+    for (const exercise of questioningPrompts) {
+      for (const intent of exercise.intents) {
+        for (const text of intent.referenceQuestions) {
+          const score = scoreCaseQuestioning({ ...exercise, minimumQuestions: 1, maximumQuestions: 1 }, {
+            includeRanking: false, questions: [{ id: "reference", text }]
+          });
+          expect(score.matches[0]?.intentId, `${exercise.id}: ${text}`).toBe(intent.id);
+        }
+      }
+    }
+  });
+
   it.each([
     [1e308, 1e308],
     [1e308, 5e307],

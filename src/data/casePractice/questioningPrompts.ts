@@ -118,7 +118,7 @@ export const questioningPrompts = [
         supportingConceptIds: ["economics"],
         referenceQuestions: [
           "What financial return defines success, and over what time horizon?",
-          "Is management optimizing for profit, growth, or another goal, and by when?"
+          "Is management optimizing for profit, growth, or another goal, and by what deadline?"
         ]
       },
       {
