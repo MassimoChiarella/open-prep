@@ -153,27 +153,18 @@ export const quickDrillPresets = [
 
 export function DrillSettingsForm({ storageFactory = createIndexedDbAppStorage }: { storageFactory?: () => AppStorage } = {}) {
   const { formatNumber: formatLocaleNumber, t } = useI18n();
-  const [settings, setSettingsState] = useState<DrillSettings>(() => createFormDrillSettings());
+  const [{ settings, questionCapacity, preview }, setFormState] = useState(() => createFormState(createFormDrillSettings()));
   const [savedSettingsSignature, setSavedSettingsSignature] = useState<string>();
   const [persistenceStatus, setPersistenceStatus] = useState<SettingsPersistenceStatus>("loading");
   const [rememberTimingAccommodation, setRememberTimingAccommodation] = useState(false);
   const timingAccommodationTouched = useRef(false);
   const setSettings = useCallback<React.Dispatch<React.SetStateAction<DrillSettings>>>((update) => {
-    setSettingsState((current) => {
-      const next = typeof update === "function" ? update(current) : update;
-      const capacity = getQuestionGenerationCapacity(starterQuestionTemplates, next);
-
-      return capacity > 0 && next.questionCount > capacity
-        ? createDrillSettings({ ...next, questionCount: capacity })
-        : next;
+    setFormState((current) => {
+      const next = typeof update === "function" ? update(current.settings) : update;
+      return createFormState(next, current);
     });
   }, []);
 
-  const questionCapacity = useMemo(
-    () => getQuestionGenerationCapacity(starterQuestionTemplates, settings),
-    [settings]
-  );
-  const preview = useMemo(() => createPreview(settings), [settings]);
   const startHref = useMemo(() => buildFormSessionHref(settings), [settings]);
   const timingAccommodation = normalizeTimingAccommodation(settings.timingAccommodation);
   const displayedQuickDrillPresets = useMemo(
@@ -1276,12 +1267,32 @@ function updateTimeMode(
   );
 }
 
+interface DrillFormState {
+  settings: DrillSettings;
+  questionCapacity: number;
+  preview: ReturnType<typeof createPreview>;
+}
+
+function createFormState(next: DrillSettings, current?: DrillFormState): DrillFormState {
+  const capacityKey = buildPreviewContentKey({ ...next, questionCount: 50 });
+  const questionCapacity = current !== undefined && capacityKey === buildPreviewContentKey({ ...current.settings, questionCount: 50 })
+    ? current.questionCapacity
+    : getQuestionGenerationCapacity(starterQuestionTemplates, next);
+  const settings = questionCapacity > 0 && next.questionCount > questionCapacity
+    ? createDrillSettings({ ...next, questionCount: questionCapacity })
+    : next;
+  const preview = current !== undefined && buildPreviewContentKey(settings) === buildPreviewContentKey(current.settings)
+    ? current.preview
+    : createPreview(settings);
+  return { settings, questionCapacity, preview };
+}
+
 function createPreview(settings: DrillSettings):
   | { questions: ReturnType<typeof createDrillSession>["questions"]; error?: undefined }
   | { questions?: undefined; error: string } {
   try {
     const created = createDrillSession({
-      seed: buildPreviewSeed(settings),
+      seed: buildPreviewContentKey(settings),
       startedAt: previewStartedAt,
       settings
     });
@@ -1292,6 +1303,10 @@ function createPreview(settings: DrillSettings):
       error: error instanceof Error ? error.message : "Unable to create a local session preview."
     };
   }
+}
+
+function buildPreviewContentKey(settings: DrillSettings): string {
+  return buildPreviewSeed({ ...settings, timeMode: "untimed", feedbackMode: "instant" });
 }
 
 function buildPreviewSeed(settings: DrillSettings): string {

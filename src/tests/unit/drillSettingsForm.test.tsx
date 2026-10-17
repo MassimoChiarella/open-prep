@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { DrillSettingsForm, quickDrillPresets } from "@/features/drills/DrillSettingsForm";
 import { parseDrillSettingsQuery } from "@/features/drills/drillSessionQuery";
@@ -8,10 +8,47 @@ import { createDrillSession } from "@/features/drills/sessionFactory";
 import { saveUserDrillSettings } from "@/features/settings/settingsPersistence";
 import { timingAccommodationPreferenceKey } from "@/features/timing/timingAccommodationPreference";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
+import * as questionGenerator from "@/features/questions/questionGenerator";
+import * as sessionFactory from "@/features/drills/sessionFactory";
 
-afterEach(() => window.localStorage.removeItem(timingAccommodationPreferenceKey));
+afterEach(() => { window.localStorage.removeItem(timingAccommodationPreferenceKey); vi.restoreAllMocks(); });
 
 describe("DrillSettingsForm", () => {
+  it("reuses generation for behavior changes and calculates capacity once for content changes", async () => {
+    const storage = new MemoryAppStorage();
+    const capacity = vi.spyOn(questionGenerator, "getQuestionGenerationCapacity");
+    const preview = vi.spyOn(sessionFactory, "createDrillSession");
+    render(<DrillSettingsForm storageFactory={() => storage} />);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Save as my defaults" })).toBeEnabled());
+    expect(capacity).toHaveBeenCalledTimes(1);
+    expect(preview).toHaveBeenCalledTimes(1);
+    expect(preview).toHaveBeenLastCalledWith(expect.objectContaining({
+      seed: "preview:arithmetic:all:beginner:5:untimed:instant:2:integer:medium:false:difficulty_scaled:exact:nearest_0_1:addition-subtraction-multiplication:true:any-case-industry:any-case-steps:required-equation:optional-interpretation:none"
+    }));
+    const initialQuestion = screen.getByTestId("drill-question-preview").textContent;
+
+    openDisclosure("drill-timing-options");
+    openDisclosure("drill-feedback-options");
+    fireEvent.click(screen.getByRole("button", { name: /Session/ }));
+    fireEvent.change(screen.getByLabelText("Total seconds"), { target: { value: "600" } });
+    fireEvent.click(screen.getByRole("button", { name: /End only/ }));
+    fireEvent.click(screen.getByLabelText("Enable hints during the drill"));
+    fireEvent.change(screen.getByLabelText("Timing choice"), { target: { value: "double_time" } });
+    expect(capacity).toHaveBeenCalledTimes(1);
+    expect(preview).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("drill-question-preview").textContent).toBe(initialQuestion);
+    expect(searchParamsForLink("Start Drill").get("feedbackMode")).toBe("end_of_session");
+    expect(searchParamsForLink("Start Drill").get("totalSessionSeconds")).toBe("600");
+
+    fireEvent.change(screen.getByLabelText("Custom question count"), { target: { value: "12" } });
+    expect(capacity).toHaveBeenCalledTimes(1);
+    expect(preview).toHaveBeenCalledTimes(2);
+    expect(searchParamsForLink("Start Drill").get("count")).toBe("12");
+    fireEvent.click(screen.getByRole("button", { name: "Advanced" }));
+    expect(capacity).toHaveBeenCalledTimes(2);
+    expect(preview).toHaveBeenCalledTimes(3);
+  });
+
   it("generates usable sessions for every built-in quick preset", () => {
     expect(quickDrillPresets.map((preset) => preset.label)).toEqual([
       "Arithmetic Warmup",
