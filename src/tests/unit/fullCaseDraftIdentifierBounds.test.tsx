@@ -34,7 +34,7 @@ describe("composed full-case draft identifiers", () => {
     const key = await fullCaseContentKey(simulation);
     const draft: FullCaseDraftRecord = {
       id: fullCaseDraftId(simulation.id), kind: "full_case_draft", simulationId: simulation.id, contentKey: key,
-      startedAt: "2026-10-04T00:00:00Z", updatedAt: "2026-10-04T00:00:00Z", locale: "en", stage: 0,
+      startedAt: "2026-10-04T00:00:00.000Z", updatedAt: "2026-10-04T00:00:00.000Z", locale: "en", stage: 0,
       questions: Array.from({ length: simulation.questioning!.maximumQuestions }, (_, index) => ({ id: `${simulation.questioning!.id}-question-${index + 1}`, text: `Private question ${index + 1}` })),
       includeQuestionRanking: false, hypothesisId: "", branchIds: [], calculationInput: "", ideaIds: [], priorityIdeaIds: [], synthesis: {}
     };
