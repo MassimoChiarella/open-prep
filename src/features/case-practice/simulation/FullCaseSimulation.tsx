@@ -113,6 +113,15 @@ function FullCaseSession({
   const nextQuestionNumberRef = useRef((simulation.questioning?.minimumQuestions ?? 0) + 1);
   const calculationQuestion = getFullCaseCalculationQuestion(simulation);
   const currentStage = stages[stage];
+  let exitMessage = "Leave this case? A local save or removal is still pending. Keep this page open until it finishes.";
+  if (result !== undefined) {
+    if (saveState === "saved") exitMessage = "Leave this active session? Submitted progress is saved on this device.";
+    else if (saveState === "error") exitMessage = "Leave this active session? Some recent progress could not be saved on this device.";
+  } else if (!draftDeleting) {
+    if (!draftEnabled) exitMessage = "Leave this case? Private draft saving is off. Any unsaved work on this page will be lost.";
+    else if (draftStatus === "saved") exitMessage = "Leave this case? Your private draft is saved on this device.";
+    else if (draftStatus === "error" || draftStatus === "conflict") exitMessage = "Leave this active session? Some recent progress could not be saved on this device.";
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -214,6 +223,8 @@ function FullCaseSession({
 
   useEffect(() => {
     if (draftEnabled && contentKey !== undefined && pendingDraft === undefined && result === undefined) {
+      draftRevision.current += 1;
+      if (!draftConflicted.current) setDraftStatus("saving");
       pendingDraftSnapshot.current = draftSnapshot();
       if (draftSaveTimer.current !== undefined) clearTimeout(draftSaveTimer.current);
       draftSaveTimer.current = setTimeout(() => {
@@ -475,7 +486,7 @@ function FullCaseSession({
   }
 
   return (
-    <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8">
+    <main className="mx-auto flex w-full min-w-0 max-w-6xl flex-1 flex-col gap-8 px-4 py-8 sm:px-6 lg:px-8" data-focused-task-exit-message={t(exitMessage)}>
       <PageHeader
         action={{ href: backHref, label: t("Back to Case Practice") }}
         description={t("Work from an opening hypothesis through quantitative evidence to a final recommendation. Feedback is held until the case is complete.")}

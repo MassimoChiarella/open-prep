@@ -146,7 +146,7 @@ function confirmFocusedTaskExit(
   event: MouseEvent<HTMLAnchorElement>,
   t: ReturnType<typeof useI18n>["t"]
 ): void {
-  const message = t(
+  const message = document.querySelector<HTMLElement>("[data-focused-task-exit-message]")?.dataset.focusedTaskExitMessage ?? t(
     document.querySelector('[data-drill-save-state="error"]') === null
       ? "Leave this active session? Submitted progress is saved on this device."
       : "Leave this active session? Some recent progress could not be saved on this device."

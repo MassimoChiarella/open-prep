@@ -3,6 +3,37 @@ import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 type Translations = readonly [string, string, string, string, string, string, string, string, string];
 
 const keys: Record<string, Translations> = {
+  "Leave this case? A local save or removal is still pending. Keep this page open until it finishes.": [
+    "¿Salir de este caso? Aún hay un guardado o borrado local pendiente. Mantén esta página abierta hasta que termine.",
+    "Quitter ce cas ? Un enregistrement ou une suppression locale est en cours. Gardez cette page ouverte jusqu’à la fin.",
+    "Diesen Fall verlassen? Lokales Speichern oder Löschen läuft noch. Lassen Sie diese Seite bis zum Abschluss geöffnet.",
+    "Sair deste caso? Ainda há um salvamento ou remoção local pendente. Mantenha esta página aberta até terminar.",
+    "要离开此案例吗？本地保存或删除仍在进行。请保持此页面打开，直至完成。",
+    "要離開此案例嗎？本機儲存或刪除仍在進行。請保持此頁面開啟，直到完成。",
+    "このケースを離れますか？ローカルの保存または削除が処理中です。完了までこのページを開いたままにしてください。",
+    "هل تريد مغادرة هذه الحالة؟ لا يزال الحفظ أو الحذف المحلي قيد التنفيذ. أبقِ هذه الصفحة مفتوحة حتى يكتمل.",
+    "इस केस से बाहर जाएँ? स्थानीय सहेजना या हटाना अभी लंबित है। पूरा होने तक यह पृष्ठ खुला रखें।"
+  ],
+  "Leave this case? Private draft saving is off. Any unsaved work on this page will be lost.": [
+    "¿Salir de este caso? El guardado de borradores privados está desactivado. Se perderá el trabajo no guardado de esta página.",
+    "Quitter ce cas ? L’enregistrement des brouillons privés est désactivé. Le travail non enregistré sur cette page sera perdu.",
+    "Diesen Fall verlassen? Private Entwürfe werden nicht gespeichert. Ungespeicherte Arbeit auf dieser Seite geht verloren.",
+    "Sair deste caso? O salvamento de rascunhos privados está desativado. O trabalho não salvo nesta página será perdido.",
+    "要离开此案例吗？私密草稿保存已关闭。此页面上未保存的内容将丢失。",
+    "要離開此案例嗎？私人草稿儲存已關閉。此頁面上未儲存的內容將遺失。",
+    "このケースを離れますか？非公開の下書き保存はオフです。このページの未保存の作業は失われます。",
+    "هل تريد مغادرة هذه الحالة؟ حفظ المسودة الخاصة متوقف. سيُفقد أي عمل غير محفوظ في هذه الصفحة.",
+    "इस केस से बाहर जाएँ? निजी ड्राफ्ट सहेजना बंद है। इस पृष्ठ पर बिना सहेजा काम खो जाएगा।"
+  ],
+  "Leave this case? Your private draft is saved on this device.": [
+    "¿Salir de este caso? Tu borrador privado está guardado en este dispositivo.",
+    "Quitter ce cas ? Votre brouillon privé est enregistré sur cet appareil.",
+    "Diesen Fall verlassen? Ihr privater Entwurf ist auf diesem Gerät gespeichert.",
+    "Sair deste caso? Seu rascunho privado está salvo neste dispositivo.",
+    "要离开此案例吗？私密草稿已保存在此设备上。", "要離開此案例嗎？私人草稿已儲存在此裝置上。",
+    "このケースを離れますか？非公開の下書きはこの端末に保存されています。",
+    "هل تريد مغادرة هذه الحالة؟ مسودتك الخاصة محفوظة على هذا الجهاز.", "इस केस से बाहर जाएँ? आपका निजी ड्राफ्ट इस डिवाइस पर सहेजा गया है।"
+  ],
   "Private data": ["Datos privados", "Données privées", "Private Daten", "Dados privados", "私密数据", "私人資料", "非公開データ", "بيانات خاصة", "निजी डेटा"],
   "Importing this file replaces all saved private data and progress. Private records absent from this file will be removed.": [
     "La importación de este archivo reemplaza todos los datos privados guardados y el progreso. Los registros privados que no estén en el archivo se eliminarán.",
