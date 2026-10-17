@@ -62,7 +62,7 @@ Baseline measurements: five retained trials per scenario/rate, native Chromium a
 
 | Milestone | Implementation | Acceptance | Status |
 | --- | --- | --- | --- |
-| M21 | #15 Move saved-summary personal-best/history aggregation to existing worker pattern | Identical summary/badges/repeat targets; cancellation/failure covered; main-thread long tasks reduced on same fixtures | Pending |
+| M21 | #15 Move saved-summary personal-best/history aggregation to existing worker pattern | Identical summary/badges/repeat targets; cancellation/failure covered; main-thread long tasks reduced on same fixtures | Implementation complete — 36 tests/5 focused files; targeted ESLint; native/performance integration pending |
 | M22 | #15 Move Recovery diagnosis/preparation to existing local-data worker | All structural/byte checks, ownership, fingerprints, archives and generation conflicts retained; measured UI stalls reduced | Pending |
 | M23 | #17 Add kind/module practice-record queries in tested version migration | Fit avoids unrelated records; migrated/imported IDs supported; lessons/plan outcomes identical | Pending |
 

@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, render, screen } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { StoredSessionSummaryLoader } from "@/features/drills/StoredSessionSummaryLoader";
 import { persistBenchmarkResult } from "@/features/benchmarks/benchmarkPersistence";
@@ -7,9 +7,13 @@ import { submitAnswer } from "@/features/drills/answerSubmission";
 import { persistCompletedDrillSession } from "@/features/drills/drillPersistence";
 import { completeDrillSession } from "@/features/drills/sessionCompletion";
 import { createDrillSession } from "@/features/drills/sessionFactory";
+import { createSessionSummarySnapshot } from "@/features/drills/sessionSummary";
+import * as browserProgress from "@/features/progress/browserProgress";
+import type { StoredSessionSummaryDetail } from "@/features/drills/storedSessionSummary";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("StoredSessionSummaryLoader", () => {
+  afterEach(() => vi.restoreAllMocks());
   it("loads the exact requested completed session", async () => {
     const storage = new MemoryAppStorage();
     const older = completedSession("older-summary", "2026-06-01T00:00:00.000Z");
@@ -82,6 +86,25 @@ describe("StoredSessionSummaryLoader", () => {
     expect(await screen.findByRole("heading", { name: "Saved session not found." })).toBeInTheDocument();
     expect(screen.getByText(/not available in local history on this device/)).toBeInTheDocument();
     expect(screen.queryByText("known-summary prompt")).not.toBeInTheDocument();
+  });
+
+  it("cancels changed session identities and cannot replace a newer summary with a late result", async () => {
+    const storage = new MemoryAppStorage();
+    const older = completedSession("late-summary", "2026-06-01T00:00:00.000Z");
+    const latest = completedSession("current-summary", "2026-06-02T00:00:00.000Z");
+    await persistCompletedDrillSession({ ...latest, storage });
+    let complete!: (detail: StoredSessionSummaryDetail) => void;
+    const load = vi.spyOn(browserProgress, "loadBrowserStoredSessionSummary").mockImplementationOnce(() => new Promise((resolve) => { complete = resolve; }));
+    const storageFactory = () => storage;
+    const view = render(<StoredSessionSummaryLoader sessionId={older.session.id} storageFactory={storageFactory} />);
+    const oldSignal = load.mock.calls[0][2];
+    view.rerender(<StoredSessionSummaryLoader sessionId={latest.session.id} storageFactory={storageFactory} />);
+    expect(oldSignal?.aborted).toBe(true);
+    expect(await screen.findByText("current-summary prompt")).toBeInTheDocument();
+    await act(async () => complete({ newBestLabels: [], snapshot: createSessionSummarySnapshot(older.session, older.questions) }));
+    expect(screen.queryByText("late-summary prompt")).not.toBeInTheDocument();
+    view.unmount();
+    expect(load.mock.calls[1][2]?.aborted).toBe(true);
   });
 });
 

@@ -26,4 +26,14 @@ describe("progress worker entry", () => {
     await self.onmessage?.(new MessageEvent("message", { data: {} }));
     expect(post).toHaveBeenCalledWith({ status: "error" });
   });
+
+  it("routes saved-session requests to compact session display data and closes storage", async () => {
+    const storage = new MemoryAppStorage();
+    createStorage.mockReturnValue(storage);
+    const close = vi.spyOn(storage, "close");
+    const post = vi.spyOn(self, "postMessage").mockImplementation(() => {});
+    await self.onmessage?.(new MessageEvent("message", { data: { operation: "stored_session", sessionId: "missing" } }));
+    expect(post).toHaveBeenCalledWith({ status: "loaded", generation: 0, detail: { newBestLabels: [] } });
+    expect(close).toHaveBeenCalledOnce();
+  });
 });

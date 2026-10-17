@@ -4,17 +4,10 @@ import { useEffect, useState } from "react";
 
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
-import { buildBenchmarkSelectionHref } from "@/features/benchmarks/benchmarkSession";
-import {
-  loadLatestStoredSessionSummarySnapshot,
-  loadStoredDrillSessionHistory,
-  loadStoredResponseHistory,
-  loadStoredSessionSummarySnapshotById
-} from "@/features/drills/drillPersistence";
 import { SessionSummaryView } from "@/features/drills/SessionSummaryView";
 import type { SessionSummarySnapshot } from "@/features/drills/sessionSummary";
 import { useI18n } from "@/features/i18n/I18nProvider";
-import { createPersonalBestRecords, findSourcePersonalBests } from "@/features/progress/personalBests";
+import { loadBrowserStoredSessionSummary } from "@/features/progress/browserProgress";
 import type { AppStorage } from "@/lib/storage/appStorageTypes";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 
@@ -37,69 +30,16 @@ export function StoredSessionSummaryLoader({
   const [state, setState] = useState<LoaderState>({ status: "loading" });
 
   useEffect(() => {
-    let cancelled = false;
-
-    try {
-      const storage = storageFactory();
-      const loadSnapshot =
-        sessionId === undefined
-          ? loadLatestStoredSessionSummarySnapshot(storage)
-          : loadStoredSessionSummarySnapshotById(storage, sessionId);
-
-      void loadSnapshot
-        .then(async (snapshot) => {
-          if (cancelled) {
-            return;
-          }
-
-          if (snapshot === undefined) {
-            setState({ status: "empty" });
-            return;
-          }
-
-          const [sessions, responses, benchmarkResults] = await Promise.all([
-            loadStoredDrillSessionHistory(storage),
-            loadStoredResponseHistory(storage),
-            storage.getAll("benchmark_results")
-          ]);
-          const sourceIds = [
-            snapshot.id,
-            ...benchmarkResults.filter((result) => result.sessionId === snapshot.id).map((result) => result.id)
-          ];
-          const benchmarkResult = benchmarkResults.find((result) => result.sessionId === snapshot.id);
-          const bests = findSourcePersonalBests(
-            createPersonalBestRecords({ benchmarkResults, responses, sessions }),
-            sourceIds
-          );
-
-          if (!cancelled) {
-            setState({
-              newBestLabels: bests.map((best) => best.label),
-              repeatHref:
-                benchmarkResult === undefined
-                  ? undefined
-                  : buildBenchmarkSelectionHref(
-                      benchmarkResult.benchmarkId,
-                      questionPackIdFromBenchmarkId(benchmarkResult.benchmarkId)
-                    ),
-              snapshot,
-              status: "loaded"
-            });
-          }
-        })
-        .catch(() => {
-          if (!cancelled) {
-            setState({ status: "error" });
-          }
-        })
-        .finally(() => storage.close());
-    } catch {
-      void Promise.resolve().then(() => setState({ status: "error" }));
-    }
-
-    return () => {
-      cancelled = true;
-    };
+    const controller = new AbortController();
+    void loadBrowserStoredSessionSummary(storageFactory, sessionId, controller.signal)
+      .then((detail) => {
+        if (controller.signal.aborted) return;
+        setState(detail.snapshot === undefined ? { status: "empty" } : { ...detail, snapshot: detail.snapshot, status: "loaded" });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setState({ status: "error" });
+      });
+    return () => controller.abort();
   }, [sessionId, storageFactory]);
 
   if (state.status === "loading") {
@@ -155,8 +95,4 @@ export function StoredSessionSummaryLoader({
       />
     </>
   );
-}
-
-function questionPackIdFromBenchmarkId(benchmarkId: string): string | undefined {
-  return /^question-pack:(?<packId>[^:]+):version:/.exec(benchmarkId)?.groups?.packId;
 }

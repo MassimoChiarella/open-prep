@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { loadBrowserProgressSummary } from "@/features/progress/browserProgress";
+import { loadBrowserProgressSummary, loadBrowserStoredSessionSummary } from "@/features/progress/browserProgress";
 import { createProgressSummary, type ProgressSummary } from "@/features/progress/progressAggregation";
 import { publishLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
@@ -96,5 +96,42 @@ describe("background progress loading", () => {
   it("retains local progress when the browser blocks worker creation", async () => {
     vi.stubGlobal("Worker", class { constructor() { throw new Error("Worker disabled"); } });
     await expect(loadBrowserProgressSummary()).resolves.toMatchObject({ isEmpty: true });
+  });
+
+  it("loads saved-session display data through the same worker without cloning history into the page", async () => {
+    const read = vi.spyOn(storage, "getPage");
+    const all = vi.spyOn(storage, "getAll");
+    const pending = loadBrowserStoredSessionSummary(createStorage, "selected-session");
+    const worker = TestWorker.instances[0];
+    expect(worker.postMessage).toHaveBeenCalledWith({ operation: "stored_session", sessionId: "selected-session" });
+    const detail = { newBestLabels: ["Best benchmark score"], repeatHref: "/benchmark?benchmark=example" };
+    worker.onmessage?.({ data: { status: "loaded", generation: 0, detail } } as MessageEvent);
+    await expect(pending).resolves.toEqual(detail);
+    expect(read).not.toHaveBeenCalled();
+    expect(all).not.toHaveBeenCalled();
+    expect(worker.terminate).toHaveBeenCalled();
+  });
+
+  it("rejects a stale saved-session worker result after replacement without transport", async () => {
+    const pending = loadBrowserStoredSessionSummary(createStorage, "selected-session");
+    const failure = expect(pending).rejects.toThrow(/Local data changed/);
+    await storage.clearAll();
+    TestWorker.instances[0].onmessage?.({ data: { status: "loaded", generation: 0, detail: { newBestLabels: [] } } } as MessageEvent);
+    await failure;
+  });
+
+  it("cancels saved-session analysis and ignores a late worker response", async () => {
+    const controller = new AbortController();
+    const pending = loadBrowserStoredSessionSummary(createStorage, "selected-session", controller.signal);
+    const rejected = expect(pending).rejects.toMatchObject({ name: "AbortError" });
+    controller.abort();
+    TestWorker.instances[0].onmessage?.({ data: { status: "loaded", generation: 0, detail: { newBestLabels: ["Late"] } } } as MessageEvent);
+    await rejected;
+    expect(TestWorker.instances[0].terminate).toHaveBeenCalled();
+  });
+
+  it.each(["missing", "blocked"])("retains saved-session availability when workers are %s", async (mode) => {
+    vi.stubGlobal("Worker", mode === "missing" ? undefined : class { constructor() { throw new Error("Worker disabled"); } });
+    await expect(loadBrowserStoredSessionSummary(createStorage, "missing-session")).resolves.toEqual({ newBestLabels: [] });
   });
 });
