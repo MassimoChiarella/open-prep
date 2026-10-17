@@ -37,11 +37,7 @@ export async function loadPracticeAttempts(
   storage: AppStorage,
   module?: PracticeModuleId
 ): Promise<PracticeAttemptRecord[]> {
-  return (await storage.getAll("practice_records"))
-    .filter(
-      (record): record is PracticeAttemptRecord =>
-        record.kind === "attempt" && (module === undefined || record.module === module)
-    )
+  return (await storage.queryPracticeRecords("attempt", module))
     .sort((first, second) => compareAbsoluteTimestamps(second.completedAt, first.completedAt));
 }
 
@@ -75,8 +71,7 @@ export async function saveFitStory(storage: AppStorage, story: FitStoryRecord, e
 }
 
 export async function loadFitStories(storage: AppStorage): Promise<FitStoryRecord[]> {
-  return (await storage.getAll("practice_records"))
-    .filter((record): record is FitStoryRecord => record.kind === "fit_story")
+  return (await storage.queryPracticeRecords("fit_story"))
     .sort((first, second) => compareAbsoluteTimestamps(second.updatedAt, first.updatedAt));
 }
 

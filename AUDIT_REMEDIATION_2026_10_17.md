@@ -64,7 +64,7 @@ Baseline measurements: five retained trials per scenario/rate, native Chromium a
 | --- | --- | --- | --- |
 | M21 | #15 Move saved-summary personal-best/history aggregation to existing worker pattern | Identical summary/badges/repeat targets; cancellation/failure covered; main-thread long tasks reduced on same fixtures | Implementation complete — 36 tests/5 focused files; targeted ESLint; native/performance integration pending |
 | M22 | #15 Move Recovery diagnosis/preparation to existing local-data worker | All structural/byte checks, ownership, fingerprints, archives and generation conflicts retained; measured UI stalls reduced | Implementation complete — 56 tests/8 focused suites; scoped strict TypeScript and ESLint; native/performance gate pending |
-| M23 | #17 Add kind/module practice-record queries in tested version migration | Fit avoids unrelated records; migrated/imported IDs supported; lessons/plan outcomes identical | Pending |
+| M23 | #17 Add kind/module practice-record queries in tested version migration | Fit avoids unrelated records; migrated/imported IDs supported; lessons/plan outcomes identical | Complete — 40 tests/7 focused suites; strict targeted types and ESLint; v11→12 native query case passes Chromium/Firefox/WebKit with zero practice object-store full reads; historical app migration integration pending |
 
 ## Phase 7 — Defer or reuse unnecessary work
 

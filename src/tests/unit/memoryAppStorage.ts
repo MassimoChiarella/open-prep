@@ -21,6 +21,7 @@ import { AppStorageConflictError } from "@/lib/storage/appStorageTypes";
 import { createAtomicView, isPrivateDraftKey } from "@/lib/storage/storageCoordination";
 import { assertPersistableRecord, maxStoredPackDepth } from "@/lib/validation/inputLimits";
 import { normalizeStoredTimestamps } from "@/lib/storage/storedTimestamps";
+import type { PracticeModuleId, PracticeRecord } from "@/features/case-practice/practiceTypes";
 import { compareTimestampIndexKeys } from "@/lib/storage/storageChronology";
 
 export class MemoryAppStorage implements AppStorage {
@@ -75,6 +76,13 @@ export class MemoryAppStorage implements AppStorage {
 
   async getAll<TStore extends AppStoreName>(storeName: TStore): Promise<AppStoreValue<TStore>[]> {
     return this.peekAll(storeName);
+  }
+
+  async queryPracticeRecords<TKind extends PracticeRecord["kind"]>(kind: TKind, module?: PracticeModuleId): Promise<Extract<PracticeRecord, { kind: TKind }>[]> {
+    return Array.from(this.getStore("practice_records").values())
+      .filter((record): record is Extract<PracticeRecord, { kind: TKind }> => record.kind === kind &&
+        (module === undefined || ("module" in record && record.module === module)))
+      .map((record) => structuredClone(record));
   }
 
   async scan<TStore extends AppStoreName>(

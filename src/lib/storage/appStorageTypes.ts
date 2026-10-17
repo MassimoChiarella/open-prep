@@ -8,7 +8,7 @@ import type { CaseStructuringPrompt } from "@/features/case-practice/structuring
 import type { SynthesisPrompt } from "@/features/case-practice/synthesis/synthesisScoring";
 import type { ExhibitDataset } from "@/features/exhibits/exhibitTypes";
 import type { MarketSizingTemplate } from "@/features/market-sizing/marketSizingTypes";
-import type { PracticeRecord } from "@/features/case-practice/practiceTypes";
+import type { PracticeModuleId, PracticeRecord } from "@/features/case-practice/practiceTypes";
 import type {
   AnswerSpec,
   Difficulty,
@@ -26,7 +26,7 @@ import type {
 } from "@/lib/domain";
 
 export const appDatabaseName = "consulting_math_drill_tool";
-export const appDatabaseVersion = 11;
+export const appDatabaseVersion = 12;
 // Coordination is local to this database and is deliberately absent from learner exports.
 export const appCoordinationStoreName = "_coordination";
 
@@ -380,6 +380,7 @@ export interface AppStorage {
     key: AppStoreKey<TStore>
   ): Promise<AppStoreValue<TStore> | undefined>;
   getAll<TStore extends AppStoreName>(storeName: TStore): Promise<AppStoreValue<TStore>[]>;
+  queryPracticeRecords<TKind extends PracticeRecord["kind"]>(kind: TKind, module?: PracticeModuleId): Promise<Extract<PracticeRecord, { kind: TKind }>[]>;
   scan<TStore extends AppStoreName>(
     storeName: TStore,
     visit: (value: AppStoreValue<TStore>) => void

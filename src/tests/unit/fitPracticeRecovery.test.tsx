@@ -25,7 +25,7 @@ describe("Fit story recovery and rehearsal identity", () => {
     await storage.put("practice_records", older);
     let releaseRead!: () => void;
     const readGate = new Promise<void>((resolve) => { releaseRead = resolve; });
-    vi.spyOn(storage, "getAll").mockImplementationOnce(async () => { await readGate; return [older]; });
+    vi.spyOn(storage, "queryPracticeRecords").mockImplementationOnce(async () => { await readGate; return [older]; });
     render(<FitPracticeView storageFactory={() => storage} />);
     fillStory("New story to delete");
     fireEvent.click(screen.getByRole("button", { name: "Save Story" }));
@@ -52,7 +52,7 @@ describe("Fit story recovery and rehearsal identity", () => {
     const leadership = makeStory("Newer leadership story", "leadership", "2026-10-02T00:00:00Z");
     await storage.put("practice_records", conflict);
     await storage.put("practice_records", leadership);
-    const load = vi.spyOn(storage, "getAll");
+    const load = vi.spyOn(storage, "queryPracticeRecords");
     render(
       <I18nProvider loadLocale={async () => frenchMessages}>
         <LanguageSelect />
@@ -75,7 +75,7 @@ describe("Fit story recovery and rehearsal identity", () => {
     expect(promptSelect).toHaveValue("conflict-team");
     expect(screen.getByRole("timer")).toHaveTextContent("1:53");
     expect(finish).toBeInTheDocument();
-    expect(load.mock.calls.filter(([store]) => store === "practice_records")).toHaveLength(1);
+    expect(load.mock.calls.filter(([kind]) => kind === "fit_story")).toHaveLength(1);
     fireEvent.click(finish);
     vi.useRealTimers();
     fireEvent.click(screen.getByRole("button", { name: frenchMessages["Save Self-Review"] }));
@@ -88,7 +88,7 @@ describe("Fit story recovery and rehearsal identity", () => {
     const storage = new MemoryAppStorage();
     let release!: () => void;
     const gate = new Promise<void>((resolve) => { release = resolve; });
-    vi.spyOn(storage, "getAll").mockImplementationOnce(async () => { await gate; return []; });
+    vi.spyOn(storage, "queryPracticeRecords").mockImplementationOnce(async () => { await gate; return []; });
     render(<FitPracticeView storageFactory={() => storage} />);
     expect(screen.getByText("Loading stories saved in this browser...")).toBeInTheDocument();
     fillStory("Saved during loading");
@@ -109,7 +109,7 @@ describe("Fit story recovery and rehearsal identity", () => {
     await storage.put("practice_records", leadership);
     let release!: () => void;
     const gate = new Promise<void>((resolve) => { release = resolve; });
-    vi.spyOn(storage, "getAll").mockImplementationOnce(async () => { await gate; return [leadership]; });
+    vi.spyOn(storage, "queryPracticeRecords").mockImplementationOnce(async () => { await gate; return [leadership]; });
     render(<FitPracticeView storageFactory={() => storage} />);
     fillStory("Unsaved conflict story");
     fireEvent.change(screen.getByLabelText("Competency"), { target: { value: "conflict" } });
@@ -135,7 +135,7 @@ describe("Fit story recovery and rehearsal identity", () => {
     await screen.findByRole("heading", { name: story.title });
     let release!: () => void;
     const gate = new Promise<void>((resolve) => { release = resolve; });
-    vi.spyOn(storage, "getAll").mockImplementationOnce(async () => { await gate; return [story]; });
+    vi.spyOn(storage, "queryPracticeRecords").mockImplementationOnce(async () => { await gate; return [story]; });
     view.rerender(<FitPracticeView storageFactory={() => storage} />);
     await act(async () => fireEvent.click(screen.getByRole("button", { name: "Delete" })));
     expect(storage.peekAll("practice_records")).toEqual([]);
@@ -147,7 +147,7 @@ describe("Fit story recovery and rehearsal identity", () => {
 });
 
 function makeStory(title: string, competency: "conflict" | "leadership", timestamp: string) {
-  return createFitStoryRecord({ title, competency, situation: "A launch was delayed.", task: "Restore delivery.", action: "Aligned the owners.", result: "Delivery recovered.", reflection: "Align earlier." }, timestamp);
+  return createFitStoryRecord({ title, competency, situation: "A launch was delayed.", task: "Restore delivery.", action: "Aligned the owners.", result: "Delivery recovered.", reflection: "Align earlier." }, new Date(timestamp).toISOString());
 }
 
 function fillStory(title: string) {

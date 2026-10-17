@@ -11,6 +11,7 @@ import {
   appStoreIndexNames,
   appStoreNames
 } from "../../lib/storage/appStorageTypes";
+import { normalizeStoredTimestamps } from "../../lib/storage/storedTimestamps";
 
 type FixtureRecord = { id: string } & Record<string, unknown>;
 
@@ -78,6 +79,16 @@ const currentIndexes = [
     keyPath: ["importedAt", "id"],
     name: appStoreIndexNames.question_packs,
     storeName: "question_packs"
+  },
+  {
+    keyPath: "kind",
+    name: "kind",
+    storeName: "practice_records"
+  },
+  {
+    keyPath: ["kind", "module"],
+    name: "kind_module",
+    storeName: "practice_records"
   }
 ] as const;
 
@@ -94,10 +105,10 @@ const supplementalRecords = {
   ]
 } satisfies Record<string, FixtureRecord[]>;
 
-test("@browser-smoke upgrades the authentic immediate-predecessor database without record loss", async ({ page }) => {
+test("@browser-smoke upgrades the authentic v9 database without record loss", async ({ page }) => {
   expect(indexedDbFixture.fixtureFormat).toBe("open-prep-indexeddb-fixture");
   expect(indexedDbFixture.database.name).toBe(appDatabaseName);
-  expect(indexedDbFixture.database.version).toBe(appDatabaseVersion - 1);
+  expect(indexedDbFixture.database.version).toBe(9);
   expect(Object.keys(indexedDbFixture.database.stores).sort()).toEqual([...appStoreNames].sort());
   expect(indexedDbFixture.database.stores.benchmark_results.indexes.map(({ name }) => name)).toEqual([
     "completed_at_id"
@@ -124,7 +135,7 @@ test("@browser-smoke upgrades the authentic immediate-predecessor database witho
       ...indexedDbFixture.database.stores[storeName].records,
       ...(supplementalRecords[storeName as keyof typeof supplementalRecords] ?? [])
     ];
-    expect(sortRecords(migrated.records[storeName]), `${storeName} records`).toEqual(sortRecords(expected));
+    expect(sortRecords(migrated.records[storeName]), `${storeName} records`).toEqual(sortRecords(expected.map((record) => normalizeStoredTimestamps(storeName, record))));
   }
 
   expect(migrated.indexOrder.benchmark_results).toEqual([
@@ -166,7 +177,7 @@ for (const version of [7, 8]) {
     await expect(page.getByTestId("dashboard-priority-panel")).toBeVisible();
     const migrated = await readDatabase(page);
     expect(migrated.version).toBe(appDatabaseVersion);
-    for (const storeName of appStoreNames) expect(sortRecords(migrated.records[storeName])).toEqual(sortRecords(fixture.database.stores[storeName].records));
+    for (const storeName of appStoreNames) expect(sortRecords(migrated.records[storeName])).toEqual(sortRecords(fixture.database.stores[storeName].records.map((record) => normalizeStoredTimestamps(storeName, record))));
   });
 }
 
@@ -311,7 +322,7 @@ function expectedStoreMetadata(): Record<string, StoreMetadata> {
   return Object.fromEntries(appStoreNames.map((storeName) => {
     const indexes = currentIndexes
       .filter((index) => index.storeName === storeName)
-      .map(({ keyPath, name }) => ({ keyPath: [...keyPath], multiEntry: false, name, unique: false }));
+      .map(({ keyPath, name }) => ({ keyPath: typeof keyPath === "string" ? keyPath : [...keyPath], multiEntry: false, name, unique: false }));
     return [storeName, { autoIncrement: false, indexes, keyPath: "id" }];
   }));
 }

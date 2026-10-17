@@ -22,9 +22,9 @@ async function prepare(page: Page) {
   await page.addScriptTag({ content: bundle });
 }
 
-async function seedVersion10(page: Page, stores: Partial<Record<AppStoreName, unknown[]>>) {
-  await page.evaluate(async ({ databaseName, storeNames, stores }) => new Promise<void>((resolve, reject) => {
-    const request = indexedDB.open(databaseName, 10);
+async function seedHistoricalStorage(page: Page, stores: Partial<Record<AppStoreName, unknown[]>>, version = 10) {
+  await page.evaluate(async ({ databaseName, storeNames, stores, version }) => new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open(databaseName, version);
     request.onupgradeneeded = () => {
       const database = request.result;
       database.createObjectStore("_coordination", { keyPath: "id" }).put({ id: "lifecycle", generation: 0 });
@@ -39,7 +39,7 @@ async function seedVersion10(page: Page, stores: Partial<Record<AppStoreName, un
     };
     request.onsuccess = () => { request.result.close(); resolve(); };
     request.onerror = () => reject(request.error);
-  }), { databaseName: appDatabaseName, storeNames: appStoreNames, stores });
+  }), { databaseName: appDatabaseName, storeNames: appStoreNames, stores, version });
 }
 
 function chronologyBenchmark(id: string, completedAt: string): BenchmarkResultRecord {
@@ -49,7 +49,7 @@ function chronologyBenchmark(id: string, completedAt: string): BenchmarkResultRe
 
 test("@browser-smoke native version11 migrates offsets without changing private dates and keeps ordinary paging indexed", async ({ page }) => {
   await prepare(page);
-  await seedVersion10(page, {
+  await seedHistoricalStorage(page, {
     benchmark_results: [chronologyBenchmark("newer", "2026-10-17T10:00:00-04:00"), chronologyBenchmark("older", "2026-10-17T13:00:00Z"),
       ...Array.from({ length: 20 }, (_, index) => chronologyBenchmark(`baseline-${index}`, `2026-10-16T${String(index).padStart(2, "0")}:00:00Z`))],
     practice_records: [{ id: "prep-profile", kind: "prep_profile", interviewDate: "2026-11-17", targetFirms: ["Private firm"], updatedAt: "2026-10-17T10:00:00-04:00", weeklySessions: 5, experienceLevel: "intermediate" }],
@@ -103,7 +103,7 @@ test("@browser-smoke native chronology pages signed years and ties in both direc
     chronologyBenchmark("tie_a", "2026-10-17T10:00:00-04:00"), chronologyBenchmark("tie_Z", "2026-10-17T14:00:00Z"),
     chronologyBenchmark("older", "2026-10-17T13:00:00Z"), chronologyBenchmark("invalid", "broken")
   ];
-  await seedVersion10(page, { benchmark_results: rows });
+  await seedHistoricalStorage(page, { benchmark_results: rows });
   const outcome = await page.evaluate(async (rows) => {
     const storage = window.storageTestApi.createIndexedDbAppStorage();
     const readFlag = () => new Promise<boolean>((resolve, reject) => {
@@ -156,7 +156,7 @@ test("@browser-smoke native chronology pages signed years and ties in both direc
 
 test("@browser-smoke native chronology migration and cursor exceptions abort without partial changes", async ({ page }) => {
   await prepare(page);
-  await seedVersion10(page, { benchmark_results: [chronologyBenchmark("offset", "2026-10-17T10:00:00-04:00")] });
+  await seedHistoricalStorage(page, { benchmark_results: [chronologyBenchmark("offset", "2026-10-17T10:00:00-04:00")] });
   const outcome = await page.evaluate(async () => {
     const originalUpdate = IDBCursor.prototype.update;
     IDBCursor.prototype.update = function () { throw new DOMException("Synthetic migration fault", "QuotaExceededError"); };
@@ -192,6 +192,65 @@ test("@browser-smoke native chronology migration and cursor exceptions abort wit
     } finally { storage.close(); }
   });
   expect(outcome).toEqual({ migrationError: "QuotaExceededError", retained: { version: 10, completedAt: "2026-10-17T10:00:00-04:00" }, recovered: "2026-10-17T14:00:00.000Z", pageErrors: ["UnknownError", "UnknownError"] });
+});
+
+test("@browser-smoke native v12 practice queries migrate existing arbitrary IDs and avoid unrelated full-store reads", async ({ page }) => {
+  await prepare(page);
+  const updatedAt = "2026-10-17T12:00:00.000Z";
+  const story = { id: "attempt-looking-private-import", kind: "fit_story", updatedAt, competency: "leadership", title: "Private story", situation: "Situation", task: "Task", action: "Action", result: "Result", reflection: "Reflection" };
+  const attempt = { id: "arbitrary imported fit result", kind: "attempt", module: "fit", itemId: "fit-item", completedAt: updatedAt, score: 3, maxScore: 4 };
+  await seedHistoricalStorage(page, { practice_records: [story, attempt,
+    ...Array.from({ length: 250 }, (_, index) => ({ ...attempt, id: `fit-story-looking-unrelated-${index}`, module: "structuring" }))
+  ] }, 11);
+  const outcome = await page.evaluate(async () => {
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    let fullStoreReads = 0;
+    const indexReads: { name: string; key: unknown }[] = [];
+    const originalStoreGetAll = IDBObjectStore.prototype.getAll;
+    const originalIndexGetAll = IDBIndex.prototype.getAll;
+    IDBObjectStore.prototype.getAll = function (...args) {
+      if (this.name === "practice_records") fullStoreReads += 1;
+      return originalStoreGetAll.apply(this, args);
+    };
+    IDBIndex.prototype.getAll = function (...args) {
+      if (this.objectStore.name === "practice_records") indexReads.push({ name: this.name, key: args[0] });
+      return originalIndexGetAll.apply(this, args);
+    };
+    try {
+      const stories = await storage.queryPracticeRecords("fit_story");
+      const fitAttempts = await storage.queryPracticeRecords("attempt", "fit");
+      const attempts = await storage.queryPracticeRecords("attempt");
+      stories[0].title = "Changed returned clone";
+      const bank = await window.storageTestApi.loadFitStoryBank(storage);
+      const metadata = await new Promise<{ version: number; indexes: string[] }>((resolve, reject) => {
+        const request = indexedDB.open(window.storageTestApi.appDatabaseName);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction("practice_records");
+          const indexes = Array.from(transaction.objectStore("practice_records").indexNames);
+          transaction.oncomplete = () => { database.close(); resolve({ version: database.version, indexes }); };
+          transaction.onerror = transaction.onabort = () => { database.close(); reject(transaction.error); };
+        };
+      });
+      return { metadata, fullStoreReads, indexReads, storyIds: stories.map(({ id }) => id), fitAttemptIds: fitAttempts.map(({ id }) => id), attemptCount: attempts.length,
+        bank: bank.map(({ story, token }) => ({ id: story.id, title: story.title, token })) };
+    } finally {
+      IDBObjectStore.prototype.getAll = originalStoreGetAll;
+      IDBIndex.prototype.getAll = originalIndexGetAll;
+      storage.close();
+    }
+  });
+  expect(outcome.metadata).toEqual({ version: appDatabaseVersion, indexes: ["kind", "kind_module"] });
+  expect(outcome.fullStoreReads).toBe(0);
+  expect(outcome.indexReads).toEqual([
+    { name: "kind", key: "fit_story" }, { name: "kind_module", key: ["attempt", "fit"] },
+    { name: "kind", key: "attempt" }, { name: "kind", key: "fit_story" }
+  ]);
+  expect(outcome.storyIds).toEqual([story.id]);
+  expect(outcome.fitAttemptIds).toEqual([attempt.id]);
+  expect(outcome.attemptCount).toBe(251);
+  expect(outcome.bank).toEqual([{ id: story.id, title: story.title, token: { exists: true, generation: 0, revision: 0 } }]);
 });
 
 test("@browser-smoke native Fit stories reject stale edits, deletes and deleted-story resurrection", async ({ context, page }) => {

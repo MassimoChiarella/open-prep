@@ -25,6 +25,9 @@ import { createAtomicView, isPrivateDraftKey, lifecycleMetadataKey, practiceRevi
 import { assertPersistableRecord, maxStoredPackDepth } from "@/lib/validation/inputLimits";
 import { normalizeStoredTimestamps } from "@/lib/storage/storedTimestamps";
 import { chronologyMetadataKey, compareTimestampIndexKeys, requiresChronologyScan } from "@/lib/storage/storageChronology";
+import type { PracticeModuleId, PracticeRecord } from "@/features/case-practice/practiceTypes";
+
+const practiceRecordIndexes = { kind: "kind", kindModule: "kind_module" } as const;
 
 // One document lifecycle, including adapters created later by an already-open form.
 // A successful destructive action navigates through the existing invalidation shell.
@@ -113,6 +116,13 @@ class IndexedDbAppStorage implements AppStorage {
   async getAll<TStore extends AppStoreName>(storeName: TStore): Promise<AppStoreValue<TStore>[]> {
     await this.getGeneration();
     return this.runStoreRequest(storeName, "readonly", (store) => store.getAll());
+  }
+
+  async queryPracticeRecords<TKind extends PracticeRecord["kind"]>(kind: TKind, module?: PracticeModuleId): Promise<Extract<PracticeRecord, { kind: TKind }>[]> {
+    await this.getGeneration();
+    return this.runStoreRequest("practice_records", "readonly", (store) => module === undefined
+      ? store.index(practiceRecordIndexes.kind).getAll(kind)
+      : store.index(practiceRecordIndexes.kindModule).getAll([kind, module]));
   }
 
   async scan<TStore extends AppStoreName>(
@@ -622,6 +632,14 @@ function upgradeDatabase(database: IDBDatabase, transaction: IDBTransaction | nu
   const packStore = transaction.objectStore("question_packs");
   if (!packStore.indexNames.contains(appStoreIndexNames.question_packs)) {
     packStore.createIndex(appStoreIndexNames.question_packs, ["importedAt", "id"]);
+  }
+
+  const practiceStore = transaction.objectStore("practice_records");
+  if (!practiceStore.indexNames.contains(practiceRecordIndexes.kind)) {
+    practiceStore.createIndex(practiceRecordIndexes.kind, "kind");
+  }
+  if (!practiceStore.indexNames.contains(practiceRecordIndexes.kindModule)) {
+    practiceStore.createIndex(practiceRecordIndexes.kindModule, ["kind", "module"]);
   }
 
   if (oldVersion < 11) {
