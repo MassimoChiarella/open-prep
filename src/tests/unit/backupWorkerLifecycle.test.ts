@@ -12,6 +12,7 @@ import { createUserSettingsRecord } from "@/features/settings/settingsPersistenc
 import { createDrillSettings } from "@/features/drills/drillSettings";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
+import { normalizeStoredTimestamps } from "@/lib/storage/storedTimestamps";
 
 vi.mock("@/lib/storage/indexedDbAppStorage", () => ({ createIndexedDbAppStorage: vi.fn() }));
 const timestamp = "2026-10-04T12:00:00Z";
@@ -36,7 +37,7 @@ describe("validated restore preparation", () => {
     expect(validate).toHaveBeenCalledOnce();
     expect(result.savedSettings?.questionCount).toBe(6);
     expect(result.preferenceResult.status).toBe("not_selected");
-    expect(await target.get("practice_records", privateStory.id)).toEqual(privateStory);
+    expect(await target.get("practice_records", privateStory.id)).toEqual(normalizeStoredTimestamps("practice_records", privateStory));
     expect((await target.get("user_settings", "default"))?.settings.questionCount).toBe(6);
   });
 
@@ -52,7 +53,7 @@ describe("validated restore preparation", () => {
     localStorage.setItem(localePreferenceStorageKey, "fr");
     await target.mutate([], { advanceGeneration: true });
     await expect(prepared.prepared.restore()).rejects.toMatchObject({ reason: "generation" });
-    expect(await target.get("user_settings", "default")).toEqual(current);
+    expect(await target.get("user_settings", "default")).toEqual(normalizeStoredTimestamps("user_settings", current));
     expect(localStorage.getItem(localePreferenceStorageKey)).toBe("fr");
     prepared.prepared.dispose();
   });

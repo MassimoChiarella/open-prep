@@ -4,10 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { buttonClass } from "@/components/uiStyles";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import { AppStorageConflictError, type AppStorage } from "@/lib/storage/appStorageTypes";
-import {
-  applyLocalRecovery, archiveLocalRecovery, diagnoseLocalRecovery, prepareLocalRecovery,
-  type LocalRecoveryItem, type LocalRecoveryPreview
-} from "@/features/settings/localRecordRecovery";
+import { createBrowserLocalRecovery, type BrowserLocalRecovery } from "@/features/settings/browserLocalRecovery";
+import type { LocalRecoveryItem, LocalRecoveryPreviewSummary } from "@/features/settings/localRecordRecovery";
 
 export function LocalRecordRecoveryPanel({ storageFactory, onRecovered }: {
   storageFactory: () => AppStorage;
@@ -15,7 +13,7 @@ export function LocalRecordRecoveryPanel({ storageFactory, onRecovered }: {
 }) {
   const { t, formatNumber } = useI18n();
   const [items, setItems] = useState<LocalRecoveryItem[]>();
-  const [preview, setPreview] = useState<LocalRecoveryPreview>();
+  const [preview, setPreview] = useState<LocalRecoveryPreviewSummary>();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [archiveOffered, setArchiveOffered] = useState(false);
@@ -24,6 +22,8 @@ export function LocalRecordRecoveryPanel({ storageFactory, onRecovered }: {
   const [needsReload, setNeedsReload] = useState(false);
   const mounted = useRef(true);
   const operation = useRef(false);
+  const session = useRef<BrowserLocalRecovery>(undefined);
+  const sessionAbort = useRef<AbortController>(undefined);
   const previewHeading = useRef<HTMLHeadingElement>(null);
   const checkButton = useRef<HTMLButtonElement>(null);
   const reloadButton = useRef<HTMLButtonElement>(null);
@@ -36,19 +36,32 @@ export function LocalRecordRecoveryPanel({ storageFactory, onRecovered }: {
   }, [busy, needsReload, preview]);
   useEffect(() => {
     mounted.current = true;
-    return () => { mounted.current = false; };
+    return () => { mounted.current = false; disposeSession(); };
   }, []);
 
-  async function run(action: (storage: AppStorage) => Promise<void>) {
+  function disposeSession() {
+    sessionAbort.current?.abort();
+    session.current?.dispose();
+    session.current = undefined;
+    sessionAbort.current = undefined;
+  }
+
+  async function run(action: (recovery: BrowserLocalRecovery) => Promise<void>) {
     if (operation.current) return;
     operation.current = true;
     setBusy(true);
     setMessage("");
-    let storage: AppStorage | undefined;
     try {
-      storage = storageFactory();
-      await action(storage);
+      if (session.current === undefined) {
+        const controller = new AbortController();
+        sessionAbort.current = controller;
+        const recovery = await createBrowserLocalRecovery(storageFactory, controller.signal);
+        if (!mounted.current || controller.signal.aborted) { recovery.dispose(); return; }
+        session.current = recovery;
+      }
+      await action(session.current);
     } catch (error) {
+      disposeSession();
       if (mounted.current) {
         setConfirmed(false);
         setPreview(undefined);
@@ -60,29 +73,32 @@ export function LocalRecordRecoveryPanel({ storageFactory, onRecovered }: {
       }
     } finally {
       operation.current = false;
-      storage?.close();
       if (mounted.current) setBusy(false);
     }
   }
 
-  function downloadArchive() {
+  async function downloadArchive() {
     if (preview === undefined) return;
-    let url: string | undefined;
-    try {
-      url = URL.createObjectURL(new Blob([archiveLocalRecovery(preview)], { type: "application/json" }));
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `open-prep-recovery-${new Date().toISOString().slice(0, 10)}.json`;
-      link.click();
-      setArchiveOffered(true);
-      setMessage("");
-    } catch {
-      setArchiveOffered(false);
-      setConfirmed(false);
-      setMessage("The recovery archive could not be downloaded. No records were changed.");
-    } finally {
-      if (url !== undefined) URL.revokeObjectURL(url);
-    }
+    await run(async (recovery) => {
+      const blob = await recovery.archive();
+      if (!mounted.current) return;
+      let url: string | undefined;
+      try {
+        url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `open-prep-recovery-${new Date().toISOString().slice(0, 10)}.json`;
+        link.click();
+        setArchiveOffered(true);
+        setMessage("");
+      } catch {
+        setArchiveOffered(false);
+        setConfirmed(false);
+        setMessage("The recovery archive could not be downloaded. No records were changed.");
+      } finally {
+        if (url !== undefined) URL.revokeObjectURL(url);
+      }
+    });
   }
 
   function describeIssue(reason: string) {
@@ -96,8 +112,8 @@ export function LocalRecordRecoveryPanel({ storageFactory, onRecovered }: {
     <summary className="min-h-11 cursor-pointer text-lg font-semibold text-ink">{t("Recover individual records")}</summary>
     <div className="mt-3 grid min-w-0 gap-4" aria-busy={busy}>
       <p>{t("Find saved records that prevent a backup, then review one attempt at a time. Checking changes nothing.")}</p>
-      <button className={buttonClass("secondary")} disabled={busy || needsReload} ref={checkButton} type="button" onClick={() => void run(async (storage) => {
-        const found = await diagnoseLocalRecovery(storage);
+      <button className={buttonClass("secondary")} disabled={busy || needsReload} ref={checkButton} type="button" onClick={() => void run(async (recovery) => {
+        const found = await recovery.diagnose();
         if (mounted.current) { setItems(found); setPreview(undefined); setConfirmed(false); }
       })}>{t(busy ? "Checking local records..." : "Check local records")}</button>
       {items?.length === 0 ? <p role="status">{t("No incompatible records found.")}</p> : null}
@@ -107,8 +123,8 @@ export function LocalRecordRecoveryPanel({ storageFactory, onRecovered }: {
           <ul>{item.issues.slice(0, 5).map((issue, index) => <li key={index}>
             <bdi dir="auto">{issue.path.slice(0, 160) || "record"}</bdi>: {describeIssue(issue.reason)}
           </li>)}</ul>
-          {item.unavailableReason === undefined ? <button className={buttonClass("secondary")} disabled={busy} type="button" onClick={() => void run(async (storage) => {
-            const next = await prepareLocalRecovery(storage, item);
+          {item.unavailableReason === undefined ? <button className={buttonClass("secondary")} disabled={busy} type="button" onClick={() => void run(async (recovery) => {
+            const next = await recovery.prepare(item);
             if (mounted.current) { setPreview(next); setArchiveOffered(false); setSkipArchive(false); setConfirmed(false); }
           })}>{t("Review recovery")}</button> : <p>{t(item.unavailableReason)}</p>}
         </li>)}
@@ -120,7 +136,7 @@ export function LocalRecordRecoveryPanel({ storageFactory, onRecovered }: {
         <p>{t(preview.action === "remove_note" ? "The attempt and its score will remain saved." : "Independent later attempts and unrelated saved data will remain saved.")}</p>
         {preview.reviewHistoryRetained ? <p>{t("Existing review totals cannot be reversed reliably and will remain unchanged.")}</p> : null}
         <p>{t("The recovery archive may contain private text. It is a diagnostic file, not a restorable backup.")}</p>
-        <button className={buttonClass("secondary")} disabled={busy} onClick={downloadArchive} type="button">{t("Download original-data archive")}</button>
+        <button className={buttonClass("secondary")} disabled={busy} onClick={() => void downloadArchive()} type="button">{t("Download original-data archive")}</button>
         <label className="flex min-h-11 items-start gap-3">
           <input checked={skipArchive} disabled={busy} onChange={(event) => { setSkipArchive(event.currentTarget.checked); setConfirmed(false); }} type="checkbox" />
           <span>{t("Remove without an archive; I accept losing the original records.")}</span>
@@ -130,8 +146,8 @@ export function LocalRecordRecoveryPanel({ storageFactory, onRecovered }: {
           <span>{t("I have saved the archive or chosen to continue without it, and confirm this removal.")}</span>
         </label>
         <div className="flex flex-wrap gap-3">
-          <button className={buttonClass("danger")} disabled={busy || !confirmed || (!archiveOffered && !skipArchive)} type="button" onClick={() => void run(async (storage) => {
-            await applyLocalRecovery(storage, preview);
+          <button className={buttonClass("danger")} disabled={busy || !confirmed || (!archiveOffered && !skipArchive)} type="button" onClick={() => void run(async (recovery) => {
+            await recovery.apply();
             if (mounted.current) {
               setItems(undefined); setPreview(undefined); setConfirmed(false);
               setNeedsReload(true);
@@ -139,7 +155,7 @@ export function LocalRecordRecoveryPanel({ storageFactory, onRecovered }: {
               onRecovered();
             }
           })}>{t("Confirm scoped removal")}</button>
-          <button className={buttonClass("secondary")} disabled={busy} type="button" onClick={() => { setPreview(undefined); setConfirmed(false); }}>{t("Cancel")}</button>
+          <button className={buttonClass("secondary")} disabled={busy} type="button" onClick={() => { disposeSession(); setPreview(undefined); setConfirmed(false); }}>{t("Cancel")}</button>
         </div>
       </section>}
       {message ? <p role="status">{t(message)}</p> : null}

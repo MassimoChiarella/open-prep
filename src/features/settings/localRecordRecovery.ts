@@ -24,6 +24,12 @@ export interface LocalRecoveryPreview extends LocalRecoveryItem {
   fingerprint: string;
   reviewHistoryRetained: boolean;
 }
+export type LocalRecoveryPreviewSummary = Omit<LocalRecoveryPreview, "records" | "fingerprint">;
+
+export function summarizeLocalRecoveryPreview(preview: LocalRecoveryPreview): LocalRecoveryPreviewSummary {
+  const { records: _records, fingerprint: _fingerprint, ...summary } = preview;
+  return summary;
+}
 
 const allReads = Object.fromEntries(appStoreNames.map((name) => [name, "all" as const]));
 
@@ -49,7 +55,7 @@ export function archiveLocalRecovery(preview: LocalRecoveryPreview): string {
   }, null, 2)}\n`;
 }
 
-export async function applyLocalRecovery(storage: AppStorage, preview: LocalRecoveryPreview): Promise<{ removedRecords: number; updatedRecords: number }> {
+export async function applyLocalRecovery(storage: AppStorage, preview: LocalRecoveryPreview, options: { publishInvalidation?: boolean } = {}): Promise<{ removedRecords: number; updatedRecords: number }> {
   const result = await storage.atomic({ stores: appStoreNames, reads: allReads, expectedGeneration: preview.generation, advanceGeneration: true }, (view) => {
     const current = makePreview(snapshotFromView(view), view.generation, preview);
     if (current.fingerprint !== preview.fingerprint) throw new AppStorageConflictError("session");
@@ -64,7 +70,7 @@ export async function applyLocalRecovery(storage: AppStorage, preview: LocalReco
     }
     return { operations, result: { removedRecords: current.action === "remove_note" ? 0 : current.records.length, updatedRecords: current.action === "remove_note" ? 1 : 0 } };
   });
-  publishLocalDataInvalidation("progress_replaced");
+  if (options.publishInvalidation !== false) publishLocalDataInvalidation("progress_replaced");
   return result;
 }
 

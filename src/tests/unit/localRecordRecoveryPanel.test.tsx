@@ -46,7 +46,7 @@ describe("scoped recovery confirmation", () => {
     const { storage, bad } = await showPreview();
     vi.stubGlobal("URL", class extends URL { static createObjectURL(): string { throw new Error("Download unavailable"); } });
     fireEvent.click(screen.getByRole("button", { name: "Download original-data archive" }));
-    expect(screen.getByText("The recovery archive could not be downloaded. No records were changed.")).toBeInTheDocument();
+    expect(await screen.findByText("The recovery archive could not be downloaded. No records were changed.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Confirm scoped removal" })).toBeDisabled();
     expect(await storage.get("market_sizing_attempts", bad.id)).toEqual(bad);
   });

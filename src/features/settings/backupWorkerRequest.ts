@@ -1,4 +1,5 @@
 import { IncompatibleStoredRecordError } from "@/features/settings/recordDiagnostics";
+import { AppStorageConflictError } from "@/lib/storage/appStorageTypes";
 
 /** One bundled entry keeps export, restore, and inventory validation code shared. */
 export function createBackupWorker(name: string): Worker {
@@ -10,6 +11,7 @@ export interface BackupWorkerResponse<TResult> {
   result?: TResult;
   error?: string;
   incompatibleRecords?: boolean;
+  conflictReason?: AppStorageConflictError["reason"];
 }
 
 export function requestBackupWorker<TResult>(
@@ -29,6 +31,7 @@ export function requestBackupWorker<TResult>(
       if (event.data.id !== request.id) return;
       cleanup();
       if (event.data.incompatibleRecords) reject(new IncompatibleStoredRecordError([]));
+      else if (event.data.conflictReason !== undefined) reject(new AppStorageConflictError(event.data.conflictReason));
       else if (event.data.error !== undefined) reject(new Error(event.data.error));
       else if (event.data.result === undefined) reject(new Error(failureMessage));
       else resolve(event.data.result);

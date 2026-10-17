@@ -9,6 +9,7 @@ import { appStoreNames, progressStoreNames, type AppStoreName } from "@/lib/stor
 import { diagnoseLocalRecovery, prepareLocalRecovery, archiveLocalRecovery, applyLocalRecovery } from "@/features/settings/localRecordRecovery";
 import { createLocalProgressExport, replaceLocalProgressWithImport } from "@/features/settings/localProgressExport";
 import { createCompleteBackupFilesFromStorage, restoreCompleteBackupFiles } from "@/features/settings/completeBackupStorage";
+import { normalizeSnapshotTimestamps } from "@/lib/storage/storedTimestamps";
 
 describe("individual incompatible-record recovery", () => {
   it("diagnoses original values, archives them losslessly, and removes only one attempt's ownership closure", async () => {
@@ -39,11 +40,11 @@ describe("individual incompatible-record recovery", () => {
     const standard = await createLocalProgressExport(storage);
     const standardRestored = new MemoryAppStorage();
     await replaceLocalProgressWithImport(standardRestored, standard);
-    expect(await standardRestored.getSnapshot(progressStoreNames)).toEqual(standard.stores);
+    expect(await standardRestored.getSnapshot(progressStoreNames)).toEqual(normalizeSnapshotTimestamps(standard.stores));
     const complete = await createCompleteBackupFilesFromStorage(storage, { selectedOptionalScopes: ["private_text", "packs"] });
     const completeRestored = new MemoryAppStorage();
     await restoreCompleteBackupFiles(completeRestored, complete);
-    expect(await completeRestored.getSnapshot(appStoreNames)).toEqual(JSON.parse(JSON.stringify(after)));
+    expect(await completeRestored.getSnapshot(appStoreNames)).toEqual(normalizeSnapshotTimestamps(JSON.parse(JSON.stringify(after))));
   });
 
   it("rejects a stale preview when a dependent review changed", async () => {
