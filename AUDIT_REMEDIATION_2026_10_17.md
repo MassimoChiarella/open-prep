@@ -53,7 +53,7 @@ Baseline: `627e012faff587603e0d4b6ae2110532a38acf35` (17 October audit). This is
 | Milestone | Implementation | Acceptance | Status |
 | --- | --- | --- | --- |
 | M18 | #14 Refresh compatible sharp/source-map resolutions | Fresh advisory inventory and full compatibility checks; no forced unrelated major/downgrade | Complete — clean npm ci; sharp 0.35.5/librsvg 2.63.2 and source-map-js 1.2.2 actual round trips pass; advisory entries 11→9; full build pending |
-| M19 | #14 Evaluate selector-parser compatibility; document/mitigate any unpatched braces path | Tested safe resolution where available; remaining upstream risk accurately recorded with reachability and follow-up | Pending |
+| M19 | #14 Evaluate selector-parser compatibility; document/mitigate any unpatched braces path | Tested safe resolution where available; remaining upstream risk accurately recorded with reachability and follow-up | Available patches complete — installed selector-parser 7.1.6; 2 CSS compatibility tests and ESLint pass; fresh audit 7 high / 0 moderate entries, all from one unpatched braces advisory; upstream exception and follow-up in SECURITY.md; production/browser integration pending |
 | M20 | #18 Isolate unit activation polling from wall-clock startup sensitivity | Asynchronous activation and timeout contracts still tested; isolated and complete unit runs pass | Focused complete — 13/13 tests; external poll mocked deterministically; 20-second browser contract asserted; full gate pending |
 
 ## Phase 6 — Remove measured UI stalls without removing features
