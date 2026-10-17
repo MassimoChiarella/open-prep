@@ -38,7 +38,7 @@ Baseline: `627e012faff587603e0d4b6ae2110532a38acf35` (17 October audit). This is
 | M11 | #8 Validate explicit assumption units | `$0.6` ratio and `400%` currency rejected; valid bare/percent ratios and bare/currency prices retain credit | Complete — 71 tests/6 focused suites; ESLint and strict TypeScript |
 | M12 | #10 Repair Luma alternate reference and test all bundled reference winners | Ranked authored reference set reaches 100 and each reference matches its intended intent | Complete — 56 tests/3 questioning/review suites; targeted ESLint |
 | M13 | #11 Script-aware questioning match across punctuation | Chinese polite prefixes/clauses preserve concepts; Latin boundaries and typo safeguards retained | Complete — 91 tests/5 focused suites; targeted ESLint |
-| M14 | #12 Validate score-ready resumed/completed drafts with actionable failures | 300/301 character import/resume/completion boundaries covered; editable incomplete drafts remain allowed | Pending |
+| M14 | #12 Validate score-ready resumed/completed drafts with actionable failures | 300/301 character import/resume/completion boundaries covered; editable incomplete drafts remain allowed | Complete — 32 tests/5 suites; actionable retained responses and retry; targeted ESLint |
 | M15 | #19 Scale-sensitive numerical slack for exact tiny answers | Zero rejected for nonzero `1e-10` under explicit zero tolerance; all tolerance modes and floating arithmetic controls covered | Complete — 138 tests/10 focused suites; targeted ESLint |
 
 ## Phase 4 — Make imported history and content trust consistent

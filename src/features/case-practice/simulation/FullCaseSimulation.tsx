@@ -18,7 +18,8 @@ import type { CaseQuestioningQuestion } from "@/features/case-practice/questioni
 import {
   getFullCaseCalculationQuestion,
   scoreFullCaseSimulation,
-  type FullCaseScore
+  type FullCaseScore,
+  type FullCaseSubmission
 } from "@/features/case-practice/simulation/fullCaseScoring";
 import type { FullCaseSimulationSpec } from "@/features/case-practice/simulation/fullCaseTypes";
 import { StructuringResponseFields } from "@/features/case-practice/structuring/StructuringPractice";
@@ -89,6 +90,7 @@ function FullCaseSession({
   const [priorityIdeaIds, setPriorityIdeaIds] = useState<string[]>([]);
   const [synthesis, setSynthesis] = useState<Partial<SynthesisResponse>>({});
   const [result, setResult] = useState<FullCaseScore>();
+  const [scoringIssue, setScoringIssue] = useState<{ message: string; questionId?: string }>();
   const { saveState, saveAttempt, retrySave, resetSave } = usePracticeAttemptSave(storageFactory);
   const [draftEnabled, setDraftEnabled] = useState(false);
   const [pendingDraft, setPendingDraft] = useState<FullCaseDraftRecord>();
@@ -282,7 +284,7 @@ function FullCaseSession({
     setPendingDraft(undefined); setDraftEnabled(true);
     setResumeFocusRequest((current) => current + 1);
     if (draft.completedAt !== undefined && isSynthesisComplete(draft.synthesis)) {
-      const score = scoreFullCaseSimulation(simulation, {
+      const score = scoreCase({
         structure: { hypothesisId: draft.hypothesisId, branchIds: draft.branchIds },
         calculationInput: draft.calculationInput,
         brainstorming: { selectedIdeaIds: draft.ideaIds, priorityIdeaIds: draft.priorityIdeaIds },
@@ -291,6 +293,7 @@ function FullCaseSession({
           questions: draft.questions.map((question, index) => ({ ...question, ...(draft.includeQuestionRanking ? { rank: index + 1 } : {}) }))
         } }), synthesis: draft.synthesis
       }, draft.locale);
+      if (score === undefined) return;
       setResult(score);
       if (await persistCaseScore(score, new Date(draft.completedAt)) && run === runRevision.current && lifecycle === lifecycleRevision.current) {
         await queueDraftWrite().catch(() => undefined);
@@ -310,6 +313,13 @@ function FullCaseSession({
     target?.focus();
     target?.scrollIntoView({ block: "start" });
   }, [currentStage, result, resumeFocusRequest, stage]);
+
+  useEffect(() => {
+    if (scoringIssue?.questionId === undefined) return;
+    const target = document.getElementById(scoringIssue.questionId);
+    target?.focus();
+    target?.scrollIntoView({ block: "start" });
+  }, [scoringIssue]);
 
   useEffect(() => {
     if (draftDeleting || draftFocusReturn.current === null) return;
@@ -335,6 +345,7 @@ function FullCaseSession({
 
   function updateQuestion(id: string, text: string): void {
     markStarted();
+    setScoringIssue(undefined);
     setQuestions((current) => current.map((question) => question.id === id ? { ...question, text } : question));
   }
 
@@ -402,13 +413,30 @@ function FullCaseSession({
     setStage(Math.max(0, Math.min(stages.length - 1, nextStage)));
   }
 
+  function scoreCase(submission: FullCaseSubmission, inputLocale: string): FullCaseScore | undefined {
+    const invalidQuestion = submission.questioning?.questions.find((question) => question.text.trim() === "" || question.text.length > 300);
+    if (invalidQuestion !== undefined) {
+      setScoringIssue({ message: "Complete each question using 300 characters or fewer before finishing this case.", questionId: invalidQuestion.id });
+      setStage(0);
+      return undefined;
+    }
+    try {
+      const score = scoreFullCaseSimulation(simulation, submission, inputLocale);
+      setScoringIssue(undefined);
+      return score;
+    } catch {
+      setScoringIssue({ message: "This case could not be scored. Review your responses before trying again." });
+      return undefined;
+    }
+  }
+
   async function completeCase(): Promise<void> {
     if (!isSynthesisComplete(synthesis) || !canContinueStage(stages.length - 1)) return;
     const run = runRevision.current;
     const lifecycle = lifecycleRevision.current;
 
     const completedAt = new Date();
-    const score = scoreFullCaseSimulation(simulation, {
+    const score = scoreCase({
       structure: { hypothesisId, branchIds },
       calculationInput,
       brainstorming: { selectedIdeaIds: ideaIds, priorityIdeaIds },
@@ -425,6 +453,7 @@ function FullCaseSession({
           }),
       synthesis
     }, attemptLocale);
+    if (score === undefined) return;
     setResult(score);
     cancelScheduledDraftWrite();
     if (draftEnabled && contentKey !== undefined) {
@@ -463,6 +492,7 @@ function FullCaseSession({
     setPriorityIdeaIds([]);
     setSynthesis({});
     setResult(undefined);
+    setScoringIssue(undefined);
     resetSave();
     if (draftEnabled) void queueDraftWrite().catch(() => undefined);
     setDraftEnabled(false);
@@ -473,7 +503,7 @@ function FullCaseSession({
 
   function canContinueStage(stageIndex: number): boolean {
     const stageId = stages[stageIndex]?.id;
-    if (stageId === "questioning") return questions.every((question) => question.text.trim() !== "");
+    if (stageId === "questioning") return questions.every((question) => question.text.trim() !== "" && question.text.length <= 300);
     if (stageId === "structure") return hypothesisId !== "" && branchIds.length > 0;
     if (stageId === "calculation") return calculationInput.trim() !== "";
     if (stageId === "brainstorming") {
@@ -532,6 +562,8 @@ function FullCaseSession({
         {draftStatus === "conflict" ? <LocalSaveNotice label={t("Not Saved")} tone="error" detail={t("The private draft changed or was deleted in another tab. Your current work remains here. Reload to review the saved draft before saving again.")} /> : null}
         {draftDeleteFailed && pendingDraft === undefined ? <button id="full-case-discard-draft" className={buttonClass("secondary")} disabled={draftDeleting || draftStatus === "conflict"} type="button" onClick={() => void discardDraft()}>{t("Discard draft")}</button> : null}
       </section>
+
+      {scoringIssue !== undefined ? <p className="border-s-2 border-coral bg-coral/10 p-4 text-sm text-ink" role="alert">{t(scoringIssue.message)}</p> : null}
 
       {result === undefined ? (
         <>

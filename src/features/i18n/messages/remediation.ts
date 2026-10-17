@@ -3,6 +3,24 @@ import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 type Translations = readonly [string, string, string, string, string, string, string, string, string];
 
 const keys: Record<string, Translations> = {
+  "Complete each question using 300 characters or fewer before finishing this case.": [
+    "Completa cada pregunta con un máximo de 300 caracteres antes de terminar este caso.",
+    "Complétez chaque question en 300 caractères maximum avant de terminer ce cas.",
+    "Vervollständigen Sie jede Frage mit höchstens 300 Zeichen, bevor Sie diesen Fall abschließen.",
+    "Complete cada pergunta com no máximo 300 caracteres antes de finalizar este caso.",
+    "完成此案例前，请填写每个问题，每题不超过300个字符。", "完成此案例前，請填寫每個問題，每題不超過300個字元。",
+    "このケースを完了する前に、各質問を300文字以内で記入してください。",
+    "أكمل كل سؤال باستخدام ٣٠٠ حرف أو أقل قبل إنهاء هذه الحالة.", "यह केस पूरा करने से पहले हर प्रश्न को 300 या उससे कम वर्णों में पूरा करें।"
+  ],
+  "This case could not be scored. Review your responses before trying again.": [
+    "No se pudo puntuar este caso. Revisa tus respuestas antes de volver a intentarlo.",
+    "Ce cas n’a pas pu être évalué. Vérifiez vos réponses avant de réessayer.",
+    "Dieser Fall konnte nicht bewertet werden. Prüfen Sie Ihre Antworten, bevor Sie es erneut versuchen.",
+    "Não foi possível avaliar este caso. Revise suas respostas antes de tentar novamente.",
+    "无法为此案例评分。请检查您的回答后重试。", "無法為此案例評分。請檢查您的回答後重試。",
+    "このケースを採点できませんでした。回答を確認してからもう一度お試しください。",
+    "تعذر تقييم هذه الحالة. راجع إجاباتك قبل المحاولة مجددًا.", "इस केस का मूल्यांकन नहीं हो सका। दोबारा कोशिश करने से पहले अपने उत्तर जाँचें।"
+  ],
   "Repository review claims in backups are not verified. Restored packs are unreviewed; install them from the catalog to verify their review status.": [
     "Las afirmaciones de revisión del repositorio en las copias no están verificadas. Los packs restaurados no están revisados; instálalos desde el catálogo para verificar su estado.",
     "Les déclarations de révision du dépôt dans les sauvegardes ne sont pas vérifiées. Les packs restaurés sont non vérifiés ; installez-les depuis le catalogue pour vérifier leur statut.",
