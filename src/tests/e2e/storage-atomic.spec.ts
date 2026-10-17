@@ -261,3 +261,47 @@ test("@browser-smoke generation checks and recovery reads need no writes under a
   });
   expect(outcome).toEqual({ records: 0, writeRejected: true, generation: 0 });
 });
+
+test("large native atomic snapshots and Recovery exceed the function argument limit safely", async ({ page, browserName }) => {
+  test.skip(browserName !== "chromium", "Chromium capacity boundary; normal atomic coverage runs in every engine.");
+  test.setTimeout(60_000);
+  await prepare(page);
+  const errors: string[] = [];
+  page.on("pageerror", (error) => errors.push(error.message));
+  const outcome = await page.evaluate(async () => {
+    const api = window.storageTestApi;
+    const storage = api.createIndexedDbAppStorage();
+    try {
+      await storage.getGeneration();
+      const created = api.createDrillSession({ seed: "large-atomic", settings: { questionCount: 1 } });
+      const response = api.submitAnswer({ ...created, question: created.questions[0], rawInput: String(created.questions[0].answer.value), timeTakenSeconds: 1 }).response;
+      const rows = 150_000;
+      await new Promise<void>((resolve, reject) => {
+        const request = indexedDB.open(api.appDatabaseName);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const db = request.result;
+          const tx = db.transaction("responses", "readwrite");
+          const store = tx.objectStore("responses");
+          let index = 0;
+          const enqueue = () => {
+            let last: IDBRequest | undefined;
+            const end = Math.min(index + 250, rows);
+            for (; index < end; index++) last = store.put({ ...response, id: `capacity-${index}`, sessionId: created.session.id });
+            if (index < rows && last !== undefined) last.onsuccess = enqueue;
+          };
+          tx.oncomplete = () => { db.close(); resolve(); };
+          tx.onerror = tx.onabort = () => { db.close(); reject(tx.error); };
+          enqueue();
+        };
+      });
+      return {
+        count: await storage.count("responses"),
+        atomic: await storage.atomic({ stores: [], reads: { responses: "all" } }, (view) => ({ operations: [], result: view.getAll("responses").length })),
+        incompatible: (await api.diagnoseLocalRecovery(storage)).length
+      };
+    } finally { storage.close(); }
+  });
+  expect(outcome).toEqual({ count: 150_000, atomic: 150_000, incompatible: 0 });
+  expect(errors).toEqual([]);
+});

@@ -372,9 +372,11 @@ class IndexedDbAppStorage implements AppStorage {
               remaining += 1;
               const request = key === undefined ? transaction.objectStore(storeName).getAll() : transaction.objectStore(storeName).get(key);
               request.onsuccess = () => {
-                if (key === undefined) values.push(...request.result);
-                else if (request.result !== undefined) values.push(request.result);
-                done();
+                try {
+                  if (key === undefined) (records as Record<string, unknown[]>)[storeName] = request.result;
+                  else if (request.result !== undefined) values.push(request.result);
+                  done();
+                } catch (error) { abort(error); }
               };
             }
           }

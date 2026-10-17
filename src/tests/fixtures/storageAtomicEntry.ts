@@ -8,3 +8,5 @@ export { fullCaseContentKey, fullCaseDraftId } from "@/features/case-practice/si
 export { brightCartFullCase } from "@/data/casePractice/fullCaseSimulations";
 export { createFitStoryRecord } from "@/features/case-practice/fit/fitPractice";
 export { loadFitStoryBank, saveFitStory, deleteFitStory } from "@/features/case-practice/practiceRecords";
+export { appDatabaseName } from "@/lib/storage/appStorageTypes";
+export { diagnoseLocalRecovery } from "@/features/settings/localRecordRecovery";
