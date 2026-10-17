@@ -2,7 +2,10 @@ import { spawnSync } from "node:child_process";
 import path from "node:path";
 import type { Page } from "@playwright/test";
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+
+const { activationPoll } = vi.hoisted(() => ({ activationPoll: vi.fn() }));
+vi.mock("@playwright/test", () => ({ expect: { poll: activationPoll } }));
 
 import {
   findRuntimeRequestViolations,
@@ -85,16 +88,35 @@ const manifest = {
 };
 
 describe("post-deployment smoke contract", () => {
-  it("waits for asynchronous registration and activation before checking the offline cache", async () => {
+  afterEach(() => activationPoll.mockReset());
+
+  it("polls resolved activation states with the real browser's 20-second budget", async () => {
     const states = [undefined, undefined, "activating", "activated"];
     let calls = 0;
     const page = {
       evaluate: async () => states[calls++]
     } as unknown as Page;
+    const observed: unknown[] = [];
+    // Drive each poll directly instead of importing Playwright and waiting on wall-clock intervals.
+    activationPoll.mockImplementationOnce((read: () => Promise<unknown>, options: { timeout: number }) => ({
+      toBe: async (expected: unknown) => {
+        expect(options).toEqual({ timeout: 20_000 });
+        for (let index = 0; index < states.length; index++) observed.push(await read());
+        expect(observed.at(-1)).toBe(expected);
+      }
+    }));
 
     await waitForActiveServiceWorker(page);
 
+    expect(activationPoll).toHaveBeenCalledOnce();
+    expect(observed).toEqual(states);
     expect(calls).toBe(4);
+  });
+
+  it("propagates a failed activation poll instead of accepting an inactive worker", async () => {
+    const failure = new Error("Worker activation timed out");
+    activationPoll.mockReturnValueOnce({ toBe: vi.fn().mockRejectedValue(failure) });
+    await expect(waitForActiveServiceWorker({} as Page)).rejects.toBe(failure);
   });
 
   it("accepts only an explicit credential-free HTTPS origin root", () => {

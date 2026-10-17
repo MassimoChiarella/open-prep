@@ -54,7 +54,7 @@ Baseline: `627e012faff587603e0d4b6ae2110532a38acf35` (17 October audit). This is
 | --- | --- | --- | --- |
 | M18 | #14 Refresh compatible sharp/source-map resolutions | Fresh advisory inventory and full compatibility checks; no forced unrelated major/downgrade | Pending |
 | M19 | #14 Evaluate selector-parser compatibility; document/mitigate any unpatched braces path | Tested safe resolution where available; remaining upstream risk accurately recorded with reachability and follow-up | Pending |
-| M20 | #18 Isolate unit activation polling from wall-clock startup sensitivity | Asynchronous activation and timeout contracts still tested; isolated and complete unit runs pass | Pending |
+| M20 | #18 Isolate unit activation polling from wall-clock startup sensitivity | Asynchronous activation and timeout contracts still tested; isolated and complete unit runs pass | Focused complete — 13/13 tests; external poll mocked deterministically; 20-second browser contract asserted; full gate pending |
 
 ## Phase 6 — Remove measured UI stalls without removing features
 
