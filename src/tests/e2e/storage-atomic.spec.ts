@@ -2,6 +2,7 @@ import { resolve } from "node:path";
 import { build } from "esbuild";
 import { expect, test, type Page } from "@playwright/test";
 import type * as StorageTestApi from "../fixtures/storageAtomicEntry";
+import { appDatabaseName, appDatabaseVersion, appStoreNames, type AppStoreName, type BenchmarkResultRecord } from "../../lib/storage/appStorageTypes";
 
 declare global { interface Window { storageTestApi: typeof StorageTestApi } }
 
@@ -20,6 +21,178 @@ async function prepare(page: Page) {
   await page.goto("/storage-atomic-test");
   await page.addScriptTag({ content: bundle });
 }
+
+async function seedVersion10(page: Page, stores: Partial<Record<AppStoreName, unknown[]>>) {
+  await page.evaluate(async ({ databaseName, storeNames, stores }) => new Promise<void>((resolve, reject) => {
+    const request = indexedDB.open(databaseName, 10);
+    request.onupgradeneeded = () => {
+      const database = request.result;
+      database.createObjectStore("_coordination", { keyPath: "id" }).put({ id: "lifecycle", generation: 0 });
+      for (const name of storeNames) database.createObjectStore(name, { keyPath: "id" });
+      for (const [name, field, index] of [
+        ["drill_sessions", "updatedAt", "updated_at_id"], ["responses", "submittedAt", "submitted_at_id"],
+        ["benchmark_results", "completedAt", "completed_at_id"], ["question_packs", "importedAt", "imported_at_id"]
+      ]) request.transaction!.objectStore(name).createIndex(index, [field, "id"]);
+      for (const [name, records] of Object.entries(stores)) {
+        for (const record of records ?? []) request.transaction!.objectStore(name).put(record);
+      }
+    };
+    request.onsuccess = () => { request.result.close(); resolve(); };
+    request.onerror = () => reject(request.error);
+  }), { databaseName: appDatabaseName, storeNames: appStoreNames, stores });
+}
+
+function chronologyBenchmark(id: string, completedAt: string): BenchmarkResultRecord {
+  return { id, completedAt, benchmarkId: "beginner", difficulty: "beginner", sessionId: id,
+    score: { accuracy: 1, averageTimeSeconds: 1, categoryBreakdown: [], correctCount: 1, errorBreakdown: [], incorrectCount: 0, totalScore: 100 } };
+}
+
+test("@browser-smoke native version11 migrates offsets without changing private dates and keeps ordinary paging indexed", async ({ page }) => {
+  await prepare(page);
+  await seedVersion10(page, {
+    benchmark_results: [chronologyBenchmark("newer", "2026-10-17T10:00:00-04:00"), chronologyBenchmark("older", "2026-10-17T13:00:00Z"),
+      ...Array.from({ length: 20 }, (_, index) => chronologyBenchmark(`baseline-${index}`, `2026-10-16T${String(index).padStart(2, "0")}:00:00Z`))],
+    practice_records: [{ id: "prep-profile", kind: "prep_profile", interviewDate: "2026-11-17", targetFirms: ["Private firm"], updatedAt: "2026-10-17T10:00:00-04:00", weeklySessions: 5, experienceLevel: "intermediate" }],
+    responses: [{ id: "invalid", sessionId: "session", questionId: "question", submittedAt: "broken", rawInput: "private raw input", isCorrect: false, timeTakenSeconds: 1, errorTypes: ["arithmetic_error"] }]
+  });
+  const outcome = await page.evaluate(async () => {
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    try {
+      const benchmark = await storage.get("benchmark_results", "newer");
+      const profile = await storage.get("practice_records", "prep-profile");
+      const invalid = await storage.get("responses", "invalid");
+      let indexContinues = 0;
+      const original = IDBCursor.prototype.continue;
+      IDBCursor.prototype.continue = function (...args) {
+        if (this.source instanceof IDBIndex && this.source.objectStore.name === "benchmark_results") indexContinues += 1;
+        return original.apply(this, args);
+      };
+      let first;
+      try { first = await storage.getPage("benchmark_results", "completed_at_id", { direction: "prev", limit: 1 }); }
+      finally { IDBCursor.prototype.continue = original; }
+      const second = await storage.getPage("benchmark_results", "completed_at_id", { direction: "prev", limit: 1, afterKey: first.continuationKey });
+      const metadata = await new Promise<{ version: number; flags: unknown[] }>((resolve, reject) => {
+        const request = indexedDB.open(window.storageTestApi.appDatabaseName);
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const database = request.result;
+          const transaction = database.transaction("_coordination");
+          const flags = transaction.objectStore("_coordination").getAll();
+          transaction.oncomplete = () => { database.close(); resolve({ version: database.version, flags: flags.result }); };
+          transaction.onerror = transaction.onabort = () => { database.close(); reject(transaction.error); };
+        };
+      });
+      return { benchmark, profile, invalid, firstIds: first.values.map(({ id }) => id), secondIds: second.values.map(({ id }) => id), indexContinues, metadata };
+    } finally { storage.close(); }
+  });
+  expect(outcome.benchmark?.completedAt).toBe("2026-10-17T14:00:00.000Z");
+  expect(outcome.profile).toMatchObject({ interviewDate: "2026-11-17", updatedAt: "2026-10-17T14:00:00.000Z", targetFirms: ["Private firm"] });
+  expect(outcome.invalid).toMatchObject({ submittedAt: "broken", rawInput: "private raw input" });
+  expect(outcome.firstIds).toEqual(["newer"]);
+  expect(outcome.secondIds).toEqual(["older"]);
+  expect(outcome.indexContinues).toBe(1);
+  expect(outcome.metadata.version).toBe(appDatabaseVersion);
+  expect(outcome.metadata.flags).toContainEqual({ id: "chronology:responses", requiresScan: true });
+  expect(outcome.metadata.flags).not.toContainEqual(expect.objectContaining({ id: "chronology:benchmark_results" }));
+});
+
+test("@browser-smoke native chronology pages signed years and ties in both directions and resets compatibility flags", async ({ page }) => {
+  await prepare(page);
+  const rows = [
+    chronologyBenchmark("future", "+010000-01-01T00:00:00.000Z"), chronologyBenchmark("negative", "-000001-01-01T00:00:00.000Z"),
+    chronologyBenchmark("tie_a", "2026-10-17T10:00:00-04:00"), chronologyBenchmark("tie_Z", "2026-10-17T14:00:00Z"),
+    chronologyBenchmark("older", "2026-10-17T13:00:00Z"), chronologyBenchmark("invalid", "broken")
+  ];
+  await seedVersion10(page, { benchmark_results: rows });
+  const outcome = await page.evaluate(async (rows) => {
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    const readFlag = () => new Promise<boolean>((resolve, reject) => {
+      const request = indexedDB.open(window.storageTestApi.appDatabaseName);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction("_coordination");
+        const flag = transaction.objectStore("_coordination").get("chronology:benchmark_results");
+        transaction.oncomplete = () => { database.close(); resolve(flag.result?.requiresScan === true); };
+        transaction.onerror = transaction.onabort = () => { database.close(); reject(transaction.error); };
+      };
+    });
+    try {
+      await storage.getGeneration();
+      const flags = [await readFlag()];
+      const sequences: string[][] = [];
+      for (const direction of ["next", "prev"] as const) {
+        const ids: string[] = [];
+        let afterKey: IDBValidKey | undefined;
+        do {
+          const result = await storage.getPage("benchmark_results", "completed_at_id", { direction, limit: 2, afterKey });
+          for (const value of result.values) ids.push(value.id);
+          afterKey = result.continuationKey;
+        } while (afterKey !== undefined);
+        sequences.push(ids);
+      }
+      const summary = await window.storageTestApi.loadBenchmarkHistorySnapshot(storage);
+      await storage.clear("benchmark_results");
+      flags.push(await readFlag());
+      await storage.put("benchmark_results", rows[0]);
+      flags.push(await readFlag());
+      await storage.replaceSnapshot({ benchmark_results: [rows[2]] });
+      flags.push(await readFlag());
+      const normalizedWrite = await storage.get("benchmark_results", "tie_a");
+      await storage.replaceSnapshot({ benchmark_results: [rows[1]] }, { expectedGeneration: 1 });
+      flags.push(await readFlag());
+      await storage.replaceSnapshot({ benchmark_results: [] }, { expectedGeneration: 2 });
+      flags.push(await readFlag());
+      return { sequences, summary: summary.aggregates[0], flags, normalizedWrite };
+    } finally { storage.close(); }
+  }, rows);
+  expect(outcome.sequences).toEqual([
+    ["invalid", "negative", "older", "tie_Z", "tie_a", "future"], ["future", "tie_a", "tie_Z", "older", "negative", "invalid"]
+  ]);
+  expect(outcome.summary).toMatchObject({ latest: { id: "future" }, previous: { id: "tie_a" }, best: { id: "future" }, bestScore: { id: "future" } });
+  expect(outcome.flags).toEqual([true, false, true, false, true, false]);
+  expect(outcome.normalizedWrite?.completedAt).toBe("2026-10-17T14:00:00.000Z");
+});
+
+test("@browser-smoke native chronology migration and cursor exceptions abort without partial changes", async ({ page }) => {
+  await prepare(page);
+  await seedVersion10(page, { benchmark_results: [chronologyBenchmark("offset", "2026-10-17T10:00:00-04:00")] });
+  const outcome = await page.evaluate(async () => {
+    const originalUpdate = IDBCursor.prototype.update;
+    IDBCursor.prototype.update = function () { throw new DOMException("Synthetic migration fault", "QuotaExceededError"); };
+    const failed = window.storageTestApi.createIndexedDbAppStorage();
+    let migrationError;
+    try { await failed.get("benchmark_results", "offset"); }
+    catch (error) { migrationError = (error as Error).name; }
+    finally { IDBCursor.prototype.update = originalUpdate; failed.close(); }
+    const retained = await new Promise<{ version: number; completedAt: string }>((resolve, reject) => {
+      const request = indexedDB.open(window.storageTestApi.appDatabaseName);
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => {
+        const database = request.result;
+        const transaction = database.transaction("benchmark_results");
+        const row = transaction.objectStore("benchmark_results").get("offset");
+        transaction.oncomplete = () => { database.close(); resolve({ version: database.version, completedAt: row.result.completedAt }); };
+        transaction.onerror = transaction.onabort = () => { database.close(); reject(transaction.error); };
+      };
+    });
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    try {
+      const recovered = await storage.get("benchmark_results", "offset");
+      const pageErrors = [];
+      for (const completedAt of ["2026-10-17T14:00:00Z", "+010000-01-01T00:00:00.000Z"]) {
+        await storage.put("benchmark_results", { ...recovered!, completedAt });
+        const originalContinue = IDBCursor.prototype.continue;
+        IDBCursor.prototype.continue = function () { throw new DOMException("Synthetic cursor fault", "UnknownError"); };
+        try { await storage.getPage("benchmark_results", "completed_at_id", { direction: "prev", limit: 1 }); }
+        catch (error) { pageErrors.push((error as Error).name); }
+        finally { IDBCursor.prototype.continue = originalContinue; }
+      }
+      return { migrationError, retained, recovered: recovered?.completedAt, pageErrors };
+    } finally { storage.close(); }
+  });
+  expect(outcome).toEqual({ migrationError: "QuotaExceededError", retained: { version: 10, completedAt: "2026-10-17T10:00:00-04:00" }, recovered: "2026-10-17T14:00:00.000Z", pageErrors: ["UnknownError", "UnknownError"] });
+});
 
 test("@browser-smoke native Fit stories reject stale edits, deletes and deleted-story resurrection", async ({ context, page }) => {
   await prepare(page);

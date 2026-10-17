@@ -15,7 +15,7 @@ import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 describe("typed app storage", () => {
   it("defines the MVP IndexedDB stores", () => {
     expect(appDatabaseName).toBe("consulting_math_drill_tool");
-    expect(appDatabaseVersion).toBe(10);
+    expect(appDatabaseVersion).toBe(11);
     expect(progressStoreNames).toEqual([
       "drill_sessions",
       "responses",

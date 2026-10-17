@@ -202,5 +202,5 @@ function isPreferredMetricTie(candidate: BenchmarkResultRecord, current: Benchma
 }
 
 function compareResults(first: BenchmarkResultRecord, second: BenchmarkResultRecord): number {
-  return compareAbsoluteTimestamps(first.completedAt, second.completedAt) || first.id.localeCompare(second.id);
+  return compareAbsoluteTimestamps(first.completedAt, second.completedAt) || (first.id < second.id ? -1 : first.id > second.id ? 1 : 0);
 }

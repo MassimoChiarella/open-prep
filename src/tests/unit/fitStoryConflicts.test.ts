@@ -14,7 +14,7 @@ describe("Fit story write conflicts", () => {
     const saved = await saveFitStory(storage, newer, first.token);
     await expect(saveFitStory(storage, { ...second.story, result: "Stale result" }, second.token)).rejects.toThrow("changed");
     await expect(deleteFitStory(storage, story.id, second.token)).rejects.toThrow("changed");
-    expect(await storage.get("practice_records", story.id)).toEqual(newer);
+    expect(await storage.get("practice_records", story.id)).toEqual({ ...newer, updatedAt: "2026-10-17T12:00:00.000Z" });
     await deleteFitStory(storage, story.id, saved);
     await expect(saveFitStory(storage, second.story, second.token)).rejects.toThrow("changed");
     expect(await storage.get("practice_records", story.id)).toBeUndefined();

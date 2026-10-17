@@ -43,7 +43,7 @@ describe("Fit story recovery and rehearsal identity", () => {
     expect(screen.getByText("1 saved")).toBeInTheDocument();
     expect(screen.getByLabelText("Story")).toHaveValue(older.id);
     expect(screen.getByRole("button", { name: "Start Rehearsal" })).toBeEnabled();
-    expect(storage.peekAll("practice_records")).toEqual([older]);
+    expect(storage.peekAll("practice_records")).toEqual([{ ...older, updatedAt: "2026-10-01T00:00:00.000Z" }]);
   });
 
   it("keeps the nonfirst story, chosen prompt and elapsed rehearsal through a wrapper language update", async () => {
@@ -123,7 +123,7 @@ describe("Fit story recovery and rehearsal identity", () => {
     fireEvent.click(screen.getByRole("button", { name: "Finish Rehearsal" }));
     fireEvent.click(screen.getByRole("button", { name: "Save Self-Review" }));
     await waitFor(() => expect(storage.peekAll("practice_records").find((record) => record.kind === "attempt")).toMatchObject({ itemId: "conflict-team" }));
-    expect(storage.peekAll("practice_records").filter((record) => record.kind === "fit_story")).toEqual([leadership]);
+    expect(storage.peekAll("practice_records").filter((record) => record.kind === "fit_story")).toEqual([{ ...leadership, updatedAt: "2026-10-01T00:00:00.000Z" }]);
   });
 
   it("does not resurrect a successfully deleted story from a delayed reload", async () => {

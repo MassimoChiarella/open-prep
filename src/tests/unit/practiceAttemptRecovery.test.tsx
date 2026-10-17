@@ -113,7 +113,7 @@ describe("completed practice save recovery", () => {
     await act(async () => { expect(await result.current.retrySave()).toBe(false); });
     expect(writes).toHaveBeenCalledTimes(2);
     await act(async () => { release(); expect(await retry).toBe(true); });
-    expect(storage.peekAll("practice_records")[0]).toMatchObject({ score: 2, completedAt: "2026-09-01T12:00:00Z" });
+    expect(storage.peekAll("practice_records")[0]).toMatchObject({ score: 2, completedAt: "2026-09-01T12:00:00.000Z" });
   });
 
   it("keeps a synthesis answer edit after a delayed old save completes", async () => {

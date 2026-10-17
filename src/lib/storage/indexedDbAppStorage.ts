@@ -23,6 +23,8 @@ import {
 } from "@/lib/storage/appStorageTypes";
 import { createAtomicView, isPrivateDraftKey, lifecycleMetadataKey, practiceRevisionKey, sessionRevisionKey } from "@/lib/storage/storageCoordination";
 import { assertPersistableRecord, maxStoredPackDepth } from "@/lib/validation/inputLimits";
+import { normalizeStoredTimestamps } from "@/lib/storage/storedTimestamps";
+import { chronologyMetadataKey, compareTimestampIndexKeys, requiresChronologyScan } from "@/lib/storage/storageChronology";
 
 // One document lifecycle, including adapters created later by an already-open form.
 // A successful destructive action navigates through the existing invalidation shell.
@@ -191,19 +193,25 @@ class IndexedDbAppStorage implements AppStorage {
     const direction = options.direction ?? "next";
 
     return new Promise((resolve, reject) => {
-      const transaction = database.transaction(storeName, "readonly");
+      const transaction = database.transaction([storeName, appCoordinationStoreName], "readonly");
       const values: AppStoreValue<TStore>[] = [];
       let continuationKey: IDBValidKey | undefined;
       let hasMore = false;
+      let failure: unknown;
+      const abort = (error: unknown) => {
+        failure = error;
+        try { transaction.abort(); } catch { /* An already-finished read cannot continue. */ }
+        reject(error);
+      };
 
       transaction.oncomplete = () => resolve({
         ...(hasMore && continuationKey !== undefined ? { continuationKey } : {}),
         values
       });
-      transaction.onerror = () => reject(transaction.error ?? new Error(`IndexedDB page failed: ${storeName}.`));
-      transaction.onabort = () => reject(transaction.error ?? new Error(`IndexedDB page failed: ${storeName}.`));
+      transaction.onerror = () => reject(failure ?? transaction.error ?? new Error(`IndexedDB page failed: ${storeName}.`));
+      transaction.onabort = () => reject(failure ?? transaction.error ?? new Error(`IndexedDB page failed: ${storeName}.`));
 
-      try {
+      const startIndexPage = () => {
         const range = options.afterKey === undefined
           ? undefined
           : direction === "prev"
@@ -211,25 +219,68 @@ class IndexedDbAppStorage implements AppStorage {
             : IDBKeyRange.lowerBound(options.afterKey, true);
         const request = transaction.objectStore(storeName).index(indexName).openCursor(range, direction);
 
-        request.onerror = () => reject(request.error ?? new Error(`IndexedDB page request failed: ${storeName}.`));
+        request.onerror = () => abort(request.error ?? new Error(`IndexedDB page request failed: ${storeName}.`));
         request.onsuccess = () => {
-          const cursor = request.result;
-
-          if (cursor === null) {
-            return;
-          }
-          if (values.length === options.limit) {
-            hasMore = true;
-            return;
-          }
-
-          values.push(cursor.value as AppStoreValue<TStore>);
-          continuationKey = cursor.key;
-          cursor.continue();
+          try {
+            const cursor = request.result;
+            if (cursor === null) return;
+            if (values.length === options.limit) {
+              hasMore = true;
+              return;
+            }
+            values.push(cursor.value as AppStoreValue<TStore>);
+            continuationKey = cursor.key;
+            cursor.continue();
+          } catch (error) { abort(error); }
         };
-      } catch (error) {
-        reject(error);
-      }
+      };
+      const startCompatibilityPage = () => {
+        // Exceptional years or malformed legacy dates require a scan; ordinary histories keep the index fast path.
+        // Retain only limit + 1 candidates, even when an old store contains a very large history.
+        // The flag can outlive individual deletions; clearing or replacing the store resets it.
+        const selected: Array<{ key: IDBValidKey; value: AppStoreValue<TStore> }> = [];
+        const compare = (first: IDBValidKey, second: IDBValidKey) =>
+          compareTimestampIndexKeys(first, second, (left, right) => this.indexedDbFactory.cmp(left, right)) * (direction === "prev" ? -1 : 1);
+        const request = transaction.objectStore(storeName).index(indexName).openCursor();
+        request.onerror = () => abort(request.error ?? new Error(`IndexedDB compatibility page failed: ${storeName}.`));
+        request.onsuccess = () => {
+          try {
+            const cursor = request.result;
+            if (cursor === null) {
+              hasMore = selected.length > options.limit;
+              for (const entry of selected.slice(0, options.limit)) {
+                values.push(entry.value);
+                continuationKey = entry.key;
+              }
+              return;
+            }
+            const key = cursor.key;
+            if ((options.afterKey === undefined || compare(key, options.afterKey) > 0) &&
+                (selected.length <= options.limit || compare(key, selected[selected.length - 1].key) < 0)) {
+              let low = 0;
+              let high = selected.length;
+              while (low < high) {
+                const middle = Math.floor((low + high) / 2);
+                if (compare(selected[middle].key, key) < 0) low = middle + 1;
+                else high = middle;
+              }
+              selected.splice(low, 0, { key, value: cursor.value as AppStoreValue<TStore> });
+              if (selected.length > options.limit + 1) selected.pop();
+            }
+            cursor.continue();
+          } catch (error) { abort(error); }
+        };
+      };
+      try {
+        const flag = transaction.objectStore(appCoordinationStoreName).get(chronologyMetadataKey(storeName));
+        flag.onerror = () => abort(flag.error ?? new Error(`IndexedDB chronology metadata failed: ${storeName}.`));
+        flag.onsuccess = () => {
+          try {
+            if (flag.result?.requiresScan === true) startCompatibilityPage();
+            else startIndexPage();
+          } catch (error) { abort(error); }
+        };
+      } catch (error) { abort(error); }
     });
   }
 
@@ -323,6 +374,7 @@ class IndexedDbAppStorage implements AppStorage {
                     const store = transaction.objectStore(operation.storeName);
                     if (operation.type === "clear") {
                       last = store.clear();
+                      metadata.delete(chronologyMetadataKey(operation.storeName));
                       if (operation.storeName === "drill_sessions") {
                         revisions.clear();
                         metadata.delete(IDBKeyRange.bound("session:", "session;", false, true));
@@ -332,7 +384,11 @@ class IndexedDbAppStorage implements AppStorage {
                       last = store.delete(operation.key);
                       if (operation.storeName === "drill_sessions") metadata.delete(sessionRevisionKey(String(operation.key)));
                     } else {
-                      last = store.put(operation.value);
+                      const value = normalizeStoredTimestamps(operation.storeName, operation.value);
+                      last = store.put(value);
+                      if (requiresChronologyScan(operation.storeName, value)) {
+                        metadata.put({ id: chronologyMetadataKey(operation.storeName), requiresScan: true });
+                      }
                       if (operation.storeName === "drill_sessions") {
                         const id = operation.value.id;
                         const request = metadata.get(sessionRevisionKey(id));
@@ -496,13 +552,19 @@ function openIndexedDbDatabase(indexedDbFactory: IDBFactory, onClosed: () => voi
   return new Promise((resolve, reject) => {
     const request = indexedDbFactory.open(appDatabaseName, appDatabaseVersion);
     let rejected = false;
-    const fail = (error: Error | DOMException) => {
+    let upgradeFailure: unknown;
+    const fail = (error: unknown) => {
       rejected = true;
       reject(error);
     };
 
-    request.onupgradeneeded = () => {
-      upgradeDatabase(request.result, request.transaction);
+    request.onupgradeneeded = (event) => {
+      const abortUpgrade = (error: unknown) => {
+        upgradeFailure ??= error;
+        try { request.transaction?.abort(); } catch { /* The open error handler reports an aborted upgrade. */ }
+      };
+      try { upgradeDatabase(request.result, request.transaction, event.oldVersion, abortUpgrade); }
+      catch (error) { abortUpgrade(error); }
     };
     request.onsuccess = () => {
       const database = request.result;
@@ -519,12 +581,12 @@ function openIndexedDbDatabase(indexedDbFactory: IDBFactory, onClosed: () => voi
       database.onclose = onClosed;
       resolve(database);
     };
-    request.onerror = () => fail(request.error ?? new Error(`Unable to open IndexedDB database "${appDatabaseName}".`));
+    request.onerror = () => fail(upgradeFailure ?? request.error ?? new Error(`Unable to open IndexedDB database "${appDatabaseName}".`));
     request.onblocked = () => fail(new Error(`IndexedDB database "${appDatabaseName}" is blocked by another tab.`));
   });
 }
 
-function upgradeDatabase(database: IDBDatabase, transaction: IDBTransaction | null): void {
+function upgradeDatabase(database: IDBDatabase, transaction: IDBTransaction | null, oldVersion: number, abortUpgrade: (error: unknown) => void): void {
   if (!database.objectStoreNames.contains(appCoordinationStoreName)) {
     database.createObjectStore(appCoordinationStoreName, { keyPath: "id" }).put({ id: lifecycleMetadataKey, generation: 0 });
   }
@@ -560,5 +622,28 @@ function upgradeDatabase(database: IDBDatabase, transaction: IDBTransaction | nu
   const packStore = transaction.objectStore("question_packs");
   if (!packStore.indexNames.contains(appStoreIndexNames.question_packs)) {
     packStore.createIndex(appStoreIndexNames.question_packs, ["importedAt", "id"]);
+  }
+
+  if (oldVersion < 11) {
+    const metadata = transaction.objectStore(appCoordinationStoreName);
+    for (const storeName of appStoreNames) {
+      metadata.delete(chronologyMetadataKey(storeName));
+      const request = transaction.objectStore(storeName).openCursor();
+      request.onerror = () => abortUpgrade(request.error ?? new Error(`Timestamp migration failed: ${storeName}.`));
+      request.onsuccess = () => {
+        try {
+          const cursor = request.result;
+          if (cursor === null) return;
+          const original = cursor.value;
+          const value = normalizeStoredTimestamps(storeName, original);
+          if (value !== original) {
+            const update = cursor.update(value);
+            update.onerror = () => abortUpgrade(update.error ?? new Error(`Timestamp migration update failed: ${storeName}.`));
+          }
+          if (requiresChronologyScan(storeName, value)) metadata.put({ id: chronologyMetadataKey(storeName), requiresScan: true });
+          cursor.continue();
+        } catch (error) { abortUpgrade(error); }
+      };
+    }
   }
 }

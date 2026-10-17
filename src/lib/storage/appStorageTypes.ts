@@ -26,7 +26,7 @@ import type {
 } from "@/lib/domain";
 
 export const appDatabaseName = "consulting_math_drill_tool";
-export const appDatabaseVersion = 10;
+export const appDatabaseVersion = 11;
 // Coordination is local to this database and is deliberately absent from learner exports.
 export const appCoordinationStoreName = "_coordination";
 

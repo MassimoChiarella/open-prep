@@ -16,7 +16,7 @@ describe("private draft transaction guards", () => {
     await writeFullCaseDraft(storage, draft.simulationId, shared, newer);
     await expect(writeFullCaseDraft(storage, draft.simulationId, shared, draft)).rejects.toMatchObject({ reason: "practice" });
     await expect(writeFullCaseDraft(storage, draft.simulationId, shared)).rejects.toMatchObject({ reason: "practice" });
-    expect((await readFullCaseDraft(storage, draft.simulationId)).draft).toEqual(newer);
+    expect((await readFullCaseDraft(storage, draft.simulationId)).draft).toEqual({ ...newer, startedAt: "2026-10-04T00:00:00.000Z", updatedAt: "2026-10-04T00:00:00.000Z" });
   });
 
   it("retains a tombstone across deletion, history clear, and draft recreation", async () => {

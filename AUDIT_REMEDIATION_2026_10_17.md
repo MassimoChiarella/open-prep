@@ -45,7 +45,7 @@ Baseline: `627e012faff587603e0d4b6ae2110532a38acf35` (17 October audit). This is
 
 | Milestone | Implementation | Acceptance | Status |
 | --- | --- | --- | --- |
-| M16 | #9 Canonicalize absolute timestamps after integrity validation and handle legacy/native index order | Offset timestamps preserve chronology, ties, paged latest/best and prep-plan recent scores; date-only interview dates unchanged | Import/comparison complete — 152 tests/12 suites; Complete boundary 32 tests/4 suites verifies original checksums and private date preservation; native migration pending |
+| M16 | #9 Canonicalize absolute timestamps after integrity validation and handle legacy/native index order | Offset timestamps preserve chronology, ties, paged latest/best and prep-plan recent scores; date-only interview dates unchanged | Complete — pure layer 152 tests; Complete boundary 32 tests; native v11 migration/paging/rollback 9 cases across 3 engines; 98 focused compatibility tests and ESLint |
 | M17 | #13 Downgrade self-declared restored repository review provenance | Invented/copied claims cannot display verified badge; content, offline restore and historical backup compatibility retained | Complete — 76 tests/7 focused suites; targeted ESLint; worker/native UI regression added for integration |
 
 ## Phase 5 — Maintain dependencies and reliable checks

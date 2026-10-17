@@ -24,6 +24,10 @@ describe("benchmark result persistence", () => {
     expect((await loadBenchmarkHistorySnapshot(storage)).aggregates[0]).toMatchObject({
       latest: { id: "same-instant-a" }, previous: { id: "newer" }, best: { id: "newer" }, bestScore: { id: "newer" }
     });
+    for (const id of ["tie_a", "tie_Z"]) await storage.put("benchmark_results", { ...first, id, completedAt: "2026-10-17T15:00:00Z" });
+    expect((await loadBenchmarkHistorySnapshot(storage)).aggregates[0]).toMatchObject({
+      latest: { id: "tie_a" }, previous: { id: "tie_Z" }, best: { id: "tie_Z" }, bestScore: { id: "tie_Z" }
+    });
   });
   it("persists complete records", async () => {
     const storage = new MemoryAppStorage();

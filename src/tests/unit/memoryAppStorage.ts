@@ -20,6 +20,8 @@ import {
 import { AppStorageConflictError } from "@/lib/storage/appStorageTypes";
 import { createAtomicView, isPrivateDraftKey } from "@/lib/storage/storageCoordination";
 import { assertPersistableRecord, maxStoredPackDepth } from "@/lib/validation/inputLimits";
+import { normalizeStoredTimestamps } from "@/lib/storage/storedTimestamps";
+import { compareTimestampIndexKeys } from "@/lib/storage/storageChronology";
 
 export class MemoryAppStorage implements AppStorage {
   private readonly stores = new Map<AppStoreName, Map<IDBValidKey, AppDatabaseSchema[AppStoreName]>>();
@@ -109,11 +111,11 @@ export class MemoryAppStorage implements AppStorage {
     const direction = options.direction ?? "next";
     const records = this.peekAll(storeName)
       .map((value) => ({ key: indexKey(storeName, indexName, value), value }))
-      .sort((first, second) => compareKeys(first.key, second.key) * (direction === "prev" ? -1 : 1))
+      .sort((first, second) => compareTimestampIndexKeys(first.key, second.key, compareKeys) * (direction === "prev" ? -1 : 1))
       .filter(({ key }) => options.afterKey === undefined || (
         direction === "prev"
-          ? compareKeys(key, options.afterKey) < 0
-          : compareKeys(key, options.afterKey) > 0
+          ? compareTimestampIndexKeys(key, options.afterKey, compareKeys) < 0
+          : compareTimestampIndexKeys(key, options.afterKey, compareKeys) > 0
       ));
     const selected = records.slice(0, options.limit);
 
@@ -128,7 +130,7 @@ export class MemoryAppStorage implements AppStorage {
   async put<TStore extends AppStoreName>(storeName: TStore, value: AppStoreValue<TStore>): Promise<void> {
     // Direct writes also seed fault-injection fixtures before a failing multi-write transaction.
     assertPersistableRecord(value, storeName === "question_packs" ? { maxDepth: maxStoredPackDepth } : {});
-    this.seedLegacy(storeName, value);
+    this.seedLegacy(storeName, normalizeStoredTimestamps(storeName, value));
   }
 
   /** Represents an older app or an external database edit, bypassing today's write validation. */
@@ -183,7 +185,7 @@ export class MemoryAppStorage implements AppStorage {
         if (operation.storeName === "drill_sessions") revisions.delete(String(operation.key));
       } else {
         assertPersistableRecord(operation.value, operation.storeName === "question_packs" ? { maxDepth: maxStoredPackDepth } : {});
-        store.set(operation.value.id, structuredClone(operation.value));
+        store.set(operation.value.id, structuredClone(normalizeStoredTimestamps(operation.storeName, operation.value)));
         if (operation.storeName === "drill_sessions") revisions.set(operation.value.id, (revisions.get(operation.value.id) ?? 0) + 1);
       }
     }
