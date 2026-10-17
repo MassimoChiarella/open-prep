@@ -495,6 +495,7 @@ test("beginner benchmark completes and appears in local history", async ({ page 
   ]);
 
   await page.goto("/benchmark");
+  await page.getByTestId("benchmark-history-disclosure").locator("summary").click();
   await expect(page.getByTestId("benchmark-history")).toContainText("1 saved");
 });
 
