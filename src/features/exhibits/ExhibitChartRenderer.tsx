@@ -36,7 +36,7 @@ const chartWidth = 720;
 const chartHeight = 320;
 
 export const ExhibitChartRenderer = memo(function ExhibitChartRenderer({ dataset }: ExhibitChartRendererProps) {
-  const { formatNumber, t } = useI18n();
+  const { formatNumber, locale, t } = useI18n();
   const chartData = getExhibitChartData(dataset);
   const series = getExhibitChartSeries(dataset);
   const chartTypeLabel = t(chartTypeLabels[dataset.visualization.type]);
@@ -46,7 +46,7 @@ export const ExhibitChartRenderer = memo(function ExhibitChartRenderer({ dataset
   }
 
   const fitsContainer = dataset.visualization.type === "pie_chart" || dataset.visualization.type === "scatterplot";
-  const chart = renderChart(dataset, chartData, series, t);
+  const chart = renderChart(dataset, chartData, series, t, locale);
 
   return (
     <section
@@ -99,7 +99,8 @@ function renderChart(
   dataset: ExhibitDataset,
   chartData: readonly ExhibitChartDatum[],
   series: readonly ExhibitChartSeries[],
-  t: ReturnType<typeof useI18n>["t"]
+  t: ReturnType<typeof useI18n>["t"],
+  locale: string
 ) {
   const rechartsData = chartData.map((datum) => ({
     label: datum.label,
@@ -115,12 +116,12 @@ function renderChart(
         <XAxis dataKey="label" tick={chartTick} tickMargin={10} />
         <YAxis
           tick={chartTick}
-          tickFormatter={(value) => formatAxisTick(value, series[0])}
+          tickFormatter={(value) => formatAxisTick(value, series[0], locale)}
           width={72}
         />
         <Tooltip
           {...chartTooltipProps}
-          formatter={(value, name, item) => formatTooltipValue(value, name, series, item.dataKey)}
+          formatter={(value, name, item) => formatTooltipValue(value, name, series, item.dataKey, locale)}
           labelFormatter={(label) => t("Category: {label}", { label: String(label) })}
         />
         {series.map((item) => (
@@ -143,12 +144,12 @@ function renderChart(
         <XAxis dataKey="label" tick={chartTick} tickMargin={10} />
         <YAxis
           tick={chartTick}
-          tickFormatter={(value) => formatAxisTick(value, series[0])}
+          tickFormatter={(value) => formatAxisTick(value, series[0], locale)}
           width={72}
         />
         <Tooltip
           {...chartTooltipProps}
-          formatter={(value, name, item) => formatTooltipValue(value, name, series, item.dataKey)}
+          formatter={(value, name, item) => formatTooltipValue(value, name, series, item.dataKey, locale)}
           labelFormatter={(label) => t("Category: {label}", { label: String(label) })}
         />
         {series.map((item) => (
@@ -187,7 +188,7 @@ function renderChart(
           dataKey="x"
           name={xSeries.column.label}
           tick={chartTick}
-          tickFormatter={(value) => formatAxisTick(value, xSeries)}
+          tickFormatter={(value) => formatAxisTick(value, xSeries, locale)}
           type="number"
           unit=""
         />
@@ -195,7 +196,7 @@ function renderChart(
           dataKey="y"
           name={ySeries.column.label}
           tick={chartTick}
-          tickFormatter={(value) => formatAxisTick(value, ySeries)}
+          tickFormatter={(value) => formatAxisTick(value, ySeries, locale)}
           type="number"
           width={72}
         />
@@ -205,7 +206,7 @@ function renderChart(
           formatter={(value, name, item) => {
             const dataKey = String(item.dataKey ?? name);
             const chartSeries = dataKey === "x" ? xSeries : dataKey === "y" ? ySeries : undefined;
-            return formatTooltipValue(value, name, series, chartSeries?.column.id);
+            return formatTooltipValue(value, name, series, chartSeries?.column.id, locale);
           }}
         />
         <Scatter data={scatterData} fill={ySeries.color} isAnimationActive={false} name={ySeries.column.label} />
@@ -241,14 +242,14 @@ function renderChart(
         <XAxis dataKey="label" tick={chartTick} tickMargin={10} />
         <YAxis
           tick={chartTick}
-          tickFormatter={(value) => formatAxisTick(value, valueSeries)}
+          tickFormatter={(value) => formatAxisTick(value, valueSeries, locale)}
           width={72}
         />
         <Tooltip
           {...chartTooltipProps}
           formatter={(_value, name, item) => {
             const authoredValue = (item.payload as { authoredValue?: unknown } | undefined)?.authoredValue;
-            return formatTooltipValue(authoredValue, name, series, valueSeries.column.id);
+            return formatTooltipValue(authoredValue, name, series, valueSeries.column.id, locale);
           }}
           labelFormatter={(label) => t("Category: {label}", { label: String(label) })}
         />
@@ -274,7 +275,7 @@ function renderChart(
         formatter={(value, name) => {
           const numericValue = typeof value === "number" ? value : Number(value);
           return [
-            Number.isFinite(numericValue) ? formatExhibitCellValue(numericValue, pieSeries.column) : String(value),
+            Number.isFinite(numericValue) ? formatExhibitCellValue(numericValue, pieSeries.column, locale) : String(value),
             String(name)
           ];
         }}
@@ -352,7 +353,7 @@ function ChartValueList({
   chartData: readonly ExhibitChartDatum[];
   dataset: ExhibitDataset;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
 
   return (
     <div
@@ -371,7 +372,7 @@ function ChartValueList({
               if (value === undefined || (column.role === "dimension" && String(value) === chartData[index]?.label)) return null;
               return (
                 <dd className="mt-1 min-w-0 text-sm text-ink/70 [overflow-wrap:anywhere]" key={column.id}>
-                  {column.label}: {formatExhibitCellValue(value, column)}
+                  {column.label}: {formatExhibitCellValue(value, column, locale)}
                 </dd>
               );
             })}
@@ -391,21 +392,22 @@ function ChartStat({ label, value }: { label: string; value: string }) {
   );
 }
 
-function formatAxisTick(value: string | number, series: ExhibitChartSeries | undefined): string {
+function formatAxisTick(value: string | number, series: ExhibitChartSeries | undefined, locale: string): string {
   const numericValue = typeof value === "number" ? value : Number(value);
 
   if (series === undefined || !Number.isFinite(numericValue)) {
     return String(value);
   }
 
-  return formatExhibitAxisValue(numericValue, series.column);
+  return formatExhibitAxisValue(numericValue, series.column, locale);
 }
 
 function formatTooltipValue(
   value: unknown,
   name: unknown,
   series: readonly ExhibitChartSeries[],
-  dataKey?: unknown
+  dataKey: unknown,
+  locale: string
 ): [string, string] {
   const columnId = String(dataKey ?? name);
   const column = series.find((item) => item.column.id === columnId)?.column;
@@ -415,7 +417,7 @@ function formatTooltipValue(
     return [String(value), columnId];
   }
 
-  return [formatExhibitCellValue(numericValue, column), column.label];
+  return [formatExhibitCellValue(numericValue, column, locale), column.label];
 }
 
 const chartMargins = { bottom: 20, left: 8, right: 24, top: 12 };

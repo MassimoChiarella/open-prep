@@ -1,25 +1,29 @@
 import type { ExhibitCellValue, ExhibitColumn } from "@/features/exhibits/exhibitTypes";
 import type { UnitType } from "@/lib/domain";
 
-const compactAxisCurrency = new Intl.NumberFormat("en-US", {
-  currency: "USD",
-  maximumFractionDigits: 1,
-  minimumFractionDigits: 0,
-  notation: "compact",
-  style: "currency"
-});
+function createFormats(locale: string) {
+  return {
+    compactCurrency: new Intl.NumberFormat(locale, { currency: "USD", currencyDisplay: "narrowSymbol", maximumFractionDigits: 1, minimumFractionDigits: 0, notation: "compact", style: "currency" }),
+    currency: new Intl.NumberFormat(locale, { currency: "USD", currencyDisplay: "narrowSymbol", maximumSignificantDigits: 21, minimumFractionDigits: 0, style: "currency" }),
+    integer: new Intl.NumberFormat(locale, { maximumFractionDigits: 0 }),
+    decimal: new Intl.NumberFormat(locale, { maximumFractionDigits: 1 }),
+    number: new Intl.NumberFormat(locale, { maximumSignificantDigits: 21 }),
+    percentage: new Intl.NumberFormat(locale, { maximumSignificantDigits: 21, style: "percent" })
+  };
+}
 
-const practicalCurrency = new Intl.NumberFormat("en-US", {
-  currency: "USD",
-  maximumSignificantDigits: 21,
-  minimumFractionDigits: 0,
-  style: "currency"
-});
+// Reuse formatters across table cells without retaining an unbounded locale cache.
+let cached: { locale: string; formats: ReturnType<typeof createFormats> } | undefined;
+function formats(locale: string) {
+  if (cached?.locale !== locale) cached = { locale, formats: createFormats(locale) };
+  return cached.formats;
+}
 
-const integerNumber = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
-const oneDecimalNumber = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
-const preciseNumber = new Intl.NumberFormat("en-US", { maximumSignificantDigits: 21 });
-const precisePercentage = new Intl.NumberFormat("en-US", { maximumSignificantDigits: 21, style: "percent" });
+function formatted(format: Intl.NumberFormat, value: number): string {
+  return format.formatToParts(value)
+    .map((part) => part.type === "currency" ? "$" : part.value.replace(/[\u061c\u200e\u200f]/gu, ""))
+    .join("");
+}
 
 export const exhibitUnitLabels: Record<UnitType, string> = {
   b: "B",
@@ -38,44 +42,44 @@ export const exhibitUnitLabels: Record<UnitType, string> = {
   years: "Years"
 };
 
-export function formatExhibitCellValue(value: ExhibitCellValue, column: ExhibitColumn): string {
+export function formatExhibitCellValue(value: ExhibitCellValue, column: ExhibitColumn, locale = "en-US"): string {
   if (typeof value === "string") {
     return value;
   }
 
   if (column.valueType === "currency") {
-    return formatCurrency(value);
+    return formatted(formats(locale).currency, value);
   }
 
   if (column.valueType === "percentage") {
-    return formatPercentage(value);
+    return formatted(formats(locale).percentage, value);
   }
 
   if (column.valueType === "year") {
     return String(value);
   }
 
-  return formatNumber(value);
+  return formatNumber(value, locale);
 }
 
-export function formatExhibitAxisValue(value: number, column: ExhibitColumn): string {
-  if (column.valueType === "currency") return compactAxisCurrency.format(value);
-  if (column.valueType === "percentage") return `${oneDecimalNumber.format(value * 100)}%`;
-  return column.valueType === "year" ? String(value) : oneDecimalNumber.format(value);
+export function formatExhibitAxisValue(value: number, column: ExhibitColumn, locale = "en-US"): string {
+  if (column.valueType === "currency") return formatted(formats(locale).compactCurrency, value);
+  if (column.valueType === "percentage") return `${formatted(formats(locale).decimal, value * 100)}%`;
+  return column.valueType === "year" ? String(value) : formatted(formats(locale).decimal, value);
 }
 
-export function formatExhibitAnswerValue(value: number, unit: UnitType = "none"): string {
+export function formatExhibitAnswerValue(value: number, unit: UnitType = "none", locale = "en-US"): string {
   if (unit === "currency") {
-    return formatCurrency(value);
+    return formatted(formats(locale).currency, value);
   }
 
   if (unit === "percentage") {
-    return formatPercentage(value);
+    return formatted(formats(locale).percentage, value);
   }
 
   const label = exhibitUnitLabels[unit].toLowerCase();
 
-  return `${formatNumber(value)}${label.length === 0 ? "" : ` ${label}`}`;
+  return `${formatNumber(value, locale)}${label.length === 0 ? "" : ` ${label}`}`;
 }
 
 export function unitLabelForExhibitColumn(column: ExhibitColumn): string | undefined {
@@ -92,14 +96,7 @@ export function unitLabelForExhibitColumn(column: ExhibitColumn): string | undef
   return unitLabel;
 }
 
-function formatCurrency(value: number): string {
-  return practicalCurrency.format(value);
-}
-
-function formatNumber(value: number): string {
-  return (Number.isInteger(value) ? integerNumber : preciseNumber).format(value);
-}
-
-function formatPercentage(value: number): string {
-  return precisePercentage.format(value);
+function formatNumber(value: number, locale: string): string {
+  const selected = formats(locale);
+  return formatted(Number.isInteger(value) ? selected.integer : selected.number, value);
 }

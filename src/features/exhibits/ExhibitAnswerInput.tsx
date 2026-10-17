@@ -3,6 +3,7 @@
 import { NumericAnswerInput } from "@/components/NumericAnswerInput";
 
 import { isExhibitMultipleChoiceQuestion } from "@/features/exhibits/exhibitDataset";
+import { formatExhibitAnswerValue } from "@/features/exhibits/exhibitFormatting";
 import type { ExhibitQuestionSpec } from "@/features/exhibits/exhibitTypes";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import type { AnswerSpec } from "@/lib/domain";
@@ -22,7 +23,7 @@ export function ExhibitAnswerInput({
   question,
   value
 }: ExhibitAnswerInputProps) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
 
   if (isExhibitMultipleChoiceQuestion(question)) {
     return (
@@ -58,7 +59,7 @@ export function ExhibitAnswerInput({
         disabled={disabled}
         inputMode="decimal"
         onChange={(event) => onChange(event.currentTarget.value)}
-        placeholder={placeholderForAnswer(question.answer)}
+        placeholder={placeholderForAnswer(question.answer, locale)}
         type="text"
         value={value}
       />
@@ -66,9 +67,9 @@ export function ExhibitAnswerInput({
   );
 }
 
-function placeholderForAnswer(answer: AnswerSpec): string {
+function placeholderForAnswer(answer: AnswerSpec, locale: string): string {
   if (answer.unit === "currency") {
-    return "$12.5M";
+    return `$${formatExhibitAnswerValue(12.5, "none", locale)}M`;
   }
 
   if (answer.unit === "percentage_points") return "4 pp";

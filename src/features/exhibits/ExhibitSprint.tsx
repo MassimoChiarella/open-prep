@@ -522,7 +522,7 @@ function SprintFeedbackPanel({
   feedback: SprintFeedback;
   question: ExhibitQuestionSpec;
 }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
 
   return (
     <section
@@ -531,7 +531,7 @@ function SprintFeedbackPanel({
       role="status"
     >
       <p className="text-sm font-semibold text-ink">{feedback.message}</p>
-      <p className="text-sm text-ink/75">{t("Correct answer: {answer}", { answer: formatQuestionAnswer(question) })}</p>
+      <p className="text-sm text-ink/75">{t("Correct answer: {answer}", { answer: formatQuestionAnswer(question, locale) })}</p>
       <ol className="grid gap-1 text-sm leading-6 text-ink/70">
         {question.explanation.steps.map((step) => <li key={step}>{step}</li>)}
       </ol>
@@ -546,12 +546,12 @@ function SprintFeedbackPanel({
   );
 }
 
-function formatQuestionAnswer(question: ExhibitQuestionSpec): string {
+function formatQuestionAnswer(question: ExhibitQuestionSpec, locale: string): string {
   if (isExhibitMultipleChoiceQuestion(question)) {
     return question.choices.find((choice) => choice.id === question.correctChoiceId)?.label ?? "Unavailable";
   }
 
-  return formatExhibitAnswerValue(question.answer.value, question.answer.unit);
+  return formatExhibitAnswerValue(question.answer.value, question.answer.unit, locale);
 }
 
 function formatTime(

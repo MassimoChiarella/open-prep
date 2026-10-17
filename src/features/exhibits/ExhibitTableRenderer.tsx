@@ -15,7 +15,7 @@ interface ExhibitTableRendererProps {
 }
 
 export const ExhibitTableRenderer = memo(function ExhibitTableRenderer({ dataset }: ExhibitTableRendererProps) {
-  const { formatNumber, t } = useI18n();
+  const { formatNumber, locale, t } = useI18n();
   const columns = getExhibitTableColumns(dataset);
 
   return (
@@ -78,7 +78,7 @@ export const ExhibitTableRenderer = memo(function ExhibitTableRenderer({ dataset
                 >
                   {columns.map((column, columnIndex) => {
                     const className = tableCellClass(column, columnIndex);
-                    const value = formatExhibitCellValue(row.cells[column.id], column);
+                    const value = formatExhibitCellValue(row.cells[column.id], column, locale);
                     const testId = `exhibit-table-cell-${row.id}-${column.id}`;
 
                     return columnIndex === 0 ? (

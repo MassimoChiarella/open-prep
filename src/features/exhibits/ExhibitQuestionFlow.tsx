@@ -313,14 +313,14 @@ function DatasetColumnSummary({ label, value }: { label: string; value: string }
 }
 
 function SolutionPanel({ question }: { question: ExhibitQuestionSpec }) {
-  const { t } = useI18n();
+  const { locale, t } = useI18n();
 
   return (
     <section className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border-s-2 border-teal bg-mint px-3 py-3 [overflow-wrap:anywhere]" data-testid="exhibit-solution-panel">
       <div className="grid gap-1">
         <p className="text-xs font-semibold uppercase tracking-wide text-teal">{t("Solution")}</p>
         <p className="text-sm font-semibold leading-6 text-ink">
-          {t("Correct answer: {answer}", { answer: formatQuestionAnswer(question) })}
+          {t("Correct answer: {answer}", { answer: formatQuestionAnswer(question, locale) })}
         </p>
         <p className="text-sm leading-6 text-ink/75">{question.explanation.short}</p>
       </div>
@@ -413,12 +413,12 @@ async function submitExhibitAttempt({
   }
 }
 
-function formatQuestionAnswer(question: ExhibitQuestionSpec): string {
+function formatQuestionAnswer(question: ExhibitQuestionSpec, locale: string): string {
   if (isExhibitMultipleChoiceQuestion(question)) {
     return question.choices.find((choice) => choice.id === question.correctChoiceId)?.label ?? "Unavailable";
   }
 
-  return formatExhibitAnswerValue(question.answer.value, question.answer.unit);
+  return formatExhibitAnswerValue(question.answer.value, question.answer.unit, locale);
 }
 
 function getColumnLabels(dataset: ExhibitDataset, columnIds: readonly string[]): string[] {

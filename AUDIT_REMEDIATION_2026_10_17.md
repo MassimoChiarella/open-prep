@@ -27,7 +27,7 @@ Baseline: `627e012faff587603e0d4b6ae2110532a38acf35` (17 October audit). This is
 | Milestone | Implementation | Acceptance | Status |
 | --- | --- | --- | --- |
 | M07 | #4 Capture locale on each numeric edit in drills/benchmarks, exhibits/sprint and sizing | English→German and reverse preserve unchanged values; mixed-locale sizing fields work; healthy Full Case behavior retained | Complete — 63 UI/recovery tests plus 54 evaluator/scoring/persistence tests; targeted ESLint |
-| M08 | #5 Localize generated exhibit numbers and correct-answer displays | Displayed grouped/decimal/percentage answers parse under the active locale; currency denomination and authored prose retained | Pending |
+| M08 | #5 Localize generated exhibit numbers and correct-answer displays | Displayed grouped/decimal/percentage answers parse under the active locale; currency denomination and authored prose retained | Complete — 122 tests/7 suites; ten-locale round trips and real German/French copy-answer controls; targeted ESLint |
 
 ## Phase 3 — Close deterministic grading and content-validation gaps
 
