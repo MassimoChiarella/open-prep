@@ -3,7 +3,7 @@ import { evaluateFormulaExpression } from "@/lib/math/formulaEvaluator";
 import { rangeStepCount } from "@/lib/math/steppedRange";
 import { createSeededRandom, type SeededRandom } from "@/lib/random/seededRandom";
 
-import { getEligibleQuestionTemplates, pickQuestionTemplate } from "@/features/questions/templateSelection";
+import { getEligibleQuestionTemplates } from "@/features/questions/templateSelection";
 import {
   generateCustomArithmeticQuestion,
   hasCustomArithmeticSettings
@@ -114,13 +114,17 @@ export function generateQuestionsFromTemplates(
   seed: string | number,
   allowFewerQuestions = false
 ): Question[] {
+  const eligibleTemplates = getEligibleQuestionTemplates(templates, settings);
+  if (eligibleTemplates.length === 0) {
+    throw new Error("No question templates match the requested drill settings.");
+  }
   const random = createSeededRandom(seed);
   const questions: Question[] = [];
   const usedQuestionIds = new Set<string>();
   const maxAttempts = Math.max(settings.questionCount * 25, 25);
 
   for (let attempts = 0; questions.length < settings.questionCount && attempts < maxAttempts; attempts += 1) {
-    const template = pickQuestionTemplate(templates, settings, random);
+    const template = random.pick(eligibleTemplates);
     const question = generateQuestionFromTemplate(template, {
       difficulty: settings.difficulty,
       random,

@@ -149,7 +149,19 @@ describe("question generation", () => {
     const second = generateQuestionsFromTemplates(starterQuestionTemplates, settings, "session-seed");
 
     expect(first).toEqual(second);
+    expect(first.map((question) => question.id)).toEqual([
+      'multiplication_beginner_007:v2:[["a",200],["b",4]]',
+      'multiplication_beginner_003:v2:[["a",18],["b",25]]',
+      'multiplication_beginner_005:v2:[["a",75],["b",10]]',
+      'mixed_operations_beginner_008:v2:[["a",360],["b",30],["divisor",6]]'
+    ]);
     expect(new Set(first.map((question) => question.id)).size).toBe(first.length);
+  });
+
+  it("retains the actionable error when no templates match a generation request", () => {
+    expect(() => generateQuestionsFromTemplates(starterQuestionTemplates, drillSettings({
+      categories: ["exhibit_math"], difficulty: "beginner", questionCount: 5
+    }), "no-matching-template")).toThrow("No question templates match the requested drill settings.");
   });
 
   it("applies granular arithmetic settings to deterministic generated questions", () => {
