@@ -34,7 +34,7 @@ Baseline: `627e012faff587603e0d4b6ae2110532a38acf35` (17 October audit). This is
 | Milestone | Implementation | Acceptance | Status |
 | --- | --- | --- | --- |
 | M09 | #7 Deduplicate template probes before selection; exhaust complete domains within existing 256-probe budget | `a=1..10`, `1/(a-5)` rejected; large-domain cap retained; valid packs unchanged | Complete — focused pack suites 88/88; targeted ESLint |
-| M10 | Supporting #7 warning: questioning-rubric attainable maximum | Five intents / three questions reports author-review warning; no silent rubric normalization or legacy rejection | Pending |
+| M10 | Supporting #7 warning: questioning-rubric attainable maximum | Five intents / three questions reports author-review warning; no silent rubric normalization or legacy rejection | Complete — same 88-test pack validation; targeted ESLint |
 | M11 | #8 Validate explicit assumption units | `$0.6` ratio and `400%` currency rejected; valid bare/percent ratios and bare/currency prices retain credit | Pending |
 | M12 | #10 Repair Luma alternate reference and test all bundled reference winners | Ranked authored reference set reaches 100 and each reference matches its intended intent | Pending |
 | M13 | #11 Script-aware questioning match across punctuation | Chinese polite prefixes/clauses preserve concepts; Latin boundaries and typo safeguards retained | Pending |

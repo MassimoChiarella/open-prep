@@ -222,7 +222,7 @@ function reviewCasePractice(
   warnings: QuestionPackReviewWarning[]
 ): void {
   pack.questioningPrompts?.forEach((prompt, index) => {
-    reviewQuestioningReferences(prompt, `$.questioningPrompts[${index}]`, warnings);
+    reviewQuestioningPrompt(prompt, `$.questioningPrompts[${index}]`, warnings);
   });
 
   pack.structuringPrompts?.forEach((prompt, index) => {
@@ -240,7 +240,7 @@ function reviewCasePractice(
 
   pack.fullCases?.forEach((fullCase, index) => {
     if (fullCase.questioning !== undefined) {
-      reviewQuestioningReferences(fullCase.questioning, `$.fullCases[${index}].questioning`, warnings);
+      reviewQuestioningPrompt(fullCase.questioning, `$.fullCases[${index}].questioning`, warnings);
     }
     reviewAcceptedHypotheses(fullCase.structure, `$.fullCases[${index}].structure`, warnings);
     reviewExhibitDataset(fullCase.exhibit, `$.fullCases[${index}].exhibit`, warnings);
@@ -253,11 +253,19 @@ function reviewCasePractice(
   });
 }
 
-function reviewQuestioningReferences(
+function reviewQuestioningPrompt(
   prompt: CaseQuestioningPrompt,
   path: string,
   warnings: QuestionPackReviewWarning[]
 ): void {
+  if (prompt.maximumQuestions < prompt.intents.length) {
+    warnings.push({
+      code: "case-questioning-coverage-unreachable",
+      message: `At most ${prompt.maximumQuestions} of ${prompt.intents.length} intents can receive coverage credit. Review the question limit and rubric weights; full rubric coverage is not attainable.`,
+      path: `${path}.maximumQuestions`,
+      severity: "warning"
+    });
+  }
   for (const issue of analyzeCaseQuestioningReferences(prompt)) {
     warnings.push({
       code: "case-reference-question-concept-gap",

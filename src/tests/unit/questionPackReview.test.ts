@@ -4,6 +4,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { fitPracticePrompts } from "@/data/casePractice/fitPrompts";
+import { questioningPrompts } from "@/data/casePractice/questioningPrompts";
 import {
   getGeneratedTemplateCombinationCount,
   reviewQuestionPack
@@ -261,6 +262,33 @@ describe("question-pack review", () => {
     const benchmarkCodes = reviewQuestionPack(benchmarkPack).warnings.map(({ code }) => code);
     expect(benchmarkCodes).toContain("benchmark-threshold-not-exact");
     expect(benchmarkCodes).toContain("benchmark-band-unreachable");
+  });
+
+  it("warns about incomplete questioning coverage without rejecting or changing the rubric", () => {
+    const result = validateQuestionPackPayload({
+      format: "math-drill-question-pack", schemaVersion: 3, kind: "case_practice",
+      id: "limited-questioning", packVersion: "1", title: "Limited questioning",
+      questioningPrompts: [{ ...questioningPrompts[1], maximumQuestions: 3 }]
+    });
+    if (result.status === "invalid") throw new Error(result.errors.join("\n"));
+    if (result.pack.kind !== "case_practice") throw new Error("Expected a questioning pack.");
+    const prompt = result.pack.questioningPrompts![0];
+    const fullCasePack = validatedPublicPack("question-pack-v3-full-case-example.mathdrill.json");
+    if (fullCasePack.kind !== "case_practice") throw new Error("Expected a full-case pack.");
+    fullCasePack.fullCases![0].questioning = prompt;
+    for (const [pack, path] of [
+      [result.pack, "$.questioningPrompts[0].maximumQuestions"],
+      [fullCasePack, "$.fullCases[0].questioning.maximumQuestions"]
+    ] as const) {
+      const before = JSON.stringify(pack);
+      expect(reviewQuestionPack(pack).warnings).toContainEqual(expect.objectContaining({
+        code: "case-questioning-coverage-unreachable", path, severity: "warning"
+      }));
+      expect(JSON.stringify(pack)).toBe(before);
+    }
+    prompt.maximumQuestions = prompt.intents.length;
+    expect(reviewQuestionPack(result.pack).warnings.map(({ code }) => code))
+      .not.toContain("case-questioning-coverage-unreachable");
   });
 
   it("surfaces deterministic case stage and fit-story behavior", () => {
