@@ -32,6 +32,7 @@ export function BenchmarkSelectionView({
   selectedBenchmarkId
 }: BenchmarkSelectionViewProps) {
   const { t } = useI18n();
+  const [historyOpened, setHistoryOpened] = useState(false);
   const [rememberTiming, setRememberTiming] = useState(false);
   const [selectedTimingAccommodation, setSelectedTimingAccommodation] = useState<TimingAccommodation>();
   const rememberedTimingAccommodation = useSyncExternalStore<TimingAccommodation>(
@@ -85,7 +86,9 @@ export function BenchmarkSelectionView({
         />
       )}
 
-      <details className="group" data-testid="benchmark-history-disclosure">
+      <details className="group" data-testid="benchmark-history-disclosure" onToggle={(event) => {
+        if (event.currentTarget.open) setHistoryOpened(true);
+      }}>
         <summary className="cursor-pointer border-y border-ink/20 bg-transparent p-4 transition-colors hover:bg-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal focus-visible:ring-offset-2 sm:p-5">
           <span className="flex items-start justify-between gap-4">
             <span>
@@ -95,9 +98,9 @@ export function BenchmarkSelectionView({
             <span aria-hidden="true" className="text-xl font-semibold text-teal transition-transform motion-reduce:transition-none group-open:rotate-45">+</span>
           </span>
         </summary>
-        <div className="mt-4">
+        {historyOpened ? <div className="mt-4">
           <BenchmarkHistoryView benchmarks={benchmarks} />
-        </div>
+        </div> : null}
       </details>
     </main>
   );

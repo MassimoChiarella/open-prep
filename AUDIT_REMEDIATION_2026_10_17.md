@@ -70,7 +70,7 @@ Baseline measurements: five retained trials per scenario/rate, native Chromium a
 
 | Milestone | Implementation | Acceptance | Status |
 | --- | --- | --- | --- |
-| M24 | #20 Mount benchmark history on first open, retain afterward | Closed disclosure does not scan trends; all history and comparison behavior preserved | Pending |
+| M24 | #20 Mount benchmark history on first open, retain afterward | Closed disclosure does not scan trends; all history and comparison behavior preserved | Complete — 21 tests/4 benchmark suites; zero pre-open storage calls and no collapse/reopen reread; targeted ESLint |
 | M25 | #20 Reuse capacity and content-equivalent drill preview work | Timing/feedback changes avoid regeneration; deterministic previews and count clamping preserved | Pending |
 | M26 | #20 Filter eligible templates once per generation request | Seeded output/validation unchanged; no global unbounded cache or new dependency | Complete — 94 tests/6 focused suites; baseline seeded sequence retained; targeted ESLint |
 

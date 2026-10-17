@@ -1,5 +1,5 @@
-import { render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it } from "vitest";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { benchmarkTests } from "@/data/questionBank/benchmarkTests";
 import { BenchmarkSelectionView } from "@/features/benchmarks/BenchmarkSelectionView";
@@ -8,8 +8,10 @@ import {
   buildBenchmarkSessionHref
 } from "@/features/benchmarks/benchmarkSession";
 import { renderWithStoredLocale, resetI18nTestState } from "@/tests/renderWithStoredLocale";
+import * as indexedDbAppStorage from "@/lib/storage/indexedDbAppStorage";
+import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
-afterEach(resetI18nTestState);
+afterEach(() => { resetI18nTestState(); vi.restoreAllMocks(); });
 
 describe("BenchmarkSelectionView", () => {
   it("localizes the benchmark decision surface", async () => {
@@ -65,7 +67,7 @@ describe("BenchmarkSelectionView", () => {
     expect(historyDisclosure).not.toHaveAttribute("open");
     expect(within(historyDisclosure).getByText("Saved benchmark history")).toBeInTheDocument();
 
-    await screen.findByText("Benchmark history could not load.");
+    expect(screen.queryByTestId("benchmark-history")).not.toBeInTheDocument();
   });
 
   it("shows one concise start confirmation for the selected benchmark", async () => {
@@ -90,7 +92,7 @@ describe("BenchmarkSelectionView", () => {
       buildBenchmarkSessionHref("expert-pressure"),
     );
 
-    await screen.findByText("Benchmark history could not load.");
+    expect(screen.queryByTestId("benchmark-history")).not.toBeInTheDocument();
   });
 
   it("keeps legacy confirmation links and question-pack routing deterministic", async () => {
@@ -111,6 +113,31 @@ describe("BenchmarkSelectionView", () => {
     expect(buildBenchmarkSelectionHref("expert-pressure", "pack-one")).toBe(
       "/benchmark?benchmark=expert-pressure&pack=pack-one",
     );
-    await screen.findByText("Benchmark history could not load.");
+    expect(screen.queryByTestId("benchmark-history")).not.toBeInTheDocument();
+  });
+
+  it("loads history on first open and retains that view after collapsing it", async () => {
+    const storage = new MemoryAppStorage();
+    const createStorage = vi.spyOn(indexedDbAppStorage, "createIndexedDbAppStorage").mockReturnValue(storage);
+    const readPage = vi.spyOn(storage, "getPage");
+    render(<BenchmarkSelectionView benchmarks={benchmarkTests} />);
+    expect(createStorage).not.toHaveBeenCalled();
+    expect(screen.queryByTestId("benchmark-history")).not.toBeInTheDocument();
+
+    const disclosure = screen.getByTestId("benchmark-history-disclosure");
+    fireEvent.click(within(disclosure).getByText("Saved benchmark history"));
+    await screen.findByTestId("benchmark-history");
+    await waitFor(() => expect(screen.queryByTestId("benchmark-history-loading")).not.toBeInTheDocument());
+    const history = screen.getByTestId("benchmark-history");
+    expect(createStorage).toHaveBeenCalledTimes(1);
+    expect(readPage).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(within(disclosure).getByText("Saved benchmark history"));
+    expect(disclosure).not.toHaveAttribute("open");
+    expect(screen.getByTestId("benchmark-history")).toBe(history);
+    fireEvent.click(within(disclosure).getByText("Saved benchmark history"));
+    expect(screen.getByTestId("benchmark-history")).toBe(history);
+    expect(createStorage).toHaveBeenCalledTimes(1);
+    expect(readPage).toHaveBeenCalledTimes(1);
   });
 });
