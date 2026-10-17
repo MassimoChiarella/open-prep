@@ -4,6 +4,42 @@ import type { AnswerSpec } from "@/lib/domain";
 import { validateAnswer } from "@/lib/validation/validateAnswer";
 
 describe("validateAnswer", () => {
+  it.each([1e-9, 1e-10, 1e-12, -1e-10, 1e-300, -1e-300, Number.MIN_VALUE, -Number.MIN_VALUE])(
+    "keeps an exact nonzero answer distinct from zero at magnitude %s", (value) => {
+      const raw = new Intl.NumberFormat("en-US", { useGrouping: false, maximumSignificantDigits: 21 }).format(value);
+      for (const tolerance of [
+        undefined, { type: "absolute", value: 0 }, { type: "percentage", value: 0 },
+        { type: "range", min: value, max: value }
+      ] satisfies AnswerSpec["tolerance"][]) {
+        const answer = { value, tolerance };
+        expect(validateAnswer("0", answer).isCorrect).toBe(false);
+        expect(validateAnswer(raw, answer).isCorrect).toBe(true);
+      }
+    }
+  );
+
+  it.each([
+    [{ type: "absolute", value: 1e-12 }, "0.000000000099", "0.0000000000989"],
+    [{ type: "percentage", value: 0.1 }, "0.00000000009", "0.0000000000899"],
+    [{ type: "range", min: 9e-11, max: 1.1e-10 }, "0.00000000009", "0.0000000000899"]
+  ] satisfies Array<[AnswerSpec["tolerance"], string, string]>)(
+    "respects small authored tolerances %j without an absolute slack floor", (tolerance, boundary, outside) => {
+      const answer = { value: 1e-10, tolerance };
+      expect(validateAnswer(boundary, answer).isCorrect).toBe(true);
+      expect(validateAnswer(outside, answer).isCorrect).toBe(false);
+      expect(validateAnswer("0", answer).isCorrect).toBe(false);
+    }
+  );
+
+  it("allows representational roundoff without widening exact zero or overflowing large tolerances", () => {
+    expect(validateAnswer("0.3", { value: 0.1 + 0.2, tolerance: { type: "absolute", value: 0 } }).isCorrect).toBe(true);
+    expect(validateAnswer("0.0000000001", { value: 0 }).isCorrect).toBe(false);
+    const raw = new Intl.NumberFormat("en-US", { useGrouping: false, maximumSignificantDigits: 21 }).format(-Number.MAX_VALUE);
+    for (const tolerance of [{ type: "absolute", value: Number.MAX_VALUE }, { type: "percentage", value: 1 }] as const) {
+      expect(validateAnswer(raw, { value: Number.MAX_VALUE, tolerance }).isCorrect).toBe(false);
+    }
+  });
+
   it("distinguishes explicit no-unit answers from omitted and conflicting units", () => {
     const answer: AnswerSpec = { value: 5, unit: "none" };
     expect(validateAnswer("5", answer, { selectedUnit: "none" })).toMatchObject({

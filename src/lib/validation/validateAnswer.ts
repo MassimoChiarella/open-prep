@@ -20,7 +20,7 @@ export interface ValidationResult {
   unitStatus?: UnitValidationStatus;
 }
 
-const exactMatchEpsilon = 1e-9;
+const errorMatchEpsilon = 1e-9;
 const magnitudeFactors = [10, 100, 1_000];
 
 export function validateAnswer(
@@ -102,11 +102,11 @@ function normalizedValueCandidates(
 
 function isWithinTolerance(userValue: number, correctValue: number, tolerance?: ToleranceSpec): boolean {
   if (!tolerance) {
-    return Math.abs(userValue - correctValue) <= exactMatchEpsilon;
+    return isWithinDelta(userValue, correctValue, 0);
   }
 
   if (tolerance.type === "absolute") {
-    return Math.abs(userValue - correctValue) <= (tolerance.value ?? 0) + exactMatchEpsilon;
+    return isWithinDelta(userValue, correctValue, tolerance.value ?? 0);
   }
 
   if (tolerance.type === "percentage") {
@@ -115,12 +115,22 @@ function isWithinTolerance(userValue: number, correctValue: number, tolerance?: 
 
   const min = tolerance.min ?? Number.NEGATIVE_INFINITY;
   const max = tolerance.max ?? Number.POSITIVE_INFINITY;
-  return userValue >= min - exactMatchEpsilon && userValue <= max + exactMatchEpsilon;
+  return (userValue >= min || min - userValue <= comparisonSlack(userValue, min)) &&
+    (userValue <= max || userValue - max <= comparisonSlack(userValue, max));
 }
 
 function isWithinPercentageTolerance(userValue: number, correctValue: number, tolerance: number): boolean {
   const allowedDelta = Math.abs(correctValue) * tolerance;
-  return Math.abs(userValue - correctValue) <= allowedDelta + exactMatchEpsilon;
+  return isWithinDelta(userValue, correctValue, allowedDelta);
+}
+
+function isWithinDelta(userValue: number, correctValue: number, allowedDelta: number): boolean {
+  const difference = Math.abs(userValue - correctValue);
+  return difference <= allowedDelta || difference - allowedDelta <= comparisonSlack(userValue, correctValue);
+}
+
+function comparisonSlack(left: number, right: number): number {
+  return Math.max(Math.abs(left), Math.abs(right)) * Number.EPSILON * 4;
 }
 
 function getUnitStatus(
@@ -202,13 +212,13 @@ function isMagnitudeError(userValue: number, correctValue: number): boolean {
 
   const ratio = Math.abs(userValue / correctValue);
   return magnitudeFactors.some(
-    (factor) => Math.abs(ratio - factor) <= exactMatchEpsilon || Math.abs(ratio - 1 / factor) <= exactMatchEpsilon
+    (factor) => Math.abs(ratio - factor) <= errorMatchEpsilon || Math.abs(ratio - 1 / factor) <= errorMatchEpsilon
   );
 }
 
 function isPercentagePointError(userValue: number, answer: AnswerSpec): boolean {
   const percentagePointValue = answer.errorChecks?.percentagePointValue;
-  return percentagePointValue !== undefined && Math.abs(userValue - percentagePointValue) <= exactMatchEpsilon;
+  return percentagePointValue !== undefined && Math.abs(userValue - percentagePointValue) <= errorMatchEpsilon;
 }
 
 function isRoundingError(userValue: number, answer: AnswerSpec): boolean {
