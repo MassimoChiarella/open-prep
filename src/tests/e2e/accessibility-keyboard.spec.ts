@@ -408,6 +408,10 @@ test("a keyboard-opened native confirmation returns focus after cancellation", a
     "/drills/session?categories=arithmetic&tags=addition&count=1&feedbackMode=instant&hints=0&seed=keyboard-dialog"
   );
 
+  const answerInput = page.getByLabel("Answer", { exact: true });
+  await expect(answerInput).toBeEnabled();
+  await expectKeyboardFocus(answerInput);
+
   const exitLink = page.getByRole("link", { name: "Exit to Drills" });
   await tabTo(page, exitLink, "backward");
 
@@ -421,7 +425,7 @@ test("a keyboard-opened native confirmation returns focus after cancellation", a
   await expect(page).toHaveURL(/\/drills\/session/);
   await expect(exitLink).toBeFocused();
   await page.keyboard.press("Tab");
-  await expectKeyboardFocus(page.getByLabel("Answer", { exact: true }));
+  await expectKeyboardFocus(answerInput);
 });
 
 async function tabTo(
