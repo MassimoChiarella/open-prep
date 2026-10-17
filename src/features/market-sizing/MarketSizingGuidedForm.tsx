@@ -32,9 +32,11 @@ type StepValue = boolean | string;
 
 interface MarketSizingDraft {
   finalAnswer: string;
+  finalAnswerLocale?: string;
   interpretationId: string;
   note: string;
   stepValues: Record<string, StepValue>;
+  stepLocales?: Record<string, string>;
 }
 
 type AttemptSaveStatus = "error" | "idle" | "saved" | "saving";
@@ -70,11 +72,13 @@ export function MarketSizingGuidedForm({
         : evaluateMarketSizingDraft({
             acceptWithinTenPercent,
             finalAnswer: draft.finalAnswer,
+            finalAnswerLocale: draft.finalAnswerLocale,
             locale,
+            stepLocales: draft.stepLocales,
             stepValues: draft.stepValues,
             template: selectedTemplate
           }),
-    [acceptWithinTenPercent, draft.finalAnswer, draft.stepValues, locale, selectedTemplate]
+    [acceptWithinTenPercent, draft.finalAnswer, draft.finalAnswerLocale, draft.stepLocales, draft.stepValues, locale, selectedTemplate]
   );
   const assumptionEvaluationByStepId = useMemo(
     () => new Map((evaluation?.assumptionEvaluations ?? []).map((item) => [item.stepId, item])),
@@ -295,6 +299,10 @@ export function MarketSizingGuidedForm({
                     onChange={(value) =>
                       updateDraft((current) => ({
                         ...current,
+                        stepLocales: {
+                          ...current.stepLocales,
+                          [step.id]: step.inputKind === "integer" || step.inputKind === "number" ? "en" : locale
+                        },
                         stepValues: {
                           ...current.stepValues,
                           [step.id]: value
@@ -367,7 +375,7 @@ export function MarketSizingGuidedForm({
                   onChange={(event) => {
                     const finalAnswer = event.currentTarget.value;
 
-                    updateDraft((current) => ({ ...current, finalAnswer }));
+                    updateDraft((current) => ({ ...current, finalAnswer, finalAnswerLocale: locale }));
                   }}
                   placeholder={selectedTemplate.outputUnit === "currency" ? "e.g. $125M" : "e.g. 125000000"}
                   type="text"

@@ -86,6 +86,7 @@ export function ExhibitSprint({
   const [phase, setPhase] = useState<SprintPhase>("setup");
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answerDraft, setAnswerDraft] = useState("");
+  const [answerLocale, setAnswerLocale] = useState<string>(locale);
   const [feedback, setFeedback] = useState<SprintFeedback>();
   const [results, setResults] = useState<SprintResult[]>([]);
   const [secondsRemaining, setSecondsRemaining] = useState<number | null>(0);
@@ -130,7 +131,7 @@ export function ExhibitSprint({
 
       submissionLockRef.current = true;
       const submittedAnswer = timedOut ? "" : answerDraft;
-      const validation = validateExhibitResponse(submittedAnswer, item.question, { locale, timedOut });
+      const validation = validateExhibitResponse(submittedAnswer, item.question, { locale: answerLocale, timedOut });
       const initialFeedback: SprintFeedback = {
         message: timedOut ? t("Time expired. Review the answer, then continue.") : t(validation.feedbackMessage),
         saveStatus: "saving",
@@ -185,7 +186,7 @@ export function ExhibitSprint({
       retrySaveRef.current = saveAttempt;
       await saveAttempt();
     },
-    [activeTimingAccommodation, answerDraft, feedback, item, locale, storageFactory, t]
+    [activeTimingAccommodation, answerDraft, answerLocale, feedback, item, storageFactory, t]
   );
 
   useEffect(() => {
@@ -421,7 +422,7 @@ export function ExhibitSprint({
           <ExhibitAnswerInput
             disabled={feedback !== undefined}
             name={`sprint-answer-${questionIndex}`}
-            onChange={setAnswerDraft}
+            onChange={(value) => { setAnswerDraft(value); setAnswerLocale(locale); }}
             question={item.question}
             value={answerDraft}
           />

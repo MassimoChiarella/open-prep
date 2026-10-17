@@ -52,13 +52,17 @@ export interface MarketSizingEvaluation {
 export interface EvaluateMarketSizingDraftOptions {
   acceptWithinTenPercent?: boolean;
   finalAnswer?: string;
+  finalAnswerLocale?: string;
   locale?: string;
+  stepLocales?: Readonly<Record<string, string>>;
   stepValues: MarketSizingStepValueMap;
   template: MarketSizingTemplate;
 }
 
 export function evaluateMarketSizingDraft(options: EvaluateMarketSizingDraftOptions): MarketSizingEvaluation {
-  const assumptionEvaluations = evaluateMarketSizingAssumptions(options.template, options.stepValues, options.locale);
+  const assumptionEvaluations = evaluateMarketSizingAssumptions(
+    options.template, options.stepValues, options.locale, options.stepLocales
+  );
   const variables = buildFormulaVariables(assumptionEvaluations);
   let calculatedValue: number | undefined;
   let calculationError: string | undefined;
@@ -79,7 +83,7 @@ export function evaluateMarketSizingDraft(options: EvaluateMarketSizingDraftOpti
             options.template,
             calculatedValue,
             options.finalAnswer,
-            options.locale,
+            options.finalAnswerLocale ?? options.locale,
             options.acceptWithinTenPercent
           )
         : { message: calculationError, status: "not_ready" },
@@ -92,9 +96,12 @@ export function evaluateMarketSizingDraft(options: EvaluateMarketSizingDraftOpti
 export function evaluateMarketSizingAssumptions(
   template: MarketSizingTemplate,
   stepValues: MarketSizingStepValueMap,
-  locale?: string
+  locale?: string,
+  stepLocales?: Readonly<Record<string, string>>
 ): MarketSizingAssumptionEvaluation[] {
-  return template.inputSteps.map((step) => evaluateMarketSizingStep(step, stepValues[step.id], locale));
+  return template.inputSteps.map((step) =>
+    evaluateMarketSizingStep(step, stepValues[step.id], stepLocales?.[step.id] ?? locale)
+  );
 }
 
 export function evaluateMarketSizingFinalAnswer(

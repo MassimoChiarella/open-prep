@@ -54,6 +54,7 @@ export function ExhibitQuestionFlow({
     [selectedDataset, selectedQuestionId]
   );
   const [answerDraft, setAnswerDraft] = useState("");
+  const [answerLocale, setAnswerLocale] = useState<string>(locale);
   const [attemptStatus, setAttemptStatus] = useState<string | undefined>();
   const [saveStatus, setSaveStatus] = useState<AttemptSaveStatus>("idle");
   const [solutionVisible, setSolutionVisible] = useState(false);
@@ -187,6 +188,7 @@ export function ExhibitQuestionFlow({
               attemptRevision.current += 1;
               completedAtRef.current = undefined;
               setAnswerDraft(value);
+              setAnswerLocale(locale);
               setAttemptStatus(undefined);
               setSaveStatus("idle");
               setSolutionVisible(false);
@@ -208,7 +210,7 @@ export function ExhibitQuestionFlow({
                   answerDraft,
                   completedAt: completedAtRef.current,
                   dataset: selectedDataset,
-                  locale,
+                  locale: answerLocale,
                   isCurrent: () => attemptRevision.current === revision,
                   question: selectedQuestion,
                   previousValidation: validationResult,

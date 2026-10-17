@@ -127,6 +127,7 @@ export function ActiveDrillSession({
   const [session, setSession] = useState<DrillSession>(initialSession);
   const [questionQueue, setQuestionQueue] = useState<Question[]>(() => initialQuestions);
   const [answer, setAnswer] = useState("");
+  const [answerLocale, setAnswerLocale] = useState<string>(locale);
   const [equationOptionId, setEquationOptionId] = useState("");
   const [interpretationOptionId, setInterpretationOptionId] = useState("");
   const [selectedUnit, setSelectedUnit] = useState<UnitType | "">("");
@@ -575,13 +576,13 @@ export function ActiveDrillSession({
       interviewMath === undefined
         ? validateAnswer(answer, currentQuestion.answer, {
             acceptWithinTenPercent: session.settings.acceptWithinTenPercent,
-            locale,
+            locale: answerLocale,
             selectedUnit: submittedUnit
           })
         : evaluateInterviewMath({
             ...interviewMath,
             acceptWithinTenPercent: session.settings.acceptWithinTenPercent,
-            locale,
+            locale: answerLocale,
             question: currentQuestion,
             rawInput: answer,
             selectedUnit: submittedUnit
@@ -605,7 +606,7 @@ export function ActiveDrillSession({
 
     const submitted = submitAnswer({
       ...(interviewMath === undefined ? {} : { interviewMath }),
-      locale,
+      locale: answerLocale,
       session,
       question: currentQuestion,
       rawInput: answer,
@@ -972,7 +973,7 @@ export function ActiveDrillSession({
                         className="h-14 w-full rounded-md border border-ink/50 bg-white px-4 text-xl font-semibold text-ink outline-none transition placeholder:text-ink/65 focus:border-teal focus:ring-2 focus:ring-mint disabled:bg-white/70 disabled:text-ink/65"
                         disabled={inputDisabled}
                         inputMode="decimal"
-                        onChange={(event) => setAnswer(event.currentTarget.value)}
+                        onChange={(event) => { setAnswer(event.currentTarget.value); setAnswerLocale(locale); }}
                         placeholder="0"
                         ref={answerInputRef}
                         spellCheck={false}
@@ -1017,7 +1018,7 @@ export function ActiveDrillSession({
                     equationOptionId={equationOptionId}
                     firstEquationInputRef={firstEquationInputRef}
                     interpretationOptionId={interpretationOptionId}
-                    onAnswerChange={setAnswer}
+                    onAnswerChange={(value) => { setAnswer(value); setAnswerLocale(locale); }}
                     onEquationChange={setEquationOptionId}
                     onInterpretationChange={setInterpretationOptionId}
                     onUnitChange={setSelectedUnit}

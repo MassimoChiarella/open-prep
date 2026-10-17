@@ -4,12 +4,29 @@ import { marketSizingTemplates } from "@/data/marketSizing/marketSizingTemplates
 import {
   evaluateMarketSizingDraft,
   evaluateMarketSizingFinalAnswer,
+  evaluateMarketSizingAssumptions,
 } from "@/features/market-sizing/marketSizingEvaluation";
 import type { MarketSizingInputStep } from "@/features/market-sizing/marketSizingTypes";
 
 const coffeeTemplate = marketSizingTemplates[0];
 
 describe("market sizing evaluation", () => {
+  it("retains each text field's entry locale while keeping number-input values canonical", () => {
+    const stepValues = {
+      ...coffeeStepValues(), coffee_drinker_rate: "0,6", price_per_cup: "4,00 €", cups_per_day: "1.5"
+    };
+    const stepLocales = { coffee_drinker_rate: "fr", price_per_cup: "de", cups_per_day: "de" };
+    const evaluation = evaluateMarketSizingDraft({
+      template: coffeeTemplate, locale: "en", stepValues, stepLocales,
+      finalAnswer: "3,942B €", finalAnswerLocale: "de"
+    });
+    expect(evaluation.variables).toMatchObject({ coffeeDrinkerRate: 0.6, pricePerCup: 4, cupsPerDay: 1.5 });
+    expect(evaluation.calculatedValue).toBe(3_942_000_000);
+    expect(evaluation.finalAnswer.status).toBe("match");
+    expect(evaluateMarketSizingAssumptions(coffeeTemplate, stepValues, "en", stepLocales))
+      .toEqual(evaluation.assumptionEvaluations);
+  });
+
   it.each([
     ["coffee_drinker_rate", "$0.6", "coffeeDrinkerRate"],
     ["coffee_drinker_rate", "0.6 users", "coffeeDrinkerRate"],
