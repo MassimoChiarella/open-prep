@@ -169,7 +169,13 @@ describe("case questioning scoring", () => {
     expect(isCompleteCaseQuestion("?!", "en")).toBe(false);
   });
 
-  it("matches concepts inside languages that do not separate words with spaces", () => {
+  it.each([
+    ["价格是否上涨了？", true],
+    ["请问，价格是否上涨了？", true],
+    ["价格是否上涨了，具体是多少？", true],
+    ["价格是否上涨了？具体是多少？", true],
+    ["价格，上涨，价格", false]
+  ])("matches Chinese concepts across segments without rewarding alias lists: %s", (text, recognized) => {
     const chinesePrompt: CaseQuestioningPrompt = {
       concepts: [
         { aliases: ["价格"], id: "price", label: "价格" },
@@ -197,13 +203,23 @@ describe("case questioning scoring", () => {
 
     const score = scoreCaseQuestioning(chinesePrompt, {
       includeRanking: false,
-      questions: [{ id: "q1", text: "价格是否上涨了？" }]
+      questions: [{ id: "q1", text }]
     });
 
     expect(score.matches[0]?.matchedConceptIds).toEqual(["price", "increase"]);
-    expect(score.matches[0]?.intentId).toBe("price-change");
-    expect(score.relevance.unrecognizedQuestionIds).toEqual([]);
+    expect(score.matches[0]?.intentId).toBe(recognized ? "price-change" : undefined);
+    expect(score.relevance.unrecognizedQuestionIds).toEqual(recognized ? [] : ["q1"]);
   });
+
+  it.each(["Has priceless decoration changed?", "Which costly changes happened?"])(
+    "keeps Latin aliases from matching arbitrary substrings: %s", (text) => {
+      const score = scoreCaseQuestioning({ ...prompt, minimumQuestions: 1, maximumQuestions: 1 }, {
+        includeRanking: false, questions: [{ id: "q1", text }]
+      });
+      expect(score.matches[0]?.matchedConceptIds).toEqual([]);
+      expect(score.matches[0]?.intentId).toBeUndefined();
+    }
+  );
 
   it("accepts the 300-character boundary and rejects longer direct submissions", () => {
     const exactBoundary = `${"Did sales change because of price or volume? "}${"evidence ".repeat(40)}`.slice(0, 300);

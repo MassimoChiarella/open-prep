@@ -375,7 +375,10 @@ function matchConcepts(
     .filter((concept) =>
       concept.normalizedAliases.some((aliasTokens) => {
         return aliasTokens.length > 0 && (
-          aliasTokens.every((token) => hasSimilarToken(question.contentTokens, token)) ||
+          aliasTokens.every((token) => hasSimilarToken(question.contentTokens, token) || (
+            /[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u.test(token) &&
+            question.contentTokens.some((segment) => segment.includes(token))
+          )) ||
           (aliasTokens.length === 1 &&
             question.contentTokens.length === 1 &&
             question.normalized.includes(aliasTokens[0]))
