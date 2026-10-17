@@ -6,3 +6,5 @@ export { persistInProgressDrillSession, persistCompletedDrillSession } from "@/f
 export { readFullCaseDraft, writeFullCaseDraft } from "@/features/case-practice/simulation/fullCaseDraftPersistence";
 export { fullCaseContentKey, fullCaseDraftId } from "@/features/case-practice/simulation/fullCaseDraft";
 export { brightCartFullCase } from "@/data/casePractice/fullCaseSimulations";
+export { createFitStoryRecord } from "@/features/case-practice/fit/fitPractice";
+export { loadFitStoryBank, saveFitStory, deleteFitStory } from "@/features/case-practice/practiceRecords";

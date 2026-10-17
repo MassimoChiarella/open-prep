@@ -36,8 +36,8 @@ describe("FitPracticeView", () => {
     fillStoryDraft("Original story");
     let release!: () => void;
     const pending = new Promise<void>((resolve) => { release = resolve; });
-    const originalPut = storage.put.bind(storage);
-    vi.spyOn(storage, "put").mockImplementation(async (store, value) => { await pending; await originalPut(store, value); });
+    const originalAtomic = storage.atomic.bind(storage);
+    vi.spyOn(storage, "atomic").mockImplementation(async (options, decide) => { await pending; return originalAtomic(options, decide); });
     fireEvent.click(screen.getByRole("button", { name: "Save Story" }));
     for (const label of ["Story title", "Competency", "Situation", "Task", "Action", "Result", "Reflection"]) {
       expect(screen.getByLabelText(label)).toBeDisabled();

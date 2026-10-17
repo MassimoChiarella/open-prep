@@ -4,7 +4,7 @@ import type {
   PracticeModuleId,
   PrepProfileRecord
 } from "@/features/case-practice/practiceTypes";
-import type { AppStorage } from "@/lib/storage/appStorageTypes";
+import { AppStorageConflictError, type AppStorage, type DrillSessionWriteToken } from "@/lib/storage/appStorageTypes";
 import { maxStoredStringLength } from "@/lib/validation/inputLimits";
 
 export const prepProfileFirmsLimitMessage = "Use 100,000 characters or fewer for target firms.";
@@ -59,8 +59,18 @@ export async function loadPrepProfile(storage: AppStorage): Promise<PrepProfileR
   return record?.kind === "prep_profile" ? record : undefined;
 }
 
-export async function saveFitStory(storage: AppStorage, story: FitStoryRecord): Promise<void> {
-  await storage.put("practice_records", story);
+export async function loadFitStoryBank(storage: AppStorage) {
+  const stories = await loadFitStories(storage);
+  return storage.atomic({ stores: [], reads: { practice_records: stories.map(({ id }) => id) } }, (view) => ({
+    operations: [], result: stories.flatMap(({ id }) => {
+      const story = view.get("practice_records", id);
+      return story?.kind === "fit_story" ? [{ story, token: view.practiceRecordToken(id) }] : [];
+    })
+  }));
+}
+
+export async function saveFitStory(storage: AppStorage, story: FitStoryRecord, expected?: DrillSessionWriteToken): Promise<DrillSessionWriteToken> {
+  return writeFitStory(storage, story.id, expected, story);
 }
 
 export async function loadFitStories(storage: AppStorage): Promise<FitStoryRecord[]> {
@@ -69,8 +79,22 @@ export async function loadFitStories(storage: AppStorage): Promise<FitStoryRecor
     .sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
 }
 
-export async function deleteFitStory(storage: AppStorage, id: string): Promise<void> {
-  await storage.delete("practice_records", id);
+export async function deleteFitStory(storage: AppStorage, id: string, expected?: DrillSessionWriteToken): Promise<DrillSessionWriteToken> {
+  return writeFitStory(storage, id, expected);
+}
+
+async function writeFitStory(storage: AppStorage, id: string, expected?: DrillSessionWriteToken, story?: FitStoryRecord): Promise<DrillSessionWriteToken> {
+  return storage.atomic({ stores: ["practice_records"], reads: { practice_records: [id] }, expectedGeneration: expected?.generation }, (view) => {
+    const actual = view.practiceRecordToken(id);
+    const current = view.get("practice_records", id);
+    if (current !== undefined && current.kind !== "fit_story") throw new AppStorageConflictError("practice");
+    if (expected !== undefined && (actual.revision !== expected.revision || actual.exists !== expected.exists)) throw new AppStorageConflictError("practice");
+    if (story !== undefined && expected === undefined && actual.exists) throw new AppStorageConflictError("practice");
+    return {
+      operations: story === undefined ? [{ storeName: "practice_records", type: "delete", key: id }] : [{ storeName: "practice_records", type: "put", value: story }],
+      result: { ...actual, exists: story !== undefined, revision: actual.revision + (story !== undefined || actual.exists ? 1 : 0) }
+    };
+  });
 }
 
 function safeTimestamp(value: string): string {

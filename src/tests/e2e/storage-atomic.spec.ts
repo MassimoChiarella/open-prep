@@ -21,6 +21,61 @@ async function prepare(page: Page) {
   await page.addScriptTag({ content: bundle });
 }
 
+test("@browser-smoke native Fit stories reject stale edits, deletes and deleted-story resurrection", async ({ context, page }) => {
+  await prepare(page);
+  const second = await context.newPage();
+  await prepare(second);
+  const first = await page.evaluate(async () => {
+    const api = window.storageTestApi;
+    const storage = api.createIndexedDbAppStorage();
+    try {
+      const story = api.createFitStoryRecord({ title: "Launch", competency: "leadership", situation: "Delay", task: "Recover", action: "Original", result: "Delivered", reflection: "Align" }, "2026-10-17T12:00:00Z", "imported-story-no-prefix");
+      await api.saveFitStory(storage, story);
+      return (await api.loadFitStoryBank(storage))[0];
+    } finally { storage.close(); }
+  });
+  const stale = await second.evaluate(async () => {
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    try { return (await window.storageTestApi.loadFitStoryBank(storage))[0]; }
+    finally { storage.close(); }
+  });
+  const saved = await page.evaluate(async ({ story, token }) => {
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    try { return await window.storageTestApi.saveFitStory(storage, { ...story, action: "Newest" }, token); }
+    finally { storage.close(); }
+  }, first);
+  const rejected = await second.evaluate(async ({ story, token }) => {
+    const api = window.storageTestApi;
+    const storage = api.createIndexedDbAppStorage();
+    const reasons = [];
+    try {
+      for (const action of [() => api.saveFitStory(storage, story, token), () => api.deleteFitStory(storage, story.id, token)]) {
+        try { await action(); reasons.push("unexpected success"); }
+        catch (error) { reasons.push((error as { reason?: string }).reason); }
+      }
+      return { reasons, current: await storage.get("practice_records", story.id) };
+    } finally { storage.close(); }
+  }, stale);
+  expect(rejected.reasons).toEqual(["practice", "practice"]);
+  expect(rejected.current).toMatchObject({ action: "Newest" });
+  await page.evaluate(async ({ id, token }) => {
+    const storage = window.storageTestApi.createIndexedDbAppStorage();
+    try { await window.storageTestApi.deleteFitStory(storage, id, token); }
+    finally { storage.close(); }
+  }, { id: first.story.id, token: saved });
+  const outcome = await second.evaluate(async ({ story, token }) => {
+    const api = window.storageTestApi;
+    const storage = api.createIndexedDbAppStorage();
+    try {
+      let reason;
+      try { await api.saveFitStory(storage, story, token); }
+      catch (error) { reason = (error as { reason?: string }).reason; }
+      return { reason, current: await storage.get("practice_records", story.id), generation: await storage.getGeneration() };
+    } finally { storage.close(); }
+  }, stale);
+  expect(outcome).toEqual({ reason: "practice", current: undefined, generation: 0 });
+});
+
 test("@browser-smoke native private drafts reject stale overwrite, deletion and delete/recreate ABA", async ({ context, page }) => {
   await prepare(page);
   const second = await context.newPage();

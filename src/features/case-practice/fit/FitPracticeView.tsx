@@ -18,7 +18,7 @@ import {
 } from "@/features/case-practice/fit/fitPractice";
 import {
   deleteFitStory,
-  loadFitStories,
+  loadFitStoryBank,
   saveFitStory
 } from "@/features/case-practice/practiceRecords";
 import { usePracticeAttemptSave } from "@/features/case-practice/usePracticeAttemptSave";
@@ -33,12 +33,12 @@ import {
   writeTimingAccommodationPreference
 } from "@/features/timing/timingAccommodationPreference";
 import type { FitCompetency, FitStoryRecord } from "@/features/case-practice/practiceTypes";
-import type { AppStorage } from "@/lib/storage/appStorageTypes";
+import { AppStorageConflictError, type AppStorage, type DrillSessionWriteToken } from "@/lib/storage/appStorageTypes";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 
 type RehearsalPhase = "idle" | "review" | "running" | "saved";
 type SaveStatus = "error" | "idle" | "saved" | "saving";
-type StoryStatus = "error" | "idle" | "loading" | "saved" | "saving";
+type StoryStatus = "conflict" | "error" | "idle" | "loading" | "saved" | "saving";
 
 const rehearsalDurations = [90, 120] as const;
 const unsavedStoryId = "fit-story-unsaved-rehearsal";
@@ -79,6 +79,8 @@ export function FitPracticeView({
   const rehearsalStartedAt = useRef(0);
   const timingAccommodationTouched = useRef(false);
   const storyChanges = useRef(new Map<string, FitStoryRecord | undefined>());
+  const storyTokens = useRef(new Map<string, DrillSessionWriteToken>());
+  const editingStoryToken = useRef<DrillSessionWriteToken>(undefined);
 
   const selectedStory = selectedStoryId === unsavedStoryId
     ? unsavedStory
@@ -100,10 +102,14 @@ export function FitPracticeView({
 
     try {
       storage = storageFactory();
-      void loadFitStories(storage)
-        .then((loadedStories) => {
+      void loadFitStoryBank(storage)
+        .then((loaded) => {
           if (cancelled) return;
 
+          const loadedStories = loaded.map(({ story, token }) => {
+            if (!storyChanges.current.has(story.id)) storyTokens.current.set(story.id, token);
+            return story;
+          });
           const storyById = new Map(loadedStories.map((story) => [story.id, story]));
           for (const [id, story] of storyChanges.current) {
             if (story === undefined) storyById.delete(id);
@@ -192,7 +198,8 @@ export function FitPracticeView({
     try {
       const record = createFitStoryRecord(draft, new Date().toISOString(), editingStoryId);
       storage = storageFactory();
-      await saveFitStory(storage, record);
+      const token = await saveFitStory(storage, record, editingStoryId === undefined ? undefined : editingStoryToken.current);
+      storyTokens.current.set(record.id, token);
       storyChanges.current.set(record.id, record);
       setStories((current) => [record, ...current.filter((story) => story.id !== record.id)]);
       setSelectedStoryId((current) => current === "" || current === unsavedStoryId ? record.id : current);
@@ -207,8 +214,8 @@ export function FitPracticeView({
       setEditingStoryId(undefined);
       setValidationErrors({});
       setStoryStatus("saved");
-    } catch {
-      setStoryStatus("error");
+    } catch (error) {
+      setStoryStatus(error instanceof AppStorageConflictError ? "conflict" : "error");
     } finally {
       storage?.close();
     }
@@ -241,6 +248,7 @@ export function FitPracticeView({
 
   function editStory(story: FitStoryRecord) {
     setEditingStoryId(story.id);
+    editingStoryToken.current = storyTokens.current.get(story.id);
     setDraft({
       competency: story.competency,
       title: story.title,
@@ -278,7 +286,8 @@ export function FitPracticeView({
 
     try {
       storage = storageFactory();
-      await deleteFitStory(storage, story.id);
+      const token = await deleteFitStory(storage, story.id, storyTokens.current.get(story.id));
+      storyTokens.current.set(story.id, token);
       storyChanges.current.set(story.id, undefined);
 
       const remainingStories = stories.filter((candidate) => candidate.id !== story.id);
@@ -293,8 +302,8 @@ export function FitPracticeView({
       }
 
       setStoryStatus("idle");
-    } catch {
-      setStoryStatus("error");
+    } catch (error) {
+      setStoryStatus(error instanceof AppStorageConflictError ? "conflict" : "error");
     } finally {
       storage?.close();
     }
@@ -423,6 +432,11 @@ export function FitPracticeView({
         />
 
         <StoryStatusMessage status={storyStatus} />
+        {storyStatus === "conflict" && editingStoryId !== undefined ? <button className={buttonClass("secondary")} onClick={() => {
+          setEditingStoryId(undefined);
+          editingStoryToken.current = undefined;
+          setStoryStatus("idle");
+        }} type="button">{t("Keep my draft as a new story")}</button> : null}
 
         <div className="grid gap-1">
           <h3 className={uiText.sectionTitle}>{t("Saved stories")}</h3>
@@ -797,13 +811,14 @@ function StoryStatusMessage({ status }: { status: StoryStatus }) {
   if (status === "idle" || status === "saving") return null;
 
   const content = {
+    conflict: ["Story changed", "This story changed in another tab. Your edits are still here. Keep them as a new story or reload to review the saved version."],
     error: ["Story bank unavailable", "Your latest story change could not be saved."],
     loading: ["Story bank", "Loading stories saved in this browser..."],
     saved: ["Story saved", "Your story is available for local rehearsal."]
   }[status];
 
   return (
-    <div aria-live="polite" className={statusMessageClass(status === "error" ? "error" : status === "saved" ? "success" : "neutral")}>
+    <div aria-live="polite" className={statusMessageClass(status === "error" || status === "conflict" ? "error" : status === "saved" ? "success" : "neutral")}>
       <p className="text-sm font-semibold text-ink">{t(content[0])}</p>
       <p className={uiText.dense}>{t(content[1])}</p>
     </div>

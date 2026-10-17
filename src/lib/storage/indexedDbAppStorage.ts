@@ -345,13 +345,13 @@ class IndexedDbAppStorage implements AppStorage {
                     }
                     if (operation.storeName === "practice_records" && operation.type !== "clear") {
                       const id = String(operation.type === "put" ? operation.value.id : operation.key);
-                      if (isPrivateDraftKey(id)) {
+                      if (isPrivateDraftKey(id) || (operation.type === "put" && operation.value.kind === "fit_story") ||
+                          records.practice_records?.some((record) => record.id === id && record.kind === "fit_story")) {
                         const request = metadata.get(practiceRevisionKey(id));
                         request.onsuccess = () => {
                           const revision = (practiceRevisions.get(id) ?? request.result?.revision ?? 0) + 1;
                           practiceRevisions.set(id, revision);
-                          // Keep a revision after deletion: an old absent-record token
-                          // must not recreate a draft after another tab opts out.
+                          // Retain deletion revisions so stale editors cannot recreate private work.
                           metadata.put({ id: practiceRevisionKey(id), revision });
                         };
                       }

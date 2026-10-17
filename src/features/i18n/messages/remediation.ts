@@ -3,6 +3,19 @@ import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 type Translations = readonly [string, string, string, string, string, string, string, string, string];
 
 const keys: Record<string, Translations> = {
+  "Story changed": ["Historia modificada", "Récit modifié", "Beispiel geändert", "História alterada", "故事已更改", "故事已變更", "ストーリーが変更されました", "تغيرت القصة", "कहानी बदल गई"],
+  "Keep my draft as a new story": ["Conservar mi borrador como una historia nueva", "Conserver mon brouillon comme nouveau récit", "Meinen Entwurf als neues Beispiel behalten", "Manter meu rascunho como nova história", "将我的草稿保留为新故事", "將我的草稿保留為新故事", "下書きを新しいストーリーとして残す", "الاحتفاظ بمسودتي كقصة جديدة", "मेरा ड्राफ्ट नई कहानी के रूप में रखें"],
+  "This story changed in another tab. Your edits are still here. Keep them as a new story or reload to review the saved version.": [
+    "Esta historia cambió en otra pestaña. Tus cambios siguen aquí. Consérvalos como una historia nueva o recarga para revisar la versión guardada.",
+    "Ce récit a changé dans un autre onglet. Vos modifications sont toujours ici. Conservez-les comme nouveau récit ou rechargez pour vérifier la version enregistrée.",
+    "Dieses Beispiel wurde in einem anderen Tab geändert. Ihre Änderungen sind noch hier. Behalten Sie sie als neues Beispiel oder laden Sie neu, um die gespeicherte Version zu prüfen.",
+    "Esta história mudou em outra aba. Suas edições continuam aqui. Mantenha-as como nova história ou recarregue para revisar a versão salva.",
+    "此故事已在另一个标签页中更改。您的编辑仍保留在此页面。请将其保留为新故事，或重新加载以查看已保存的版本。",
+    "此故事已在另一個分頁中變更。您的編輯仍保留在此頁面。請將其保留為新故事，或重新載入以檢查已儲存的版本。",
+    "このストーリーは別のタブで変更されました。編集内容はここに残っています。新しいストーリーとして残すか、再読み込みして保存済みの版を確認してください。",
+    "تغيرت هذه القصة في علامة تبويب أخرى. ما زالت تعديلاتك هنا. احتفظ بها كقصة جديدة أو أعد التحميل لمراجعة النسخة المحفوظة.",
+    "यह कहानी दूसरे टैब में बदल गई है। आपके संपादन यहाँ मौजूद हैं। इन्हें नई कहानी के रूप में रखें या सहेजा संस्करण देखने के लिए फिर से लोड करें।"
+  ],
   "The installed pack changed in another tab. Review it again before replacing.": [
     "El pack instalado cambió en otra pestaña. Revísalo de nuevo antes de reemplazarlo.",
     "Le pack installé a changé dans un autre onglet. Vérifiez-le à nouveau avant de le remplacer.",

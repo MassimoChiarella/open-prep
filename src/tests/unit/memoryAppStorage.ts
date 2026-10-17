@@ -135,7 +135,7 @@ export class MemoryAppStorage implements AppStorage {
   seedLegacy<TStore extends AppStoreName>(storeName: TStore, value: AppStoreValue<TStore>): void {
     this.getStore(storeName).set(value.id, structuredClone(value));
     if (storeName === "drill_sessions") this.coordination.revisions.set(value.id, (this.coordination.revisions.get(value.id) ?? 0) + 1);
-    if (storeName === "practice_records" && isPrivateDraftKey(value.id)) this.coordination.practiceRevisions.set(value.id, (this.coordination.practiceRevisions.get(value.id) ?? 0) + 1);
+    if (storeName === "practice_records" && (isPrivateDraftKey(value.id) || (value as AppDatabaseSchema["practice_records"]).kind === "fit_story")) this.coordination.practiceRevisions.set(value.id, (this.coordination.practiceRevisions.get(value.id) ?? 0) + 1);
   }
 
   async delete<TStore extends AppStoreName>(storeName: TStore, key: AppStoreKey<TStore>): Promise<void> {
@@ -165,7 +165,8 @@ export class MemoryAppStorage implements AppStorage {
       }
       if (operation.storeName === "practice_records" && operation.type !== "clear") {
         const id = String(operation.type === "put" ? operation.value.id : operation.key);
-        if (isPrivateDraftKey(id)) practiceRevisions.set(id, (practiceRevisions.get(id) ?? 0) + 1);
+        const previous = staged.get("practice_records")?.get(id) as AppDatabaseSchema["practice_records"] | undefined;
+        if (isPrivateDraftKey(id) || previous?.kind === "fit_story" || (operation.type === "put" && operation.value.kind === "fit_story")) practiceRevisions.set(id, (practiceRevisions.get(id) ?? 0) + 1);
       }
 
       const store = staged.get(operation.storeName);
