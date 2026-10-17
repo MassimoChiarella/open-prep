@@ -202,6 +202,20 @@ function evaluateMarketSizingStep(
     };
   }
 
+  const expectedUnit = step.inputKind === "currency" || step.inputKind === "percentage"
+    ? step.inputKind
+    : step.unit ?? step.assumptionRange?.unit ?? "none";
+  if (parsed.unitHint !== undefined && parsed.unitHint !== expectedUnit) {
+    return {
+      hasAssumptionRange: step.assumptionRange !== undefined,
+      message: "Check both the number and the unit.",
+      rawValue,
+      status: "invalid",
+      stepId: step.id,
+      variableName: step.variableName
+    };
+  }
+
   if (step.inputKind === "integer" && !Number.isInteger(parsed.value)) {
     return {
       hasAssumptionRange: step.assumptionRange !== undefined,

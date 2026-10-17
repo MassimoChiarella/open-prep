@@ -7,6 +7,16 @@ import { scoreMarketSizingAttempt } from "@/features/market-sizing/marketSizingS
 const coffeeTemplate = marketSizingTemplates[0];
 
 describe("market sizing scoring", () => {
+  it("withholds calculation credit and flags setup errors for incompatible assumption units", () => {
+    const stepValues = { ...validCoffeeStepValues(), coffee_drinker_rate: "$0.6", price_per_cup: "400%" };
+    const evaluation = evaluateMarketSizingDraft({ template: coffeeTemplate, stepValues, finalAnswer: "$2.628B" });
+    const score = scoreMarketSizingAttempt({ template: coffeeTemplate, stepValues, evaluation, interpretationId: "plausible" });
+    expect(evaluation.calculatedValue).toBeUndefined();
+    expect(score.totalScore).toBe(55);
+    expect(pointsFor(score, "math")).toBe(0);
+    expect(score.errorTypes).toEqual(["setup_error"]);
+  });
+
   it("awards all unit points for a correct plain number when the template needs no unit", () => {
     const template = { ...coffeeTemplate, outputUnit: "none" as const };
     const stepValues = validCoffeeStepValues();
