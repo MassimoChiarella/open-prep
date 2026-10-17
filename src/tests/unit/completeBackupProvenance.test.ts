@@ -5,7 +5,7 @@ import { validateCompleteBackupPayload } from "@/features/settings/completeBacku
 import { backupFromFile, serializeCompleteBackupFile } from "@/features/settings/completeBackupSet";
 import { createCompleteBackupFilesFromStorage, createCompleteBackupFromStorage, restoreCompleteBackup, restoreCompleteBackupFiles } from "@/features/settings/completeBackupStorage";
 import { prepareCompleteRestore } from "@/features/settings/completeBackupRestorePreparation";
-import type { FixedNumericQuestionPackRecord } from "@/lib/storage/appStorageTypes";
+import type { QuestionPackRecord } from "@/lib/storage/appStorageTypes";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 const exportedAt = "2026-10-17T12:00:00.000Z";
@@ -87,7 +87,7 @@ describe("restored pack review claims", () => {
   });
 });
 
-function pack(id = "invented-review-claim"): FixedNumericQuestionPackRecord {
+function pack(id = "invented-review-claim"): Extract<QuestionPackRecord, { kind: "fixed_numeric" }> {
   const validation = validateQuestionPackPayload({
     format: "math-drill-question-pack", schemaVersion: 2, kind: "fixed_numeric", id, packVersion: "1.0.0", title: "Local original content",
     questions: [{ id: "addition", type: "numeric", category: "arithmetic", tags: ["addition"], difficulty: "beginner",

@@ -7,6 +7,7 @@ import { ActiveDrillSession } from "@/features/drills/ActiveDrillSession";
 import { createDrillSession } from "@/features/drills/sessionFactory";
 import { ExhibitQuestionFlow } from "@/features/exhibits/ExhibitQuestionFlow";
 import { ExhibitSprint } from "@/features/exhibits/ExhibitSprint";
+import type { ExhibitNumericQuestionSpec } from "@/features/exhibits/exhibitTypes";
 import { LanguageSelect } from "@/features/i18n/I18nProvider";
 import german from "@/features/i18n/locales/de";
 import { MarketSizingGuidedForm } from "@/features/market-sizing/MarketSizingGuidedForm";
@@ -37,8 +38,7 @@ describe.each(languageSwitches)("numeric input entered in %s and submitted in %s
 
   it.each([false, true])("preserves individual and sprint exhibit input (sprint=%s)", async (sprint) => {
     const storage = new MemoryAppStorage();
-    const first = exhibitDatasets[0].questions[0];
-    if (first.responseType === "multiple_choice") throw new Error("Expected numeric fixture");
+    const first: ExhibitNumericQuestionSpec = exhibitDatasets[0].questions[0];
     const datasets = [{ ...exhibitDatasets[0], questions: [0, 1, 2].map((index) => ({ ...first, id: `locale-question-${index}`, answer: { value: 120000, unit: "none" as const } })) }];
     const control = renderWithI18n(<><LanguageSelect />{sprint
       ? <ExhibitSprint datasets={datasets} seed={0} storageFactory={() => storage} />
