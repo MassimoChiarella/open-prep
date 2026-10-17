@@ -149,6 +149,53 @@ describe("progress aggregation", () => {
     expect(createProgressSummary({ responses, sessions }).dashboard.totalQuestionsAnswered).toBe(1);
   });
 
+  it("keeps complete summaries and chronological bests independent of stored-response order", () => {
+    const questions = [question({ id: "q1", category: "arithmetic", tags: ["addition"] }),
+      question({ id: "q2", category: "percentages", tags: ["percentage_change"] })];
+    const answers = [response({ questionId: "q1", timeTakenSeconds: 1.25 }), response({ questionId: "q2", timeTakenSeconds: 2.5 })];
+    const sessions = [
+      { ...storedSession({ date: "2026-10-17", id: "older", questions, responses: answers }), endedAt: "2026-10-17T13:00:00Z" },
+      { ...storedSession({ date: "2026-10-17", id: "newer", questions, responses: answers }), endedAt: "2026-10-17T10:00:00-04:00" }
+    ];
+    const responses: StoredUserResponse[] = [
+      { ...answers[0], id: "older:q1", sessionId: "older", submittedAt: "invalid legacy timestamp", isCorrect: false, errorTypes: ["magnitude_error"] },
+      { ...answers[0], id: "newer:q1", sessionId: "newer", submittedAt: "2026-10-17T14:00:00Z" },
+      { ...response({ timeTakenSeconds: 0.5, isCorrect: false, errorTypes: ["unit_error"] }), id: "orphan:q1", sessionId: "orphan",
+        submittedAt: "2026-10-17T10:00:00+02:00", category: "business_math", tags: ["margin"] }
+    ];
+    const options = { sessions, now: "2026-10-17T15:00:00Z", timeZone: "UTC", benchmarkResults: [
+      benchmarkRecord("benchmark-old", 90, sessions[0].endedAt), benchmarkRecord("benchmark-new", 90, sessions[1].endedAt)
+    ] };
+    const original = structuredClone({ sessions, responses });
+    const expected = createProgressSummary({ ...options, responses });
+    expect(expected.dashboard).toMatchObject({ totalQuestionsAnswered: 5, totalCorrect: 3, totalIncorrect: 2, averageTimeSeconds: 1.6 });
+    expect(expected.recentSessions.map(({ id }) => id)).toEqual(["newer", "older"]);
+    expect(expected.personalBests).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "drill_category:percentages:beginner:untimed:accuracy", sourceId: "newer" }),
+      expect.objectContaining({ id: "drill_category:percentages:beginner:untimed:average_time", sourceId: "older" }),
+      expect.objectContaining({ id: "benchmark:beginner:score", sourceId: "benchmark-new" })
+    ]));
+    for (let offset = 0; offset < responses.length; offset += 1) {
+      const rotated = [...responses.slice(offset), ...responses.slice(0, offset)];
+      for (const permutation of [rotated, [...rotated].reverse()]) {
+        expect(createProgressSummary({ ...options, responses: permutation })).toEqual(expected);
+      }
+    }
+    expect({ sessions, responses }).toEqual(original);
+  });
+
+  it("preserves fractional-duration averages to floating-point precision across response orders", () => {
+    const responses: StoredUserResponse[] = [0.1, 0.2, 0.3].map((timeTakenSeconds, index) => ({
+      ...response({ timeTakenSeconds }), id: `orphan:${index}`, sessionId: "orphan", category: "arithmetic", tags: ["addition"]
+    }));
+    for (const ordered of [responses, [...responses].reverse()]) {
+      const summary = createProgressSummary({ sessions: [], responses: ordered, now: "2026-10-17T15:00:00Z", timeZone: "UTC" });
+      expect(summary.dashboard.averageTimeSeconds).toBeCloseTo(0.2, 12);
+      expect(summary.categoryPerformance[0].averageTimeSeconds).toBeCloseTo(0.2, 12);
+      expect(summary.skillPerformance[0].averageTimeSeconds).toBeCloseTo(0.2, 12);
+    }
+  });
+
   it("keeps yesterday streaks alive and breaks stale streaks", () => {
     const active = createProgressSummary({
       now: "2026-06-03T12:00:00.000Z",

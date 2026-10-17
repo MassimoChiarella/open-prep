@@ -326,9 +326,8 @@ function collectStoredResponses(
     }
   }
 
-  return Array.from(responsesById.values()).sort((first, second) =>
-    compareAbsoluteTimestamps(first.submittedAt, second.submittedAt)
-  );
+  // Aggregates use response IDs; recency comes from session and benchmark timestamps.
+  return Array.from(responsesById.values());
 }
 
 function createCategoryPerformance(responses: readonly StoredUserResponse[]): CategoryProgressSummary[] {

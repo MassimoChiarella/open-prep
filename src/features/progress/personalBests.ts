@@ -251,20 +251,12 @@ function addBest(bests: Map<string, PersonalBestRecord>, candidate: PersonalBest
 }
 
 function isBetterBest(candidate: PersonalBestRecord, current: PersonalBestRecord): boolean {
-  const chronology = compareAbsoluteTimestamps(candidate.achievedAt, current.achievedAt);
-  if (candidate.metric === "average_time") {
-    return (
-      candidate.value < current.value ||
-      (candidate.value === current.value &&
-        (chronology < 0 || (chronology === 0 && candidate.sourceId < current.sourceId)))
-    );
+  if (candidate.value !== current.value) {
+    return candidate.metric === "average_time" ? candidate.value < current.value : candidate.value > current.value;
   }
-
-  return (
-    candidate.value > current.value ||
-    (candidate.value === current.value &&
-      (chronology > 0 || (chronology === 0 && candidate.sourceId < current.sourceId)))
-  );
+  const chronology = compareAbsoluteTimestamps(candidate.achievedAt, current.achievedAt);
+  return (candidate.metric === "average_time" ? chronology < 0 : chronology > 0) ||
+    (chronology === 0 && candidate.sourceId < current.sourceId);
 }
 
 function longestStreak(

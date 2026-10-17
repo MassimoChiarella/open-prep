@@ -132,6 +132,22 @@ describe("personal bests", () => {
     expect(findBest(bests, "benchmark:beginner:score")?.sourceId).toBe("newer");
   });
 
+  it("prioritizes stronger accuracy, faster correct pace and higher scores before recency", () => {
+    const older = sessionAt("older-strong", "2026-10-17T13:00:00Z");
+    const newer = { ...sessionAt("newer-weak", "2026-10-17T10:00:00-04:00"), responses: [
+      response("question-1", true, 20), response("question-2", false, 30)
+    ] };
+    for (const sessions of [[older, newer], [newer, older]]) {
+      const bests = createPersonalBestRecords({ sessions, timeZone: "UTC",
+        responses: sessions.flatMap((item) => item.responses.map((answer) => storedResponse(item.id, answer))),
+        benchmarkResults: [benchmarkResult("benchmark-new", 80, newer.updatedAt), benchmarkResult("benchmark-old", 90, older.updatedAt)]
+      });
+      expect(findBest(bests, "drill_category:business_math:beginner:untimed:accuracy")?.sourceId).toBe("older-strong");
+      expect(findBest(bests, "drill_skill:margin:beginner:untimed:average_time")?.sourceId).toBe("older-strong");
+      expect(findBest(bests, "benchmark:beginner:score")?.sourceId).toBe("benchmark-old");
+    }
+  });
+
   it("excludes accommodated attempts from Standard personal bests and streaks", () => {
     const standard = session("standard-session", "2026-06-01", [response("question-1", true, 20)]);
     const accommodated = {
