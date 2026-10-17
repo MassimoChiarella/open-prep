@@ -63,7 +63,7 @@ export function FitPracticeView({
   const [draft, setDraft] = useState<FitStoryDraft>(createEmptyDraft);
   const [unsavedStory, setUnsavedStory] = useState<FitStoryDraft>();
   const [validationErrors, setValidationErrors] = useState<FitStoryValidationErrors>({});
-  const [selectedStoryId, setSelectedStoryId] = useState("");
+  const [requestedStoryId, setSelectedStoryId] = useState("");
   const [selectedPromptId, setSelectedPromptId] = useState("");
   const [durationSeconds, setDurationSeconds] = useState<(typeof rehearsalDurations)[number]>(120);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
@@ -82,9 +82,9 @@ export function FitPracticeView({
   const storyTokens = useRef(new Map<string, DrillSessionWriteToken>());
   const editingStoryToken = useRef<DrillSessionWriteToken>(undefined);
 
-  const selectedStory = selectedStoryId === unsavedStoryId
-    ? unsavedStory
-    : stories.find((story) => story.id === selectedStoryId);
+  const savedStory = stories.find((story) => story.id === requestedStoryId) ?? stories[0];
+  const selectedStoryId = requestedStoryId === unsavedStoryId ? unsavedStoryId : savedStory?.id ?? "";
+  const selectedStory = selectedStoryId === unsavedStoryId ? unsavedStory : savedStory;
   const availablePrompts = prompts.filter((prompt) => prompt.competency === selectedStory?.competency);
   const selectedPrompt = phase === "idle"
     ? availablePrompts.find((prompt) => prompt.id === selectedPromptId) ?? availablePrompts[0]
@@ -202,7 +202,7 @@ export function FitPracticeView({
       storyTokens.current.set(record.id, token);
       storyChanges.current.set(record.id, record);
       setStories((current) => [record, ...current.filter((story) => story.id !== record.id)]);
-      setSelectedStoryId((current) => current === "" || current === unsavedStoryId ? record.id : current);
+      setSelectedStoryId(selectedStoryId === "" || selectedStoryId === unsavedStoryId ? record.id : selectedStoryId);
 
       if (selectedStoryId === record.id || selectedStoryId === "" || selectedStoryId === unsavedStoryId) {
         setSelectedPromptId(firstPromptId(prompts, record.competency));
@@ -290,14 +290,12 @@ export function FitPracticeView({
       storyTokens.current.set(story.id, token);
       storyChanges.current.set(story.id, undefined);
 
-      const remainingStories = stories.filter((candidate) => candidate.id !== story.id);
-      setStories(remainingStories);
+      setStories((current) => current.filter((candidate) => candidate.id !== story.id));
 
       if (editingStoryId === story.id) cancelStoryDraft();
       if (selectedStoryId === story.id) {
-        const nextStory = remainingStories[0];
-        setSelectedStoryId(nextStory?.id ?? "");
-        setSelectedPromptId(nextStory === undefined ? "" : firstPromptId(prompts, nextStory.competency));
+        setSelectedStoryId("");
+        setSelectedPromptId("");
         resetRehearsal();
       }
 

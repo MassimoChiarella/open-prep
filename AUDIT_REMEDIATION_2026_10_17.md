@@ -20,7 +20,7 @@ Baseline: `627e012faff587603e0d4b6ae2110532a38acf35` (17 October audit). This is
 | M03 | #2 Pack install compares reviewed target fingerprint/absence under atomic write | Intervening install/replacement requires fresh review and confirmation; unchanged replacement succeeds | Complete — 71 focused tests; targeted ESLint; native two-tab regression added for integration gate |
 | M04 | #3 Full-case exit notice uses real draft/save state | Drafts off/pending/saved/failed and completed results have truthful guidance; consent unchanged | Complete — 31 tests/5 focused files; targeted ESLint; nine translated locales |
 | M05 | #6 Remove spread-argument limit from atomic full reads | Supported >argument-limit native IndexedDB reads and Recovery settle with exact row counts | Complete — native Chromium 150,000 valid responses: exact count/atomic count, zero Recovery issues, zero page errors |
-| M06 | #16 Fit async deletion uses current state | Startup read/save/delete interleaving retains unrelated visible and stored stories | Pending |
+| M06 | #16 Fit async deletion uses current state | Startup read/save/delete interleaving retains unrelated visible and stored stories | Complete — 25 tests/4 focused suites; selection derived from current survivors; targeted ESLint |
 
 ## Phase 2 — Preserve numeric meaning across languages
 

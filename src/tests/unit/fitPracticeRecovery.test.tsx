@@ -19,6 +19,33 @@ afterEach(() => {
 });
 
 describe("Fit story recovery and rehearsal identity", () => {
+  it("retains late-loaded stories and selects the current survivor after a pending deletion", async () => {
+    const storage = new MemoryAppStorage();
+    const older = makeStory("Late older story", "leadership", "2026-10-01T00:00:00Z");
+    await storage.put("practice_records", older);
+    let releaseRead!: () => void;
+    const readGate = new Promise<void>((resolve) => { releaseRead = resolve; });
+    vi.spyOn(storage, "getAll").mockImplementationOnce(async () => { await readGate; return [older]; });
+    render(<FitPracticeView storageFactory={() => storage} />);
+    fillStory("New story to delete");
+    fireEvent.click(screen.getByRole("button", { name: "Save Story" }));
+    await screen.findByRole("heading", { name: "New story to delete" });
+    let releaseDelete!: () => void;
+    const deleteGate = new Promise<void>((resolve) => { releaseDelete = resolve; });
+    const originalAtomic = storage.atomic.bind(storage);
+    vi.spyOn(storage, "atomic").mockImplementationOnce(async (options, decide) => { await deleteGate; return originalAtomic(options, decide); });
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    fireEvent.click(screen.getByRole("button", { name: "Delete" }));
+    await act(async () => releaseRead());
+    await screen.findByRole("heading", { name: older.title });
+    await act(async () => releaseDelete());
+    expect(screen.getByRole("heading", { name: older.title })).toBeInTheDocument();
+    expect(screen.getByText("1 saved")).toBeInTheDocument();
+    expect(screen.getByLabelText("Story")).toHaveValue(older.id);
+    expect(screen.getByRole("button", { name: "Start Rehearsal" })).toBeEnabled();
+    expect(storage.peekAll("practice_records")).toEqual([older]);
+  });
+
   it("keeps the nonfirst story, chosen prompt and elapsed rehearsal through a wrapper language update", async () => {
     const storage = new MemoryAppStorage();
     const conflict = makeStory("Older conflict story", "conflict", "2026-10-01T00:00:00Z");
