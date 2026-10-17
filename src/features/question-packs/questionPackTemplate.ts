@@ -29,6 +29,7 @@ import {
   idValue,
   identifier,
   isValidIdentifier,
+  maxFormulaValidationSamples,
   numericEnumValue,
   objectValue,
   optionalText,
@@ -594,9 +595,15 @@ function validatePlaceholders(template: QuestionTemplate, path: string, errors: 
 }
 
 function validateRepresentativeFormulaResults(template: QuestionTemplate, path: string, errors: string[]): void {
-  const entries = Object.entries(template.variables).map(([name, spec]) => [
+  const variables = Object.entries(template.variables);
+  const combinationCount = variables.reduce((count, [, spec]) => Math.min(
+    maxFormulaValidationSamples + 1,
+    count * (spec.values?.length ?? rangeStepCount(spec.min!, spec.max!, spec.step ?? (spec.type === "integer" ? 1 : 0.1)) + 1)
+  ), 1);
+  const exhaustive = combinationCount <= maxFormulaValidationSamples;
+  const entries = variables.map(([name, spec]) => [
     name,
-    representativeVariableValues(spec)
+    representativeVariableValues(spec, exhaustive)
   ] as const);
   const samples = buildRepresentativeSamples(entries);
   let evaluateFormula: ReturnType<typeof compileFormulaExpression> | undefined;
@@ -615,9 +622,9 @@ function validateRepresentativeFormulaResults(template: QuestionTemplate, path: 
   }
 }
 
-function representativeVariableValues(spec: VariableSpec): number[] {
+function representativeVariableValues(spec: VariableSpec, exhaustive: boolean): number[] {
   if (spec.values !== undefined) {
-    return representativeValues(spec.values);
+    return exhaustive ? spec.values : representativeValues(spec.values);
   }
 
   const min = spec.min as number;
@@ -625,6 +632,7 @@ function representativeVariableValues(spec: VariableSpec): number[] {
   const step = spec.step ?? (spec.type === "integer" ? 1 : 0.1);
   const stepCount = rangeStepCount(min, max, step);
   const valueAt = (index: number) => rangeValueAt(min, step, index);
+  if (exhaustive) return Array.from({ length: stepCount + 1 }, (_, index) => valueAt(index));
   const closestToZeroIndex = Math.max(0, Math.min(stepCount, Math.round(-min / step)));
 
   return representativeValues([

@@ -514,7 +514,7 @@ export function hasOwn(value: object, property: string): boolean {
 }
 
 export function representativeValues(values: readonly number[]): number[] {
-  const sorted = [...values].sort((left, right) => left - right);
+  const sorted = [...new Set(values)].sort((left, right) => left - right);
   const closestToZero = sorted.reduce((closest, value) =>
     Math.abs(value) < Math.abs(closest) ? value : closest
   );
