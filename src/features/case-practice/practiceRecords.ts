@@ -6,6 +6,7 @@ import type {
 } from "@/features/case-practice/practiceTypes";
 import { AppStorageConflictError, type AppStorage, type DrillSessionWriteToken } from "@/lib/storage/appStorageTypes";
 import { maxStoredStringLength } from "@/lib/validation/inputLimits";
+import { compareAbsoluteTimestamps } from "@/lib/storage/storedTimestamps";
 
 export const prepProfileFirmsLimitMessage = "Use 100,000 characters or fewer for target firms.";
 
@@ -41,7 +42,7 @@ export async function loadPracticeAttempts(
       (record): record is PracticeAttemptRecord =>
         record.kind === "attempt" && (module === undefined || record.module === module)
     )
-    .sort((first, second) => second.completedAt.localeCompare(first.completedAt));
+    .sort((first, second) => compareAbsoluteTimestamps(second.completedAt, first.completedAt));
 }
 
 export async function savePrepProfile(
@@ -76,7 +77,7 @@ export async function saveFitStory(storage: AppStorage, story: FitStoryRecord, e
 export async function loadFitStories(storage: AppStorage): Promise<FitStoryRecord[]> {
   return (await storage.getAll("practice_records"))
     .filter((record): record is FitStoryRecord => record.kind === "fit_story")
-    .sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
+    .sort((first, second) => compareAbsoluteTimestamps(second.updatedAt, first.updatedAt));
 }
 
 export async function deleteFitStory(storage: AppStorage, id: string, expected?: DrillSessionWriteToken): Promise<DrillSessionWriteToken> {

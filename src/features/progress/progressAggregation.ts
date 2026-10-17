@@ -1,6 +1,7 @@
 import type { ErrorType, SkillCategory, SkillTag } from "@/lib/domain";
 import type { PracticeRecord } from "@/features/case-practice/practiceTypes";
 import { isStandardComparisonEligible } from "@/features/timing/timingAccommodation";
+import { compareAbsoluteTimestamps } from "@/lib/storage/storedTimestamps";
 import {
   appStoreIndexNames,
   type AppStorage,
@@ -202,11 +203,11 @@ function isBetterBenchmarkScore(
   candidate: BenchmarkResultRecord,
   current: BenchmarkResultRecord
 ): boolean {
+  const chronology = compareAbsoluteTimestamps(candidate.completedAt, current.completedAt);
   return (
     candidate.score.totalScore > current.score.totalScore ||
     (candidate.score.totalScore === current.score.totalScore &&
-      (candidate.completedAt > current.completedAt ||
-        (candidate.completedAt === current.completedAt && candidate.id < current.id)))
+      (chronology > 0 || (chronology === 0 && candidate.id < current.id)))
   );
 }
 
@@ -326,7 +327,7 @@ function collectStoredResponses(
   }
 
   return Array.from(responsesById.values()).sort((first, second) =>
-    first.submittedAt.localeCompare(second.submittedAt)
+    compareAbsoluteTimestamps(first.submittedAt, second.submittedAt)
   );
 }
 
@@ -509,7 +510,7 @@ function sortMistakes(first: MistakeNotebookRecord, second: MistakeNotebookRecor
     return first.status === "unresolved" ? -1 : 1;
   }
 
-  return second.missedAt.localeCompare(first.missedAt) || first.id.localeCompare(second.id);
+  return compareAbsoluteTimestamps(second.missedAt, first.missedAt) || first.id.localeCompare(second.id);
 }
 
 function sum(values: readonly number[]): number {

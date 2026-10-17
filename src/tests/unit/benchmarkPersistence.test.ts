@@ -12,6 +12,19 @@ import { submitAnswer } from "@/features/drills/answerSubmission";
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("benchmark result persistence", () => {
+  it("selects aggregate latest, previous, and tied bests by instant across offsets", async () => {
+    const storage = new MemoryAppStorage();
+    const completed = createCompletedBenchmarkSession("beginner", "2026-10-17T12:00:00Z");
+    const first = await persistBenchmarkResult({ benchmarkId: "beginner", completedAt: "2026-10-17T10:00:00-04:00", id: "newer", session: completed.session, storage });
+    await storage.put("benchmark_results", { ...first, id: "older", completedAt: "2026-10-17T13:00:00Z" });
+    expect((await loadBenchmarkHistorySnapshot(storage)).aggregates[0]).toMatchObject({
+      latest: { id: "newer" }, latestStandard: { id: "newer" }, previous: { id: "older" }, best: { id: "newer" }, bestScore: { id: "newer" }
+    });
+    await storage.put("benchmark_results", { ...first, id: "same-instant-a", completedAt: "2026-10-17T14:00:00.000Z" });
+    expect((await loadBenchmarkHistorySnapshot(storage)).aggregates[0]).toMatchObject({
+      latest: { id: "same-instant-a" }, previous: { id: "newer" }, best: { id: "newer" }, bestScore: { id: "newer" }
+    });
+  });
   it("persists complete records", async () => {
     const storage = new MemoryAppStorage();
     const completed = createCompletedBenchmarkSession("beginner", "2026-06-02T12:00:00.000Z");

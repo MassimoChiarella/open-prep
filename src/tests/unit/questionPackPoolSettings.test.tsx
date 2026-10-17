@@ -9,6 +9,16 @@ import {
 import { MemoryAppStorage } from "@/tests/unit/memoryAppStorage";
 
 describe("QuestionPackPoolSettings", () => {
+  it("lists installed packs by absolute import time across offsets", async () => {
+    const storage = new MemoryAppStorage();
+    await storage.put("question_packs", { ...questionPack("newer", "Newer pack"), importedAt: "2026-10-17T10:00:00-04:00" });
+    await storage.put("question_packs", { ...questionPack("older", "Older pack"), importedAt: "2026-10-17T13:00:00Z" });
+    render(<QuestionPackPoolSettings storageFactory={() => storage} />);
+    await screen.findByRole("checkbox", { name: /Newer pack/ });
+    expect(screen.getAllByRole("checkbox").map((checkbox) => checkbox.closest("label")?.textContent)).toEqual([
+      expect.stringContaining("Newer pack"), expect.stringContaining("Older pack")
+    ]);
+  });
   it("loads installed packs and saves an exclusive multi-pack selection", async () => {
     const storage = new MemoryAppStorage();
     await storage.put("question_packs", questionPack("pack-a", "Pack A"));

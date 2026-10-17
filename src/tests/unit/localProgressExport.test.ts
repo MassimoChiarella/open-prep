@@ -15,6 +15,7 @@ import {
 } from "@/features/settings/localProgressExport";
 import { createUserSettingsRecord } from "@/features/settings/settingsPersistence";
 import { createDrillSettings } from "@/features/drills/drillSettings";
+import { loadBenchmarkResultPage } from "@/features/benchmarks/benchmarkPersistence";
 import {
   appDatabaseName,
   progressStoreNames,
@@ -126,6 +127,38 @@ describe("local progress export schema", () => {
     expect(await storage.getAll("user_settings")).toEqual([newSettings]);
     expect(await storage.getAll("drill_sessions")).toEqual([]);
     expect(await storage.getAll("question_packs")).toEqual([questionPack]);
+  });
+
+  it("canonicalizes event offsets only after import validation, preserving the original payload and private dates", async () => {
+    const storage = new MemoryAppStorage();
+    const imported = emptyProgressExport("2026-10-17T15:00:00Z");
+    imported.privacyScope = "complete";
+    imported.stores.practice_records = [{
+      id: "prep-profile", kind: "prep_profile", experienceLevel: "intermediate", interviewDate: "2026-11-17",
+      targetFirms: ["Private firm"], updatedAt: "2026-10-17T10:00:00-04:00", weeklySessions: 5
+    }];
+    imported.stores.market_sizing_attempts = [{
+      id: "sizing", templateId: "template", startedAt: "2026-10-17T10:00:00-04:00", note: "2026-10-17T10:00:00-04:00"
+    }];
+    imported.stores.benchmark_results = ["2026-10-17T10:00:00-04:00", "2026-10-17T13:00:00Z"].map((completedAt, index) => ({
+      id: `benchmark-${index}`, benchmarkId: "beginner", difficulty: "beginner", completedAt, sessionId: `session-${index}`,
+      score: { accuracy: 1, averageTimeSeconds: 10, categoryBreakdown: [], correctCount: 1, errorBreakdown: [], incorrectCount: 0, totalScore: 100 }
+    }));
+    const original = JSON.stringify(imported);
+    expect(validateLocalProgressImportPayload(imported)).toMatchObject({
+      status: "valid", exportData: { stores: { benchmark_results: [{ completedAt: "2026-10-17T10:00:00-04:00" }, { completedAt: "2026-10-17T13:00:00Z" }] } }
+    });
+
+    await replaceLocalProgressWithImport(storage, imported);
+
+    expect(JSON.stringify(imported)).toBe(original);
+    expect(await loadBenchmarkResultPage(storage, undefined, 1)).toMatchObject({ results: [{ id: "benchmark-0", completedAt: "2026-10-17T14:00:00.000Z" }] });
+    expect(await storage.get("practice_records", "prep-profile")).toMatchObject({
+      interviewDate: "2026-11-17", targetFirms: ["Private firm"], updatedAt: "2026-10-17T14:00:00.000Z"
+    });
+    expect(await storage.get("market_sizing_attempts", "sizing")).toMatchObject({
+      startedAt: "2026-10-17T14:00:00.000Z", note: "2026-10-17T10:00:00-04:00"
+    });
   });
 
   it.each([0, 4, 9])("keeps existing progress when atomic replacement fails at operation %i", async (failAt) => {

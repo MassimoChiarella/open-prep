@@ -80,6 +80,18 @@ describe("preparation roadmap", () => {
     expect(attempts.map((item) => item.module)).toEqual(["synthesis", "structuring", "structuring"]);
   });
 
+  it("uses the five most recent instants across offsets when scoring priorities", () => {
+    const attempts = [
+      attempt("structuring", 0, "2026-10-17T10:00:00-04:00", 100),
+      ...[13, 12, 11, 10, 9].map((hour) => attempt("structuring", 70, `2026-10-17T${String(hour).padStart(2, "0")}:00:00Z`, 100))
+    ];
+    const priorities = scorePreparationPriorities(input({ attempts }));
+    expect(priorities.find(({ id }) => id === "structuring")?.reason).toContain("56%");
+    expect(priorities).toEqual(scorePreparationPriorities(input({
+      attempts: attempts.map((record) => ({ ...record, completedAt: new Date(record.completedAt).toISOString() }))
+    })));
+  });
+
   it("adds interview rehearsal priorities at 14 days but not 15 days", () => {
     const common = input({
       attempts: strongCaseAttempts(),

@@ -1,5 +1,6 @@
 import type { DrillSession, Question, SkillCategory, SkillTag } from "@/lib/domain";
 import type { MistakeNotebookRecord, RetryScheduleRecord } from "@/lib/storage/appStorageTypes";
+import { compareAbsoluteTimestamps } from "@/lib/storage/storedTimestamps";
 
 import { createDrillSettings } from "@/features/drills/drillSettings";
 import { createDrillSession } from "@/features/drills/sessionFactory";
@@ -47,7 +48,7 @@ export function createRetryMissedDrillSession(
 ): RetryMissedDrillSession {
   const questions = mistakes
     .filter((mistake) => mistake.status === "unresolved")
-    .sort((first, second) => first.missedAt.localeCompare(second.missedAt) || first.id.localeCompare(second.id))
+    .sort((first, second) => compareAbsoluteTimestamps(first.missedAt, second.missedAt) || first.id.localeCompare(second.id))
     .slice(0, Math.max(1, options.questionCount))
     .map(createRetryQuestionFromMistake);
 

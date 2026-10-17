@@ -3,6 +3,7 @@ import { isStandardComparisonEligible } from "@/features/timing/timingAccommodat
 import type { Difficulty, DrillSettings, SkillCategory, SkillTag } from "@/lib/domain";
 import { formatLabel } from "@/lib/format";
 import type { BenchmarkResultRecord, StoredDrillSession, StoredUserResponse } from "@/lib/storage/appStorageTypes";
+import { compareAbsoluteTimestamps } from "@/lib/storage/storedTimestamps";
 
 import { localDateKey, shiftLocalDateKey } from "@/features/progress/localCalendar";
 
@@ -250,20 +251,19 @@ function addBest(bests: Map<string, PersonalBestRecord>, candidate: PersonalBest
 }
 
 function isBetterBest(candidate: PersonalBestRecord, current: PersonalBestRecord): boolean {
+  const chronology = compareAbsoluteTimestamps(candidate.achievedAt, current.achievedAt);
   if (candidate.metric === "average_time") {
     return (
       candidate.value < current.value ||
       (candidate.value === current.value &&
-        (candidate.achievedAt < current.achievedAt ||
-          (candidate.achievedAt === current.achievedAt && candidate.sourceId < current.sourceId)))
+        (chronology < 0 || (chronology === 0 && candidate.sourceId < current.sourceId)))
     );
   }
 
   return (
     candidate.value > current.value ||
     (candidate.value === current.value &&
-      (candidate.achievedAt > current.achievedAt ||
-        (candidate.achievedAt === current.achievedAt && candidate.sourceId < current.sourceId)))
+      (chronology > 0 || (chronology === 0 && candidate.sourceId < current.sourceId)))
   );
 }
 
@@ -308,7 +308,8 @@ function longestStreak(
 }
 
 function isLaterSessionTieBreaker(candidate: StoredDrillSession, current: StoredDrillSession): boolean {
-  return completedAt(candidate) > completedAt(current) || (completedAt(candidate) === completedAt(current) && candidate.id < current.id);
+  const chronology = compareAbsoluteTimestamps(completedAt(candidate), completedAt(current));
+  return chronology > 0 || (chronology === 0 && candidate.id < current.id);
 }
 
 function completedAt(session: StoredDrillSession): string {

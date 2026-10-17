@@ -23,6 +23,7 @@ import {
 import { formatLabel } from "@/lib/format";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 import type { AppStorage, BenchmarkResultRecord } from "@/lib/storage/appStorageTypes";
+import { compareAbsoluteTimestamps } from "@/lib/storage/storedTimestamps";
 
 interface BenchmarkHistoryViewProps {
   benchmarks: readonly BenchmarkTest[];
@@ -470,8 +471,9 @@ function isLaterBenchmarkResult(
   candidate: BenchmarkResultRecord,
   current: BenchmarkResultRecord
 ): boolean {
-  return candidate.completedAt > current.completedAt || (
-    candidate.completedAt === current.completedAt && candidate.id > current.id
+  const chronology = compareAbsoluteTimestamps(candidate.completedAt, current.completedAt);
+  return chronology > 0 || (
+    chronology === 0 && candidate.id > current.id
   );
 }
 

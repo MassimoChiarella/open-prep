@@ -68,6 +68,14 @@ describe("mistake retry drills", () => {
     ).toThrow("No unresolved missed questions");
   });
 
+  it("retries the oldest absolute instant across timezone offsets first", () => {
+    const created = createRetryMissedDrillSession([
+      mistake({ id: "newer", missedAt: "2026-10-17T10:00:00-04:00" }),
+      mistake({ id: "older", missedAt: "2026-10-17T13:00:00Z" })
+    ], { questionCount: 1 });
+    expect(created.questions[0].id).toBe("retry-older");
+  });
+
   it("restores imported Interview Math metadata while retaining the retry link", () => {
     const created = createRetryMissedDrillSession(
       [

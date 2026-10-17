@@ -31,6 +31,7 @@ import { removeQuestionPackFromPoolPreference } from "@/features/question-packs/
 import type { AnswerSpec, Difficulty, ExplanationSpec, QuestionTemplate, UnitType } from "@/lib/domain";
 import { formatLabel, formatNumber } from "@/lib/format";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
+import { compareAbsoluteTimestamps } from "@/lib/storage/storedTimestamps";
 import type {
   AppStorage,
   CommunityPackCatalogProvenance,
@@ -1303,7 +1304,7 @@ function formatErrorField(value: string): string {
 function sortPacks(packs: QuestionPackRecord[]): QuestionPackRecord[] {
   return [...packs].sort(
     (first, second) =>
-      second.importedAt.localeCompare(first.importedAt) || second.id.localeCompare(first.id)
+      compareAbsoluteTimestamps(second.importedAt, first.importedAt) || second.id.localeCompare(first.id)
   );
 }
 

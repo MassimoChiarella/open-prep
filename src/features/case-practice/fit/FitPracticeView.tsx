@@ -35,6 +35,7 @@ import {
 import type { FitCompetency, FitStoryRecord } from "@/features/case-practice/practiceTypes";
 import { AppStorageConflictError, type AppStorage, type DrillSessionWriteToken } from "@/lib/storage/appStorageTypes";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
+import { compareAbsoluteTimestamps } from "@/lib/storage/storedTimestamps";
 
 type RehearsalPhase = "idle" | "review" | "running" | "saved";
 type SaveStatus = "error" | "idle" | "saved" | "saving";
@@ -115,7 +116,7 @@ export function FitPracticeView({
             if (story === undefined) storyById.delete(id);
             else storyById.set(id, story);
           }
-          const recoveredStories = [...storyById.values()].sort((first, second) => second.updatedAt.localeCompare(first.updatedAt));
+          const recoveredStories = [...storyById.values()].sort((first, second) => compareAbsoluteTimestamps(second.updatedAt, first.updatedAt));
           setStories(recoveredStories);
           setStoryStatus((current) => current === "loading" ? "idle" : current);
           setSelectedStoryId((current) => current === unsavedStoryId || recoveredStories.some((story) => story.id === current)

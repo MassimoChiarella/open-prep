@@ -3,6 +3,7 @@ import { publishLocalDataInvalidation } from "@/features/settings/localDataInval
 import { assertBackupCompatibleRecords, inspectStoredRecord, IncompatibleStoredRecordError, type StoredRecordIssue } from "@/features/settings/recordDiagnostics";
 import { isFullCaseDraftRecord } from "@/features/case-practice/simulation/fullCaseDraft";
 import { isWellFormedUnicode } from "@/lib/validation/inputLimits";
+import { normalizeSnapshotTimestamps } from "@/lib/storage/storedTimestamps";
 import {
   appDatabaseName,
   progressStoreNames,
@@ -135,12 +136,12 @@ export async function replaceLocalProgressWithImport(
     throw new Error(validation.errors[0] ?? "Local progress import is invalid.");
   }
 
-  const imported = validation.exportData.stores;
+  const imported = normalizeSnapshotTimestamps(validation.exportData.stores);
   await storage.replaceSnapshot(imported, validation.exportData.privacyScope === "standard" ? {
     readStores: privatePreservationStoreNames,
-    preserve: (current) => preservePrivateData(imported, {
+    preserve: (current) => normalizeSnapshotTimestamps(preservePrivateData(imported, {
       practice_records: current.practice_records ?? [], market_sizing_attempts: current.market_sizing_attempts ?? []
-    })
+    }))
   } : {});
   publishLocalDataInvalidation("progress_replaced");
 }

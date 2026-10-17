@@ -12,6 +12,7 @@ import {
 } from "@/features/question-packs/questionPackPoolPreference";
 import type { AppStorage, QuestionPackRecord } from "@/lib/storage/appStorageTypes";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
+import { compareAbsoluteTimestamps } from "@/lib/storage/storedTimestamps";
 
 type LoadStatus = "error" | "loading" | "ready";
 type SaveStatus = "error" | "idle" | "saved" | "saving";
@@ -65,7 +66,7 @@ export function QuestionPackPoolSettings({
           if (!cancelled) {
             setPacks(
               installedPacks.sort(
-                (left, right) => right.importedAt.localeCompare(left.importedAt) || left.id.localeCompare(right.id)
+                (left, right) => compareAbsoluteTimestamps(right.importedAt, left.importedAt) || left.id.localeCompare(right.id)
               )
             );
             setLoadStatus("ready");

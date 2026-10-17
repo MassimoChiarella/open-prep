@@ -4,6 +4,7 @@ import {
   normalizeTimingAccommodation
 } from "@/features/timing/timingAccommodation";
 import type { DrillSession } from "@/lib/domain";
+import { compareAbsoluteTimestamps } from "@/lib/storage/storedTimestamps";
 import {
   appStoreIndexNames,
   type AppStorage,
@@ -194,11 +195,12 @@ function isLaterResult(candidate: BenchmarkResultRecord, current: BenchmarkResul
 }
 
 function isPreferredMetricTie(candidate: BenchmarkResultRecord, current: BenchmarkResultRecord): boolean {
-  return candidate.completedAt > current.completedAt || (
-    candidate.completedAt === current.completedAt && candidate.id < current.id
+  const chronology = compareAbsoluteTimestamps(candidate.completedAt, current.completedAt);
+  return chronology > 0 || (
+    chronology === 0 && candidate.id < current.id
   );
 }
 
 function compareResults(first: BenchmarkResultRecord, second: BenchmarkResultRecord): number {
-  return first.completedAt.localeCompare(second.completedAt) || first.id.localeCompare(second.id);
+  return compareAbsoluteTimestamps(first.completedAt, second.completedAt) || first.id.localeCompare(second.id);
 }

@@ -5,6 +5,7 @@ import type {
   PrepProfileRecord
 } from "@/features/case-practice/practiceTypes";
 import type { PracticeAttemptSummary, ProgressSummary } from "@/features/progress/progressAggregation";
+import { compareAbsoluteTimestamps } from "@/lib/storage/storedTimestamps";
 
 export const minimumWeeklySessions = 1;
 export const maximumWeeklySessions = 14;
@@ -331,7 +332,7 @@ function recentAttemptAverage(
 ): number | undefined {
   const scores = [...attempts]
     .filter((attempt) => attempt.module === module && attempt.maxScore > 0)
-    .sort((first, second) => second.completedAt.localeCompare(first.completedAt))
+    .sort((first, second) => compareAbsoluteTimestamps(second.completedAt, first.completedAt))
     .slice(0, 5)
     .map((attempt) => Math.min(1, Math.max(0, attempt.score / attempt.maxScore)));
 

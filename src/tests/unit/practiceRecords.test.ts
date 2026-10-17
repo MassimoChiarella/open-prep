@@ -37,6 +37,19 @@ describe("case practice records", () => {
     expect(await loadPracticeAttempts(storage)).toHaveLength(2);
   });
 
+  it("orders attempts and stories by instant across valid timestamp offsets", async () => {
+    const storage = new MemoryAppStorage();
+    for (const [id, timestamp] of [["newer", "2026-10-17T10:00:00-04:00"], ["older", "2026-10-17T13:00:00Z"]]) {
+      await savePracticeAttempt(storage, { completedAt: timestamp, itemId: id, module: "structuring", maxScore: 4, score: 2 });
+      await saveFitStory(storage, {
+        id, kind: "fit_story", competency: "leadership", updatedAt: timestamp,
+        title: "Story", action: "Action", situation: "Situation", task: "Task", result: "Result", reflection: "Reflection"
+      });
+    }
+    expect((await loadPracticeAttempts(storage)).map(({ itemId }) => itemId)).toEqual(["newer", "older"]);
+    expect((await loadFitStories(storage)).map(({ id }) => id)).toEqual(["newer", "older"]);
+  });
+
   it("persists one profile and editable fit stories", async () => {
     const storage = new MemoryAppStorage();
     const story: FitStoryRecord = {

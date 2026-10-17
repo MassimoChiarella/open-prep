@@ -508,6 +508,19 @@ describe("progress aggregation", () => {
     expect(summary.wholeProductActivity.benchmarks.completedResultCount).toBe(2);
   });
 
+  it("uses absolute chronology for imported benchmark ties and newest mistakes", async () => {
+    const storage = new MemoryAppStorage();
+    const newer = "2026-10-17T10:00:00-04:00";
+    const older = "2026-10-17T13:00:00Z";
+    await storage.put("benchmark_results", benchmarkRecord("newer", 100, newer));
+    await storage.put("benchmark_results", benchmarkRecord("older", 100, older));
+    const summary = await loadProgressSummary(storage);
+    expect(summary.personalBests).toContainEqual(expect.objectContaining({ id: "benchmark:beginner:score", sourceId: "newer" }));
+    expect(createProgressSummary({ sessions: [], mistakeNotebook: [
+      { ...mistakeRecord("older"), missedAt: older }, { ...mistakeRecord("newer"), missedAt: newer }
+    ] }).mistakeNotebook.map(({ id }) => id)).toEqual(["newer", "older"]);
+  });
+
   it.each([1_000, 5_000, 10_000, 20_000])(
     "keeps exact linear progress aggregates within the 20k budget at %i responses",
     (count) => {
