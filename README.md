@@ -150,11 +150,16 @@ Preview deployment does not complete the official release checklist.
 GitHub Actions is ready to deploy successful pushes to `main` automatically,
 but deployment stays disabled unless repository variable `VERCEL_DEPLOY_ENABLED`
 is explicitly set to `true` after the deployment credential is configured.
-CI prepares and retains the exact output that passed the full verification and
-cross-browser suite. A separate production job downloads that same run's
-artifact, checks its commit and inventory, stages it without changing the live
-domain, and runs the hosted smoke check before promotion. It checks that the
-commit is still current on `main` before promotion and verifies `https://openprep.app/`
+Windows CI runs the full verification and Chromium suite, then retains its exact
+static output. A separate Linux job downloads that same run's artifact, checks
+its commit, ref, clean marker and inventory, and runs the full cross-browser
+suite sequentially without rebuilding. This isolates the browser engines from
+the observed Windows runner shutdown stall; it does not claim an upstream fix.
+Both jobs must pass before a separate production job downloads the verified
+deployment artifact, checks its commit and requires the exact inventory tested
+on Linux, stages it without changing the live domain, and runs the hosted smoke
+check before promotion. It checks
+that the commit is still current on `main` before promotion and verifies `https://openprep.app/`
 afterward. Production deployments are serialized.
 
 Configure repository variables `VERCEL_ORG_ID` and `VERCEL_PROJECT_ID`, and a

@@ -202,3 +202,45 @@ try {
 }
 
 Write-Host "Passed $($taskCases.Count) canonical production checks."
+
+$taskMatch = [regex]::Match($taskWorkflow, '(?ms)^      - name: Bind deployment to the cross-browser tested artifact\r?\n.*?^        run: \|\r?\n(?<body>(?:          [^\r\n]*\r?\n|\r?\n)+)')
+if (-not $taskMatch.Success) { throw 'Could not find the tested artifact binding block.' }
+$taskBindingBlock = [scriptblock]::Create(($taskMatch.Groups['body'].Value -replace '(?m)^          ', ''))
+
+$taskAllowedCommands = @('Get-Content', 'ConvertFrom-Json')
+foreach ($taskCommand in $taskBindingBlock.Ast.FindAll({ param($node) $node -is [System.Management.Automation.Language.CommandAst] }, $true)) {
+    if ($taskCommand.GetCommandName() -notin $taskAllowedCommands) {
+        throw "Unexpected command in artifact binding block: $($taskCommand.GetCommandName())"
+    }
+}
+
+function Get-Content {
+    Assert-Equal ($args -join ' ') '-Raw -LiteralPath .vercel/output/static/open-prep-release.json' 'Tested artifact marker request'
+    $taskState.Reads++
+    $taskLocalMarker
+}
+
+$taskInventory = 'a' * 64
+$taskCases = @(
+    @{ Name = 'accepts the cross-browser tested inventory'; Expected = $taskInventory; Marker = $taskInventory; Reads = 1 }
+    @{ Name = 'rejects a different deployment inventory'; Expected = $taskInventory; Marker = 'b' * 64; Reads = 1; Error = 'Deployment inventory does not match the cross-browser tested artifact.' }
+    @{ Name = 'rejects a missing tested inventory'; Expected = $null; Marker = $taskInventory; Reads = 0; Error = 'Cross-browser artifact inventory is missing or invalid.' }
+    @{ Name = 'rejects a non-hex tested inventory'; Expected = 'z' * 64; Marker = $taskInventory; Reads = 0; Error = 'Cross-browser artifact inventory is missing or invalid.' }
+    @{ Name = 'rejects a tested inventory with a trailing newline'; Expected = $taskInventory + "`n"; Marker = $taskInventory; Reads = 0; Error = 'Cross-browser artifact inventory is missing or invalid.' }
+)
+$taskPreviousInventory = $env:TESTED_INVENTORY_SHA256
+try {
+    foreach ($taskCase in $taskCases) {
+        $env:TESTED_INVENTORY_SHA256 = $taskCase.Expected
+        $taskLocalMarker = @{ artifact = @{ inventorySha256 = $taskCase.Marker } } | ConvertTo-Json -Depth 3 -Compress
+        $taskState = @{ Reads = 0 }
+        $taskError = $null
+        try { & { . $taskBindingBlock } } catch { $taskError = $_.Exception.Message }
+        Assert-Equal $taskError $taskCase.Error $taskCase.Name
+        Assert-Equal $taskState.Reads $taskCase.Reads "$($taskCase.Name): local marker reads"
+        Write-Host "PASS $($taskCase.Name)"
+    }
+} finally {
+    $env:TESTED_INVENTORY_SHA256 = $taskPreviousInventory
+}
+Write-Host "Passed $($taskCases.Count) tested artifact binding checks."

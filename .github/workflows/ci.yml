@@ -12,6 +12,7 @@ jobs:
     runs-on: windows-latest
     timeout-minutes: 30
     outputs:
+      web_artifact_name: web-output-${{ github.sha }}-${{ github.run_attempt }}
       vercel_artifact_name: vercel-output-${{ github.sha }}-${{ github.run_attempt }}
 
     steps:
@@ -36,11 +37,17 @@ jobs:
       - name: Verify project
         run: npm run check
 
-      - name: Install Firefox and WebKit
-        run: npx playwright install firefox webkit
+      - name: Validate verified web output
+        run: node scripts/prepare-web-build.mjs verify --commit $env:GITHUB_SHA --ref $env:GITHUB_REF --require-clean
 
-      - name: Run cross-browser smoke tests
-        run: npm run e2e:cross-browser
+      - name: Retain verified web output
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: web-output-${{ github.sha }}-${{ github.run_attempt }}
+          path: out/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
 
       - name: Prepare verified Vercel output
         if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.VERCEL_DEPLOY_ENABLED == 'true'
@@ -57,18 +64,86 @@ jobs:
           retention-days: 7
 
       - name: Retain Playwright failure diagnostics
-        if: failure()
+        if: failure() || cancelled()
+        timeout-minutes: 3
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: playwright-failure-${{ github.run_id }}-${{ github.run_attempt }}
+          name: playwright-failure-windows-${{ github.run_id }}-${{ github.run_attempt }}
+          path: test-results/
+          if-no-files-found: ignore
+          retention-days: 14
+
+  cross_browser:
+    name: Cross-browser verified artifact
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    outputs:
+      inventory_sha256: ${{ steps.tested_artifact.outputs.inventory_sha256 }}
+    permissions:
+      actions: read
+      contents: read
+
+    steps:
+      - name: Check out the verified revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+
+      - name: Download this run's verified web output
+        env:
+          GH_REPO: ${{ github.repository }}
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_NAME: ${{ needs.verify.outputs.web_artifact_name }}
+        run: gh run download "$GITHUB_RUN_ID" --name "$ARTIFACT_NAME" --dir out
+
+      - name: Validate the downloaded web artifact identity
+        run: node scripts/prepare-web-build.mjs verify --commit "$GITHUB_SHA" --ref "$GITHUB_REF" --require-clean
+
+      - name: Install lockfile dependencies
+        run: npm ci
+
+      - name: Install cross-browser engines and dependencies
+        run: npx playwright install --with-deps chromium firefox webkit
+
+      - name: Run cross-browser smoke tests
+        timeout-minutes: 22
+        env:
+          DEBUG: pw:test,pw:browser
+        run: npm run e2e:cross-browser -- --workers=1 --global-timeout=1200000
+
+      - name: Revalidate the tested web artifact identity
+        id: tested_artifact
+        run: |
+          node scripts/prepare-web-build.mjs verify --commit "$GITHUB_SHA" --ref "$GITHUB_REF" --require-clean
+          node --input-type=module <<'NODE'
+          import { appendFileSync, readFileSync } from "node:fs";
+          const inventory = JSON.parse(readFileSync("out/open-prep-release.json", "utf8")).artifact.inventorySha256;
+          if (typeof inventory !== "string" || inventory.length !== 64 || !/^[a-f0-9]{64}$/.test(inventory)) throw new Error("Invalid tested artifact inventory.");
+          appendFileSync(process.env.GITHUB_OUTPUT, "inventory_sha256=" + inventory + "\n");
+          NODE
+
+      - name: Retain Playwright failure diagnostics
+        if: failure() || cancelled()
+        timeout-minutes: 3
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: playwright-failure-linux-${{ github.run_id }}-${{ github.run_attempt }}
           path: test-results/
           if-no-files-found: ignore
           retention-days: 14
 
   deploy_production:
     name: Deploy verified production artifact
-    needs: verify
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.VERCEL_DEPLOY_ENABLED == 'true'
+    needs: [verify, cross_browser]
+    if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main' && vars.VERCEL_DEPLOY_ENABLED == 'true'
     runs-on: windows-latest
     timeout-minutes: 20
     concurrency:
@@ -116,6 +191,14 @@ jobs:
 
       - name: Validate the downloaded artifact identity
         run: node scripts/prepare-web-build.mjs verify --output .vercel/output/static --commit $env:GITHUB_SHA --ref $env:GITHUB_REF --require-clean
+
+      - name: Bind deployment to the cross-browser tested artifact
+        env:
+          TESTED_INVENTORY_SHA256: ${{ needs.cross_browser.outputs.inventory_sha256 }}
+        run: |
+          if ($env:TESTED_INVENTORY_SHA256 -cnotmatch '\A[a-f0-9]{64}\z') { throw 'Cross-browser artifact inventory is missing or invalid.' }
+          $taskTestedMarker = Get-Content -Raw -LiteralPath '.vercel/output/static/open-prep-release.json' | ConvertFrom-Json
+          if ($taskTestedMarker.artifact.inventorySha256 -cne $env:TESTED_INVENTORY_SHA256) { throw 'Deployment inventory does not match the cross-browser tested artifact.' }
 
       - name: Install lockfile dependencies
         run: npm ci
