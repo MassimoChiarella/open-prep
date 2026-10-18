@@ -90,7 +90,7 @@ The integration record below supersedes earlier in-progress receipts. The curren
 
 ## Integration record and retained technical contracts
 
-The last application-code change is `3285a573fcd0eeef51f08702b99a10bdbf75c576`. Subsequent commits through `cc0d1f4` change test synchronization and this plan. All 20 ranked audit findings and the associated authoring warning are mapped to milestones. The dependency finding remains partially open because braces has no available patch; final performance and current-head CI acceptance are recorded separately below. Repository pushes do not constitute a tagged release.
+At the earlier 17 October closure, the last application-code change was `3285a573fcd0eeef51f08702b99a10bdbf75c576`. Subsequent commits through `cc0d1f4` changed test synchronization and this plan. All 20 ranked audit findings and the associated authoring warning are mapped to milestones. The dependency finding remains partially open because braces has no available patch. The authorized follow-up sections below record the later application source `955e7f1` and its separate acceptance evidence. Repository pushes do not constitute a tagged release.
 
 ### Storage, chronology and concurrent edits
 
@@ -121,8 +121,8 @@ The last application-code change is `3285a573fcd0eeef51f08702b99a10bdbf75c576`. 
 
 ### Conditional optimizations explicitly deferred
 
-- **Progressive saved-summary rendering before optional lifetime badges — DEFERRED.** The implementation moves lifetime work off the page thread but still resolves the summary snapshot and badges together. A separate two-phase loading/error/cancellation UI contract is optional follow-up work, not a completed milestone or a requirement to omit badges. Reconsider it if the measured saved-summary readiness cost warrants that change.
-- **Per-generation-request compiled-expression cache — DEFERRED until profiling demonstrates benefit.** Template-validation probes already reuse a compiled expression locally. Runtime generation received the measured/request-scoped eligibility reuse; no additional runtime expression cache or global unbounded cache was introduced.
+- **Progressive saved-summary rendering before optional lifetime badges — delivered in follow-up F02 below.** The earlier delivery moved lifetime work off the page thread; F02 adds the checked two-phase loading/error/cancellation contract and measures earlier core readiness while retaining badges.
+- **Per-generation-request compiled-expression cache — candidate rejected after F03 profiling below.** Template-validation probes already reuse a compiled expression locally. Runtime generation retains its measured/request-scoped eligibility reuse; the additional cache did not meet its acceptance gate and was not introduced.
 
 ## M27 validation evidence and remaining acceptance
 
@@ -169,7 +169,7 @@ The targeted page stalls are substantially reduced without dropping history, bad
 
 Total readiness did not improve everywhere: the larger Dashboard fixtures and native Recovery are slower under this observation method. Worker startup, migration/chronology correctness, scheduling and locator polling can affect total readiness; these measurements do not isolate their causes. The existing locator waits poll at approximately 20/50/100/100/500-ms intervals and then repeat at 500 ms, followed by two animation frames, so the timings are quantized observations rather than continuous DOM-completion timestamps. CDP 4× throttling is diagnostic, does not uniformly model worker/storage work, and cannot predict a physical phone's speed. The Recovery timing covers diagnosis, not archive download or removal. Earlier intermediate trials and the incomplete ad hoc readiness probe are not used as final-source measurements.
 
-The next performance investigation is **P3, open**: instrument actual DOM readiness and worker startup/storage/aggregation/render stages, then collect at least 20 quiet paired trials on identical fixtures at native and diagnostic 4× settings. Treat a repeated actual-readiness increase exceeding both 100 ms and 15% as a trigger for a targeted change. Preserve the page responsiveness gains, complete histories, filtered Fit queries and all correctness gates. This is an observed-readiness follow-up, not a proven new runtime defect or a reason to add speculative caching.
+That closure recorded a **P3 Dashboard readiness follow-up**, completed by F01 below: instrument actual DOM readiness and worker startup/storage/aggregation/render stages, then collect at least 20 quiet paired trials on identical fixtures at native and diagnostic 4× settings. A repeated actual-readiness increase exceeding both 100 ms and 15% was the trigger for a targeted change. F01 retains responsiveness, complete histories, filtered Fit queries and correctness gates. It does not remeasure native Recovery's earlier locator-observed readiness, which remains an unisolated measurement limitation. Neither observation establishes a new runtime defect or justifies speculative caching by itself.
 
 ### Hosted CI and deployment
 
@@ -191,12 +191,14 @@ The user authorized the work that can be completed with the current repository a
 
 | Phase | Work and substeps | Acceptance / decision gate | Status |
 | --- | --- | --- | --- |
-| F01 | Record continuous Dashboard DOM readiness and worker request/response timing; verify native fixture counts; distinguish startup, storage, aggregation and rendering before choosing a fix | At least 20 quiet paired trials per representative scenario/rate; no inference from locator polling; correctness and full history retained | In progress |
-| F02 | Return the selected saved-summary snapshot before lifetime badges; preserve eventual labels/repeat identity; handle partial loading, enrichment failure/retry, cancellation and reset/restore | Bounded snapshot becomes usable while lifetime work is pending; late/stale results never replace newer data; worker and checked fallback agree; no badge or practice feature removed | Implemented — focused/native/targeted layout checks passed; final integrated gates pending |
+| F01 | Record continuous Dashboard DOM readiness and worker request/response timing; verify native fixture counts; distinguish startup, storage, aggregation and rendering before choosing a fix | At least 20 quiet paired trials per representative scenario/rate; no inference from locator polling; correctness and full history retained | Complete — 240 final paired trials; no group crosses the predefined regression trigger |
+| F02 | Return the selected saved-summary snapshot before lifetime badges; preserve eventual labels/repeat identity; handle partial loading, enrichment failure/retry, cancellation and reset/restore | Bounded snapshot becomes usable while lifetime work is pending; late/stale results never replace newer data; worker and checked fallback agree; no badge or practice feature removed | Complete — full local gate, three-engine lifecycle/offline controls, targeted presentation and final paired performance passed |
 | F03 | Profile repeated expression compilation against a bounded request-local candidate across ordinary built-in/imported/custom requests | Implement only if a representative native request saves both at least 20% and 1 ms, with identical questions/errors/seeds and no material normal/custom regression; stress-only benefit does not justify a cache | Complete — measured candidate rejected; decision and evidence below |
 | F04 | Recheck primary braces metadata, actual tooling paths and upstream fixes; evaluate a compatible patch/replacement | A vetted fix must preserve CSS/lint/build/browser compatibility; no unrelated framework downgrade or unsupported claim that advisory counts are resolved | Assessment complete — tested candidate not adopted; upstream exception remains OPEN |
-| F06 | Correct generated personal-best labels discovered in translated visual review; use existing scope translations and locale value/metadata formatting in summaries and Progress | Canonical engine/storage labels remain unchanged; all nine translated languages, unfamiliar labels, legacy time modes and existing rounding/precision are covered | Complete — 38 focused tests, strict TypeScript, ESLint and generated-catalog checks; final browser integration pending |
-| F05 | Run focused checks per commit, then full integration and appropriate native/offline/cross-browser coverage; repeat performance controls and publish the final ledger | Exact source identities, counts, tradeoffs, open constraints and incremental main pushes are recorded | Pending implementation |
+| F06 | Correct generated personal-best labels discovered in translated visual review; use existing scope translations and locale value/metadata formatting in summaries and Progress | Canonical engine/storage labels remain unchanged; all nine translated languages, unfamiliar labels, legacy time modes and existing rounding/precision are covered | Complete — focused and full local gates plus final German/Arabic presentation passed |
+| F07 | Repair populated Progress definition lists and mistake metadata found by the expanded whole-page accessibility scan | Preserve presentation; complete an actual drill and scan nonempty metrics, categories and notebook in all three engines | Complete — three-engine native Axe regression and final presentation scans passed |
+| F08 | Isolate hosted cross-browser execution after the Windows runner stalled; transfer the exact verified build to a separate Linux job and require both jobs before deployment | Same complete browser/transfer matrix and artifact identity; failures remain failures; retain Windows full/visual gate, diagnostics and unchanged per-test limits | Implemented in `c51ae9b` — focused workflow/artifact guards passed; final published-head acceptance is recorded by GitHub checks |
+| F05 | Run focused checks per commit, then full integration and appropriate native/offline/cross-browser coverage; repeat performance controls and publish the final ledger | Exact source identities, counts, tradeoffs, open constraints and incremental main pushes are recorded | Implementation and local acceptance complete — final published-head hosted execution is tracked separately below |
 
 Physical-device, OS installation/background lifecycle and manual screen-reader checks remain contingent on access to those actual environments. They are not represented as completed by browser emulation.
 
@@ -220,7 +222,7 @@ Visual review also found an existing dynamic `Untimed drill` heading missing fro
 
 ### F03 — Expression compilation decision
 
-A request-local lazy expression map was compared against the actual generator source in an isolated Node 24.19.0 probe: **24 alternating paired batches across 10 scenarios**, with **120 complete seeded-output equivalence checks**. Controls include built-in 5/30/50 questions, Interview Math, accepted imported packs, a low-capacity/repeated-draw pack, a long-formula boundary and custom arithmetic that does not invoke the formula parser. Ordinary requests saved **0.004–0.095 ms**; the 5-question and custom controls had no useful gain. The low-capacity case saved **0.808 ms / 25.3%** and the long-formula boundary **0.526 ms / 21.5%**. Neither meets the predeclared requirement to save both at least 1 ms and 20% on a representative request.
+A request-local lazy expression map was compared against the actual generator source in an isolated Node 24.19.0 probe: **24 alternating paired batches across 10 scenarios**, with **120 complete seeded-output equivalence checks**. Controls include built-in 5/30/50 questions, Case Math (30 questions), accepted imported packs, a low-capacity/repeated-draw pack, a long-formula boundary and custom arithmetic that does not invoke the formula parser. Ordinary requests saved **0.004–0.095 ms**; the 5-question and custom controls had no useful gain. The low-capacity case saved **0.808 ms / 25.3%** and the long-formula boundary **0.526 ms / 21.5%**. Neither meets the predeclared requirement to save both at least 1 ms and 20% on a representative request.
 
 No runtime cache is introduced. The existing validation path already reuses compiled closures per validation batch; market-sizing evaluation has no repeated expression within one evaluation. Complete seeded Question outputs matched. Candidate error equivalence was not tested because the candidate was rejected; production generation and its errors remain unchanged. Local retained receipts: `.runtime-cache/followups-2026-10-18/logic/profile.mjs`, `profile-results.json` and `FINDINGS.md`. This closes the investigation with a measured decision; it does not claim a performance gain from code that was never shipped.
 
@@ -237,3 +239,87 @@ No dependency, lockfile, installed module or application runtime changed for thi
 The completed Arabic summary revealed English engine-generated badge strings; Progress also rendered those strings directly. A shared display-only formatter now maps known category/tag scopes through the existing translated labels and uses two localized metric templates plus the benchmark/streak keys. It covers all nine categories and 28 skill tags across nine non-English languages, preserves canonical English labels and unfamiliar-label fallbacks, and changes neither scoring nor stored content.
 
 Progress badge values/metadata now use the existing locale formatters and translated units. Prior `Math.round`/`toFixed` behavior is retained before formatting; full score precision is retained, and unknown legacy time modes fall back safely. **38 focused tests in four suites**, strict whole-tree TypeScript, ESLint, current generated catalogs and whitespace checks passed. German/Arabic summary and Progress controls cover labels, values and metadata; dedicated English tie/precision and legacy-mode cases guard compatibility. Final production presentation checks remain in F05.
+
+### F07 — Populated Progress accessibility
+
+The expanded presentation check found invalid definition lists in populated Progress: metric descriptions and category comparisons used paragraphs inside definition groups, while saved-mistake metadata had definitions without terms. Commit `955e7f1` makes descriptions additional definitions and represents metadata badges as a list, preserving text, styling and localization. The regression completes a real wrong-answer drill, waits for persistence, opens nonempty Progress metrics/categories/notebook and runs whole-page Axe. It passed **3/3 in Chromium, Firefox and WebKit**, alongside the existing eight dashboard unit tests, TypeScript and ESLint. The earlier failing presentation receipts remain preserved separately.
+
+### F08 — Isolate hosted cross-browser execution and bind tested bytes
+
+Hosted run `39090404490` completed its full project gate, then logged all **158 Firefox/WebKit smoke test bodies** passing by **02:54:41 UTC**. No backup-transfer result followed before the **03:01:49 UTC** cancellation. GitHub's annotation explicitly records the 30-minute job limit. The log does not identify the exact blocked operation: last-test cleanup, worker/browser shutdown or the next project's browser setup remain possible. Installed Playwright source permits heartbeat-renewed waits during worker shutdown; this is a plausible mechanism, not a demonstrated upstream root-cause fix. The separate complete local Windows matrix passed all **160 cases with exit 0**.
+
+Commit **`c51ae9b973e9e66afae834d3ed8aa513576200d2`** keeps Windows `npm run check` and approved visual baselines, then uploads that exact static output for pushes and PRs, including deployment-disabled runs. A separate Ubuntu job downloads the same run's SHA/attempt-named artifact, checks its commit/ref/clean marker and complete inventory, installs the lockfile-matched browsers, and runs the unchanged full matrix with one worker. It does not rebuild. Artifact identity is rechecked afterward; only successful revalidation publishes the tested inventory hash.
+
+Production explicitly requires success from both jobs and rejects a Vercel artifact whose inventory differs from that tested hash, including missing/malformed expected hashes. Existing source/current-main, staged-host behavior, promotion and canonical-origin guards remain in force. The cross-browser command has a **20-minute global limit**, inside a **22-minute step** and **30-minute job**; separate bounded diagnostic uploads and test/browser debug logs preserve failure evidence. Per-test limits, retries, assertions and application code are unchanged. This is platform isolation and better failure reporting; it does not certify Windows CI shutdown as repaired. The setup follows [Playwright's supported CI guidance](https://playwright.dev/docs/ci); the tagged-release workflow already runs on Ubuntu and is unchanged.
+
+Focused verification passed **15 connected workflow/release/action-pin tests**, with the final updated workflow guard rerun, strict TypeScript, ESLint, immutable action pins and YAML/heredoc parsing. The real PowerShell workflow blocks passed **19 checks**: seven promotion, seven canonical-origin and five tested-inventory controls, including mismatched/missing/non-hex/trailing-newline rejection. An independent review found no artifact-substitution, rebuild or deployment-bypass path. [Run 39092636221](https://github.com/MassimoChiarella/open-prep/actions/runs/39092636221) accepted this CI configuration and passed setup/deployment guards; it is superseded by the closing ledger commit so the full hosted gate runs on the exact final published head. It is not counted as a completed full-suite pass.
+
+The actual Linux revalidation run block was also extracted unchanged apart from YAML indentation and executed through Git Bash: matching source/ref/inventory returned exit 0 and the exact expected hash; a wrong source commit returned exit 1 and created no output. This validates the publisher's local shell/failure propagation, not Ubuntu browser execution. Receipts: `.runtime-cache/followups-2026-10-18/revalidation-20261018-031202/`.
+
+### F05 — Final follow-up source and integration
+
+This record supersedes the earlier delivery's then-current source and follow-up statuses; it does not relabel the earlier expanded audit as a fresh sweep. Clean tested application source is **`955e7f10c6df8194cf5846d9137daa1ff692c6a9`**. The production artifact contains **240 files**, inventory SHA-256 **`ea7e28cdf97f0a0c4aa1f401b192f680b4c3166352a2af816c5901c528b82079`**. The quiet performance build and complete-gate rebuild produced that same inventory.
+
+| Verification | Result and scope |
+| --- | --- |
+| Complete local gate | **Passed, exit 0**: version/action-pin/authoring checks, repository ESLint, generated route types/strict TypeScript, **1,779 unit tests / 206 files**, static build/budgets and **313 Chromium E2E cases in 8.5 minutes**. Receipt: `.runtime-cache/followups-2026-10-18/full-check.log`. |
+| Production payload budgets | Largest JS chunk **420.2/500.0 KiB**; largest route Brotli JS **419.3/480.0 KiB** (`/exhibits/`); install precache **5,264.0/6,144.0 KiB**, **201 files**. |
+| Final cross-browser/backup-transfer matrix | **Passed, exit 0: 160/160 in 6.8 minutes**, including Firefox/WebKit smoke and Chromium-to-Firefox/WebKit Complete Backup transfer. Final-source cases include progressive core/enrichment, first offline worker/summary load, silent reset rejection and populated Progress accessibility. Receipt: `cross-browser.log`; native output: `cross-browser-results/`. |
+| Targeted native worker/offline controls | **13/13 passed**, including the first saved-summary visit after removing network access, eventual benchmark enrichment, silent reset rejection, backup worker download and cancellation. This targeted receipt precedes F07; final-source full suites are recorded separately. Receipt: `offline-native.log`. |
+| Populated Progress native accessibility | **3/3 passed** across Chromium/Firefox/WebKit on the final source. Receipt: `progress-a11y.log`. |
+| Final targeted presentation | **20/20 stable states, 20 Axe scans and 20 screenshots**: desktop, mobile, dark mobile, German mobile and Arabic RTL mobile; summary loading/error/completion plus visible Progress personal bests. **Zero tagged violations, captured page errors and horizontal overflow**. Localized labels/values/metadata passed explicit controls; finite animations completed before scanning. Receipts: `visual-final.log`, `visual-final/summary.json`. |
+| Hosted verification/deployment | [Run 39090404490](https://github.com/MassimoChiarella/open-prep/actions/runs/39090404490) passed project verification (**1,779 unit tests / 206 files and 313 Chromium cases**). Its cross-browser step logged **158 passing smoke test bodies**, then remained silent before either backup-transfer result and was canceled by the **30-minute job limit**. It is not a completed cross-browser pass; deployment was skipped. Receipt: `ci-955e7f1.log`. F08 addresses CI execution separately. |
+
+Except for the full local gate's explicit path, these receipts are under `.runtime-cache/followups-2026-10-18/`. The earlier failing `visual/` directory remains retained. These targeted checks do not claim that every route/profile from the earlier 754-case sweep was rerun.
+
+### F01/F02 — Final quiet paired performance
+
+The committed continuous-DOM probe compared clean baseline `96edaaa99d7048af8249bdedb3cea33314e324d9` with final `955e7f1` in alternating order within the same quiet window. It retained **240 Dashboard trials and 80 saved-summary trials: 160 pairs, 20 pairs per scenario/rate**, after **16 discarded warmup trials**. Native IndexedDB session/response counts, worker results, complete trial groups, source markers and all reported medians were independently checked. Both measurement processes exited 0 and captured zero page-error exceptions.
+
+The following medians are **milliseconds**, baseline → final; each fixture contains 20 responses per session.
+
+| Dashboard sessions / responses | Native first DOM | Diagnostic 4× first DOM |
+| --- | ---: | ---: |
+| 200 / 4,000 | 117.60 → 120.85 | 380.45 → 375.95 |
+| 1,000 / 20,000 | 317.35 → 319.45 | 502.10 → 502.80 |
+| 5,000 / 100,000 | 1,234.25 → 1,228.00 | 1,426.55 → 1,447.90 |
+
+No Dashboard group crosses the predefined increase trigger of **both 100 ms and 15%**; all shifts are within roughly 3%. Every Dashboard trial recorded no main-document task at or above the probe's 50-ms threshold. This comparison establishes no material regression from these follow-ups; it does not retrospectively prove actual DOM timings for audit baseline `627e012`, whose earlier locator-observed results used a different observation method. No speculative Dashboard cache or storage redesign was introduced.
+
+| Saved summary, 5,000 sessions / 100,000 responses | Native first DOM | Diagnostic 4× first DOM |
+| --- | ---: | ---: |
+| Core scores and question review | 2,411.65 → **89.70** | 2,709.85 → **335.40** |
+| Complete badges and correct repeat action | 2,411.65 → 2,436.75 | 2,710.00 → 2,686.55 |
+
+The core marker is the first insertion of the saved-summary header; native UI tests separately verify usable scores, review and worked solutions in that snapshot. Core readiness after two animation frames was **2,429.20 → 111.45 ms native** and **2,757.35 → 430.90 ms at 4×**. These are DOM/two-frame observations, not completed entry-animation or physical-display paint measurements. Core results arrive substantially earlier while lifetime enrichment completes in roughly the same time; the full lifetime scan and all badges remain present.
+
+Each summary cohort's median observed longest main-page task and blocking time was zero. This is not an all-trials-zero claim: two baseline 4× trials recorded 53–56 ms tasks, and four final 4× trials recorded 50–64 ms tasks, with at most 14 ms blocking time. Raw reports: `dashboard-final-paired.json` and `summary-final-paired.json` in the same receipt directory; the earlier `7276dde` comparison is retained as intermediate evidence.
+
+These are warmed local-production Chromium **153.0.8010.12** / Node **24.19.0** desktop measurements on Windows/Ryzen 5 3600 at **1440×1000**, with service workers blocked to isolate runtime readiness and other local test/browser jobs idle. CDP 4× is diagnostic and does not uniformly throttle workers/storage or predict a physical phone. The results do not establish cold-network, offline-cache, other-device or fallback-thread latency. Offline correctness is covered separately by native browser tests.
+
+### Remaining exception and execution boundaries
+
+The fresh advisory inventory still reports **7 high / 0 moderate affected dependency entries from one underlying open braces advisory**. F04 qualified a candidate and found it incomplete; no patch, package identity change or unsupported clean-audit claim was shipped. `SECURITY.md` retains the exception and reassessment controls. F03 completed with a measured rejection of its cache candidate, so production generation remains unchanged.
+
+Physical devices, OS PWA installation/background lifecycle and manual screen readers remain unverified without those environments. Automated Axe, viewport/RTL simulation, root-font scaling and offline emulation do not replace them. No history, backup scope/validation, private-storage consent, deterministic grading or practice feature was removed. Repository pushes do not create a tagged release.
+
+### Published-head verification and development history
+
+This ledger is the **12th focused follow-up commit**, following the earlier 37-commit delivery. The implementation, investigations and focused checks were pushed incrementally to `main`:
+
+| Commit | Milestone |
+| --- | --- |
+| `b40a1c6` | Executable follow-up phases and acceptance gates |
+| `ae2b60a` | Measured expression-cache decision |
+| `ce9b2c6` | Continuous readiness instrumentation |
+| `c5a8699` | Qualified dependency-remedy assessment |
+| `fc3831e` | Generation-checked progressive worker snapshots |
+| `e9d9fcc` | Usable core summaries with eventual enrichment/retry |
+| `7276dde` | Paired core/completion performance comparison |
+| `12b27b3` | Localized personal-best labels/values |
+| `d1847ad` | First offline saved-summary and lifecycle regressions |
+| `955e7f1` | Populated Progress accessibility |
+| `c51ae9b` | Separate cross-browser CI with tested-inventory deployment binding |
+| This commit | Final plan, local integration/performance receipts and verification limits |
+
+Application code remains exactly that tested at `955e7f1`; later changes affect CI, its guard test, README and this ledger. At publication, the new platform-isolated hosted gate has not yet completed: [main's CI checks](https://github.com/MassimoChiarella/open-prep/actions/workflows/ci.yml?query=branch%3Amain) record the complete run and deployment for this exact closing commit. The superseded run is canceled rather than treated as failed application verification. A hosted success requires both the Windows full/visual gate and the complete Linux cross-browser/transfer gate; production additionally requires the exact tested inventory and all existing hosted/current-main checks. This document does not predeclare those outcomes. The closing response reports the observed final result separately, without creating another documentation-only full-run cycle.
