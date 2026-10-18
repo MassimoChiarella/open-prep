@@ -837,7 +837,7 @@ function CategoryComparisonStat({ comparison, label, value }: { comparison: stri
     <div className="rounded-md bg-white px-3 py-2">
       <dt className="text-xs font-semibold uppercase tracking-wide text-ink/65">{t(label)}</dt>
       <dd className="mt-1 font-semibold text-ink">{value}</dd>
-      <p className="mt-1 text-xs leading-5 text-ink/65">{t(comparison)}</p>
+      <dd className="mt-1 text-xs leading-5 text-ink/65">{t(comparison)}</dd>
     </div>
   );
 }
@@ -1018,12 +1018,12 @@ function MistakeNotebookPanel({ mistakes }: { mistakes: readonly MistakeNotebook
                     </p>
                     <span className={badgeClass(mistake.status === "resolved" ? "success" : "warning")}>{t(mistake.status)}</span>
                   </div>
-                  <dl className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide text-ink/65">
-                    <dd className="rounded bg-white px-2 py-1">{t(categoryLabels[mistake.category])}</dd>
-                    <dd className="rounded bg-white px-2 py-1">{mistake.tags.map(formatTag).join(", ")}</dd>
-                    <dd className="rounded bg-white px-2 py-1">{mistake.errorTypes.map((item) => t(errorTypeCopy[item].label)).join(", ")}</dd>
-                    <dd className="rounded bg-white px-2 py-1">{formatDate(new Date(mistake.missedAt))}</dd>
-                  </dl>
+                  <ul className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-wide text-ink/65">
+                    <li className="rounded bg-white px-2 py-1">{t(categoryLabels[mistake.category])}</li>
+                    <li className="rounded bg-white px-2 py-1">{mistake.tags.map(formatTag).join(", ")}</li>
+                    <li className="rounded bg-white px-2 py-1">{mistake.errorTypes.map((item) => t(errorTypeCopy[item].label)).join(", ")}</li>
+                    <li className="rounded bg-white px-2 py-1">{formatDate(new Date(mistake.missedAt))}</li>
+                  </ul>
                   <p className="text-sm leading-6 text-ink/70">
                     {t("Your answer:")} <span className="font-semibold text-ink">{mistake.rawInput || t("blank")}</span>
                   </p>
@@ -1224,7 +1224,7 @@ function MetricCard({ description, label, value }: { description: string; label:
     >
       <dt className={cx(uiText.eyebrow, "text-xs text-ink/65")}>{t(label)}</dt>
       <dd className={cx(uiText.metric, "mt-2")}>{value}</dd>
-      <p className={cx(uiText.dense, "mt-2")}>{t(description)}</p>
+      <dd className={cx(uiText.dense, "mt-2")}>{t(description)}</dd>
     </div>
   );
 }

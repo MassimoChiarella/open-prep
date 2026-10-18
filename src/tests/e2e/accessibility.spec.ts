@@ -106,6 +106,21 @@ test.describe("WCAG 2.2 route and state coverage", () => {
     await expectNoWcagViolations(page, state.id);
   });
 
+  test("populated Progress metrics, category comparisons and saved mistakes have no tagged A/AA axe violations", { tag: "@browser-smoke" }, async ({ page }) => {
+    await openState(page, findState("drill:session-active"));
+    await page.getByLabel("Answer", { exact: true }).fill("-1");
+    await page.getByRole("button", { name: "Submit", exact: true }).click();
+    await page.getByRole("button", { name: "View summary", exact: true }).click();
+    await expect(page.getByRole("status").filter({ hasText: "Session saved on this device." })).toBeVisible();
+    await openState(page, findState("progress:populated"));
+    await expect(page.getByTestId("dashboard-metrics")).toBeVisible();
+    await expect(page.getByTestId("category-card-arithmetic")).toBeVisible();
+    const notebook = page.getByTestId("mistake-notebook");
+    await expect(notebook).toContainText("-1");
+    await expect(notebook.locator(":scope > ul > li")).toHaveCount(1);
+    await expectNoWcagViolations(page, "progress:populated");
+  });
+
   test("warmed drill rendered offline has no tagged A/AA axe violations", async ({ page }) => {
     const state = findState("drill:session-offline");
     await openState(page, state);
