@@ -2,6 +2,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 import { createStoredDrillSession, createStoredUserResponses } from "@/features/drills/drillPersistence";
 import { appDatabaseName } from "@/lib/storage/appStorageTypes";
+import { createOfflineOrigin } from "@/tests/e2e/helpers/offlineOrigin";
 import { completedSession } from "@/tests/fixtures/completedSession";
 
 test("saved results are usable before lifetime enrichment, then receive personal bests and the exact benchmark repeat", { tag: "@browser-smoke" }, async ({ page }) => {
@@ -21,6 +22,7 @@ test("saved results are usable before lifetime enrichment, then receive personal
   await expect(solution.getByText(questions[0].explanation.short, { exact: true }).first()).toBeVisible();
   await releaseSummary(page);
   await expect(loading).toHaveCount(0);
+  await expect(solution).toHaveAttribute("open", "");
   await expect(page.getByTestId("session-summary-new-bests")).toContainText("Best benchmark score");
   const repeat = page.getByRole("link", { name: "Repeat Benchmark", exact: true });
   await expect(repeat).toBeVisible();
@@ -28,6 +30,46 @@ test("saved results are usable before lifetime enrichment, then receive personal
   expect(url.pathname).toBe("/benchmark/");
   expect(url.searchParams.get("benchmark")).toBe(benchmarkId);
   expect(url.searchParams.get("pack")).toBe("progressive-pack");
+});
+
+test("a first offline saved-summary visit loads the bundled worker, core results and complete benchmark enrichment", { tag: "@browser-smoke" }, async ({ baseURL, browserName, context, page }) => {
+  // WebKit's offline emulation blocks service-worker delivery; stop an isolated origin instead.
+  const isolated = browserName === "webkit" ? await createOfflineOrigin(baseURL!) : undefined;
+  try {
+    const { session, benchmarkId } = await prepareSummary(page, isolated?.origin);
+    await page.evaluate(async () => { await navigator.serviceWorker.ready; });
+    await page.reload();
+    await page.waitForFunction(() => navigator.serviceWorker.controller !== null);
+    if (isolated === undefined) await context.setOffline(true);
+    else {
+      await isolated.close();
+      await expect(globalThis.fetch(`${isolated.origin}/uncached-network-probe`)).rejects.toThrow();
+    }
+
+    // The summary route and its worker have not been visited before the network is unavailable.
+    const workerCreated = page.waitForEvent("worker");
+    await page.goto(`${isolated?.origin ?? ""}/drills/summary/?id=${encodeURIComponent(session.id)}`);
+    const worker = await workerCreated;
+    expect(new URL(worker.url()).origin).toBe(new URL(page.url()).origin);
+    const loading = page.getByRole("status").filter({ hasText: "Loading personal-best history and repeat option..." });
+    await expect(page.getByTestId("session-summary-score-panel")).toContainText(`${session.score!.totalScore} pts`);
+    await expect(page.getByRole("heading", { name: "Question Review", exact: true })).toBeVisible();
+    await expect(loading).toBeVisible();
+    await expect(page.getByRole("button", { name: "Loading repeat option...", exact: true })).toBeDisabled();
+    await expect(page.getByRole("link", { name: "Repeat Drill", exact: true })).toHaveCount(0);
+
+    await releaseSummary(page);
+    await expect(loading).toHaveCount(0);
+    await expect(page.getByTestId("session-summary-new-bests")).toContainText("Best benchmark score");
+    const repeat = page.getByRole("link", { name: "Repeat Benchmark", exact: true });
+    await expect(repeat).toBeVisible();
+    const url = new URL((await repeat.getAttribute("href"))!, page.url());
+    expect(url.pathname).toBe("/benchmark/");
+    expect(url.searchParams.get("benchmark")).toBe(benchmarkId);
+    expect(url.searchParams.get("pack")).toBe("progressive-pack");
+  } finally {
+    await isolated?.close();
+  }
 });
 
 test("a silent native reset prevents a held final worker response from retaining old session results", { tag: "@browser-smoke" }, async ({ page }) => {
@@ -56,7 +98,7 @@ test("a silent native reset prevents a held final worker response from retaining
   await expect(page.getByRole("link", { name: "Repeat Benchmark", exact: true })).toHaveCount(0);
 });
 
-async function prepareSummary(page: Page) {
+async function prepareSummary(page: Page, origin?: string) {
   await page.addInitScript(() => {
     window.Worker = new Proxy(window.Worker, {
       construct(Target, args) {
@@ -82,7 +124,7 @@ async function prepareSummary(page: Page) {
       }
     });
   });
-  await page.goto("/settings/");
+  await page.goto(`${origin ?? ""}/settings/`);
   await expect(page.getByText(/Built-in defaults initialize Drill Selection/)).toBeVisible();
   const completed = completedSession("progressive-native");
   const session = createStoredDrillSession(completed.session, completed.questions);
