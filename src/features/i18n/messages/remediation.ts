@@ -3,6 +3,25 @@ import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 type Translations = readonly [string, string, string, string, string, string, string, string, string];
 
 const keys: Record<string, Translations> = {
+  "Untimed drill": ["Ejercicio sin límite de tiempo", "Exercice sans limite de temps", "Übung ohne Zeitlimit", "Exercício sem limite de tempo", "不限时练习", "不限時練習", "時間制限なしの練習", "تدريب دون حد زمني", "बिना समय सीमा का अभ्यास"],
+  "Loading repeat option...": ["Cargando opción de repetición...", "Chargement de l’option de répétition…", "Wiederholungsoption wird geladen…", "Carregando opção de repetição...", "正在加载重练选项…", "正在載入重練選項…", "再練習オプションを読み込み中…", "جارٍ تحميل خيار التكرار...", "दोहराने का विकल्प लोड हो रहा है..."],
+  "Repeat unavailable": ["Repetición no disponible", "Répétition indisponible", "Wiederholung nicht verfügbar", "Repetição indisponível", "重练暂不可用", "重練暫時無法使用", "再練習は利用できません", "التكرار غير متاح", "दोहराना उपलब्ध नहीं है"],
+  "Loading personal-best history and repeat option...": [
+    "Cargando historial de mejores marcas y opción de repetición...", "Chargement de l’historique des records personnels et de l’option de répétition…",
+    "Persönliche Bestleistungen und Wiederholungsoption werden geladen…", "Carregando histórico de melhores resultados e opção de repetição...",
+    "正在加载个人最佳记录和重练选项…", "正在載入個人最佳紀錄和重練選項…", "自己ベスト履歴と再練習オプションを読み込み中…",
+    "جارٍ تحميل سجل أفضل النتائج الشخصية وخيار التكرار...", "व्यक्तिगत सर्वश्रेष्ठ का इतिहास और दोहराने का विकल्प लोड हो रहे हैं..."
+  ],
+  "Personal-best history and the repeat option could not load. Your session results are still available.": [
+    "No se pudieron cargar el historial de mejores marcas ni la opción de repetición. Los resultados de tu sesión siguen disponibles.",
+    "L’historique des records personnels et l’option de répétition n’ont pas pu être chargés. Les résultats de votre session restent disponibles.",
+    "Persönliche Bestleistungen und Wiederholungsoption konnten nicht geladen werden. Ihre Sitzungsergebnisse sind weiterhin verfügbar.",
+    "Não foi possível carregar o histórico de melhores resultados e a opção de repetição. Os resultados da sessão continuam disponíveis.",
+    "无法加载个人最佳记录和重练选项。您的练习结果仍然可用。", "無法載入個人最佳紀錄和重練選項。您的練習結果仍可查看。",
+    "自己ベスト履歴と再練習オプションを読み込めませんでした。セッション結果は引き続き確認できます。",
+    "تعذر تحميل سجل أفضل النتائج الشخصية وخيار التكرار. ما زالت نتائج جلستك متاحة.",
+    "व्यक्तिगत सर्वश्रेष्ठ का इतिहास और दोहराने का विकल्प लोड नहीं हो सके। आपके सत्र के परिणाम अभी भी उपलब्ध हैं।"
+  ],
   "Installed": ["Instalado", "Installé", "Installiert", "Instalado", "已安装", "已安裝", "インストール済み", "مثبت", "इंस्टॉल किया गया"],
   "Complete each question using 300 characters or fewer before finishing this case.": [
     "Completa cada pregunta con un máximo de 300 caracteres antes de terminar este caso.",

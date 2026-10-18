@@ -4,15 +4,24 @@ import { useEffect, useState } from "react";
 
 import { EmptyState } from "@/components/EmptyState";
 import { LoadingState } from "@/components/LoadingState";
+import { buttonClass } from "@/components/uiStyles";
 import { SessionSummaryView } from "@/features/drills/SessionSummaryView";
 import type { SessionSummarySnapshot } from "@/features/drills/sessionSummary";
 import { useI18n } from "@/features/i18n/I18nProvider";
-import { loadBrowserStoredSessionSummary } from "@/features/progress/browserProgress";
-import type { AppStorage } from "@/lib/storage/appStorageTypes";
+import { loadBrowserStoredSessionSummary, UnverifiedStoredSessionSummaryError } from "@/features/progress/browserProgress";
+import { AppStorageConflictError, type AppStorage } from "@/lib/storage/appStorageTypes";
 import { createIndexedDbAppStorage } from "@/lib/storage/indexedDbAppStorage";
 
 type LoaderState =
-  | { newBestLabels: string[]; repeatHref?: string; snapshot: SessionSummarySnapshot; status: "loaded" }
+  | {
+      enrichment: "loading" | "loaded" | "error";
+      newBestLabels: string[];
+      repeatHref?: string;
+      snapshot: SessionSummarySnapshot;
+      status: "loaded";
+      sessionId?: string;
+      storageFactory: () => AppStorage;
+    }
   | { status: "empty" }
   | { status: "error" }
   | { status: "loading" };
@@ -28,21 +37,31 @@ export function StoredSessionSummaryLoader({
 }: StoredSessionSummaryLoaderProps = {}) {
   const { t } = useI18n();
   const [state, setState] = useState<LoaderState>({ status: "loading" });
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     const controller = new AbortController();
-    void loadBrowserStoredSessionSummary(storageFactory, sessionId, controller.signal)
+    let snapshot: SessionSummarySnapshot | undefined;
+    void loadBrowserStoredSessionSummary(storageFactory, sessionId, controller.signal, (loadedSnapshot) => {
+      if (controller.signal.aborted) return;
+      snapshot = loadedSnapshot;
+      setState({ enrichment: "loading", newBestLabels: [], sessionId, snapshot, status: "loaded", storageFactory });
+    })
       .then((detail) => {
         if (controller.signal.aborted) return;
-        setState(detail.snapshot === undefined ? { status: "empty" } : { ...detail, snapshot: detail.snapshot, status: "loaded" });
+        setState(detail.snapshot === undefined ? { status: "empty" } : { ...detail, enrichment: "loaded", sessionId, snapshot: detail.snapshot, status: "loaded", storageFactory });
       })
-      .catch(() => {
-        if (!controller.signal.aborted) setState({ status: "error" });
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        const invalidated = error instanceof AppStorageConflictError || error instanceof UnverifiedStoredSessionSummaryError ||
+          (error instanceof DOMException && error.name === "AbortError");
+        setState(snapshot === undefined || invalidated ? { status: "error" }
+          : { enrichment: "error", newBestLabels: [], sessionId, snapshot, status: "loaded", storageFactory });
       });
     return () => controller.abort();
-  }, [sessionId, storageFactory]);
+  }, [attempt, sessionId, storageFactory]);
 
-  if (state.status === "loading") {
+  if (state.status === "loading" || (state.status === "loaded" && (state.sessionId !== sessionId || state.storageFactory !== storageFactory))) {
     return (
       <LoadingState
         detail={t("Checking this device for your latest completed drill.")}
@@ -54,13 +73,32 @@ export function StoredSessionSummaryLoader({
 
   if (state.status === "loaded") {
     return (
-      <SessionSummaryView
-        newBestLabels={state.newBestLabels}
-        repeatAction={
-          state.repeatHref === undefined ? undefined : { href: state.repeatHref, label: t("Repeat Benchmark") }
-        }
-        snapshot={state.snapshot}
-      />
+      <div className="grid gap-4">
+        {state.enrichment !== "loaded" ? (
+          <div className="border-s-2 border-saffron bg-saffron/20 px-3 py-2 text-sm leading-6 text-ink" role="status">
+            <p>{state.enrichment === "loading"
+              ? t("Loading personal-best history and repeat option...")
+              : t("Personal-best history and the repeat option could not load. Your session results are still available.")}</p>
+            {state.enrichment === "error" ? (
+              <button
+                className={buttonClass("secondary", "mt-2")}
+                onClick={() => {
+                  setState({ ...state, enrichment: "loading" });
+                  setAttempt((current) => current + 1);
+                }} type="button"
+              >{t("Retry")}</button>
+            ) : null}
+          </div>
+        ) : null}
+        <SessionSummaryView
+          newBestLabels={state.newBestLabels}
+          repeatAction={
+            state.repeatHref === undefined ? undefined : { href: state.repeatHref, label: t("Repeat Benchmark") }
+          }
+          repeatActionStatus={state.enrichment === "loaded" ? undefined : state.enrichment}
+          snapshot={state.snapshot}
+        />
+      </div>
     );
   }
 

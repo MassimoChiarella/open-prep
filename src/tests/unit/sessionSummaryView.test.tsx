@@ -11,6 +11,16 @@ import { validateAnswer } from "@/lib/validation/validateAnswer";
 afterEach(resetI18nTestState);
 
 describe("SessionSummaryView", () => {
+  it.each([
+    ["de", "Übung ohne Zeitlimit"], ["ar", "تدريب دون حد زمني"]
+  ] as const)("localizes the dynamic untimed heading in %s", async (locale, label) => {
+    const snapshot = summarySnapshot();
+    snapshot.settings.timeMode = "untimed";
+    await renderWithStoredLocale(<SessionSummaryView snapshot={snapshot} />, locale).initialize();
+    expect(within(screen.getByTestId("session-summary-timing")).getByText(label)).toBeInTheDocument();
+    expect(screen.queryByText("Untimed drill")).not.toBeInTheDocument();
+  });
+
   it.each(["en", "de", "fr", "ar", "hi"] as const)(
     "shows complete correct answers that can be re-entered in %s", async (locale) => {
       const answers: AnswerSpec[] = [

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { buttonClass } from "@/components/uiStyles";
 
 import { InterviewMathScoreBreakdown } from "@/features/drills/InterviewMathScoreBreakdown";
 import { SessionGuidancePanel } from "@/features/drills/SessionGuidancePanel";
@@ -23,6 +24,7 @@ import {
 
 interface SessionSummaryViewProps {
   newBestLabels?: readonly string[];
+  repeatActionStatus?: "loading" | "error";
   repeatAction?: {
     href: string;
     label: string;
@@ -30,7 +32,7 @@ interface SessionSummaryViewProps {
   snapshot: SessionSummarySnapshot;
 }
 
-export function SessionSummaryView({ newBestLabels = [], repeatAction, snapshot }: SessionSummaryViewProps) {
+export function SessionSummaryView({ newBestLabels = [], repeatAction, repeatActionStatus, snapshot }: SessionSummaryViewProps) {
   const { formatDuration, formatNumber: formatLocaleNumber, formatPercent, t } = useI18n();
   const score = snapshot.score;
   const accuracyPercent = Math.round(score.accuracy * 100);
@@ -67,7 +69,11 @@ export function SessionSummaryView({ newBestLabels = [], repeatAction, snapshot 
           <h3 className="text-base font-semibold text-ink">{t("Next Step")}</h3>
         </div>
         <div className="grid gap-2 sm:grid-cols-3">
-          <SummaryAction href={repeatHref} label={t(repeatLabel)} tone="primary" />
+          {repeatActionStatus === undefined ? <SummaryAction href={repeatHref} label={t(repeatLabel)} tone="primary" /> : (
+            <button className={buttonClass("primary", "w-full")} disabled type="button">
+              {repeatActionStatus === "loading" ? t("Loading repeat option...") : t("Repeat unavailable")}
+            </button>
+          )}
           <SummaryAction href="/drills" label={t("Adjust Settings")} tone="secondary" />
           <SummaryAction href="/progress" label={t("View Progress")} tone="secondary" />
         </div>
