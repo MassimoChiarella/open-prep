@@ -58,6 +58,20 @@ describe("SessionSummaryView", () => {
     expect(screen.queryByText(/answers were correct in this session/i)).not.toBeInTheDocument();
   });
 
+  it.each([
+    ["de", ["Genauigkeit: Arithmetik", "Schnellstes korrektes Tempo: Addition", "Längste Übungsserie", "Beste Benchmark-Punktzahl"]],
+    ["ar", ["دقة الحساب", "أسرع وتيرة صحيحة في الجمع", "أطول سلسلة تدريب متواصلة", "أفضل نتيجة للاختبار المعياري"]]
+  ] as const)("localizes generated personal-best notices in %s", async (locale, expected) => {
+    await renderWithStoredLocale(<SessionSummaryView snapshot={summarySnapshot()} newBestLabels={[
+      "Arithmetic accuracy", "Addition fastest correct pace", "Longest practice streak", "Best benchmark score", "Custom badge"
+    ]} />, locale).initialize();
+    const notice = screen.getByTestId("session-summary-new-bests");
+    for (const label of expected) expect(notice).toHaveTextContent(label);
+    expect(notice).toHaveTextContent("Custom badge");
+    expect(notice).not.toHaveTextContent("Arithmetic accuracy");
+    expect(notice).not.toHaveTextContent("fastest correct pace");
+  });
+
   it("summarizes results, reviews misses, and repeats the same custom-pack drill", () => {
     const snapshot = summarySnapshot();
 

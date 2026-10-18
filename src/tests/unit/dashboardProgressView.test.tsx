@@ -1,11 +1,15 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 import { DashboardContent, ProgressContent, createTodaysPractice } from "@/features/progress/ProgressViews";
 import type { ProgressSummary } from "@/features/progress/progressAggregation";
 import { createWholeProductActivitySummary } from "@/features/progress/wholeProductActivity";
 import type { FitStoryRecord, PracticeAttemptRecord } from "@/features/case-practice/practiceTypes";
 import type { MistakeNotebookRecord } from "@/lib/storage/appStorageTypes";
+import type { PersonalBestRecord } from "@/features/progress/personalBests";
+import { renderWithStoredLocale, resetI18nTestState } from "@/tests/renderWithStoredLocale";
+
+afterEach(resetI18nTestState);
 
 describe("progress views", () => {
   it("gives a new user direct practice choices", () => {
@@ -111,6 +115,63 @@ describe("progress views", () => {
     expect(practice.title).toBe("Daily Workout");
     expect(params.get("source")).toBe("daily_workout");
     expect(params.get("count")).toBe("10");
+  });
+
+  it.each([
+    ["de", ["Genauigkeit: Arithmetik", "Arithmetik - Pro Frage", "Schnellstes korrektes Tempo: Addition", "Benchmark Anfänger"]],
+    ["ar", ["دقة الحساب", "الحساب - لكل سؤال", "أسرع وتيرة صحيحة في الجمع", "الاختبار المعياري مبتدئ"]]
+  ] as const)("localizes personal-best labels, metadata and numeric values in %s", async (locale, expected) => {
+    const base = { achievedAt: "2026-06-02T12:00:00.000Z", difficulty: "beginner", sourceId: "session-1" } as const;
+    const personalBests: PersonalBestRecord[] = [
+      { ...base, id: "accuracy", category: "arithmetic", label: "Arithmetic accuracy", metric: "accuracy", scope: "drill_category", timeMode: "per_question", value: 0.876 },
+      { ...base, id: "pace", tag: "addition", label: "Addition fastest correct pace", metric: "average_time", scope: "drill_skill", timeMode: "per_question", value: 5.25 },
+      { ...base, id: "streak", label: "Longest practice streak", metric: "streak", scope: "drill_streak", timeMode: "untimed", value: 3 },
+      { ...base, id: "score", benchmarkId: "beginner", label: "Best benchmark score", metric: "score", scope: "benchmark", value: 1234.5 }
+    ];
+    await renderWithStoredLocale(<ProgressContent summary={{ ...populatedSummary(), personalBests }} />, locale).initialize();
+    const panel = screen.getByTestId("personal-bests");
+    for (const text of expected) expect(panel).toHaveTextContent(text);
+    expect(panel).not.toHaveTextContent("Arithmetic accuracy");
+    expect(panel).not.toHaveTextContent("s/question");
+    expect(panel).not.toHaveTextContent("88% correct");
+    expect(panel).not.toHaveTextContent("Per Question");
+    const rate = new Intl.NumberFormat(locale, { style: "percent", maximumFractionDigits: 0 }).format(0.876).replace(/\s+/g, " ");
+    expect(panel).toHaveTextContent(locale === "de" ? `${rate} richtig` : `${rate} إجابات صحيحة`);
+    const pace = new Intl.NumberFormat(locale, { minimumFractionDigits: 1, maximumFractionDigits: 1 }).format(5.25);
+    expect(panel).toHaveTextContent(locale === "de" ? `${pace} Sek./Frage` : `${pace} ث/سؤال`);
+    const days = new Intl.NumberFormat(locale).format(3);
+    expect(panel).toHaveTextContent(locale === "de" ? `${days} Tage` : `${days} أيام`);
+    const score = new Intl.NumberFormat(locale).format(1234.5);
+    expect(panel).toHaveTextContent(locale === "de" ? `${score} Pkt.` : `${score} نقطة`);
+    expect(personalBests[0].label).toBe("Arithmetic accuracy");
+    expect(personalBests[1].value).toBe(5.25);
+  });
+
+  it("preserves existing percentage and pace rounding and full score precision in English", () => {
+    const base = { achievedAt: "2026-06-02T12:00:00.000Z", difficulty: "beginner", sourceId: "session-1" } as const;
+    const score = 1234.567891234567;
+    const personalBests: PersonalBestRecord[] = [
+      { ...base, id: "accuracy", category: "arithmetic", label: "Arithmetic accuracy", metric: "accuracy", scope: "drill_category", timeMode: "per_question", value: 0.145 },
+      { ...base, id: "pace", tag: "addition", label: "Addition fastest correct pace", metric: "average_time", scope: "drill_skill", timeMode: "per_question", value: 1.15 },
+      { ...base, id: "score", benchmarkId: "beginner", label: "Best benchmark score", metric: "score", scope: "benchmark", value: score }
+    ];
+    render(<ProgressContent summary={{ ...populatedSummary(), personalBests }} />);
+    const panel = screen.getByTestId("personal-bests");
+    expect(panel).toHaveTextContent("14% correct");
+    expect(panel).toHaveTextContent("1.1s/question");
+    expect(panel).toHaveTextContent("1,234.567891234567 pts");
+    expect(panel).toHaveTextContent("Arithmetic - Per Question");
+    expect(panel).toHaveTextContent("Beginner benchmark");
+  });
+
+  it("keeps an unfamiliar legacy time mode readable rather than failing the localized panel", async () => {
+    const best: PersonalBestRecord = {
+      achievedAt: "2026-06-02T12:00:00.000Z", difficulty: "beginner", sourceId: "session-1", id: "legacy-time-mode",
+      category: "arithmetic", label: "Arithmetic accuracy", metric: "accuracy", scope: "drill_category", timeMode: "untimed", value: 1
+    };
+    Object.assign(best, { timeMode: "legacy_mode" });
+    await renderWithStoredLocale(<ProgressContent summary={{ ...populatedSummary(), personalBests: [best] }} />, "de").initialize();
+    expect(screen.getByTestId("personal-bests")).toHaveTextContent("Arithmetik - Legacy Mode");
   });
 });
 

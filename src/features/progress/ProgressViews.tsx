@@ -11,8 +11,10 @@ import { buildDailyWorkoutHref } from "@/features/drills/dailyWorkout";
 import { createDrillSummaryLink } from "@/features/drills/drillSummaryLink";
 import { buildRetryMissedDrillHref, buildReviewDrillHref } from "@/features/drills/mistakeRetry";
 import { buildWeaknessModeDrillHref } from "@/features/drills/weaknessMode";
+import { timeModeOptions } from "@/features/drills/drillSettingsOptions";
 import { FirstRunChoices } from "@/features/progress/FirstRunChoices";
 import type { PersonalBestRecord } from "@/features/progress/personalBests";
+import { formatPersonalBestLabel, formatPersonalBestScopeLabel } from "@/features/progress/personalBestFormatting";
 import type { ProgressSummary } from "@/features/progress/progressAggregation";
 import { loadBrowserProgressSummary } from "@/features/progress/browserProgress";
 import { subscribeToLocalDataInvalidation } from "@/features/settings/localDataInvalidation";
@@ -910,7 +912,8 @@ function TrackedErrorSignals({ summary }: { summary: ProgressSummary }) {
 }
 
 function PersonalBestsPanel({ bests, limit = 8 }: { bests: readonly PersonalBestRecord[]; limit?: number }) {
-  const { formatDate, t } = useI18n();
+  const i18n = useI18n();
+  const { formatDate, t } = i18n;
   const visibleBests = bests.slice(0, limit);
 
   return (
@@ -925,9 +928,9 @@ function PersonalBestsPanel({ bests, limit = 8 }: { bests: readonly PersonalBest
         <ul className="grid gap-2 sm:grid-cols-2">
           {visibleBests.map((best) => (
             <li className="rounded-md bg-paper px-3 py-3 text-sm" key={best.id}>
-              <p className="text-xs font-semibold uppercase tracking-wide text-ink/65">{personalBestMeta(best)}</p>
-              <p className="mt-1 break-words font-semibold text-ink [overflow-wrap:anywhere]">{best.label}</p>
-              <p className="mt-2 text-xl font-semibold text-teal">{formatPersonalBestValue(best)}</p>
+              <p className="text-xs font-semibold uppercase tracking-wide text-ink/65">{personalBestMeta(best, i18n)}</p>
+              <p className="mt-1 break-words font-semibold text-ink [overflow-wrap:anywhere]">{formatPersonalBestLabel(best.label, i18n)}</p>
+              <p className="mt-2 text-xl font-semibold text-teal">{formatPersonalBestValue(best, i18n)}</p>
               <p className="mt-1 text-xs text-ink/65">{formatDate(new Date(best.achievedAt))}</p>
             </li>
           ))}
@@ -1331,36 +1334,40 @@ function formatDayCount(value: number): string {
   return value === 1 ? "1 day" : `${value} days`;
 }
 
-function formatPersonalBestValue(best: PersonalBestRecord): string {
+function formatPersonalBestValue(best: PersonalBestRecord, { formatNumber, formatPercent, t }: ReturnType<typeof useI18n>): string {
   if (best.metric === "accuracy") {
-    return formatCorrectRate(best.value);
+    return t("{value} correct", { value: formatPercent(Math.round(best.value * 100) / 100) });
   }
 
   if (best.metric === "average_time") {
-    return formatSecondsPerQuestion(best.value);
+    return t("{seconds}s/question", { seconds: formatNumber(Number(best.value.toFixed(1)), { minimumFractionDigits: 1, maximumFractionDigits: 1 }) });
   }
 
   if (best.metric === "streak") {
-    return formatDayCount(best.value);
+    return best.value === 1 ? t("1 day") : t("{count} days", { count: formatNumber(best.value) });
   }
 
-  return `${best.value} pts`;
+  return t("{score} pts", { score: formatNumber(best.value, { maximumSignificantDigits: 21 }) });
 }
 
-function personalBestMeta(best: PersonalBestRecord): string {
+function personalBestMeta(best: PersonalBestRecord, i18n: ReturnType<typeof useI18n>): string {
+  const { locale, t } = i18n;
   if (best.scope === "benchmark") {
-    return `${formatTag(best.benchmarkId)} benchmark`;
+    return t("{name} benchmark", { name: t(formatTag(best.benchmarkId)) });
   }
 
+  const timeMode = locale === "en" ? formatTag(best.timeMode) : t(timeModeOptions.find((option) => option.value === best.timeMode)?.label ?? formatTag(best.timeMode));
+
   if (best.scope === "drill_category") {
-    return `${categoryLabels[best.category]} - ${formatTag(best.timeMode)}`;
+    const category = locale === "en" ? categoryLabels[best.category] : formatPersonalBestScopeLabel(formatTag(best.category), i18n);
+    return `${category} - ${timeMode}`;
   }
 
   if (best.scope === "drill_skill") {
-    return `${formatTag(best.tag)} - ${formatTag(best.timeMode)}`;
+    return `${formatPersonalBestScopeLabel(formatTag(best.tag), i18n)} - ${timeMode}`;
   }
 
-  return `${formatTag(best.difficulty)} - ${formatTag(best.timeMode)}`;
+  return `${t(formatTag(best.difficulty))} - ${timeMode}`;
 }
 
 function uniqueSorted<TValue extends string>(values: readonly TValue[]): TValue[] {

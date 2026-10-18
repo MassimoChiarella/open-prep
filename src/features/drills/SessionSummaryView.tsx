@@ -15,6 +15,7 @@ import type { DrillSettings, ErrorBreakdown, ErrorType, SkillCategory, UnitType 
 
 import { buildDrillSettingsQuery, categoryOptions } from "@/features/drills/drillSettingsOptions";
 import { deriveWeaknessDrillSettings, rankWeaknesses } from "@/features/progress/weaknessAnalysis";
+import { formatPersonalBestLabel } from "@/features/progress/personalBestFormatting";
 import type { SessionSummarySnapshot } from "@/features/drills/sessionSummary";
 import { useI18n } from "@/features/i18n/I18nProvider";
 import {
@@ -33,7 +34,7 @@ interface SessionSummaryViewProps {
 }
 
 export function SessionSummaryView({ newBestLabels = [], repeatAction, repeatActionStatus, snapshot }: SessionSummaryViewProps) {
-  const { formatDuration, formatNumber: formatLocaleNumber, formatPercent, t } = useI18n();
+  const { formatDuration, formatNumber: formatLocaleNumber, formatPercent, locale, t } = useI18n();
   const score = snapshot.score;
   const accuracyPercent = Math.round(score.accuracy * 100);
   const errorCount = score.errorBreakdown.reduce((total, item) => total + item.count, 0);
@@ -60,7 +61,7 @@ export function SessionSummaryView({ newBestLabels = [], repeatAction, repeatAct
         </div>
       </div>
 
-      {visibleNewBestLabels.length > 0 ? <NewBestNotice labels={visibleNewBestLabels.map((label) => t(label))} /> : null}
+      {visibleNewBestLabels.length > 0 ? <NewBestNotice labels={visibleNewBestLabels.map((label) => formatPersonalBestLabel(label, { locale, t }))} /> : null}
 
       <TimingSummary settings={snapshot.settings} />
 

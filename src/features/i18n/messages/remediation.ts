@@ -3,6 +3,12 @@ import type { PartialMessageCatalog } from "@/features/i18n/i18n";
 type Translations = readonly [string, string, string, string, string, string, string, string, string];
 
 const keys: Record<string, Translations> = {
+  "{skill} accuracy": ["Precisión en {skill}", "Précision en {skill}", "Genauigkeit: {skill}", "Precisão em {skill}", "{skill}准确率", "{skill}準確率", "{skill}の正答率", "دقة {skill}", "{skill} की सटीकता"],
+  "{skill} fastest correct pace": ["Mejor ritmo con respuestas correctas en {skill}", "Meilleur rythme de réponses correctes en {skill}", "Schnellstes korrektes Tempo: {skill}", "Melhor ritmo de respostas corretas em {skill}", "{skill}最快正确答题速度", "{skill}最快正確答題速度", "{skill}の最速正答ペース", "أسرع وتيرة صحيحة في {skill}", "{skill} में सही उत्तरों की सबसे तेज़ गति"],
+  "Best benchmark score": ["Mejor puntuación de evaluación", "Meilleur score d’évaluation", "Beste Benchmark-Punktzahl", "Melhor pontuação de avaliação", "最佳基准测试分数", "最佳基準測試分數", "ベンチマークの最高スコア", "أفضل نتيجة للاختبار المعياري", "सर्वश्रेष्ठ बेंचमार्क स्कोर"],
+  "Longest practice streak": ["Mayor racha de práctica", "Plus longue série de pratique", "Längste Übungsserie", "Maior sequência de prática", "最长连续练习天数", "最長連續練習天數", "最長連続練習記録", "أطول سلسلة تدريب متواصلة", "सबसे लंबा लगातार अभ्यास"],
+  "K/M/B conversion": ["Conversión K/M/B", "Conversion K/M/B", "K/M/B-Umrechnung", "Conversão K/M/B", "千/百万/十亿换算", "千/百萬/十億換算", "K/M/Bの換算", "تحويل K/M/B", "K/M/B रूपांतरण"],
+  "{name} benchmark": ["Evaluación {name}", "Évaluation {name}", "Benchmark {name}", "Avaliação {name}", "{name}基准测试", "{name}基準測試", "{name}のベンチマーク", "الاختبار المعياري {name}", "{name} बेंचमार्क"],
   "Untimed drill": ["Ejercicio sin límite de tiempo", "Exercice sans limite de temps", "Übung ohne Zeitlimit", "Exercício sem limite de tempo", "不限时练习", "不限時練習", "時間制限なしの練習", "تدريب دون حد زمني", "बिना समय सीमा का अभ्यास"],
   "Loading repeat option...": ["Cargando opción de repetición...", "Chargement de l’option de répétition…", "Wiederholungsoption wird geladen…", "Carregando opção de repetição...", "正在加载重练选项…", "正在載入重練選項…", "再練習オプションを読み込み中…", "جارٍ تحميل خيار التكرار...", "दोहराने का विकल्प लोड हो रहा है..."],
   "Repeat unavailable": ["Repetición no disponible", "Répétition indisponible", "Wiederholung nicht verfügbar", "Repetição indisponível", "重练暂不可用", "重練暫時無法使用", "再練習は利用できません", "التكرار غير متاح", "दोहराना उपलब्ध नहीं है"],
