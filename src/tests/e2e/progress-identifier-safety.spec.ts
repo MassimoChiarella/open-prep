@@ -27,14 +27,23 @@ test("historical malformed session IDs retain native history and open usable ind
     };
   }), { name: appDatabaseName, sessions: [malformed, valid], results });
 
-  for (const route of ["/", "/progress"]) {
-    await page.goto(route, { waitUntil: "domcontentloaded" });
+  const navigation = page.getByTestId("primary-navigation");
+  // Follow the app's client navigation rather than interrupting its background
+  // prefetches with document reloads between each history surface.
+  for (const [destination, pathname] of [["Dashboard", "/"], ["Progress", "/progress"]] as const) {
+    const link = navigation.getByRole("link", { name: destination, exact: true });
+    await link.click();
+    await expect(page).toHaveURL((url) => url.pathname === pathname || url.pathname === `${pathname}/`);
+    await expect(link).toHaveAttribute("aria-current", "page");
     const history = page.getByTestId("recent-sessions-table");
     await expect(history.locator("tbody tr")).toHaveCount(2);
     await expect(history.getByRole("link", { name: "View Summary", exact: true })).toHaveAttribute("href", `/drills/summary/?id=${encodeURIComponent(valid.id)}`);
     await expect(history.getByRole("link", { name: "Review recovery", exact: true })).toHaveAttribute("href", "/settings/#record-recovery");
   }
-  await page.goto("/benchmark", { waitUntil: "domcontentloaded" });
+  const benchmarkLink = navigation.getByRole("link", { name: "Benchmark", exact: true });
+  await benchmarkLink.click();
+  await expect(page).toHaveURL((url) => url.pathname === "/benchmark" || url.pathname === "/benchmark/");
+  await expect(benchmarkLink).toHaveAttribute("aria-current", "page");
   await page.getByTestId("benchmark-history-disclosure").locator(":scope > summary").click();
   const benchmarkHistory = page.getByTestId("benchmark-history-results-table");
   await expect(benchmarkHistory.locator("tbody tr")).toHaveCount(2);
