@@ -11,18 +11,27 @@ export interface StoredSessionSummaryDetail {
   snapshot?: SessionSummarySnapshot;
 }
 
+export type StoredSessionSummarySnapshotListener = (snapshot: SessionSummarySnapshot, generation: number) => void | Promise<void>;
+
 /** Keep lifetime history inside the worker; return only this session's display data. */
-export async function loadStoredSessionSummaryDetail(storage: AppStorage, sessionId?: string, signal?: AbortSignal): Promise<{ generation: number; detail: StoredSessionSummaryDetail }> {
+export async function loadStoredSessionSummaryDetail(
+  storage: AppStorage,
+  sessionId?: string,
+  signal?: AbortSignal,
+  onSnapshot?: StoredSessionSummarySnapshotListener
+): Promise<{ generation: number; detail: StoredSessionSummaryDetail }> {
   signal?.throwIfAborted();
   const generation = await storage.getGeneration();
   const snapshot = sessionId === undefined
     ? await loadLatestStoredSessionSummarySnapshot(storage)
     : await loadStoredSessionSummarySnapshotById(storage, sessionId);
   signal?.throwIfAborted();
-  if (snapshot === undefined) {
-    await assertProgressGeneration(storage, generation);
-    return { generation, detail: { newBestLabels: [] } };
-  }
+  await assertProgressGeneration(storage, generation);
+  signal?.throwIfAborted();
+  if (snapshot === undefined) return { generation, detail: { newBestLabels: [] } };
+  // Release the bounded session before the lifetime personal-best and benchmark scans.
+  await onSnapshot?.(snapshot, generation);
+  signal?.throwIfAborted();
   const [sessions, responses, benchmarkResults] = await Promise.all([
     loadStoredDrillSessionHistory(storage), loadStoredResponseHistory(storage), storage.getAll("benchmark_results")
   ]);
